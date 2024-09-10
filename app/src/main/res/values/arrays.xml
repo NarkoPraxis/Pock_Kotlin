@@ -1,0 +1,45 @@
+<resources>
+    <!-- Reply Preference -->
+
+    <string-array name="game_values">
+        <item>small</item>
+        <item>default</item>
+        <item>large</item>
+    </string-array>
+
+    <string-array name="ball_sizes">
+        <item>Small</item>
+        <item>Default</item>
+        <item>Big</item>
+    </string-array>
+
+    <string-array name="bonus_durations">
+        <item>Short</item>
+        <item>Default</item>
+        <item>Long</item>
+    </string-array>
+
+    <string-array name="charge_speeds">
+        <item>Slow</item>
+        <item>Default</item>
+        <item>Fast</item>
+    </string-array>
+
+    <string-array name="tail_lengths">
+        <item>Short</item>
+        <item>Default</item>
+        <item>Long</item>
+    </string-array>
+
+    <string-array name="game_speeds">
+        <item>Slow</item>
+        <item>Default</item>
+        <item>Fast</item>
+    </string-array>
+
+    <string-array name="bounce_bonuses">
+        <item>Small</item>
+        <item>Default</item>
+        <item>Large</item>
+    </string-array>
+</resources>

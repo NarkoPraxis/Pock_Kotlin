@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#008577</color>
+    <color name="colorPrimaryDark">#00574B</color>
+    <color name="colorAccent">#D81B60</color>
+    <color name="highPlayerLight">#f59da0</color>
+    <color name="highPlayerDark">#f25252</color>
+    <color name="lowPlayerLight">#9dd4f5</color>
+    <color name="lowPlayerDark">#52b6f2</color>
+    <color name="background">#ffffff</color>
+    <color name="bonus">#52f275</color>
+    <color name="effectColor">#c09df5</color>
+    <color name="goalColor">#e3d1ff</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+</resources>

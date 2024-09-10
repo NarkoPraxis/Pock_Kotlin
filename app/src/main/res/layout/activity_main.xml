@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".MainActivity">
+
+    <TextView
+            android:id="@+id/Title"
+            android:layout_width="201dp"
+            android:layout_height="100dp"
+            android:layout_marginTop="128dp"
+            android:text="Pockey"
+            android:textAlignment="center"
+            android:textSize="62sp"
+            android:visibility="visible"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Pockey" />
+
+    <Button
+            android:id="@+id/playButton"
+            android:layout_width="286dp"
+            android:layout_height="69dp"
+            android:layout_marginTop="32dp"
+            android:onClick="goToGameView"
+            android:text="Play"
+            android:visibility="visible"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/Title"
+            tools:text="Play" />
+
+
+    <Button
+            android:id="@+id/tutorialButton"
+            android:layout_width="294dp"
+            android:layout_height="65dp"
+            android:layout_marginTop="24dp"
+            android:onClick="goToTutorial"
+            android:text="Tutorial"
+            android:visibility="visible"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/playButton" />
+
+    <Button
+            android:id="@+id/settingsButton"
+            android:layout_width="289dp"
+            android:layout_height="66dp"
+            android:layout_marginTop="24dp"
+            android:onClick="goToSettings"
+            android:text="Settings"
+            android:visibility="visible"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tutorialButton" />
+
+    <Button
+            android:id="@+id/rewardedAdButton"
+            android:layout_width="303dp"
+            android:layout_height="83dp"
+            android:layout_marginTop="24dp"
+            android:enabled="false"
+            android:onClick="showAd"
+            android:text="Ads"
+            android:visibility="visible"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/settingsButton" />
+
+    <Button
+            android:id="@+id/facebookShareButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="loadAds"
+            android:text="Facebook"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/twitterShareButton"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/rewardedAdButton" />
+
+    <Button
+            android:id="@+id/twitterShareButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Twitter"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/rewardedAdButton" />
+
+    <Button
+            android:id="@+id/TikTok"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TikTok"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/twitterShareButton"
+            app:layout_constraintTop_toBottomOf="@+id/rewardedAdButton" />
+
+    <TextView
+            android:id="@+id/AdRatioText"
+            android:layout_width="105dp"
+            android:layout_height="37dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:text="100/100"
+            android:textAlignment="textEnd"
+            android:textSize="24sp"
+            android:visibility="visible"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

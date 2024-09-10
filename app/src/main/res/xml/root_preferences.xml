@@ -1,0 +1,60 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/color_theme_header">
+        <SwitchPreference
+                android:defaultValue="false"
+                android:key="darkmode"
+                android:title="@string/darkmode_label" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/game_settings_header">
+        <ListPreference
+                android:summary="%s"
+                android:defaultValue="default"
+                android:entries="@array/ball_sizes"
+                android:entryValues="@array/game_values"
+                android:key="ball_sizes"
+                android:title="Ball Size" />
+        <ListPreference
+                android:summary="%s"
+                android:defaultValue="default"
+                android:entries="@array/tail_lengths"
+                android:entryValues="@array/game_values"
+                android:key="tail_length"
+                android:title="Tail Length" />
+        <ListPreference
+                android:summary="%s"
+                android:defaultValue="default"
+                android:entries="@array/bonus_durations"
+                android:entryValues="@array/game_values"
+                android:key="bonus_duration"
+                android:title="Bonus Time" />
+        <ListPreference
+                android:summary="%1$s"
+                android:defaultValue="default"
+                android:entries="@array/bounce_bonuses"
+                android:entryValues="@array/game_values"
+                android:key="bounce_bonuse"
+                android:title="Power Bounce Bonus" />
+        <ListPreference
+                android:summary="%s"
+                android:defaultValue="default"
+                android:entries="@array/charge_speeds"
+                android:entryValues="@array/game_values"
+                android:key="charge_speed"
+                android:title="Charge Speed" />
+        <ListPreference
+                android:summary="%s"
+                android:defaultValue="default"
+                android:entries="@array/game_speeds"
+                android:entryValues="@array/game_values"
+                android:key="game_speed"
+                android:title="Game Speed" />
+    </PreferenceCategory>
+
+    <Preference android:title="Restore Defaults"
+            android:summary=""
+            android:key="restore_defaults"/>
+
+</PreferenceScreen>

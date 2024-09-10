@@ -1,0 +1,66 @@
+<resources>
+    <string name="app_name">Pock</string>
+    <string name="gameViewDescription">The screen that runs and displays the game</string>
+    <string name="tutorialViewDescription">The screen that displays a tutorial</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Preference Titles -->
+    <string name="color_theme_header">Color Theme</string>
+    <string name="game_settings_header">Game Settings</string>
+
+    <!-- Color Theme Preferences -->
+    <string name="darkmode_label">Dark Mode</string>
+
+    <!-- Preference Titles -->
+    <string name="restore_defaults_button">Restore Defaults</string>
+    <string name="sync_title">Sync email periodically</string>
+    <string name="attachment_title">Download incoming attachments</string>
+    <string name="attachment_summary_on">Automatically download attachments for incoming emails
+    </string>
+    <string name="attachment_summary_off">Only download attachments when manually requested</string>
+    <string name="title_activity_ad">AdActivity</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="interstitial_ad_sample">Interstitial Ad Sample</string>
+    <string name="start_level">Level 1</string>
+    <string name="next_level">Next Level</string>
+    <!-- -
+        This is an ad unit ID for an interstitial test ad. Replace with your own interstitial ad unit id.
+        For more information, see https://support.google.com/admob/answer/3052638
+    <!- -->
+    <string name="interstitial_ad_unit_id">ca-app-pub-3940256099942544/1033173712</string>
+    <string name="title_activity_ads">Ads</string>
+
+
+    <!-- tutorial messages -->
+    <string name="tutorial_Intro">Welcome to your Pock Pock Tutorial, touch the screen to proceed through the tutorial.</string>
+    <string name="tutorial_Intro2">Pock Pock is a two player game. So go grab a friend! You can learn how to play Pock Pock together.</string>
+    <string name="tutorial_Intro3">Hold the phone between you and your friend, then let your friend grab the top of your phone, but don\'t let go.</string>
+    <string name="tutorial_Intro4">Are you both holding the phone comfortably between you? Good! If this feels awkward to you, you can always set the phone on a flat surface and play that way.</string>
+    <string name="tutorial_Intro5">All set? Let\'s get started! </string>
+    <string name="tutorial_FingerSelection">Before each play session, you will be given the option to "Pick Your Finger".</string>
+    <string name="tutorial_FingerSelection2">Touch the finger you will using to play the game.</string>
+    <string name="tutorial_Aiming">Using your selected finger, touch the screen to aim where you want your Pock to go</string>
+    <string name="tutorial_Aiming2">Release your finger to fire your Pock in the chosen direction</string>
+    <string name="tutorial_Aiming3">Your goal is to bounce the opponent\'s Pock into one of the two goals on the top or bottom of the screen</string>
+    <string name="tutorial_Aiming4">Why don\'t you give it a try?</string>
+    <string name="tutorial_Charging_Bonus">Have you noticed the ring that grows while you are aiming your Pock? That is called your Charge ring</string>
+    <string name="tutorial_Charging_Bonus2">The larger your charge ring, the further your Pock will fly when you release it</string>
+    <string name="tutorial_Charging_Bonus3">Charge the ring too long, and it will shrink, preventing you from getting maximum launch power until you release the pock and try again.</string>
+    <string name="tutorial_Charging_Bonus4">Release the charge at it\'s peak and receive a Charge Bonus for the duration of that launch\'s movement.</string>
+    <string name="tutorial_Charging_Bonus5">While affected by a Charge Bonus, your Pock will launch your opponent further and be launched less.</string>
+    <string name="tutorial_Charging_Bonus6">Why don\'t you give it a try?</string>
+    <string name="tutorial_Scoring">Good job scoring! Did you notice? The Pocks will bounce off the goals unless knocked into them by the other Pock.</string>
+    <string name="tutorial_Charging_Bonus_Canceled">Good job triggering that charge bonus!</string>
+    <string name="tutorial_Charging_Bonus_Canceled2">Lookout, however, If both Pocks have a Charge Bonus when they collide, they will cancel each other out and both Pocks will be launched the maximum distance</string>
+    <string name="tutorial_Teleport">If you bounce off the score zone, you will begin the process of teleportation.</string>
+    <string name="tutorial_Teleport2">Bounce a second time to start the teleportation ring, disappearing and reappearing directly where your shaded Pock is positioned</string>
+    <string name="tutorial_Teleport3">If you appear on top of your Opponents Pock, you will launch them powerfully</string>
+    <string name="tutorial_Winning">Congratulations! You Win! Pock is played until someone scores 5 points.</string>
+    <string name="tutorial_Losing">I\'m sorry, you lost… Pock is played until someone scores 5 points.</string>
+    <string name="tutorial_HowToPause">The game might have ended at 5 points, but feel free to practice as long as you want during the tutorial. When you are ready to quit, simply pause the game.</string>
+    <string name="tutorial_HowToPause2">You can Pause the game at any time by tapping two fingers on either score zone, why don\'t you try it now?</string>
+    <string name="tutorial_Paused">You just paused the game! Your options in the pause menu are 1. return to the title screen, 2. reset the current game, or 3. access the settings.</string>
+    <string name="tutorial_Paused2">Tap anywhere above the pause menu to resume the game.</string>
+
+</resources>
