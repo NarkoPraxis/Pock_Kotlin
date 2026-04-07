@@ -35,7 +35,7 @@
                 android:defaultValue="default"
                 android:entries="@array/bounce_bonuses"
                 android:entryValues="@array/game_values"
-                android:key="bounce_bonuse"
+                android:key="bounce_bonus"
                 android:title="Power Bounce Bonus" />
         <ListPreference
                 android:summary="%s"

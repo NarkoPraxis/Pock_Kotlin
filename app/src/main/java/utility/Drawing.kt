@@ -54,12 +54,13 @@ object Drawing {
     }
 
     private fun drawScore(canvas: Canvas, fingerState: FingerState, player: Player) {
+        val margin = Settings.screenRatio / 2f
         when (fingerState) {
             FingerState.RightThumb, FingerState.RightPointer -> {
-                canvas.drawText("${player.score}",30f,Settings.screenHeight - 30f, PaintBucket.alwaysBlackTextPaint) //bottom score
+                canvas.drawText("${player.score}", margin, Settings.screenHeight - margin, PaintBucket.alwaysBlackTextPaint)
             }
             FingerState.LeftThumb, FingerState.LeftPointer -> {
-                canvas.drawText("${player.score}",Settings.screenWidth - 90f,  Settings.screenHeight - 30f, PaintBucket.alwaysBlackTextPaint) //top score
+                canvas.drawText("${player.score}", Settings.screenWidth - margin * 3f, Settings.screenHeight - margin, PaintBucket.alwaysBlackTextPaint)
             }
             else -> {}
         }

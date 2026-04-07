@@ -59,6 +59,8 @@ object Sounds {
         goalSoundId = load(R.raw.goal)
         chargeBlastoffId = load(R.raw.sheilds_up)
         chargeCollisionId = load(R.raw.sheilded_collision)
+        twoChargeCollisionId = load(R.raw.sheilded_collision)
+        teleportId = load(R.raw.charge_activated)
         scoreId = load(R.raw.goal)
     }
 
@@ -105,6 +107,7 @@ object Sounds {
 
     fun playGameAmbiance() {
         menuAmbiencePlayer.reset()
+        gameAmbiencePlayer.release()
         gameAmbiencePlayer = MediaPlayer.create(context, R.raw.game_ambient_sound)
         gameAmbiencePlayer.isLooping = true
         gameAmbiencePlayer.start()
@@ -112,6 +115,7 @@ object Sounds {
 
     fun playMenuAmbiance() {
         gameAmbiencePlayer.reset()
+        menuAmbiencePlayer.release()
         menuAmbiencePlayer = MediaPlayer.create(context, R.raw.menu_ambient_sound)
         menuAmbiencePlayer.isLooping = true
         menuAmbiencePlayer.start()
@@ -122,14 +126,15 @@ object Sounds {
     }
 
     private fun getXRate(x: Float) : Int {
-        return (x / cellWidth).toInt()
+        val index = (x / cellWidth).toInt()
+        return if (index < 0 || index > 5) 5 else index
     }
 
     private fun getYRate(y: Float) : Int {
         var test = (y / cellHeight).toInt()
-//        if (test < 0 || test > 5) {
-//            test = 5
-//        }
+        if (test < 0 || test > 5) {
+            test = 5
+        }
         return test
     }
 

@@ -34,6 +34,11 @@ class Puck(radius: Float, x: Float, y: Float, fillColor: Int, strokeColor: Int) 
     }
 
 
+    override fun setStroke(stroke: Int) {
+        super.setStroke(stroke)
+        chargePaint.color = stroke
+    }
+
     var bonusMovement = false
     var movement: Force = Force()
     var launch: Force = Force()

@@ -106,12 +106,24 @@ Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Ho
 
 ### Bugs
 
-7. **`bounce_bonus` preference key mismatch** — `root_preferences.xml` defines key `bounce_bonuse` (extra 'e'), but `Storage.kt` reads key `bounce_bonus`. The bounce bonus setting never actually takes effect.
-8. **`twoChargeCollisionId` never loaded** — `Sounds.initialize()` never calls `soundPool.load()` for this ID, so `playDoubleChargeCollision()` silently plays nothing (ID=0).
-9. **`teleportId` never loaded** — Same issue; both `playTeleportStart()` and `playTeleportFinish()` use an ID of 0.
-10. **`getYRate()` can throw ArrayIndexOutOfBoundsException** — Bounds check is commented out. If `y` is outside the 6-cell range, it returns an index > 5 which crashes the rates array lookup.
-11. **`MediaPlayer` leak in `Sounds`** — `playGameAmbiance()` and `playMenuAmbiance()` create new `MediaPlayer` instances without releasing the old one first. Each navigation between menu and game leaks a player.
-12. **Score text hardcoded pixel positions** — `Drawing.drawScore()` uses hardcoded `30f` and `90f` pixel offsets. These should use `screenRatio`.
+~~7. **`bounce_bonus` preference key mismatch** — Fixed: `root_preferences.xml` key changed from `bounce_bonuse` to `bounce_bonus`.~~
+~~8. **`twoChargeCollisionId` never loaded** — Fixed: now loads `R.raw.sheilded_collision` as a stand-in until a dedicated sound file is added.~~
+~~9. **`teleportId` never loaded** — Fixed: now loads `R.raw.charge_activated` as a stand-in until a dedicated sound file is added.~~
+~~10. **`getYRate()` can throw ArrayIndexOutOfBoundsException** — Fixed: bounds check restored. Same fix also applied to `getXRate()` which had the same bug.~~
+~~11. **`MediaPlayer` leak in `Sounds`** — Fixed: old player is now released before a new one is created.~~
+~~12. **Score text hardcoded pixel positions** — Fixed: `Drawing.drawScore()` now uses `screenRatio`-based offsets.~~
+
+13. **`PaintBucket.initialize()` was called after `Logic.initialize()`** — Fixed: was the root cause of all "invisible" rendering issues. All `Paint` objects (pucks, hand-selection outlines, charge rings, collision effects) were constructed with color `0` (transparent black) because PaintBucket colors had not been loaded yet. Swapped order in `PlayView.doOnSizeChange()` so `PaintBucket.initialize()` runs before `Logic.initialize()`.
+14. **`Puck.chargePaint` not updated on stroke color change** — Fixed: Added `override fun setStroke()` in `Puck.kt` to also update `chargePaint.color`. Without this, after `setPuckColor()` reassigns a puck's stroke (e.g., after a score), the charge ring would continue showing the stale pre-change color. Required marking `Circle.setStroke()` as `open`.
+
+15. **`Player.puckFillColor` is stale after `setPuckColor()` is called** — `puckFillColor` is set once at construction and referenced in `drawTail()` for the non-launched, non-shielded tail color. `Logic.setPuckColor()` → `puck.setFill()` updates `puck.fillColor` but not `Player.puckFillColor`. During the brief Scored state (when colors are swapped by `checkScored()` and then restored by `resetPlayerStates()`), the tail will briefly show the wrong color.
+16. **`alwaysBlackTextPaint` text size is hardcoded at `120f` pixels** — `PaintBucket.alwaysBlackTextPaint` and `textPaint` both use `textSize = 120f`, a raw pixel value. Should use a `screenRatio`-based size so score numbers scale properly on different screen densities.
+17. **Score text position may clip for double-digit scores** — `Drawing.drawScore()` now uses a `screenRatio / 2`-based x-offset, which is tight for two-digit score strings at large text sizes. If scores ever go past 9 (e.g., a sudden-death variant), the right-aligned score may overflow the screen edge.
+18. **`twoChargeCollisionId` and `teleportId` have no dedicated sound assets** — Bugs 8/9 are unblocked with placeholder sounds (`sheilded_collision` and `charge_activated`). Proper audio assets (`two_charge_collision.mp3`, `teleport.mp3`) should be added to `res/raw/` and the IDs updated in `Sounds.initialize()`.
+19. **`Sounds` cell dimensions not recalculated after `initializeGame()`** — `cellWidth` and `cellHeight` are computed at object-declaration time from `Settings` fields that are all `0f` until `initializeSettings()` runs. `initializeGame()` recalculates them, but any call to `getXRate()`/`getYRate()` before `initializeGame()` uses zero-sized cells (→ divide-by-zero / infinite index). Currently safe because sounds are not called during FingerSelection, but fragile.
+20. **`checkScored()` assigns wrong colors on score** — `Logic.checkScored()` calls `setPuckColor(other, highBallColor, ...)` and `setPuckColor(scoring, lowBallColor, ...)`, which swaps the puck colors during the Scored state regardless of which player is actually high or low. `resetPlayerStates()` then restores both to their canonical colors. This appears intentional (a brief flash), but verify no edge case leaves colors permanently swapped if the game transitions to GameOver mid-scored.
+21. **`finger` circle is always drawn at puck position during FingerSelection** — `Logic.assignFingerLocation()` sets `fingerTargetLocation = player.puck` during FingerSelection, so the finger circles home to the puck's initial position each frame. The circles are never visible here (Drawing.drawPlayers is not called during FingerSelection), but it wastes movement calculations every frame.
+22. **`Sounds.initialize()` is called from `MainActivity` but `Sounds.initializeGame()` recalculates screen-bound cell sizes** — These are two separate initialization paths. `initialize()` is bound to the context/lifecycle; `initializeGame()` must be called whenever screen dimensions change. If `initializeGame()` is ever skipped, pitch spatialization silently uses wrong cell dimensions.
 
 ### Unfinished Features
 

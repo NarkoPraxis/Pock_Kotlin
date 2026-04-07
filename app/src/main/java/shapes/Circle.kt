@@ -56,7 +56,7 @@ constructor() : this(0f, 0f, 0f, Color.BLACK, Color.BLACK)
         canvas.drawCircle(x, y, radius, strokePaint)
     }
 
-    fun setStroke(stroke: Int) {
+    open fun setStroke(stroke: Int) {
         strokeColor = stroke
         strokePaint.apply { color = strokeColor }
 //        strokePaint.apply { alpha = 50 }
