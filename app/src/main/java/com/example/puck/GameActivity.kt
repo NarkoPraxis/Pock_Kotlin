@@ -54,7 +54,8 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
                 GameState.GameOver -> {
                     Logic.gameOver(ad)
                 }
-
+                GameState.Temp -> {
+                }
             }
             invalidate()
             handle.postDelayed(runnable, Settings.refreshRate.toLong())

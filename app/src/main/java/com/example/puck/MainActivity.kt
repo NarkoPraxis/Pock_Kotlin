@@ -18,16 +18,19 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdCallback
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import gameobjects.Settings
-import kotlinx.android.synthetic.main.activity_main.*
+import com.example.puck.databinding.ActivityMainBinding
 import utility.Sounds
 import utility.Storage
 import java.time.LocalDate
 
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
         Storage.initialize(this)
         Sounds.initialize(this)
         Sounds.playMenuAmbiance()
@@ -41,9 +44,9 @@ class MainActivity : AppCompatActivity() {
 
         Settings.adsLeft = Storage.adsRemaining
         Settings.adShownToday = LocalDate.parse(Storage.lastSeenAdDate).isEqual(LocalDate.now())
-        AdRatioText.text = if (Settings.adsLeft > 0) "${Settings.adsLeft}/${Settings.maxAds}" else ""
+        binding.AdRatioText.text = if (Settings.adsLeft > 0) "${Settings.adsLeft}/${Settings.maxAds}" else ""
         MobileAds.initialize(this) { }
-        loadAds(AdRatioText)
+        loadAds(binding.AdRatioText)
     }
 
 
@@ -87,12 +90,12 @@ class MainActivity : AppCompatActivity() {
         val adLoadCallback = object: RewardedAdLoadCallback() {
             override fun onRewardedAdLoaded() {
                 super.onRewardedAdLoaded()
-                rewardedAdButton.isEnabled = true
+                binding.rewardedAdButton.isEnabled = true
                 Log.i("AdLoad", "OnRewardedAd Loaded");
             }
             override fun onRewardedAdFailedToLoad(errorCode: Int) {
                 super.onRewardedAdLoaded()
-                rewardedAdButton.isEnabled = false
+                binding.rewardedAdButton.isEnabled = false
                 Log.i("AdLoad", "OnRewardedAd Failed To Load")
             }
         }
@@ -109,12 +112,12 @@ class MainActivity : AppCompatActivity() {
 
                 }
                 override fun onRewardedAdClosed() {
-                    rewardedAdButton.text = "Come back tomorrow for your next ad"
-                    rewardedAdButton.isEnabled = false;
+                    binding.rewardedAdButton.text = "Come back tomorrow for your next ad"
+                    binding.rewardedAdButton.isEnabled = false;
                 }
                 override fun onUserEarnedReward(@NonNull reward: RewardItem) {
                     Settings.adsLeft -= 2
-                    AdRatioText.text = "${Settings.adsLeft}/${Settings.maxAds}"
+                    binding.AdRatioText.text = "${Settings.adsLeft}/${Settings.maxAds}"
                     Storage.storeAdsRemaining(Settings.adsLeft)
                 }
                 override fun onRewardedAdFailedToShow(errorCode: Int) {

@@ -84,6 +84,8 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
                         Logic.lowPlayer.disableEffects = false
                     }
                 }
+                GameState.Temp -> {
+                }
             }
             Tutorial.checkProgress()
             invalidate()

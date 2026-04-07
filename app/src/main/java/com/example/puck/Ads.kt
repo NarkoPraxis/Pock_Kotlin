@@ -10,7 +10,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 
-import kotlinx.android.synthetic.main.activity_ads.*
+import com.example.puck.databinding.ActivityAdsBinding
 
 // Remove the line below after defining your own ad unit ID.
 private const val TOAST_TEXT = "Test ads are being shown. " +
@@ -20,19 +20,22 @@ private const val START_LEVEL = 1
 
 class Ads : AppCompatActivity() {
 
+    private lateinit var binding: ActivityAdsBinding
     private var currentLevel: Int = 0
     private var interstitialAd: InterstitialAd? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_ads)
+        binding = ActivityAdsBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         // Create the next level button, which tries to show an interstitial when clicked.
-        next_level_button.isEnabled = false
-        next_level_button.setOnClickListener { showInterstitial() }
+        binding.nextLevelButton.isEnabled = false
+        binding.nextLevelButton.setOnClickListener { showInterstitial() }
 
         // Create the text view to show the level number.
         currentLevel = START_LEVEL
+        binding.level.text = getString(R.string.start_level)
 
         // Create the InterstitialAd and set the adUnitId (defined in values/strings.xml).
         interstitialAd = newInterstitialAd()
@@ -60,11 +63,11 @@ class Ads : AppCompatActivity() {
             adUnitId = getString(R.string.interstitial_ad_unit_id)
             adListener = object : AdListener() {
                 override fun onAdLoaded() {
-                    next_level_button.isEnabled = true
+                    binding.nextLevelButton.isEnabled = true
                 }
 
                 override fun onAdFailedToLoad(errorCode: Int) {
-                    next_level_button.isEnabled = true
+                    binding.nextLevelButton.isEnabled = true
                 }
 
                 override fun onAdClosed() {
@@ -87,7 +90,7 @@ class Ads : AppCompatActivity() {
 
     private fun loadInterstitial() {
         // Disable the next level button and load the ad.
-        next_level_button.isEnabled = false
+        binding.nextLevelButton.isEnabled = false
         val adRequest = AdRequest.Builder()
             .setRequestAgent("android_studio:ad_template")
             .build()
@@ -96,7 +99,7 @@ class Ads : AppCompatActivity() {
 
     private fun goToNextLevel() {
         // Show the next level and reload the ad to prepare for the level after.
-        level.text = "Level " + (++currentLevel)
+        binding.level.text = "Level " + (++currentLevel)
         interstitialAd = newInterstitialAd()
         loadInterstitial()
     }

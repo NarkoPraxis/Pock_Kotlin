@@ -5,8 +5,6 @@ import android.os.Bundle
 import android.view.View
 import enums.GameState
 import gameobjects.Settings
-import kotlinx.android.synthetic.main.activity_tutorial.*
-
 class tutorial : AppCompatActivity() {
     lateinit var tutorialView: TutorialView
 
