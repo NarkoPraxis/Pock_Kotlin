@@ -8,6 +8,7 @@ import enums.GameState
 import gameobjects.Player
 import gameobjects.Settings
 import physics.Ticker
+import kotlin.math.sin
 
 object Drawing {
 
@@ -53,17 +54,48 @@ object Drawing {
         }
     }
 
-    private fun drawScore(canvas: Canvas, fingerState: FingerState, player: Player) {
+    private fun drawScore(canvas: Canvas, fingerState: FingerState, player: Player, popTicker: Ticker) {
         val margin = Settings.screenRatio / 2f
+        val scoreText = "${player.score}"
         when (fingerState) {
             FingerState.RightThumb, FingerState.RightPointer -> {
-                canvas.drawText("${player.score}", margin, Settings.screenHeight - margin, PaintBucket.alwaysBlackTextPaint)
+                val scoreX = margin
+                val scoreY = Settings.screenHeight - margin
+                if (Settings.scorePopEnabled && !popTicker.finished) {
+                    popTicker.tick
+                    val scale = 1f + sin(popTicker.ratio * Math.PI.toFloat())
+                    canvas.save()
+                    canvas.scale(scale, scale, scoreX, scoreY)
+                    canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
+                    canvas.restore()
+                } else {
+                    canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
+                }
             }
             FingerState.LeftThumb, FingerState.LeftPointer -> {
-                canvas.drawText("${player.score}", Settings.screenWidth - margin * 3f, Settings.screenHeight - margin, PaintBucket.alwaysBlackTextPaint)
+                val scoreX = Settings.screenWidth - margin * 3f
+                val scoreY = Settings.screenHeight - margin
+                if (Settings.scorePopEnabled && !popTicker.finished) {
+                    popTicker.tick
+                    val scale = 1f + sin(popTicker.ratio * Math.PI.toFloat())
+                    canvas.save()
+                    canvas.scale(scale, scale, scoreX, scoreY)
+                    canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
+                    canvas.restore()
+                } else {
+                    canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
+                }
             }
             else -> {}
         }
+    }
+
+    fun drawScoreFlash(canvas: Canvas) {
+        if (!Settings.scoreFlashEnabled || Settings.scoreFlashAlpha <= 0f) return
+        PaintBucket.scoreFlashPaint.color = Settings.scoreFlashColor
+        PaintBucket.scoreFlashPaint.alpha = Settings.scoreFlashAlpha.toInt().coerceIn(0, 255)
+        canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.screenHeight, PaintBucket.scoreFlashPaint)
+        Settings.scoreFlashAlpha -= 8f
     }
 
     private fun checkWinner(canvas: Canvas, winner: Player, other: Player) {
@@ -80,11 +112,11 @@ object Drawing {
     fun drawScores(canvas: Canvas, highFingerState: FingerState, highPlayer: Player, lowFingerState: FingerState, lowPlayer: Player) {
         canvas.save()
         canvas.scale(-1f, -1f, Settings.screenWidth / 2f, Settings.screenHeight / 2f)
-        drawScore(canvas, highFingerState, highPlayer)
+        drawScore(canvas, highFingerState, highPlayer, Settings.highScorePopTicker)
         checkWinner(canvas, highPlayer, lowPlayer)
         canvas.restore()
 
-        drawScore(canvas, lowFingerState, lowPlayer)
+        drawScore(canvas, lowFingerState, lowPlayer, Settings.lowScorePopTicker)
         checkWinner(canvas, lowPlayer, highPlayer)
     }
 

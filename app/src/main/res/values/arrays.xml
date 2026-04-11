@@ -42,4 +42,25 @@
         <item>Default</item>
         <item>Large</item>
     </string-array>
+
+    <string-array name="points_to_win_entries">
+        <item>3 points</item>
+        <item>5 points</item>
+        <item>7 points</item>
+        <item>10 points</item>
+        <item>12 points</item>
+        <item>15 points</item>
+        <item>18 points</item>
+        <item>20 points</item>
+    </string-array>
+    <string-array name="points_to_win_values">
+        <item>3</item>
+        <item>5</item>
+        <item>7</item>
+        <item>10</item>
+        <item>12</item>
+        <item>15</item>
+        <item>18</item>
+        <item>20</item>
+    </string-array>
 </resources>

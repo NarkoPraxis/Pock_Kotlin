@@ -86,8 +86,9 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
         }
         if (Settings.gameState != GameState.FingerSelection) {
             Effects.drawEffects(canvas)
-            Drawing.drawScores(canvas, Logic.highFingerState, Logic.highPlayer, Logic.lowFingerState,Logic.lowPlayer)
             Drawing.drawPlayers(canvas)
+            Drawing.drawScoreFlash(canvas)
+            Drawing.drawScores(canvas, Logic.highFingerState, Logic.highPlayer, Logic.lowFingerState,Logic.lowPlayer)
             Drawing.drawWalls(canvas)
             if (Settings.pauseGame) {
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)

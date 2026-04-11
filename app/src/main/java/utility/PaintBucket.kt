@@ -33,6 +33,7 @@ object PaintBucket {
     lateinit var wallPaint: Paint
     lateinit var tutorialTextPaint: Paint
     lateinit var tutorialStrokePaint: Paint
+    lateinit var scoreFlashPaint: Paint
 
     var STROKE_WIDTH = 0f
 
@@ -164,6 +165,10 @@ object PaintBucket {
             strokeJoin = Paint.Join.ROUND
             strokeCap = Paint.Cap.ROUND
             strokeWidth = STROKE_WIDTH
+        }
+
+        scoreFlashPaint = Paint().apply {
+            style = Paint.Style.FILL
         }
 
     }

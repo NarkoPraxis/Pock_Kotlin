@@ -6,10 +6,15 @@ import gameobjects.Settings
 import physics.Point
 import shapes.Explosion
 import shapes.ScoreExplosion
+import kotlin.math.cos
+import kotlin.math.sin
 
 object Effects {
     val collisions = MutableList(0) { Explosion() }
     val scoreExplosions = MutableList(0) { ScoreExplosion() }
+
+    data class BurstParticle(var x: Float, var y: Float, var vx: Float, var vy: Float, var alpha: Float, val color: Int)
+    private val burstParticles = mutableListOf<BurstParticle>()
 
     fun clearCollisionEffects() {
         for (collision in collisions) {
@@ -17,6 +22,7 @@ object Effects {
                 collision.implode()
             }
         }
+        burstParticles.clear()
     }
 
     fun drawEffects(canvas: Canvas) {
@@ -34,6 +40,21 @@ object Effects {
                 scoreExplosions.remove(scoreExplosion)
             }
         }
+        if (Settings.scoreBurstEnabled) {
+            val iter = burstParticles.iterator()
+            while (iter.hasNext()) {
+                val p = iter.next()
+                p.vy += Settings.screenRatio * 0.15f
+                p.x += p.vx
+                p.y += p.vy
+                p.alpha -= 5f
+                if (p.alpha <= 0f) { iter.remove(); continue }
+                PaintBucket.scoreFlashPaint.color = p.color
+                PaintBucket.scoreFlashPaint.alpha = p.alpha.toInt().coerceIn(0, 255)
+                PaintBucket.scoreFlashPaint.style = android.graphics.Paint.Style.FILL
+                canvas.drawCircle(p.x, p.y, Settings.screenRatio * 0.4f, PaintBucket.scoreFlashPaint)
+            }
+        }
     }
 
 
@@ -44,6 +65,17 @@ object Effects {
 
     fun addScoreEffect(firstColor: Int, secondColor: Int, location: Point, highGoal: Boolean) {
         scoreExplosions.add(ScoreExplosion(firstColor, secondColor, location, Settings.screenRatio / 3f, highGoal))
+        if (Settings.scoreBurstEnabled) {
+            val y = if (highGoal) Settings.topGoalBottom / 2f
+                    else Settings.bottomGoalTop + (Settings.screenHeight - Settings.bottomGoalTop) / 2f
+            val cx = Settings.screenWidth / 2f
+            val color = firstColor
+            repeat(40) {
+                val angle = (Math.PI * 2.0 * it / 40).toFloat()
+                val speed = Settings.screenRatio * (2f + (Math.random() * 3f).toFloat())
+                burstParticles.add(BurstParticle(cx, y, cos(angle) * speed, sin(angle) * speed, 255f, color))
+            }
+        }
     }
 
     fun addWallCollisionEffect(bounceDirection: Direction, fillColor: Int, puckPosition: Point) {

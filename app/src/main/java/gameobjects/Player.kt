@@ -278,7 +278,7 @@ class Player(
     }
 
     fun score() {
-        score++
+        if (score < Settings.pointsToWin) score++
         canScore = false
     }
 

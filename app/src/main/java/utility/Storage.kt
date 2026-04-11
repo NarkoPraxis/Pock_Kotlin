@@ -99,6 +99,10 @@ object Storage {
         }
     }
 
+    fun loadPointsToWin(): Int {
+        return settings.getString("points_to_win", "5")?.toIntOrNull() ?: 5
+    }
+
 
 
 

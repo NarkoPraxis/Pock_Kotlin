@@ -1,8 +1,18 @@
 package gameobjects
 
 import enums.GameState
+import physics.Ticker
 
 object Settings {
+    val scoreFlashEnabled = true
+    val scoreBurstEnabled = true
+    val scorePopEnabled = true
+
+    var scoreFlashAlpha = 0f
+    var scoreFlashColor = 0
+
+    var highScorePopTicker = Ticker(20, true)
+    var lowScorePopTicker = Ticker(20, true)
     var refreshRate: Int = 16
     val maxAds = 100
     var adsLeft = 100
@@ -47,4 +57,5 @@ object Settings {
     var tailLength: Int = 20
     var scoreZoneHeight: Float = 3f
     var launchBonus: Float = 10f
+    var pointsToWin: Int = 5
 }

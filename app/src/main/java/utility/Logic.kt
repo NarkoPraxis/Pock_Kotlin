@@ -77,6 +77,7 @@ object Logic {
         Settings.launchBonus = Storage.launchBonus
         Settings.chargeIncreaseRate = Storage.chargeSpeed
         Settings.refreshRate = Storage.gameSpeed
+        Settings.pointsToWin = Storage.loadPointsToWin()
 
         Settings.screenWidth = width.toFloat()
         Settings.screenHeight = height.toFloat()
@@ -171,6 +172,7 @@ object Logic {
             victoryTicker.reset()
             lowPlayer.score = 0
             highPlayer.score = 0
+            Settings.gameOver = false
             Settings.gameState = GameState.FingerSelection
             lowFingerState = FingerState.Unselected
             highFingerState = FingerState.Unselected
@@ -473,6 +475,17 @@ object Logic {
             scoring.score()
             other.clearPower()
             scoring.clearPower()
+            if (Settings.scoreFlashEnabled) {
+                Settings.scoreFlashAlpha = 200f
+                Settings.scoreFlashColor = scoring.puckFillColor
+            }
+            if (Settings.scorePopEnabled) {
+                if (scoring.isHigh) {
+                    Settings.highScorePopTicker.reset()
+                } else {
+                    Settings.lowScorePopTicker.reset()
+                }
+            }
             setPuckColor(other, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor)
             setPuckColor(scoring, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor)
             Settings.gameState = GameState.Scored
@@ -497,7 +510,7 @@ object Logic {
         val lowIsReady = lowPlayer.moveTowardPoint(lowPlayer.resetLocation)
         val highIsReady = highPlayer.moveTowardPoint(highPlayer.resetLocation)
         if (lowIsReady && highIsReady) {
-            Settings.gameState = if (!Settings.gameOver && (lowPlayer.score == 5 || highPlayer.score == 5)) {
+            Settings.gameState = if (!Settings.gameOver && (lowPlayer.score >= Settings.pointsToWin || highPlayer.score >= Settings.pointsToWin)) {
                 Settings.gameOver = true
                 GameState.GameOver
             } else {
@@ -731,6 +744,7 @@ object Logic {
     }
 
     fun resetGame(sizeChanged: KFunction5<GameView, Int, Int, Int, Int, Unit>) {
+        Settings.pointsToWin = Storage.loadPointsToWin()
         lowFingerState = FingerState.Unselected
         highFingerState = FingerState.Unselected
         topRightFinger.unlock()

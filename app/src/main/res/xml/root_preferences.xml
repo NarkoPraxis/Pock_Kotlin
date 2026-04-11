@@ -51,6 +51,13 @@
                 android:entryValues="@array/game_values"
                 android:key="game_speed"
                 android:title="Game Speed" />
+        <ListPreference
+                app:key="points_to_win"
+                app:title="Points to Win"
+                app:summary="%s"
+                app:entries="@array/points_to_win_entries"
+                app:entryValues="@array/points_to_win_values"
+                app:defaultValue="5" />
     </PreferenceCategory>
 
     <Preference android:title="Restore Defaults"
