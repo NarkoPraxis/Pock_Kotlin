@@ -120,6 +120,17 @@ object Drawing {
         checkWinner(canvas, lowPlayer, highPlayer)
     }
 
+    fun drawTouchHighlights(canvas: Canvas, highPlayer: Player, lowPlayer: Player) {
+        if (highPlayer.isTouching) {
+            canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.middleY,
+                PaintBucket.highPlayerHighlightPaint)
+        }
+        if (lowPlayer.isTouching) {
+            canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, Settings.screenHeight,
+                PaintBucket.lowPlayerHighlightPaint)
+        }
+    }
+
     fun drawPlayers(canvas: Canvas) {
         Logic.highPlayer.drawTo(canvas)
         Logic.lowPlayer.drawTo(canvas)

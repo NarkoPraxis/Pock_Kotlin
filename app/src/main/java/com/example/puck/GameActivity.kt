@@ -80,6 +80,10 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
 
         Drawing.drawArena(canvas)
 
+        if (Settings.gameState == GameState.Play || Settings.gameState == GameState.CountDown) {
+            Drawing.drawTouchHighlights(canvas, Logic.highPlayer, Logic.lowPlayer)
+        }
+
         if (Settings.gameState == GameState.CountDown) {
             Drawing.mirrorText(canvas, Logic.countDownText(), Settings.middleX,Settings.middleY / 2, PaintBucket.textPaint)
             Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)

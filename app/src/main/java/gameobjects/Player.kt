@@ -123,6 +123,9 @@ class Player(
     val isTeleporting: Boolean
         get() = disappearing || reappearing
 
+    val isTouching: Boolean
+        get() = touch == TouchState.Down || touch == TouchState.Ready
+
 
     fun drawTo(canvas: Canvas) {
         if (puck.x.isNaN() || puck.y.isNaN()) {

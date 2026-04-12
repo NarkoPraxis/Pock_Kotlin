@@ -34,6 +34,8 @@ object PaintBucket {
     lateinit var tutorialTextPaint: Paint
     lateinit var tutorialStrokePaint: Paint
     lateinit var scoreFlashPaint: Paint
+    lateinit var highPlayerHighlightPaint: Paint
+    lateinit var lowPlayerHighlightPaint: Paint
 
     var STROKE_WIDTH = 0f
 
@@ -168,6 +170,18 @@ object PaintBucket {
         }
 
         scoreFlashPaint = Paint().apply {
+            style = Paint.Style.FILL
+        }
+
+        highPlayerHighlightPaint = Paint().apply {
+            color = highBallColor
+            alpha = 50
+            style = Paint.Style.FILL
+        }
+
+        lowPlayerHighlightPaint = Paint().apply {
+            color = lowBallColor
+            alpha = 50
             style = Paint.Style.FILL
         }
 
