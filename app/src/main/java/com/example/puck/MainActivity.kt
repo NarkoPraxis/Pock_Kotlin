@@ -29,12 +29,15 @@ import java.time.LocalDate
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var pendingShareToast: String? = null
+    private var appliedDarkMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Storage.initialize(this)
+        appliedDarkMode = Storage.darkMode
+        if (appliedDarkMode) setTheme(R.style.DarkMode) else setTheme(R.style.LightMode)
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        Storage.initialize(this)
         Sounds.initialize(this)
         Sounds.playMenuAmbiance()
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false)
@@ -81,6 +84,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (Storage.darkMode != appliedDarkMode) {
+            recreate()
+            return
+        }
         Sounds.soundPool.autoResume()
         Sounds.playMenuAmbiance()
         pendingShareToast?.let {

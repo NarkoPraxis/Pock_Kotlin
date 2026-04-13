@@ -1,20 +1,42 @@
 <resources>
 
-    <!-- Base application theme. -->
-    <style name="LightMode" parent="Theme.AppCompat.Light.NoActionBar">
-        <!-- Customize your theme here. -->
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
-
+    <!-- Main menu themes (no action bar) -->
+    <style name="LightMode" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/effectColor</item>
+        <item name="colorPrimaryDark">@color/effectColor</item>
+        <item name="colorSecondary">@color/menuButtonLight</item>
+        <item name="colorAccent">@color/effectColor</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
+        <!-- light background and dark text are MaterialComponents.Light defaults -->
     </style>
 
-    <style name="DarkMode" parent="Theme.AppCompat.Light.NoActionBar">
-        <!-- Customize your theme here. -->
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
+    <style name="DarkMode" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/effectColor</item>
+        <item name="colorPrimaryDark">@color/menuBackground</item>
+        <item name="colorSecondary">@color/menuButtonSecondary</item>
+        <item name="colorAccent">@color/effectColor</item>
+        <item name="android:colorBackground">@color/menuBackground</item>
+        <item name="android:textColorPrimary">@color/white</item>
+        <item name="android:textColorSecondary">@color/white</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
+    </style>
 
+    <!-- Settings screen themes (toolbar handled in layout for edge-to-edge compatibility) -->
+    <style name="SettingsThemeLight" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/effectColor</item>
+        <item name="colorPrimaryDark">@color/effectColor</item>
+        <item name="colorAccent">@color/effectColor</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
+    </style>
+
+    <style name="SettingsThemeDark" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/menuBackground</item>
+        <item name="colorPrimaryDark">@color/menuBackground</item>
+        <item name="colorAccent">@color/effectColor</item>
+        <item name="android:colorBackground">@color/menuBackground</item>
+        <item name="android:textColorPrimary">@color/white</item>
+        <item name="android:textColorSecondary">@color/white</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
     </style>
 
 </resources>

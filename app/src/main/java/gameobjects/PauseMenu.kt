@@ -1,13 +1,11 @@
 package gameobjects
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.drawable.Drawable
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.puck.R
-import enums.TutorialState
 import utility.PaintBucket
 import utility.Tutorial
 
@@ -18,20 +16,22 @@ class PauseMenu(activity: AppCompatActivity) {
     val resetImage: Drawable?
     val backImage: Drawable?
     val nextImage: Drawable?
-    private val offset = (Settings.topGoalBottom / 4).toInt()
 
-    val xMargin = Settings.screenWidth.toInt() / 10
-    var y = (Settings.topGoalBottom / 2 + Settings.bottomGoalTop).toInt()
+    private val iconSize = (Settings.screenRatio * 3f).toInt()
+    private val iconHalf = iconSize / 2
 
-    val leftXLeft = xMargin - offset
-    val leftXRight = xMargin + offset
-    val rightXLeft = Settings.screenWidth.toInt() - xMargin - offset
-    val rightXRight = (Settings.screenWidth - xMargin + offset).toInt()
-    val middleXLeft = (Settings.screenWidth / 2).toInt() - offset
-    val middleXRight = (Settings.screenWidth / 2).toInt() + offset
+    // Center icons vertically in the bottom goal zone
+    private val iconCenterY = ((Settings.bottomGoalTop + Settings.screenHeight) / 2f).toInt()
+    val topY = iconCenterY - iconHalf
+    val bottomY = iconCenterY + iconHalf
 
-    val topY = y - offset
-    val bottomY = y + offset
+    // Distribute icons at left-third, center, and right-third of screen
+    val leftXLeft = (Settings.screenWidth / 6f - iconHalf).toInt()
+    val leftXRight = (Settings.screenWidth / 6f + iconHalf).toInt()
+    val middleXLeft = (Settings.screenWidth / 2f - iconHalf).toInt()
+    val middleXRight = (Settings.screenWidth / 2f + iconHalf).toInt()
+    val rightXLeft = (5f * Settings.screenWidth / 6f - iconHalf).toInt()
+    val rightXRight = (5f * Settings.screenWidth / 6f + iconHalf).toInt()
 
     private val debug = Paint().apply {
         color = PaintBucket.effectColor

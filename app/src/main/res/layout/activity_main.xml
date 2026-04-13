@@ -4,99 +4,108 @@
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
         tools:context=".MainActivity">
 
     <TextView
             android:id="@+id/Title"
-            android:layout_width="201dp"
-            android:layout_height="100dp"
-            android:layout_marginTop="128dp"
-            android:text="Pockey"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="96dp"
+            android:text="Pock Pock"
             android:textAlignment="center"
-            android:textSize="62sp"
-            android:visibility="visible"
+            android:textSize="56sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            android:letterSpacing="0.05"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:text="Pockey" />
+            app:layout_constraintTop_toTopOf="parent" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
             android:id="@+id/playButton"
-            android:layout_width="286dp"
-            android:layout_height="69dp"
-            android:layout_marginTop="32dp"
+            android:layout_width="260dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="48dp"
             android:onClick="goToGameView"
             android:text="Play"
-            android:visibility="visible"
+            android:textSize="18sp"
+            app:cornerRadius="28dp"
+            app:backgroundTint="@color/effectColor"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/Title"
-            tools:text="Play" />
+            app:layout_constraintTop_toBottomOf="@+id/Title" />
 
-
-    <Button
+    <com.google.android.material.button.MaterialButton
             android:id="@+id/tutorialButton"
-            android:layout_width="294dp"
-            android:layout_height="65dp"
-            android:layout_marginTop="24dp"
+            android:layout_width="260dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="16dp"
             android:onClick="goToTutorial"
             android:text="Tutorial"
-            android:visibility="visible"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            app:cornerRadius="28dp"
+            app:backgroundTint="?attr/colorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/playButton" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
             android:id="@+id/settingsButton"
-            android:layout_width="289dp"
-            android:layout_height="66dp"
-            android:layout_marginTop="24dp"
+            android:layout_width="260dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="16dp"
             android:onClick="goToSettings"
             android:text="Settings"
-            android:visibility="visible"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            app:cornerRadius="28dp"
+            app:backgroundTint="?attr/colorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tutorialButton" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
             android:id="@+id/rewardedAdButton"
-            android:layout_width="303dp"
-            android:layout_height="83dp"
-            android:layout_marginTop="24dp"
+            android:layout_width="260dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="16dp"
             android:enabled="false"
             android:onClick="showAd"
-            android:text="Ads"
-            android:visibility="visible"
+            android:text="Watch Ad"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            app:cornerRadius="28dp"
+            app:backgroundTint="?attr/colorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/settingsButton" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
             android:id="@+id/shareButton"
-            android:layout_width="289dp"
-            android:layout_height="66dp"
-            android:layout_marginTop="24dp"
+            android:layout_width="260dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="16dp"
             android:text="Share"
-            android:visibility="visible"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            app:cornerRadius="28dp"
+            app:backgroundTint="?attr/colorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/rewardedAdButton" />
 
     <TextView
             android:id="@+id/AdRatioText"
-            android:layout_width="105dp"
-            android:layout_height="37dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
             android:text="100/100"
             android:textAlignment="textEnd"
-            android:textSize="24sp"
-            android:visibility="visible"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 

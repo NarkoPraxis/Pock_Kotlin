@@ -675,8 +675,15 @@ object Logic {
                     else { //middle
                         menuSelection = MenuSelection.reset
                     }
+                    if (motionEvent == MotionEvent.ACTION_UP) {
+                        countPauseTouches++
+                        if (countPauseTouches == 2) {
+                            menuCallback(context)
+                            countPauseTouches = 0
+                        }
+                    }
                 }
-                else if (y > Settings.bottomGoalTop) {// bottom menu touched {
+                else if (y > Settings.bottomGoalTop) {// bottom menu touched
                     if (x < Settings.screenWidth / 3) { //left
                         menuSelection = MenuSelection.settings
                     }
@@ -685,11 +692,20 @@ object Logic {
                     }
                     else { //middle
                         menuSelection = MenuSelection.reset
-                    }                }
-                if (motionEvent == MotionEvent.ACTION_UP) {
-                    countPauseTouches++
-                    if (countPauseTouches == 2) {
-                        menuCallback(context)
+                    }
+                    if (motionEvent == MotionEvent.ACTION_UP) {
+                        countPauseTouches++
+                        if (countPauseTouches == 2) {
+                            menuCallback(context)
+                            countPauseTouches = 0
+                        }
+                    }
+                }
+                else {
+                    // Touch in the play area during pause — dismiss the pause menu
+                    if (motionEvent == MotionEvent.ACTION_UP) {
+                        Settings.pauseGame = false
+                        Settings.gameState = tempGameState
                         countPauseTouches = 0
                     }
                 }
