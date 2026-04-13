@@ -753,9 +753,10 @@ object Logic {
         when(menuSelection){
             MenuSelection.back -> {
                 leaving = true
+                Sounds.playMenuAmbiance()
                 resetGame(GameView::doOnSizeChange)
                 val intent = Intent(context, MainActivity::class.java)
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 ContextCompat.startActivity(context, intent, Bundle())
                 activity.finish()
             }
@@ -764,6 +765,7 @@ object Logic {
             }
             MenuSelection.settings -> {
                 leaving = true
+                Sounds.playMenuAmbiance()
                 resetGame(GameView::doOnSizeChange)
                 val intent = Intent(context, SettingsActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)

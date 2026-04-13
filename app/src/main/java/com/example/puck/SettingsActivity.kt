@@ -3,6 +3,7 @@ package com.example.puck
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceFragmentCompat
+import utility.Sounds
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -14,6 +15,16 @@ class SettingsActivity : AppCompatActivity() {
             .replace(R.id.settings, SettingsFragment())
             .commit()
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Sounds.playMenuAmbiance()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Sounds.pauseAll()
     }
 
     class SettingsFragment : PreferenceFragmentCompat() {

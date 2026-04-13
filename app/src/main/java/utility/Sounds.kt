@@ -2,6 +2,8 @@ package utility
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.SoundPool
 import com.example.puck.R
@@ -47,10 +49,15 @@ object Sounds {
     lateinit var context: Context
     var rateIndex = 0
 
+    private enum class AmbienceMode { MENU, GAME }
+    private var ambienceMode: AmbienceMode? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
+
     fun initialize(context: Context) {
-        this.context = context
-        gameAmbiencePlayer = MediaPlayer.create(context, R.raw.game_ambient_sound)
-        menuAmbiencePlayer = MediaPlayer.create(context, R.raw.menu_ambient_sound)
+        this.context = context.applicationContext
+        gameAmbiencePlayer = MediaPlayer.create(this.context, R.raw.game_ambient_sound)
+        menuAmbiencePlayer = MediaPlayer.create(this.context, R.raw.menu_ambient_sound)
+        requestAudioFocus()
         weHaveAWinnerId = load(R.raw.we_have_a_winner)
         stingerTransitionId = load(R.raw.stinger_transition)
         lowPlayerSoundId = load(R.raw.low_synth)
@@ -106,7 +113,9 @@ object Sounds {
 
 
     fun playGameAmbiance() {
-        menuAmbiencePlayer.reset()
+        if (ambienceMode == AmbienceMode.GAME) return
+        ambienceMode = AmbienceMode.GAME
+        try { menuAmbiencePlayer.reset() } catch (e: Exception) { }
         gameAmbiencePlayer.release()
         gameAmbiencePlayer = MediaPlayer.create(context, R.raw.game_ambient_sound)
         gameAmbiencePlayer.isLooping = true
@@ -114,11 +123,65 @@ object Sounds {
     }
 
     fun playMenuAmbiance() {
-        gameAmbiencePlayer.reset()
+        if (ambienceMode == AmbienceMode.MENU) {
+            // Already on menu music — just resume if it was paused (e.g. app was backgrounded)
+            try { menuAmbiencePlayer.start() } catch (e: Exception) { }
+            return
+        }
+        ambienceMode = AmbienceMode.MENU
+        try { gameAmbiencePlayer.reset() } catch (e: Exception) { }
         menuAmbiencePlayer.release()
         menuAmbiencePlayer = MediaPlayer.create(context, R.raw.menu_ambient_sound)
         menuAmbiencePlayer.isLooping = true
         menuAmbiencePlayer.start()
+    }
+
+    fun pauseAll() {
+        soundPool.autoPause()
+        try {
+            when (ambienceMode) {
+                AmbienceMode.MENU -> if (menuAmbiencePlayer.isPlaying) menuAmbiencePlayer.pause()
+                AmbienceMode.GAME -> if (gameAmbiencePlayer.isPlaying) gameAmbiencePlayer.pause()
+                null -> { }
+            }
+        } catch (e: Exception) { }
+    }
+
+    fun resumeAll() {
+        soundPool.autoResume()
+        try {
+            when (ambienceMode) {
+                AmbienceMode.MENU -> menuAmbiencePlayer.start()
+                AmbienceMode.GAME -> gameAmbiencePlayer.start()
+                null -> { }
+            }
+        } catch (e: Exception) { }
+    }
+
+    private fun requestAudioFocus() {
+        val attrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_GAME)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            .setAudioAttributes(attrs)
+            .setOnAudioFocusChangeListener { focusChange ->
+                if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                    focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                    pauseAll()
+                }
+            }
+            .build()
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        am.requestAudioFocus(audioFocusRequest!!)
+    }
+
+    fun abandonAudioFocus() {
+        audioFocusRequest?.let {
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            am.abandonAudioFocusRequest(it)
+            audioFocusRequest = null
+        }
     }
 
     fun playWeHaveAWinner() {

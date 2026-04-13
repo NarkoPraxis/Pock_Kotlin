@@ -20,6 +20,7 @@ import utility.*
 open class PlayView(context: Context, var ad: InterstitialAd, override var activity: AppCompatActivity) : GameView(context, activity) {
     var handle: Handler = Handler()
     var runnable: Runnable = Runnable {}
+    private var gameLoopPaused = false
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         doOnSizeChange(width, height, oldWidth, oldHeight)
@@ -136,6 +137,18 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
 
     }
 
+    fun pauseGameLoop() {
+        handle.removeCallbacksAndMessages(null)
+        gameLoopPaused = true
+    }
+
+    fun resumeGameLoop() {
+        if (gameLoopPaused) {
+            gameLoopPaused = false
+            handle.post(runnable)
+        }
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         handle.removeCallbacksAndMessages(null)
@@ -190,6 +203,22 @@ class GameActivity : AppCompatActivity() {
         playView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN
         playView.contentDescription = getString(R.string.gameViewDescription)
         setContentView(playView)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (Logic.leaving) {
+            Sounds.soundPool.autoPause()
+        } else {
+            Sounds.pauseAll()
+        }
+        playView.pauseGameLoop()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Sounds.resumeAll()
+        playView.resumeGameLoop()
     }
 
     override fun onBackPressed() {

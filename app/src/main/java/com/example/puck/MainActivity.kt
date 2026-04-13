@@ -50,6 +50,17 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    override fun onPause() {
+        super.onPause()
+        Sounds.pauseAll()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Sounds.soundPool.autoResume()
+        Sounds.playMenuAmbiance()
+    }
+
     fun goToGameView(view: View) {
         Settings.startWithTutorial = false;
         val intent = Intent(this, GameActivity::class.java)
