@@ -92,12 +92,16 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
         if (Settings.gameState == GameState.CountDown) {
             Drawing.mirrorText(canvas, Logic.countDownText(), Settings.middleX,Settings.middleY / 2, PaintBucket.textPaint)
             Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)
+            Drawing.drawCanScoreWalls(canvas)
         }
         if (Settings.gameState != GameState.FingerSelection) {
             Effects.drawEffects(canvas)
             Drawing.drawPlayers(canvas)
             Drawing.drawScoreFlash(canvas)
             Drawing.drawScores(canvas, Logic.highFingerState, Logic.highPlayer, Logic.lowFingerState,Logic.lowPlayer)
+            if (Settings.gameState != GameState.CountDown) {
+                Drawing.drawCanScoreWalls(canvas)
+            }
             Drawing.drawWalls(canvas)
             if (Settings.pauseGame) {
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
@@ -119,8 +123,10 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
                     Drawing.mirrorText(canvas,Logic.countDownText(),textX, textY, PaintBucket.textPaint)
                     Logic.countDown()
                     Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)
+                    Drawing.drawCanScoreWalls(canvas)
                 }
                 else {
+                    Drawing.drawCanScoreWalls(canvas)
                     Drawing.mirrorText(canvas,"Pick Your Finger",textX, textY, PaintBucket.textPaint)
                 }
             }

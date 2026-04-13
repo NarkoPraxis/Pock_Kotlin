@@ -55,7 +55,7 @@ class Explosion(var firstColor: Int, var secondColor: Int, var backgroundColor: 
     var spacer1 = 2
     var spacer2 = 10
     var doneExploding = false
-    var currentAlpha = 255
+    var currentAlpha = 230
     var outerRing = Path()
     var innerRing = Path()
     var clipPath = Path()

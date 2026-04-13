@@ -9,6 +9,7 @@ import gameobjects.Player
 import gameobjects.Settings
 import physics.Ticker
 import kotlin.math.sin
+import androidx.core.graphics.withScale
 
 object Drawing {
 
@@ -37,7 +38,7 @@ object Drawing {
         GameEvents.cantScore.connect(cantScoreListener!!)
     }
 
-    private fun drawCanScoreWalls(canvas: Canvas) {
+    fun drawCanScoreWalls(canvas: Canvas) {
         val minDistance = Settings.screenRatio * 6f
         fun getAlpha(location: Float) = (1 - (location / minDistance)) * 200
         val highPlayer = Logic.highPlayer
@@ -97,7 +98,6 @@ object Drawing {
         canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.screenHeight, PaintBucket.backgroundPaint)
         canvas.drawRect(highScoreZone, PaintBucket.goalPaint)
         canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
-        drawCanScoreWalls(canvas)
     }
 
     fun drawCountDownRectangles(canvas: Canvas, top: FingerState, bottom:FingerState) {
@@ -351,14 +351,16 @@ object Drawing {
 
     fun drawGoalMenuHints(canvas: Canvas) {
         val cx = Settings.screenWidth / 2f
-        val highHintY = (Settings.topGoalBottom / 2f) - Settings.screenRatio /2
-        val lowHintY = Settings.bottomGoalTop + (Settings.screenHeight - (Settings.bottomGoalTop) / 2f) + Settings.screenRatio / 2
+        val padding = Settings.screenRatio / 2
+        val highGoalCenterOffset = (Settings.topGoalBottom / 2f)
+        val lowGoalCenterOffset = ((Settings.screenHeight - Settings.bottomGoalTop) / 2)
+        val highHintY = highGoalCenterOffset - padding
+        val lowHintY = Settings.bottomGoalTop + lowGoalCenterOffset + padding
 
 //        canvas.drawText("2 FINGER TOUCH", cx, highHintY, PaintBucket.menuHintPaint)
-        canvas.save()
-        canvas.scale(-1f, -1f, cx, highHintY)
-        canvas.drawText("2 FINGER TOUCH", cx, highHintY, PaintBucket.menuHintPaint)
-        canvas.restore()
+        canvas.withScale(-1f, -1f, cx, highHintY) {
+            drawText("2 FINGER TOUCH", cx, highHintY, PaintBucket.menuHintPaint)
+        }
 
         canvas.drawText("2 FINGER TOUCH", cx, lowHintY, PaintBucket.menuHintPaint)
     }
