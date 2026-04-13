@@ -196,8 +196,6 @@ class GameActivity : AppCompatActivity() {
         else {
             interstitialAd = InterstitialAd(this)
         }
-//        var drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
-//        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
 
         playView = PlayView(this, interstitialAd, this)
         playView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN

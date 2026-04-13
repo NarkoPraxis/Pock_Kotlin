@@ -8,6 +8,7 @@ import android.transition.Explode
 import android.util.Log
 import android.view.View
 import android.view.Window
+import android.widget.Toast
 import androidx.annotation.NonNull
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
@@ -19,6 +20,7 @@ import com.google.android.gms.ads.rewarded.RewardedAdCallback
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import gameobjects.Settings
 import com.example.puck.databinding.ActivityMainBinding
+import utility.ShareHelper
 import utility.Sounds
 import utility.Storage
 import java.time.LocalDate
@@ -26,6 +28,7 @@ import java.time.LocalDate
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private var pendingShareToast: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +50,27 @@ class MainActivity : AppCompatActivity() {
         binding.AdRatioText.text = if (Settings.adsLeft > 0) "${Settings.adsLeft}/${Settings.maxAds}" else ""
         MobileAds.initialize(this) { }
         loadAds(binding.AdRatioText)
+
+        if (Storage.shareRewardClaimed) {
+            binding.shareButton.text = "Share"
+        }
+        binding.shareButton.setOnClickListener { shareAndReward() }
+    }
+
+    private fun shareAndReward() {
+        ShareHelper.shareAppPromo(this) { grantShareReward() }
+    }
+
+    private fun grantShareReward() {
+        if (Storage.shareRewardClaimed) {
+            pendingShareToast = "Thanks for sharing again! The reward has already been claimed."
+            return
+        }
+        Storage.markShareRewardClaimed()
+        Settings.adsLeft -= 5
+        Storage.storeAdsRemaining(Settings.adsLeft)
+        binding.AdRatioText.text = if (Settings.adsLeft > 0) "${Settings.adsLeft}/${Settings.maxAds}" else ""
+        pendingShareToast = "Thanks for sharing! 5 ad credits earned."
     }
 
 
@@ -59,6 +83,10 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         Sounds.soundPool.autoResume()
         Sounds.playMenuAmbiance()
+        pendingShareToast?.let {
+            Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+            pendingShareToast = null
+        }
     }
 
     fun goToGameView(view: View) {

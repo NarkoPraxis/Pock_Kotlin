@@ -76,37 +76,15 @@
             app:layout_constraintTop_toBottomOf="@+id/settingsButton" />
 
     <Button
-            android:id="@+id/facebookShareButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:onClick="loadAds"
-            android:text="Facebook"
+            android:id="@+id/shareButton"
+            android:layout_width="289dp"
+            android:layout_height="66dp"
+            android:layout_marginTop="24dp"
+            android:text="Share"
             android:visibility="visible"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/twitterShareButton"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/rewardedAdButton" />
-
-    <Button
-            android:id="@+id/twitterShareButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Twitter"
-            android:visibility="visible"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/rewardedAdButton" />
-
-    <Button
-            android:id="@+id/TikTok"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="TikTok"
-            android:visibility="visible"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/twitterShareButton"
             app:layout_constraintTop_toBottomOf="@+id/rewardedAdButton" />
 
     <TextView

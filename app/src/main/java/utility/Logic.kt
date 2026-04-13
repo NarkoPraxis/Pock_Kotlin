@@ -172,6 +172,7 @@ object Logic {
         if (!winnerSoundHasBeenPlayed) {
             winnerSoundHasBeenPlayed = true
             Sounds.playWeHaveAWinner()
+            GameEvents.gameOver.emit(Unit)
         }
         if (victoryTicker.tick) {
             winnerSoundHasBeenPlayed = false
@@ -193,6 +194,7 @@ object Logic {
             Settings.pauseGame = false
             Settings.gameOver = false
             Settings.gameState = GameState.FingerSelection
+            GameEvents.gameReset.emit(Unit)
             lowFingerState = FingerState.Unselected
             highFingerState = FingerState.Unselected
             bottomRightFinger.reset()

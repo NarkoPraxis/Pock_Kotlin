@@ -18,6 +18,7 @@ object Storage {
     private const val adPreferances = "adPreferences"
     private const val remainingKey = "ads_remaining"
     private const val lastSeenAdKey = "last_seen_ad_date"
+    private const val shareRewardClaimedKey = "share_reward_claimed"
 
     private const val S = "small"
     private const val D = "default"
@@ -51,6 +52,12 @@ object Storage {
         val editor = ad.edit()
         editor.putString(lastSeenAdKey, LocalDateTime.now().toLocalDate().toString())
         editor.apply()
+    }
+
+    val shareRewardClaimed: Boolean get() = ad.getBoolean(shareRewardClaimedKey, false)
+
+    fun markShareRewardClaimed() {
+        ad.edit().putBoolean(shareRewardClaimedKey, true).apply()
     }
 
     val darkMode : Boolean get() {
