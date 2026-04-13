@@ -55,7 +55,7 @@ object Drawing {
     }
 
     private fun drawScore(canvas: Canvas, fingerState: FingerState, player: Player, popTicker: Ticker) {
-        val margin = Settings.screenRatio / 2f
+        val margin = Settings.screenRatio / 2f + 20
         val scoreText = "${player.score}"
         when (fingerState) {
             FingerState.RightThumb, FingerState.RightPointer -> {
@@ -280,6 +280,20 @@ object Drawing {
         canvas.drawText(text, x, y, textPaint)
         canvas.restore()
         canvas.drawText(text, x, y, textPaint) //bottom score
+    }
+
+    fun drawGoalMenuHints(canvas: Canvas) {
+        val cx = Settings.screenWidth / 2f
+        val highHintY = Settings.topGoalBottom / 2f
+        val lowHintY = Settings.bottomGoalTop + (Settings.screenHeight - Settings.bottomGoalTop) / 2f
+
+//        canvas.drawText("2 FINGER TOUCH", cx, highHintY, PaintBucket.menuHintPaint)
+        canvas.save()
+        canvas.scale(-1f, -1f, cx, highHintY)
+        canvas.drawText("2 FINGER TOUCH", cx, highHintY, PaintBucket.menuHintPaint)
+        canvas.restore()
+
+        canvas.drawText("2 FINGER TOUCH", cx, lowHintY, PaintBucket.menuHintPaint)
     }
 
     fun showDebugInfo(canvas: Canvas) {

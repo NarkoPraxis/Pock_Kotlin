@@ -36,6 +36,7 @@ object PaintBucket {
     lateinit var scoreFlashPaint: Paint
     lateinit var highPlayerHighlightPaint: Paint
     lateinit var lowPlayerHighlightPaint: Paint
+    lateinit var menuHintPaint: Paint
 
     var STROKE_WIDTH = 0f
 
@@ -183,6 +184,14 @@ object PaintBucket {
             color = lowBallColor
             alpha = 50
             style = Paint.Style.FILL
+        }
+
+        menuHintPaint = Paint().apply {
+            color = Color.WHITE
+            alpha = 60
+            textSize = Settings.screenRatio * 1.2f
+            textAlign = Paint.Align.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
 
     }

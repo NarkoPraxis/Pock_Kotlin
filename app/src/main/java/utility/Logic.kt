@@ -112,6 +112,12 @@ object Logic {
     fun initialize(activity: AppCompatActivity, gameView: GameView) {
         this.activity = activity
         this.gameView = gameView
+        leaving = false
+        Settings.pauseGame = false
+        Settings.gameOver = false
+        Settings.playerPaused = false
+        lowFingerState = FingerState.Unselected
+        highFingerState = FingerState.Unselected
         highPlayer = Player(
             Puck(Settings.ballRadius, Settings.screenWidth / 4f, Settings.middleY, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight / 5, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
@@ -172,6 +178,19 @@ object Logic {
             victoryTicker.reset()
             lowPlayer.score = 0
             highPlayer.score = 0
+            lowPlayer.disableEffects = false
+            highPlayer.disableEffects = false
+            lowPlayer.canScore = false
+            highPlayer.canScore = false
+            lowPlayer.lockedPointerId = -1
+            highPlayer.lockedPointerId = -1
+            lowPlayer.shielded = false
+            highPlayer.shielded = false
+            lowPlayer.chargePowerLocked = false
+            highPlayer.chargePowerLocked = false
+            lowPlayer.charge = 0f
+            highPlayer.charge = 0f
+            Settings.pauseGame = false
             Settings.gameOver = false
             Settings.gameState = GameState.FingerSelection
             lowFingerState = FingerState.Unselected
@@ -306,7 +325,7 @@ object Logic {
     }
 
     fun checkPauseGame(pointerCount: Int, y1: Float, y2: Float) {
-        if (Settings.gameState == GameState.Play && !Tutorial.showing) {
+        if ((Settings.gameState == GameState.Play || Settings.gameState == GameState.FingerSelection) && !Tutorial.showing) {
             if (pointerCount == 2 && (y1 < Settings.topGoalBottom && y2 < Settings.topGoalBottom) || (y1 > Settings.bottomGoalTop && y2 > Settings.bottomGoalTop)) {
                 tempGameState = Settings.gameState
                 Settings.pauseGame = true
@@ -522,6 +541,32 @@ object Logic {
         resetPlayerStates(highPlayer, lowPlayer)
     }
 
+    private fun bestHighPointer(event: MotionEvent): Int {
+        var bestIdx = 0
+        var bestY = Float.MAX_VALUE
+        for (i in 0 until event.pointerCount) {
+            val y = event.getY(i)
+            if (y < Settings.middleY && y < bestY) {
+                bestY = y
+                bestIdx = i
+            }
+        }
+        return bestIdx
+    }
+
+    private fun bestLowPointer(event: MotionEvent): Int {
+        var bestIdx = 0
+        var bestY = Float.MIN_VALUE
+        for (i in 0 until event.pointerCount) {
+            val y = event.getY(i)
+            if (y > Settings.middleY && y > bestY) {
+                bestY = y
+                bestIdx = i
+            }
+        }
+        return bestIdx
+    }
+
     fun onTouchEvent(event: MotionEvent?, context: Context) {
         val motionEvent = event?.action
         var pointerCount = event?.pointerCount
@@ -539,40 +584,56 @@ object Logic {
         var clearBottom = false
 
         if (pointerCount > 1) {
-            val firstTouch = event!!.getPointerId(0)
-            val secondTouch = event.getPointerId(1)
-
-            var (x1: Float, y1: Float) = event.findPointerIndex(firstTouch).let {pointerIndex -> event.getX(pointerIndex) to event.getY(pointerIndex)}
-            var (x2: Float, y2: Float) = event.findPointerIndex(secondTouch).let {pointerIndex -> event.getX(pointerIndex) to event.getY(pointerIndex)}
-
-            checkPauseGame(pointerCount, y1, y2)
+            checkPauseGame(pointerCount, event!!.getY(0), event.getY(1))
 
             if (Settings.pauseGame) {
-                checkUnpauseGame(y1, y2)
+                checkUnpauseGame(event.getY(0), event.getY(1))
             }
             else {
+                // Lock/unlock pointer IDs on ACTION_POINTER_DOWN/UP
+                val maskedAction = motionEvent?.and(MotionEvent.ACTION_MASK)
+                val actionIndex = event.actionIndex
+                val actionPointerId = event.getPointerId(actionIndex)
+                val actionY = event.getY(actionIndex)
+
+                if (maskedAction == MotionEvent.ACTION_POINTER_DOWN) {
+                    if (actionY < Settings.middleY && highPlayer.lockedPointerId == -1) {
+                        highPlayer.lockedPointerId = actionPointerId
+                    } else if (actionY > Settings.middleY && lowPlayer.lockedPointerId == -1) {
+                        lowPlayer.lockedPointerId = actionPointerId
+                    }
+                } else if (maskedAction == MotionEvent.ACTION_POINTER_UP) {
+                    if (actionPointerId == highPlayer.lockedPointerId) {
+                        highPlayer.lockedPointerId = -1
+                    } else if (actionPointerId == lowPlayer.lockedPointerId) {
+                        lowPlayer.lockedPointerId = -1
+                    }
+                }
+
                 assignTouchState(highTouchedFirst, motionEvent)
             }
 
-            if (y1 > Settings.middleY) {
-                y2 -= Settings.topGoalBottom;
-                y1 += Settings.topGoalBottom;
-                highFinger.setLocation(x2, y2)
-                lowFinger.setLocation(x1, y1)
-                if (Settings.gameState == GameState.FingerSelection) {
-                    highFingerState = getFingerState(x2, y2, topLeftFinger, topRightFinger)
-                    lowFingerState = getFingerState(x1, y1, bottomLeftFinger, bottomRightFinger)
-                }
-            }
-            else {
-                y1 -= Settings.topGoalBottom;
-                y2 += Settings.topGoalBottom;
-                highFinger.setLocation(x1, y1)
-                lowFinger.setLocation(x2, y2)
-                if (Settings.gameState == GameState.FingerSelection) {
-                    highFingerState = getFingerState(x1, y1, topLeftFinger, topRightFinger)
-                    lowFingerState = getFingerState(x2, y2, bottomLeftFinger, bottomRightFinger)
-                }
+            // Prefer locked pointer, fall back to best-Y heuristic
+            val highLockedIdx = if (highPlayer.lockedPointerId != -1)
+                event!!.findPointerIndex(highPlayer.lockedPointerId).let { if (it >= 0) it else -1 }
+            else -1
+            val lowLockedIdx = if (lowPlayer.lockedPointerId != -1)
+                event!!.findPointerIndex(lowPlayer.lockedPointerId).let { if (it >= 0) it else -1 }
+            else -1
+
+            val highIdx = if (highLockedIdx >= 0) highLockedIdx else bestHighPointer(event!!)
+            val lowIdx = if (lowLockedIdx >= 0) lowLockedIdx else bestLowPointer(event!!)
+
+            val highX = event!!.getX(highIdx)
+            val highY = event.getY(highIdx) - Settings.topGoalBottom
+            val lowX = event.getX(lowIdx)
+            val lowY = event.getY(lowIdx) + Settings.topGoalBottom
+
+            highFinger.setLocation(highX, highY)
+            lowFinger.setLocation(lowX, lowY)
+            if (Settings.gameState == GameState.FingerSelection) {
+                highFingerState = getFingerState(highX, highY, topLeftFinger, topRightFinger)
+                lowFingerState = getFingerState(lowX, lowY, bottomLeftFinger, bottomRightFinger)
             }
             assignFingerLocation(clearBottom, lowFinger, clearTop, highFinger)
         }
@@ -625,10 +686,16 @@ object Logic {
 
                     if (motionEvent == MotionEvent.ACTION_DOWN) {
                         highTouchedFirst = false
+                        if (lowPlayer.lockedPointerId == -1) {
+                            lowPlayer.lockedPointerId = event.getPointerId(0)
+                        }
 //                        Sounds.playLowPlayerSound(lowPlayer.fx)
                     }
                     if (motionEvent == MotionEvent.ACTION_UP) {
                         Sounds.playLowPlayerSound(lowPlayer.fx)
+                        if (event.getPointerId(0) == lowPlayer.lockedPointerId) {
+                            lowPlayer.lockedPointerId = -1
+                        }
                     }
                     if (lowPlayer.notLocked()) {
                         setSingleTouch(motionEvent, lowPlayer)
@@ -644,10 +711,16 @@ object Logic {
                     }
                     if (motionEvent == MotionEvent.ACTION_DOWN) {
                         highTouchedFirst = true
+                        if (highPlayer.lockedPointerId == -1) {
+                            highPlayer.lockedPointerId = event.getPointerId(0)
+                        }
 //                        Sounds.playHighPlayerSound(highPlayer.fx)
                     }
                     if (motionEvent == MotionEvent.ACTION_UP) {
                         Sounds.playHighPlayerSound(highPlayer.fx)
+                        if (event.getPointerId(0) == highPlayer.lockedPointerId) {
+                            highPlayer.lockedPointerId = -1
+                        }
                     }
                     if (highPlayer.notLocked()) {
                         setSingleTouch(motionEvent, highPlayer)

@@ -48,6 +48,7 @@ class Player(
     var bounceDirection = Direction.FULL
     var disableEffects = false
     var preparingToTeleport = false
+    var lockedPointerId: Int = -1
 
     private var tail = MutableList(Settings.tailLength) { DrawablePoint() }
 

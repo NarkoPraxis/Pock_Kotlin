@@ -84,6 +84,10 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
             Drawing.drawTouchHighlights(canvas, Logic.highPlayer, Logic.lowPlayer)
         }
 
+        if (Settings.gameState == GameState.Play) {
+            Drawing.drawGoalMenuHints(canvas)
+        }
+
         if (Settings.gameState == GameState.CountDown) {
             Drawing.mirrorText(canvas, Logic.countDownText(), Settings.middleX,Settings.middleY / 2, PaintBucket.textPaint)
             Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)
@@ -99,25 +103,35 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
                 Logic.pauseMenu.drawTo(canvas)
             }
         } else if (Settings.gameState == GameState.FingerSelection) {
-            val textX = Settings.screenRatio * 2
-            val textY = (6 * Settings.middleY) / 5f
-            Logic.bottomRightFinger.drawTo(canvas)
-            Logic.bottomLeftFinger.drawTo(canvas)
-            Logic.topRightFinger.drawTo(canvas)
-            Logic.topLeftFinger.drawTo(canvas)
+            if (Settings.pauseGame) {
+                canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
+                Logic.pauseMenu.drawTo(canvas)
+            } else {
+                val textX = Settings.screenRatio * 2
+                val textY = (6 * Settings.middleY) / 5f
+                Logic.bottomRightFinger.drawTo(canvas)
+                Logic.bottomLeftFinger.drawTo(canvas)
+                Logic.topRightFinger.drawTo(canvas)
+                Logic.topLeftFinger.drawTo(canvas)
 
-            if (Logic.lowFingerState != FingerState.Unselected && Logic.highFingerState != FingerState.Unselected) {
-                Drawing.mirrorText(canvas,Logic.countDownText(),textX, textY, PaintBucket.textPaint)
-                Logic.countDown()
-                Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)
-            }
-            else {
-                Drawing.mirrorText(canvas,"Pick Your Finger",textX, textY, PaintBucket.textPaint)
+                if (Logic.lowFingerState != FingerState.Unselected && Logic.highFingerState != FingerState.Unselected) {
+                    Drawing.mirrorText(canvas,Logic.countDownText(),textX, textY, PaintBucket.textPaint)
+                    Logic.countDown()
+                    Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)
+                }
+                else {
+                    Drawing.mirrorText(canvas,"Pick Your Finger",textX, textY, PaintBucket.textPaint)
+                }
             }
 
             // Logic.showDebugInfo(canvas)
         }
 
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        handle.removeCallbacksAndMessages(null)
     }
 
     @SuppressLint("ClickableViewAccessibility")
