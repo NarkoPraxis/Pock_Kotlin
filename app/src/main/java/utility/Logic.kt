@@ -314,6 +314,7 @@ object Logic {
                     lowPlayer.puckFillColor,
                     collisionPoint
                 )
+                GameEvents.canScore.emit(Unit)
                 canCollide = false
                 return true
             }
@@ -352,9 +353,14 @@ object Logic {
         var gotBonus = player.shielded
         if (player.shouldReleaseCharge) {
             gotBonus = player.releaseCharge()
+            GameEvents.cantScore.emit(Unit)
         }
+        val hadLaunchPower = player.puck.launch.hasPower
         if(player.applyForces()) {
             Effects.addWallCollisionEffect(player.bounceDirection, player.puckFillColor, player.puck)
+        }
+        if (hadLaunchPower && !player.puck.launch.hasPower) {
+            GameEvents.cantScore.emit(Unit)
         }
         return gotBonus
     }
@@ -455,6 +461,15 @@ object Logic {
     }
 
 
+
+    fun updateCanScoreWall() {
+        if (!this::highPlayer.isInitialized) return
+        val delta = 0.4f
+        Settings.canScoreWallProgress = if (Settings.canScoreWallHiding)
+            (Settings.canScoreWallProgress + delta).coerceAtMost(1f)
+        else
+            (Settings.canScoreWallProgress - delta).coerceAtLeast(0f)
+    }
 
     fun checkCharge() {
         if (highPlayer.touch == TouchState.Down) {

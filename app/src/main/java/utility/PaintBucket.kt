@@ -31,6 +31,8 @@ object PaintBucket {
     lateinit var highBallFillPaint: Paint
     lateinit var highBallStrokePaint: Paint
     lateinit var wallPaint: Paint
+    lateinit var canScoreWallPaint: Paint
+    var canScoreWallColor = 0
     lateinit var tutorialTextPaint: Paint
     lateinit var tutorialStrokePaint: Paint
     lateinit var scoreFlashPaint: Paint
@@ -51,6 +53,11 @@ object PaintBucket {
         goalColor = ResourcesCompat.getColor(resources, R.color.goalColor, null)
         backgroundColor = ResourcesCompat.getColor(resources, R.color.background, null)
         effectColor = ResourcesCompat.getColor(resources, R.color.effectColor, null)
+
+        val goalHsv = FloatArray(3)
+        Color.colorToHSV(goalColor, goalHsv)
+        goalHsv[1] = (goalHsv[1] * 2f).coerceAtMost(1f)
+        canScoreWallColor = Color.HSVToColor(goalHsv)
 
 
         STROKE_WIDTH = Settings.screenRatio / 12f
@@ -162,6 +169,16 @@ object PaintBucket {
 
         wallPaint = Paint().apply {
             color = effectColor
+            isAntiAlias = true
+            isDither = true
+            style = Paint.Style.FILL
+            strokeJoin = Paint.Join.ROUND
+            strokeCap = Paint.Cap.ROUND
+            strokeWidth = STROKE_WIDTH
+        }
+
+        canScoreWallPaint = Paint().apply {
+            color = canScoreWallColor
             isAntiAlias = true
             isDither = true
             style = Paint.Style.FILL

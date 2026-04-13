@@ -13,6 +13,23 @@ object Settings {
 
     var highScorePopTicker = Ticker(20, true)
     var lowScorePopTicker = Ticker(20, true)
+
+    var canScoreWallProgress: Float = 0f
+    var canScoreWallHiding: Boolean = false
+
+    // Wall sits inside the goal zone; its inner edge touches the play-area boundary.
+    // Center is half a thickness inside the goal. As progress goes 0→1 the thickness
+    // shrinks symmetrically to zero.
+    val canScoreTopWallCenterY: Float get() = topGoalBottom - shortParticleSide / 2f
+    val canScoreBottomWallCenterY: Float get() = bottomGoalTop + shortParticleSide / 2f
+
+    private val canScoreWallHalfThick: Float get() = shortParticleSide * (1f - canScoreWallProgress) / 2f
+
+    val canScoreTopWallTop: Float get() = canScoreTopWallCenterY - canScoreWallHalfThick
+    val canScoreTopWallBottom: Float get() = canScoreTopWallCenterY + canScoreWallHalfThick
+
+    val canScoreBottomWallTop: Float get() = canScoreBottomWallCenterY - canScoreWallHalfThick
+    val canScoreBottomWallBottom: Float get() = canScoreBottomWallCenterY + canScoreWallHalfThick
     var refreshRate: Int = 16
     val maxAds = 100
     var adsLeft = 100

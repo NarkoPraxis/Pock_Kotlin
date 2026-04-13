@@ -38,6 +38,7 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
     private fun startPlayers() {
         handle.removeCallbacksAndMessages(null)
         runnable = Runnable {
+            Logic.updateCanScoreWall()
             when (Settings.gameState) {
                 GameState.FingerSelection -> {
                 }

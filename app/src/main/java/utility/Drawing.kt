@@ -20,17 +20,84 @@ object Drawing {
     var wallWidthParticleCount = 0
     var wallHeightParticleCount = 0
 
+    private var canScoreListener: ((Unit) -> Unit)? = null
+    private var cantScoreListener: ((Unit) -> Unit)? = null
+
     fun initialize() {
         highScoreZone = RectF(0f, 0f, Settings.screenWidth, Settings.topGoalBottom)
         lowScoreZone = RectF(0f, Settings.bottomGoalTop, Settings.screenWidth, Settings.screenHeight)
         wallHeightParticleCount = (Settings.screenHeight.toInt() - Settings.topGoalBottom.toInt() * 2) / Settings.longParticleSide.toInt()
         wallWidthParticleCount = Settings.screenWidth.toInt() / Settings.longParticleSide.toInt()
+
+        canScoreListener?.let { GameEvents.canScore.disconnect(it) }
+        cantScoreListener?.let { GameEvents.cantScore.disconnect(it) }
+        canScoreListener = { Settings.canScoreWallHiding = true }
+        cantScoreListener = { Settings.canScoreWallHiding = false }
+        GameEvents.canScore.connect(canScoreListener!!)
+        GameEvents.cantScore.connect(cantScoreListener!!)
+    }
+
+    private fun drawCanScoreWalls(canvas: Canvas) {
+        val minDistance = Settings.screenRatio * 6f
+        fun getAlpha(location: Float) = (1 - (location / minDistance)) * 200
+        val highPlayer = Logic.highPlayer
+        val lowPlayer = Logic.lowPlayer
+        val effectPaint = PaintBucket.canScoreWallPaint
+        val baseAlpha = 180
+
+        for (x in 0 until wallWidthParticleCount) {
+            val xPos = x * Settings.longParticleSide
+            val xEnd = xPos + Settings.longParticleSide
+
+            // Top canScore wall
+            val topCY = Settings.canScoreTopWallCenterY
+            val highDist = highPlayer.puck.distanceTo(xPos, topCY) - Settings.screenRatio
+            val lowDist  = lowPlayer.puck.distanceTo(xPos, topCY)  - Settings.screenRatio
+            var wallColor = PaintBucket.canScoreWallColor
+            var proximityAlpha = 0f
+            if (highDist < minDistance) {
+                proximityAlpha = getAlpha(highDist)
+                wallColor = if (lowDist < highDist) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+            }
+            if (lowDist < minDistance) {
+                val a = getAlpha(lowDist)
+                if (a > proximityAlpha) {
+                    proximityAlpha = a
+                    wallColor = if (highDist < lowDist) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                }
+            }
+            effectPaint.color = if (proximityAlpha > baseAlpha) wallColor else PaintBucket.canScoreWallColor
+            effectPaint.alpha = maxOf(baseAlpha, proximityAlpha.toInt())
+            canvas.drawRect(xPos, Settings.canScoreTopWallTop, xEnd, Settings.canScoreTopWallBottom, effectPaint)
+
+            // Bottom canScore wall
+            val botCY = Settings.canScoreBottomWallCenterY
+            val highDistB = highPlayer.puck.distanceTo(xPos, botCY) - Settings.screenRatio
+            val lowDistB  = lowPlayer.puck.distanceTo(xPos, botCY)  - Settings.screenRatio
+            var wallColorB = PaintBucket.canScoreWallColor
+            var proximityAlphaB = 0f
+            if (highDistB < minDistance) {
+                proximityAlphaB = getAlpha(highDistB)
+                wallColorB = if (lowDistB < highDistB) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+            }
+            if (lowDistB < minDistance) {
+                val a = getAlpha(lowDistB)
+                if (a > proximityAlphaB) {
+                    proximityAlphaB = a
+                    wallColorB = if (highDistB < lowDistB) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                }
+            }
+            effectPaint.color = if (proximityAlphaB > baseAlpha) wallColorB else PaintBucket.canScoreWallColor
+            effectPaint.alpha = maxOf(baseAlpha, proximityAlphaB.toInt())
+            canvas.drawRect(xPos, Settings.canScoreBottomWallTop, xEnd, Settings.canScoreBottomWallBottom, effectPaint)
+        }
     }
 
     fun drawArena(canvas: Canvas) {
         canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.screenHeight, PaintBucket.backgroundPaint)
         canvas.drawRect(highScoreZone, PaintBucket.goalPaint)
         canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
+        drawCanScoreWalls(canvas)
     }
 
     fun drawCountDownRectangles(canvas: Canvas, top: FingerState, bottom:FingerState) {
@@ -284,8 +351,8 @@ object Drawing {
 
     fun drawGoalMenuHints(canvas: Canvas) {
         val cx = Settings.screenWidth / 2f
-        val highHintY = Settings.topGoalBottom / 2f
-        val lowHintY = Settings.bottomGoalTop + (Settings.screenHeight - Settings.bottomGoalTop) / 2f
+        val highHintY = (Settings.topGoalBottom / 2f) - Settings.screenRatio /2
+        val lowHintY = Settings.bottomGoalTop + (Settings.screenHeight - (Settings.bottomGoalTop) / 2f) + Settings.screenRatio / 2
 
 //        canvas.drawText("2 FINGER TOUCH", cx, highHintY, PaintBucket.menuHintPaint)
         canvas.save()
