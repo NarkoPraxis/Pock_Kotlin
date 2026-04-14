@@ -50,6 +50,11 @@ class BallUnlockActivity : AppCompatActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        view.clearTails()
+    }
+
     private fun refreshAdRatio() {
         adRatio.text = if (Settings.adsLeft > 0) "${Settings.adsLeft}/${Settings.maxAds}" else "All unlocked"
         view.invalidate()

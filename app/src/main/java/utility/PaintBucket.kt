@@ -40,6 +40,13 @@ object PaintBucket {
     lateinit var lowPlayerHighlightPaint: Paint
     lateinit var menuHintPaint: Paint
 
+    // Plan 03: shared paint for locked-ball silhouette placeholder — always dark grey, no initialization needed
+    val placeholderPaint: Paint = Paint().apply {
+        color = Color.argb(200, 30, 30, 30)
+        isAntiAlias = true
+        style = Paint.Style.FILL
+    }
+
     var STROKE_WIDTH = 0f
 
     fun initialize(resources: Resources) {

@@ -19,6 +19,7 @@ class Puck(radius: Float, x: Float, y: Float, fillColor: Int, strokeColor: Int) 
     var tail: TailRenderer = ClassicTail(skin.theme)
     var currentCharge: Float = 0f
     var frame: Int = 0
+    var isPlaceholder: Boolean = false
 
 
     var shrinkTicker = Ticker(((Settings.sweetSpotMax - Settings.sweetSpotMin) / Settings.chargeIncreaseRate).toInt())
@@ -50,11 +51,11 @@ class Puck(radius: Float, x: Float, y: Float, fillColor: Int, strokeColor: Int) 
     }
 
     override fun drawTo(canvas: Canvas) {
-        skin.drawBody(canvas, this, radius)
+        skin.draw(canvas, this, radius)
     }
 
     override fun drawTo(radius: Float, canvas: Canvas) {
-        skin.drawBody(canvas, this, radius)
+        skin.draw(canvas, this, radius)
     }
 
     var bonusMovement = false

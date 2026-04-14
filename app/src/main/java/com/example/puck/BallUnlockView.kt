@@ -12,7 +12,9 @@ import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.TailRenderer
 import utility.PaintBucket
+import utility.Storage
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -20,19 +22,29 @@ class BallUnlockView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private val cardBg = Paint().apply { color = Color.argb(220, 22, 22, 34); style = Paint.Style.FILL; isAntiAlias = true }
+    private val cardBg = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
     private val cardBorder = Paint().apply { style = Paint.Style.STROKE; isAntiAlias = true }
-    private val label = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; isAntiAlias = true }
-    private val sublabel = Paint().apply { color = Color.argb(160, 255, 255, 255); textAlign = Paint.Align.CENTER; isAntiAlias = true }
-    private val lockFill = Paint().apply { color = Color.argb(170, 0, 0, 0); style = Paint.Style.FILL; isAntiAlias = true }
+    private val label = Paint().apply { textAlign = Paint.Align.CENTER; isAntiAlias = true }
+    private val sublabel = Paint().apply { textAlign = Paint.Align.CENTER; isAntiAlias = true }
+    // Plan 03: lockFill circle removed — puck body is already solid black for locked balls
     private val lockPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; isAntiAlias = true; strokeCap = Paint.Cap.ROUND }
 
     private val previewPuck = Puck(0f, 0f, 0f, Color.WHITE, Color.WHITE)
-    private var frame: Int = 0
+
+    // Plan 02: per-cell bounce state
+    private var bouncingIndex: Int = -1
+    private var bounceFrame: Int = 0
+
+    // Plan 01: per-slot tail instances; rebuilt when adsLeft changes
+    private var tails: Array<TailRenderer>? = null
+    private var tailsBuiltForAdsLeft: Int = -1
 
     private var scrollY: Float = 0f
     private var dragging: Boolean = false
     private var lastTouchY: Float = 0f
+    private var downX: Float = 0f
+    private var downY: Float = 0f
+    private var dragDistance: Float = 0f
     private var paintsReady: Boolean = false
 
     private val columns: Int = 2
@@ -67,18 +79,43 @@ class BallUnlockView @JvmOverloads constructor(
         }
     }
 
+    // Plan 01: rebuild per-slot tail array when adsLeft changes (new unlock happened)
+    private fun ensureTails() {
+        val adsLeft = Settings.adsLeft
+        if (tails == null || tailsBuiltForAdsLeft != adsLeft) {
+            tails?.forEach { it.clear() }
+            val types = BallType.values()
+            tails = Array(types.size) { i ->
+                val type = types[i]
+                val theme = if (i % 2 == 0) ColorTheme.Warm else ColorTheme.Cold
+                BallStyleFactory.build(type, theme).second
+            }
+            tailsBuiltForAdsLeft = adsLeft
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         ensurePaints()
         if (!paintsReady) return
 
-        val originalRatio = Settings.screenRatio
+        // Plan 00: re-apply light/dark colors each frame
+        cardBg.color = if (Storage.darkMode) Color.argb(220, 22, 22, 34) else Color.argb(220, 232, 232, 248)
+        label.color = if (Storage.darkMode) Color.WHITE else Color.argb(230, 15, 15, 35)
+        sublabel.color = if (Storage.darkMode) Color.argb(160, 255, 255, 255) else Color.argb(160, 20, 20, 50)
+
+        ensureTails()
+
+        val savedRatio = Settings.screenRatio
         Settings.screenRatio = ratio()
 
-        frame++
+        // Plan 02: advance bounce frame once per draw (not per cell)
+        if (bouncingIndex >= 0) bounceFrame++
+
         val types = BallType.values()
         val cs = cellSize()
-        val pr = cs * 0.28f
+        // Plan 01: use ratio() * 1.2f to match in-game ball size at screenRatio scale
+        val pr = ratio() * 1.2f
 
         for (i in types.indices) {
             val b = cellBounds(i)
@@ -86,27 +123,46 @@ class BallUnlockView @JvmOverloads constructor(
             val type = types[i]
             val theme = if (i % 2 == 0) ColorTheme.Warm else ColorTheme.Cold
 
+            val cx = (b[0] + b[2]) / 2f
+            // Plan 02: cell center Y offset upward slightly (like the popup)
+            val baseCy = (b[1] + b[3]) / 2f - ratio() * 0.4f
+            val bounce = if (i == bouncingIndex) {
+                val period = 70f
+                val amplitude = ratio() * 0.55f
+                (amplitude * kotlin.math.sin(2 * Math.PI.toFloat() * bounceFrame / period)).toFloat()
+            } else 0f
+            val puckY = baseCy - bounce
+
+            // 1. Card background + border
             canvas.drawRoundRect(b[0], b[1], b[2], b[3], ratio() * 0.4f, ratio() * 0.4f, cardBg)
             cardBorder.color = theme.primary
             cardBorder.strokeWidth = ratio() * 0.14f
             canvas.drawRoundRect(b[0], b[1], b[2], b[3], ratio() * 0.4f, ratio() * 0.4f, cardBorder)
 
-            val cx = (b[0] + b[2]) / 2f
-            val cy = (b[1] + b[3]) / 2f - ratio() * 0.4f
-
+            // Set up previewPuck for this slot
+            val unlocked = BallStyleFactory.isUnlocked(type, Settings.adsLeft)
             val (skin, _) = BallStyleFactory.build(type, theme)
             previewPuck.x = cx
-            previewPuck.y = cy
+            previewPuck.y = puckY
             previewPuck.radius = pr
-            previewPuck.frame = frame
+            previewPuck.frame = bounceFrame
             previewPuck.setFill(theme.primary)
             previewPuck.setStroke(theme.secondary)
             previewPuck.skin = skin
+            previewPuck.isPlaceholder = !unlocked  // Plan 03
+
+            // 2. Tail render (only when this ball is bouncing — Plan 01 + Plan 02)
+            if (i == bouncingIndex) {
+                tails?.get(i)?.renderForPreview(canvas, previewPuck, shielded = false, launched = false, baseFillColor = theme.primary)
+            }
+
+            // 3. Puck body
             previewPuck.drawTo(canvas)
 
-            val unlocked = BallStyleFactory.isUnlocked(type, Settings.adsLeft)
-            if (!unlocked) drawLock(canvas, cx, cy, pr)
+            // 4. Lock overlay (Plan 03: no semi-transparent circle — puck is already a solid silhouette)
+            if (!unlocked) drawLock(canvas, cx, puckY, pr)
 
+            // 5. Name label + status (static — not affected by bounce)
             label.textSize = ratio() * 0.7f
             canvas.drawText(type.name, cx, b[3] - ratio() * 0.85f, label)
             sublabel.textSize = ratio() * 0.45f
@@ -114,7 +170,7 @@ class BallUnlockView @JvmOverloads constructor(
             canvas.drawText(status, cx, b[3] - ratio() * 0.3f, sublabel)
         }
 
-        Settings.screenRatio = originalRatio
+        Settings.screenRatio = savedRatio
         postInvalidateOnAnimation()
     }
 
@@ -126,8 +182,8 @@ class BallUnlockView @JvmOverloads constructor(
         }
     }
 
+    // Plan 03: removed canvas.drawCircle(lockFill) — puck body is already solid black for locked balls
     private fun drawLock(canvas: Canvas, lx: Float, ly: Float, radius: Float) {
-        canvas.drawCircle(lx, ly, radius, lockFill)
         lockPaint.strokeWidth = ratio() * 0.22f
         val bodyW = radius * 0.8f
         val bodyH = radius * 0.7f
@@ -145,11 +201,15 @@ class BallUnlockView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 dragging = true
                 lastTouchY = event.y
+                downX = event.x
+                downY = event.y
+                dragDistance = 0f
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
                 if (dragging) {
                     val dy = event.y - lastTouchY
+                    dragDistance += abs(dy)
                     lastTouchY = event.y
                     scrollY -= dy
                     if (scrollY < 0f) scrollY = 0f
@@ -160,10 +220,33 @@ class BallUnlockView @JvmOverloads constructor(
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                val wasDragging = dragging
                 dragging = false
+                // Plan 02: detect tap (minimal movement) and set the tapped cell as the bouncing one
+                if (wasDragging && dragDistance < ratio() * 0.5f) {
+                    val types = BallType.values()
+                    for (i in types.indices) {
+                        val b = cellBounds(i)
+                        if (downX >= b[0] && downX <= b[2] && downY >= b[1] && downY <= b[3]) {
+                            if (bouncingIndex != i) {
+                                tails?.getOrNull(bouncingIndex)?.clear()
+                            }
+                            bouncingIndex = i
+                            bounceFrame = 0
+                            break
+                        }
+                    }
+                }
                 return true
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    // Clear particle tails when the activity pauses to prevent stale particle accumulation
+    fun clearTails() {
+        tails?.forEach { it.clear() }
+        bouncingIndex = -1
+        bounceFrame = 0
     }
 }
