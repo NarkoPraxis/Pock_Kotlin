@@ -30,6 +30,10 @@
                 android:exported="false"
                 android:label="@string/title_activity_ads" />
         <activity
+                android:name=".BallUnlockActivity"
+                android:exported="false"
+                android:screenOrientation="portrait" />
+        <activity
                 android:name="com.google.android.gms.ads.AdActivity"
                 android:exported="false"
                 android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"

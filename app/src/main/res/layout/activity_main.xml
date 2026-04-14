@@ -83,6 +83,21 @@
             app:layout_constraintTop_toBottomOf="@+id/settingsButton" />
 
     <com.google.android.material.button.MaterialButton
+            android:id="@+id/ballsButton"
+            android:layout_width="260dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="16dp"
+            android:onClick="goToBalls"
+            android:text="Balls"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            app:cornerRadius="28dp"
+            app:backgroundTint="?attr/colorSecondary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/rewardedAdButton" />
+
+    <com.google.android.material.button.MaterialButton
             android:id="@+id/shareButton"
             android:layout_width="260dp"
             android:layout_height="56dp"
@@ -94,7 +109,7 @@
             app:backgroundTint="?attr/colorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/rewardedAdButton" />
+            app:layout_constraintTop_toBottomOf="@+id/ballsButton" />
 
     <TextView
             android:id="@+id/AdRatioText"

@@ -2,6 +2,11 @@ package gameobjects
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.PuckSkin
+import gameobjects.puckstyle.TailRenderer
+import gameobjects.puckstyle.skins.ClassicSkin
+import gameobjects.puckstyle.tails.ClassicTail
 import physics.Force
 import physics.Point
 import physics.Ticker
@@ -9,6 +14,11 @@ import shapes.Circle
 import utility.PaintBucket
 
 class Puck(radius: Float, x: Float, y: Float, fillColor: Int, strokeColor: Int) : Circle(radius, x, y, fillColor, strokeColor) {
+
+    var skin: PuckSkin = ClassicSkin(ColorTheme(fillColor, strokeColor, PaintBucket.effectColor, true))
+    var tail: TailRenderer = ClassicTail(skin.theme)
+    var currentCharge: Float = 0f
+    var frame: Int = 0
 
 
     var shrinkTicker = Ticker(((Settings.sweetSpotMax - Settings.sweetSpotMin) / Settings.chargeIncreaseRate).toInt())
@@ -37,6 +47,14 @@ class Puck(radius: Float, x: Float, y: Float, fillColor: Int, strokeColor: Int) 
     override fun setStroke(stroke: Int) {
         super.setStroke(stroke)
         chargePaint.color = stroke
+    }
+
+    override fun drawTo(canvas: Canvas) {
+        skin.drawBody(canvas, this, radius)
+    }
+
+    override fun drawTo(radius: Float, canvas: Canvas) {
+        skin.drawBody(canvas, this, radius)
     }
 
     var bonusMovement = false

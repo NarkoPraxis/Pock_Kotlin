@@ -118,6 +118,12 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
+    fun goToBalls(view: View) {
+        val intent = Intent(this, BallUnlockActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        startActivity(intent)
+    }
+
     fun goToAds(view: View) {
         val intent = Intent(this, Ads::class.java)
         startActivity(intent)
@@ -158,7 +164,7 @@ class MainActivity : AppCompatActivity() {
 
                 }
                 override fun onRewardedAdClosed() {
-                    binding.rewardedAdButton.text = "Come back tomorrow for your next ad"
+                    binding.rewardedAdButton.text = "Reward Granted"
                     binding.rewardedAdButton.isEnabled = false;
                 }
                 override fun onUserEarnedReward(@NonNull reward: RewardItem) {

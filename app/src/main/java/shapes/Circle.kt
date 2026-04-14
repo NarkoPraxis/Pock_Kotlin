@@ -50,7 +50,7 @@ constructor() : this(0f, 0f, 0f, Color.BLACK, Color.BLACK)
         canvas.drawCircle(x, y, radius, strokePaint)
     }
 
-    fun drawTo(radius: Float, canvas: Canvas) {
+    open fun drawTo(radius: Float, canvas: Canvas) {
         canvas.drawCircle(x, y, radius, fillPaint)
 //        canvas.drawCircle(x, y, radius-strokePaint.strokeWidth/5, strokePaint)
         canvas.drawCircle(x, y, radius, strokePaint)

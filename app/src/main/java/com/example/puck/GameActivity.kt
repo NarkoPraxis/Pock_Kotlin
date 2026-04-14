@@ -130,6 +130,11 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
                     Drawing.drawCanScoreWalls(canvas)
                     Drawing.mirrorText(canvas,"Pick Your Finger",textX, textY, PaintBucket.textPaint)
                 }
+
+                Logic.highBallCard.drawTo(canvas)
+                Logic.lowBallCard.drawTo(canvas)
+                Logic.highBallPopup.drawTo(canvas)
+                Logic.lowBallPopup.drawTo(canvas)
             }
 
             // Logic.showDebugInfo(canvas)

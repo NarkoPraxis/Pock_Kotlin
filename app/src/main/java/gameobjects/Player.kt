@@ -50,8 +50,6 @@ class Player(
     var preparingToTeleport = false
     var lockedPointerId: Int = -1
 
-    private var tail = MutableList(Settings.tailLength) { DrawablePoint() }
-
     init {
         this.resetLocation = Point(puck.x, puck.y)
         setPuckStroke(puck.strokeColor)
@@ -136,11 +134,13 @@ class Player(
 
         finger.moveTowardLocation(fingerTargetLocation)
         finger.drawTo(canvas)
+        puck.currentCharge = charge
+        puck.frame++
         if (preparingToTeleport || isTeleporting) {
             drawTeleport(canvas)
         } else {
             puck.drawTo(canvas)
-            drawTail(canvas)
+            puck.tail.render(canvas, puck, shielded, isLaunched, puckFillColor)
         }
 
         if (finger != previousFingerLocation || puck != previousPuckLocation) {
@@ -191,34 +191,6 @@ class Player(
 //        launchTo.drawTo(canvas)
     }
 
-    private fun drawTail(canvas: Canvas) {
-        if (tail.size == 0) {
-            tail = if (shielded) MutableList(80) {DrawablePoint()} else MutableList(20) { DrawablePoint() }
-        }
-
-        fun ratio(i: Int) = (i.toFloat() / (tail.size - 1))
-
-        for(i in tail.size - 1 downTo 0) {
-            if (i-1 >= 0) {
-                tail[i] = tail[i-1]
-            }else {
-                tail[i] = DrawablePoint(puck)
-            }
-
-            if(shielded) tail[i].setColor(PaintBucket.effectColor) else if (isLaunched) tail[i].setColor(puck.fillColor) else tail[i].setColor(puckFillColor)
-            val baseSize = puck.radius * 1.1f
-            if (shielded) {
-                tail[i].size = baseSize - (Settings.strokeWidth ) - (puck.radius) * ratio(i-1)
-                tail[i].setAlpha((255f * (1 - ratio(i))).toInt())
-            } else {
-                tail[i].size = baseSize - (Settings.strokeWidth ) - (puck.radius) * ratio(i-1)
-            }
-
-            tail[i].drawTo(canvas)
-        }
-
-    }
-
     private fun drawTeleport(canvas: Canvas) {
         if (preparingToTeleport) {
             prepareTicker.tick
@@ -230,7 +202,7 @@ class Player(
                 preparingToTeleport = false
                 disappearing = true
                 prepareTicker.reset()
-                tail.clear()
+                puck.tail.clear()
             }
         }
         if (disappearing) {

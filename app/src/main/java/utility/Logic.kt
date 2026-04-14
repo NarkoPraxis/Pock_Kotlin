@@ -17,6 +17,8 @@ import gameobjects.PauseMenu
 import gameobjects.Player
 import gameobjects.Puck
 import gameobjects.Settings
+import gameobjects.puckstyle.BallStyleFactory
+import gameobjects.puckstyle.ColorTheme
 import physics.Force
 import physics.Point
 import physics.Ticker
@@ -37,6 +39,11 @@ object Logic {
     lateinit var pauseMenu: PauseMenu
     lateinit var victoryTicker: Ticker
     lateinit var fingerTicker: Ticker
+
+    val highBallCard = shapes.BallSelectionCard(isHigh = true)
+    val lowBallCard = shapes.BallSelectionCard(isHigh = false)
+    val highBallPopup = shapes.BallSelectionPopup(isHigh = true)
+    val lowBallPopup = shapes.BallSelectionPopup(isHigh = false)
 
     lateinit var activity: AppCompatActivity
 
@@ -78,6 +85,9 @@ object Logic {
         Settings.chargeIncreaseRate = Storage.chargeSpeed
         Settings.refreshRate = Storage.gameSpeed
         Settings.pointsToWin = Storage.loadPointsToWin()
+        Settings.highBallType = Storage.loadHighBallType(Settings.highBallType)
+        Settings.lowBallType = Storage.loadLowBallType(Settings.lowBallType)
+        Settings.adsLeft = Storage.adsRemaining
 
         Settings.screenWidth = width.toFloat()
         Settings.screenHeight = height.toFloat()
@@ -129,6 +139,8 @@ object Logic {
             false
         )
 
+        applyBallStyles()
+
 
         bottomLeftFinger = HandSelection(Point(Settings.middleX / 3, (5 * Settings.middleY) / 3),  lowPlayer.puckStrokeColor, lowPlayer.puckFillColor, PaintBucket.backgroundColor, false)
         bottomRightFinger = HandSelection(Point((5 * Settings.middleX) / 3, (5 * Settings.middleY) / 3), lowPlayer.puckStrokeColor, lowPlayer.puckFillColor, PaintBucket.backgroundColor, true)
@@ -145,6 +157,43 @@ object Logic {
     fun reset() {
         countPauseTouches = 0
         tempGameState = GameState.Play
+    }
+
+    private fun interceptBallMenu(event: MotionEvent?, motionEvent: Int?): Boolean {
+        if (event == null) return false
+        if (Settings.gameState != GameState.FingerSelection || Settings.pauseGame) return false
+        val x = event.x
+        val y = event.y
+        val action = motionEvent ?: return false
+        val maskedAction = action and MotionEvent.ACTION_MASK
+        val isDown = maskedAction == MotionEvent.ACTION_DOWN || maskedAction == MotionEvent.ACTION_POINTER_DOWN
+
+        if (highBallPopup.isOpen) {
+            if (isDown && !highBallPopup.hitTest(x, y) && highBallCard.hitTest(x, y)) { return true }
+            if (highBallPopup.handleTouchEvent(action, x, y)) return true
+        }
+        if (lowBallPopup.isOpen) {
+            if (isDown && !lowBallPopup.hitTest(x, y) && lowBallCard.hitTest(x, y)) { return true }
+            if (lowBallPopup.handleTouchEvent(action, x, y)) return true
+        }
+
+        if (isDown) {
+            if (!highBallPopup.isOpen && highBallCard.hitTest(x, y)) { highBallPopup.open(); return true }
+            if (!lowBallPopup.isOpen && lowBallCard.hitTest(x, y)) { lowBallPopup.open(); return true }
+        }
+
+        if (highBallPopup.isOpen && y < Settings.middleY) return true
+        if (lowBallPopup.isOpen && y >= Settings.middleY) return true
+        return false
+    }
+
+    fun applyBallStyles() {
+        val (highSkin, highTail) = BallStyleFactory.build(Settings.highBallType, ColorTheme.Warm)
+        highPlayer.puck.skin = highSkin
+        highPlayer.puck.tail = highTail
+        val (lowSkin, lowTail) = BallStyleFactory.build(Settings.lowBallType, ColorTheme.Cold)
+        lowPlayer.puck.skin = lowSkin
+        lowPlayer.puck.tail = lowTail
     }
 
     fun countDown() {
@@ -591,6 +640,8 @@ object Logic {
             pointerCount = 1
         }
 
+        if (interceptBallMenu(event, motionEvent)) return
+
 
         //use these as temporary variables so that finger position is only
         //updated after all calculations are finished
@@ -851,8 +902,17 @@ object Logic {
         }
     }
 
+    fun closeBallPopups() {
+        highBallPopup.close()
+        lowBallPopup.close()
+    }
+
     fun resetGame(sizeChanged: KFunction5<GameView, Int, Int, Int, Int, Unit>) {
+        closeBallPopups()
         Settings.pointsToWin = Storage.loadPointsToWin()
+        Settings.highBallType = Storage.loadHighBallType(Settings.highBallType)
+        Settings.lowBallType = Storage.loadLowBallType(Settings.lowBallType)
+        Settings.adsLeft = Storage.adsRemaining
         lowFingerState = FingerState.Unselected
         highFingerState = FingerState.Unselected
         topRightFinger.unlock()

@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.widget.Toast
 import androidx.preference.PreferenceManager
 import com.example.puck.R
+import enums.BallType
 import java.io.*
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -19,6 +20,8 @@ object Storage {
     private const val remainingKey = "ads_remaining"
     private const val lastSeenAdKey = "last_seen_ad_date"
     private const val shareRewardClaimedKey = "share_reward_claimed"
+    private const val highBallTypeKey = "high_ball_type"
+    private const val lowBallTypeKey = "low_ball_type"
 
     private const val S = "small"
     private const val D = "default"
@@ -58,6 +61,17 @@ object Storage {
 
     fun markShareRewardClaimed() {
         ad.edit().putBoolean(shareRewardClaimedKey, true).apply()
+    }
+
+    fun loadHighBallType(default: BallType): BallType = readBallType(highBallTypeKey, default)
+    fun loadLowBallType(default: BallType): BallType = readBallType(lowBallTypeKey, default)
+
+    fun saveHighBallType(type: BallType) = ad.edit().putString(highBallTypeKey, type.name).apply()
+    fun saveLowBallType(type: BallType) = ad.edit().putString(lowBallTypeKey, type.name).apply()
+
+    private fun readBallType(key: String, default: BallType): BallType {
+        val stored = ad.getString(key, null) ?: return default
+        return try { BallType.valueOf(stored) } catch (e: IllegalArgumentException) { default }
     }
 
     val darkMode : Boolean get() {

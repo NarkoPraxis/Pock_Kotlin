@@ -1,9 +1,12 @@
 package gameobjects
 
+import enums.BallType
 import enums.GameState
 import physics.Ticker
 
 object Settings {
+    var highBallType: BallType = BallType.Classic
+    var lowBallType: BallType = BallType.Classic
     val scoreFlashEnabled = true
     val scoreBurstEnabled = true
     val scorePopEnabled = true
@@ -32,7 +35,7 @@ object Settings {
     val canScoreBottomWallBottom: Float get() = canScoreBottomWallCenterY + canScoreWallHalfThick
     var refreshRate: Int = 16
     val maxAds = 100
-    var adsLeft = 100
+    var adsLeft = 0
     var adShownToday = false;
     var pauseGame = false;
     var startWithTutorial = false
