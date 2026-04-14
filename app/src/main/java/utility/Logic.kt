@@ -168,22 +168,23 @@ object Logic {
         val maskedAction = action and MotionEvent.ACTION_MASK
         val isDown = maskedAction == MotionEvent.ACTION_DOWN || maskedAction == MotionEvent.ACTION_POINTER_DOWN
 
-        if (highBallPopup.isOpen) {
-            if (isDown && !highBallPopup.hitTest(x, y) && highBallCard.hitTest(x, y)) { return true }
-            if (highBallPopup.handleTouchEvent(action, x, y)) return true
-        }
-        if (lowBallPopup.isOpen) {
-            if (isDown && !lowBallPopup.hitTest(x, y) && lowBallCard.hitTest(x, y)) { return true }
-            if (lowBallPopup.handleTouchEvent(action, x, y)) return true
+        // Route each side independently so both players can interact simultaneously
+        if (y < Settings.middleY) {
+            if (highBallPopup.isOpen) {
+                if (isDown && !highBallPopup.hitTest(x, y) && highBallCard.hitTest(x, y)) { return true }
+                if (highBallPopup.handleTouchEvent(action, x, y)) return true
+            } else if (isDown && highBallCard.hitTest(x, y)) {
+                highBallPopup.open(); return true
+            }
+        } else {
+            if (lowBallPopup.isOpen) {
+                if (isDown && !lowBallPopup.hitTest(x, y) && lowBallCard.hitTest(x, y)) { return true }
+                if (lowBallPopup.handleTouchEvent(action, x, y)) return true
+            } else if (isDown && lowBallCard.hitTest(x, y)) {
+                lowBallPopup.open(); return true
+            }
         }
 
-        if (isDown) {
-            if (!highBallPopup.isOpen && highBallCard.hitTest(x, y)) { highBallPopup.open(); return true }
-            if (!lowBallPopup.isOpen && lowBallCard.hitTest(x, y)) { lowBallPopup.open(); return true }
-        }
-
-        if (highBallPopup.isOpen && y < Settings.middleY) return true
-        if (lowBallPopup.isOpen && y >= Settings.middleY) return true
         return false
     }
 
@@ -197,6 +198,7 @@ object Logic {
     }
 
     fun countDown() {
+        if (highBallPopup.isOpen || lowBallPopup.isOpen) return
         lowPlayer.disableEffects = true
         highPlayer.disableEffects = true
         Drawing.countDownProgressTicker.tick

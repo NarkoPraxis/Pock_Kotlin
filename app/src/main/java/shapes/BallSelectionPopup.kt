@@ -62,7 +62,13 @@ class BallSelectionPopup(val isHigh: Boolean) {
         rebuildCenterTail()
     }
 
-    fun close() { isOpen = false; dragging = false }
+    fun close() {
+        isOpen = false
+        dragging = false
+        utility.Logic.countDownTicker.reset()
+        utility.Drawing.countDownProgressTicker.reset()
+        utility.Logic.cdIndex = 0
+    }
 
     private fun isUnlocked(type: BallType): Boolean = BallStyleFactory.isUnlocked(type, Settings.adsLeft)
 
