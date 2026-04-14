@@ -17,6 +17,7 @@ import utility.PaintBucket
 import utility.Storage
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.sin
 
 class BallUnlockView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -127,16 +128,16 @@ class BallUnlockView @JvmOverloads constructor(
             // Plan 02: cell center Y offset upward slightly (like the popup)
             val baseCy = (b[1] + b[3]) / 2f - ratio() * 0.4f
             val bounce = if (i == bouncingIndex) {
-                val period = 70f
-                val amplitude = ratio() * 0.55f
-                (amplitude * kotlin.math.sin(2 * Math.PI.toFloat() * bounceFrame / period)).toFloat()
+                val period = 40f
+                val amplitude = ratio() * 1.1f
+                abs(amplitude * sin(2 * Math.PI.toFloat() * bounceFrame / period))
             } else 0f
             val puckY = baseCy - bounce
 
             // 1. Card background + border
             canvas.drawRoundRect(b[0], b[1], b[2], b[3], ratio() * 0.4f, ratio() * 0.4f, cardBg)
             cardBorder.color = theme.primary
-            cardBorder.strokeWidth = ratio() * 0.14f
+            cardBorder.strokeWidth = ratio() * 0.24f
             canvas.drawRoundRect(b[0], b[1], b[2], b[3], ratio() * 0.4f, ratio() * 0.4f, cardBorder)
 
             // Set up previewPuck for this slot
@@ -231,6 +232,7 @@ class BallUnlockView @JvmOverloads constructor(
                             if (bouncingIndex != i) {
                                 tails?.getOrNull(bouncingIndex)?.clear()
                             }
+                            tails?.getOrNull(i)?.clear()
                             bouncingIndex = i
                             bounceFrame = 0
                             break

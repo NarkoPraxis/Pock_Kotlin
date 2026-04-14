@@ -10,7 +10,7 @@ import utility.PaintBucket
 
 class ClassicTail(override val theme: ColorTheme) : TailRenderer {
 
-    private var points: MutableList<DrawablePoint> = MutableList(Settings.tailLength) { DrawablePoint() }
+    private var points: MutableList<DrawablePoint>? = null
 
     override fun render(
         canvas: Canvas,
@@ -19,9 +19,11 @@ class ClassicTail(override val theme: ColorTheme) : TailRenderer {
         launched: Boolean,
         baseFillColor: Int
     ) {
-        if (points.size == 0) {
-            points = if (shielded) MutableList(80) { DrawablePoint() } else MutableList(20) { DrawablePoint() }
+        if (points == null) {
+            val length = if (shielded) 80 else 20
+            points = MutableList(length) { DrawablePoint(puck.x, puck.y) }
         }
+        val points = points!!
 
         fun ratio(i: Int) = (i.toFloat() / (points.size - 1))
 
@@ -49,6 +51,6 @@ class ClassicTail(override val theme: ColorTheme) : TailRenderer {
     }
 
     override fun clear() {
-        points.clear()
+        points = null
     }
 }

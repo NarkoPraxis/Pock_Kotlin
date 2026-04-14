@@ -13,7 +13,7 @@ import kotlin.random.Random
 class PlasmaTail(override val theme: ColorTheme) : TailRenderer {
 
     private class Pos(var x: Float = 0f, var y: Float = 0f)
-    private var points: MutableList<Pos> = MutableList(Settings.tailLength) { Pos() }
+    private var points: MutableList<Pos>? = null
 
     private val core = Color.WHITE
     private val mid = if (theme.isWarm) Color.rgb(255, 170, 60) else Color.rgb(120, 220, 255)
@@ -23,7 +23,8 @@ class PlasmaTail(override val theme: ColorTheme) : TailRenderer {
     private val bolt = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
 
     override fun render(canvas: Canvas, puck: Puck, shielded: Boolean, launched: Boolean, baseFillColor: Int) {
-        if (points.size == 0) points = MutableList(if (shielded) 80 else 18) { Pos() }
+        if (points == null) points = MutableList(if (shielded) 80 else 18) { Pos(puck.x, puck.y) }
+        val points = points!!
         for (i in points.size - 1 downTo 0) {
             if (i - 1 >= 0) { points[i].x = points[i - 1].x; points[i].y = points[i - 1].y }
             else { points[i].x = puck.x; points[i].y = puck.y }
@@ -54,5 +55,5 @@ class PlasmaTail(override val theme: ColorTheme) : TailRenderer {
         }
     }
 
-    override fun clear() { points.clear() }
+    override fun clear() { points = null }
 }

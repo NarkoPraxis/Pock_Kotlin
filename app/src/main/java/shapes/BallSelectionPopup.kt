@@ -21,8 +21,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
     private val bg = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
     private val border = Paint().apply { style = Paint.Style.STROKE; isAntiAlias = true }
-    private val closeX = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; isAntiAlias = true; strokeCap = Paint.Cap.ROUND }
-    private val label = Paint().apply { textAlign = Paint.Align.CENTER; isAntiAlias = true }
     private val slotBg = Paint().apply { color = Color.argb(60, 255, 255, 255); style = Paint.Style.FILL; isAntiAlias = true }
     private val slotBgSel = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
     private val lockPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; isAntiAlias = true; strokeCap = Paint.Cap.ROUND }
@@ -41,16 +39,17 @@ class BallSelectionPopup(val isHigh: Boolean) {
     val cy: Float get() = if (isHigh) Settings.topGoalBottom + h / 2f else Settings.bottomGoalTop - h / 2f
 
     private val slotW: Float get() = Settings.screenRatio * 4f
-    private val closeSize: Float get() = Settings.screenRatio * 0.9f
-    private val closeCx: Float get() = cx + w / 2f - closeSize * 1.2f
-    private val closeCy: Float get() = cy - h / 2f + closeSize * 1.2f
 
     private var scrollX: Float = 0f
     private var dragging: Boolean = false
-    private var dragStartLogicalX: Float = 0f
     private var lastLogicalX: Float = 0f
     private var dragDistance: Float = 0f
-    private var scrollAtDragStart: Float = 0f
+
+    // Plan 04: expose the ball nearest to center for live card label update while scrolling
+    val previewType: BallType get() {
+        val idx = (scrollX / slotW).roundToInt().coerceIn(0, BallType.values().size - 1)
+        return BallType.values()[idx]
+    }
 
     fun open() {
         isOpen = true
@@ -59,6 +58,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         snapIndex = current.ordinal
         bounceFrame = 0
         dragging = false
+        centerTail?.clear()   // always reseed tail from current puck position on open
         rebuildCenterTail()
     }
 
@@ -79,12 +79,12 @@ class BallSelectionPopup(val isHigh: Boolean) {
         }
     }
 
+    // Plan 04: select ball in-place without closing popup; snap/drag both call this
     private fun trySelect(type: BallType): Boolean {
         if (!isUnlocked(type)) return false
         if (isHigh) { Settings.highBallType = type; Storage.saveHighBallType(type) }
         else { Settings.lowBallType = type; Storage.saveLowBallType(type) }
         utility.Logic.applyBallStyles()
-        close()
         return true
     }
 
@@ -97,16 +97,15 @@ class BallSelectionPopup(val isHigh: Boolean) {
         if (!isOpen) return false
         val masked = action and MotionEvent.ACTION_MASK
         val logicalX = toLogicalX(x)
+        val types = BallType.values()
 
         when (masked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                // Tap outside popup closes it (Plan 05: no close X needed)
                 if (!hitTest(x, y)) { close(); return true }
-                if (abs(x - closeCx) < closeSize * 1.3f && abs(y - closeCy) < closeSize * 1.3f) { close(); return true }
                 dragging = true
-                dragStartLogicalX = logicalX
                 lastLogicalX = logicalX
                 dragDistance = 0f
-                scrollAtDragStart = scrollX
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -122,18 +121,26 @@ class BallSelectionPopup(val isHigh: Boolean) {
                 if (!dragging) return true
                 dragging = false
                 if (dragDistance < Settings.screenRatio * 0.6f) {
+                    // Tap: snap to tapped slot, select if unlocked — popup stays open
                     val slotLogicalX = logicalX - (cx - scrollX)
-                    val index = (slotLogicalX / slotW).toInt().coerceIn(0, BallType.values().size - 1)
-                    val type = BallType.values()[index]
-                    trySelect(type)
+                    val index = (slotLogicalX / slotW).toInt().coerceIn(0, types.size - 1)
+                    scrollX = index * slotW
+                    if (index != snapIndex) {
+                        snapIndex = index
+                        bounceFrame = 0
+                        rebuildCenterTail()
+                    }
+                    trySelect(types[index])
                 } else {
-                    val snap = (scrollX / slotW).roundToInt().coerceIn(0, BallType.values().size - 1)
+                    // Drag release: snap to nearest, auto-select if unlocked
+                    val snap = (scrollX / slotW).roundToInt().coerceIn(0, types.size - 1)
                     scrollX = snap * slotW
                     if (snap != snapIndex) {
                         snapIndex = snap
                         bounceFrame = 0
                         rebuildCenterTail()
                     }
+                    trySelect(types[snapIndex])
                 }
                 return true
             }
@@ -147,11 +154,11 @@ class BallSelectionPopup(val isHigh: Boolean) {
         if (scrollX > max) scrollX = max
     }
 
-    // Plan 02: bounce offset for the center/snap ball
+    // Plan 02 + 04: abs(sin) for snappy bounce; doubled amplitude; faster period
     private fun bounceOffset(): Float {
-        val period = 70f
-        val amplitude = Settings.screenRatio * 0.55f
-        return (amplitude * kotlin.math.sin(2 * Math.PI.toFloat() * bounceFrame / period)).toFloat()
+        val period = 40f
+        val amplitude = Settings.screenRatio * 1.1f
+        return abs(amplitude * kotlin.math.sin(2 * Math.PI.toFloat() * bounceFrame / period))
     }
 
     fun drawTo(canvas: Canvas) {
@@ -159,7 +166,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
         // Plan 00: re-apply light/dark colors each frame
         bg.color = if (Storage.darkMode) Color.argb(230, 10, 10, 20) else Color.argb(230, 225, 225, 240)
-        label.color = if (Storage.darkMode) Color.WHITE else Color.argb(230, 15, 15, 35)
 
         val halfW = w / 2f
         val halfH = h / 2f
@@ -174,10 +180,10 @@ class BallSelectionPopup(val isHigh: Boolean) {
         // Popup background + border
         canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, bg)
         border.color = theme.primary
-        border.strokeWidth = Settings.screenRatio * 0.14f
+        border.strokeWidth = Settings.screenRatio * 0.25f  // Plan 06: thicker border
         canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, border)
 
-        // Plan 02: increment bounce frame once per draw call (not per slot)
+        // Plan 02: increment bounce frame once per draw (not per slot)
         if (!dragging) bounceFrame++
 
         canvas.save()
@@ -205,23 +211,20 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     Settings.screenRatio * 0.25f, Settings.screenRatio * 0.25f, slotBg)
             }
 
-            // Plan 02: draw non-center pucks inside the clip (no bounce); center puck drawn after restore
+            // Plan 04: non-center pucks drawn inside clip without bounce; center drawn after restore
+            // Plan 04: slot name labels removed — card handles the name display
             if (!isCenter || dragging) {
-                val puckY = cy - Settings.screenRatio * 0.2f
                 previewPuck.x = slotCenterX
-                previewPuck.y = puckY
+                previewPuck.y = cy
                 previewPuck.radius = pr
                 previewPuck.setFill(theme.primary)
                 previewPuck.setStroke(theme.secondary)
-                previewPuck.isPlaceholder = !isUnlocked(type)   // Plan 03
+                previewPuck.isPlaceholder = !isUnlocked(type)
                 val (skin, _) = BallStyleFactory.build(type, theme)
                 previewPuck.skin = skin
                 previewPuck.drawTo(canvas)
-                if (!isUnlocked(type)) drawLock(canvas, slotCenterX, puckY, pr)
+                if (!isUnlocked(type)) drawLock(canvas, slotCenterX, cy, pr)
             }
-
-            label.textSize = Settings.screenRatio * 0.5f
-            canvas.drawText(type.name, slotCenterX, cy + halfH - Settings.screenRatio * 0.55f, label)
         }
 
         canvas.restore()  // end clip
@@ -230,37 +233,28 @@ class BallSelectionPopup(val isHigh: Boolean) {
         if (!dragging) {
             val centerType = types[snapIndex.coerceIn(0, types.size - 1)]
             val slotCenterX = cx - scrollX + snapIndex * slotW
-            val bounce = bounceOffset()
-            val puckY = cy - Settings.screenRatio * 0.2f - bounce
+            val puckY = cy - bounceOffset()
 
             previewPuck.x = slotCenterX
             previewPuck.y = puckY
             previewPuck.radius = pr
             previewPuck.setFill(theme.primary)
             previewPuck.setStroke(theme.secondary)
-            previewPuck.isPlaceholder = !isUnlocked(centerType)  // Plan 03
+            previewPuck.isPlaceholder = !isUnlocked(centerType)
             previewPuck.frame++
             val (skin, _) = BallStyleFactory.build(centerType, theme)
             previewPuck.skin = skin
 
-            // Plan 02 draw order: tail → puck → lock
+            // Plan 02 draw order: tail → puck → lock overlay
             centerTail?.renderForPreview(canvas, previewPuck, shielded = false, launched = false, baseFillColor = theme.primary)
             previewPuck.drawTo(canvas)
             if (!isUnlocked(centerType)) drawLock(canvas, slotCenterX, puckY, pr)
         }
 
-        drawClose(canvas)
         canvas.restore()
     }
 
-    private fun drawClose(canvas: Canvas) {
-        closeX.strokeWidth = Settings.screenRatio * 0.18f
-        val s = closeSize * 0.55f
-        canvas.drawLine(closeCx - s, closeCy - s, closeCx + s, closeCy + s, closeX)
-        canvas.drawLine(closeCx + s, closeCy - s, closeCx - s, closeCy + s, closeX)
-    }
-
-    // Plan 03: removed the semi-transparent circle overlay — puck is already a solid black silhouette
+    // Plan 03: removed semi-transparent circle overlay — puck body is already a solid silhouette
     private fun drawLock(canvas: Canvas, lx: Float, ly: Float, radius: Float) {
         lockPaint.strokeWidth = Settings.screenRatio * 0.2f
         val bodyW = radius * 0.8f

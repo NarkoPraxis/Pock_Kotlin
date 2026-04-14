@@ -14,13 +14,14 @@ import utility.PaintBucket
 class GhostTail(override val theme: ColorTheme) : TailRenderer {
 
     private data class Ghost(var x: Float = 0f, var y: Float = 0f)
-    private var points: MutableList<Ghost> = MutableList(Settings.tailLength) { Ghost() }
+    private var points: MutableList<Ghost>? = null
 
     private val whitePaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val glowPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 
     override fun render(canvas: Canvas, puck: Puck, shielded: Boolean, launched: Boolean, baseFillColor: Int) {
-        if (points.size == 0) points = MutableList(if (shielded) 80 else 20) { Ghost() }
+        if (points == null) points = MutableList(if (shielded) 80 else 20) { Ghost(puck.x, puck.y) }
+        val points = points!!
         for (i in points.size - 1 downTo 0) {
             if (i - 1 >= 0) points[i] = points[i - 1].copy() else { points[i].x = puck.x; points[i].y = puck.y }
             val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
@@ -38,5 +39,5 @@ class GhostTail(override val theme: ColorTheme) : TailRenderer {
         }
     }
 
-    override fun clear() { points.clear() }
+    override fun clear() { points = null }
 }

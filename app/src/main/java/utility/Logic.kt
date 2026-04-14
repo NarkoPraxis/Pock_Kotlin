@@ -40,10 +40,10 @@ object Logic {
     lateinit var victoryTicker: Ticker
     lateinit var fingerTicker: Ticker
 
-    val highBallCard = shapes.BallSelectionCard(isHigh = true)
-    val lowBallCard = shapes.BallSelectionCard(isHigh = false)
     val highBallPopup = shapes.BallSelectionPopup(isHigh = true)
     val lowBallPopup = shapes.BallSelectionPopup(isHigh = false)
+    val highBallCard = shapes.BallSelectionCard(isHigh = true, popup = highBallPopup)
+    val lowBallCard = shapes.BallSelectionCard(isHigh = false, popup = lowBallPopup)
 
     lateinit var activity: AppCompatActivity
 

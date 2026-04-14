@@ -6,17 +6,24 @@
 
 The game is custom-rendered using Android `Canvas` — there are **no XML layouts for the game screen**, only for the main menu and settings. All game drawing is done frame-by-frame in `onDraw`.
 
+## Plans & Workflow
+
+Plans are stored in `Plans/`. When a plan is completed, **prepend `✅` to the filename and move it to `Plans/Finished/`** immediately — do this automatically without waiting to be asked. Example: `07-move-ads-remaining-label.md` → `Plans/Finished/✅07-move-ads-remaining-label.md`.
+
+---
+
 ## Architecture
 
 ### Package Structure
 
 | Package | Purpose |
 |---|---|
-| `com.example.puck` | Activities + `GameView` base class |
+| `com.example.puck` | Activities (`MainActivity`, `PlayView`, `GameActivity`, `TutorialView`, `BallUnlockActivity`) + `GameView` base class |
 | `enums` | All state enums (GameState, FingerState, TouchState, MotionStates, Direction, MenuSelection, TutorialState) |
 | `gameobjects` | `Player`, `Puck`, `Settings` (global config singleton), `PauseMenu` |
+| `gameobjects/puckstyle` | Ball-style composition: `PuckSkin`, `TailRenderer`, `BallStyleFactory`, `ColorTheme`, `Palette`; `skins/` and `tails/` subpackages (one file per ball type) |
 | `physics` | `Force` (direction + power vector), `Point` (2D vector/position), `Ticker` (countdown/countup timer), `TutorialTicker` |
-| `shapes` | `Shape` (base), `Circle`, `DrawablePoint`, `Explosion`, `ScoreExplosion`, `HandSelection`, `TutorialBox`, `Collision` |
+| `shapes` | `Shape` (base), `Circle`, `DrawablePoint`, `Explosion`, `ScoreExplosion`, `HandSelection`, `TutorialBox`, `Collision`, `BallSelectionCard`, `BallSelectionPopup` |
 | `utility` | `Logic` (game loop logic singleton), `Drawing` (rendering singleton), `Effects` (particle system), `PaintBucket` (all `Paint` objects), `Sounds` (audio singleton), `Storage` (SharedPreferences), `Tutorial` (tutorial flow singleton) |
 
 ### Key Singletons
@@ -72,6 +79,19 @@ Before each round, players choose a finger (Left Thumb, Right Thumb, Left Pointe
 4. Shielded puck: when it collides with an unshielded puck, the shielded puck wins — opponent launches at max + bonus, shielded puck barely moves.
 5. Both shielded: both shields cancel, both launch at their respective stored powers.
 
+### Ball Types System
+
+12 `BallType` enum values: Classic, Neon, Ghost, Fire, Ice, Galaxy, Spiral, Metal, Pixel, Rainbow, Prism, Plasma.
+
+- **Composition**: each puck has a `PuckSkin` (handles fill/stroke drawing) and a `TailRenderer` (handles trail). `BallStyleFactory` creates the correct skin+tail for a given `BallType`.
+- **Color themes**: `ColorTheme` holds primary/secondary/accent colors per type. Warm theme = high player; cold theme = low player.
+- **Unlock rule** in `BallStyleFactory.isUnlocked`: Classic always free; indices 1–9 unlock at `adsLeft ≤ 100 - ordinal*10`; Prism + Plasma both unlock at `adsLeft == 0`.
+- **Persistence**: `Storage.saveHighBallType`/`saveLowBallType` in `ad` SharedPreferences. Loaded in `Logic.initializeSettings()` AND `Logic.resetGame()`.
+- **In-game selection**: `BallSelectionCard` shown in each goal during FingerSelection. Tapping opens `BallSelectionPopup` — a horizontal drag-scroll strip across the goal width. High popup is positioned below `topGoalBottom`; low popup above `bottomGoalTop`. Touch routing via `Logic.interceptBallMenu`.
+- **Main-menu unlock screen**: `BallUnlockActivity` + `BallUnlockView` — 2×6 vertically scrollable animated preview grid with lock overlays. "Watch Ad to Unlock" decrements `adsLeft` by 2 per reward.
+- **Preview convention**: always call `previewPuck.setFill(theme.primary); previewPuck.setStroke(theme.secondary)` before `drawTo()`, or Classic renders with stale PaintBucket colors.
+- **Mirror drag**: for the mirrored high-player popup, drag delta must be inverted: `logicalX = 2*cx - screenX`.
+
 ### Sound Design Convention
 
 Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Horizontal position → pitch rate from `getXRate()`, vertical position → rate from `getYRate()`. This gives positional audio flavor without spatial audio APIs.
@@ -94,56 +114,42 @@ Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Ho
 ### Critical (Play Store blockers)
 
 1. **`applicationId "com.example.puck"`** — Must be changed to a real reverse-domain ID before Play Store submission. This changes the identity of the app permanently.
-2. **Target SDK too low** — Now fixed to 35, but check Play Store current minimum requirement when submitting. Google requires targetSdk ≥ 34 as of 2024.
-3. **All ad unit IDs are test IDs** — Replace before launch:
-   - `MainActivity.kt:80` — rewarded ad test ID (TODO comment already there)
-   - `MainActivity.kt:81` — commented-out live ad ID; verify `ca-app-pub-1111532606958888/6682727846` is correct
-   - `GameActivity.kt:153` — interstitial test ID
-   - `strings.xml:31` — `interstitial_ad_unit_id` is test ID
-4. **AdMob Application ID** — `AndroidManifest.xml:22` has `ca-app-pub-1111532606958888~7923000787`; verify this is the real production app ID.
-5. **`kotlin-android-extensions` is deprecated** — Currently kept to compile; must migrate to `viewBinding` before Kotlin 2.0 upgrade. Files using synthetics: `MainActivity.kt` (AdRatioText, rewardedAdButton), `Ads.kt` (next_level_button, level).
-6. **Google Ads SDK 19.3.0 is very old** — `InterstitialAd` constructor-form API and `RewardedAd`/`RewardedAdCallback` were replaced in SDK 20.0. Migration is required; new API uses static `InterstitialAd.load()` with callbacks.
+2. **All ad unit IDs are test IDs** — Replace before launch:
+   - `MainActivity.kt` — rewarded ad test ID (TODO comment already there); verify live ID `ca-app-pub-1111532606958888/6682727846`
+   - `GameActivity.kt` — interstitial test ID
+   - `strings.xml` — `interstitial_ad_unit_id` is test ID
+3. **AdMob Application ID** — `AndroidManifest.xml` has `ca-app-pub-1111532606958888~7923000787`; verify this is the real production app ID.
+4. **`kotlin-android-extensions` is deprecated** — Currently kept to compile; must migrate to `viewBinding` before Kotlin 2.0 upgrade. Files using synthetics: `MainActivity.kt` (AdRatioText, rewardedAdButton), `Ads.kt` (next_level_button, level).
+5. **Google Ads SDK 19.3.0 is very old** — `InterstitialAd` constructor-form API and `RewardedAd`/`RewardedAdCallback` were replaced in SDK 20.0. Migration is required; new API uses static `InterstitialAd.load()` with callbacks. See `Plans/14-update-admob-sdk.md`.
 
 ### Bugs
 
-~~7. **`bounce_bonus` preference key mismatch** — Fixed: `root_preferences.xml` key changed from `bounce_bonuse` to `bounce_bonus`.~~
-~~8. **`twoChargeCollisionId` never loaded** — Fixed: now loads `R.raw.sheilded_collision` as a stand-in until a dedicated sound file is added.~~
-~~9. **`teleportId` never loaded** — Fixed: now loads `R.raw.charge_activated` as a stand-in until a dedicated sound file is added.~~
-~~10. **`getYRate()` can throw ArrayIndexOutOfBoundsException** — Fixed: bounds check restored. Same fix also applied to `getXRate()` which had the same bug.~~
-~~11. **`MediaPlayer` leak in `Sounds`** — Fixed: old player is now released before a new one is created.~~
-~~12. **Score text hardcoded pixel positions** — Fixed: `Drawing.drawScore()` now uses `screenRatio`-based offsets.~~
-
-13. **`PaintBucket.initialize()` was called after `Logic.initialize()`** — Fixed: was the root cause of all "invisible" rendering issues. All `Paint` objects (pucks, hand-selection outlines, charge rings, collision effects) were constructed with color `0` (transparent black) because PaintBucket colors had not been loaded yet. Swapped order in `PlayView.doOnSizeChange()` so `PaintBucket.initialize()` runs before `Logic.initialize()`.
-14. **`Puck.chargePaint` not updated on stroke color change** — Fixed: Added `override fun setStroke()` in `Puck.kt` to also update `chargePaint.color`. Without this, after `setPuckColor()` reassigns a puck's stroke (e.g., after a score), the charge ring would continue showing the stale pre-change color. Required marking `Circle.setStroke()` as `open`.
-
-15. **`Player.puckFillColor` is stale after `setPuckColor()` is called** — `puckFillColor` is set once at construction and referenced in `drawTail()` for the non-launched, non-shielded tail color. `Logic.setPuckColor()` → `puck.setFill()` updates `puck.fillColor` but not `Player.puckFillColor`. During the brief Scored state (when colors are swapped by `checkScored()` and then restored by `resetPlayerStates()`), the tail will briefly show the wrong color.
-16. **`alwaysBlackTextPaint` text size is hardcoded at `120f` pixels** — `PaintBucket.alwaysBlackTextPaint` and `textPaint` both use `textSize = 120f`, a raw pixel value. Should use a `screenRatio`-based size so score numbers scale properly on different screen densities.
-17. **Score text position may clip for double-digit scores** — `Drawing.drawScore()` now uses a `screenRatio / 2`-based x-offset, which is tight for two-digit score strings at large text sizes. If scores ever go past 9 (e.g., a sudden-death variant), the right-aligned score may overflow the screen edge.
-18. **`twoChargeCollisionId` and `teleportId` have no dedicated sound assets** — Bugs 8/9 are unblocked with placeholder sounds (`sheilded_collision` and `charge_activated`). Proper audio assets (`two_charge_collision.mp3`, `teleport.mp3`) should be added to `res/raw/` and the IDs updated in `Sounds.initialize()`.
-19. **`Sounds` cell dimensions not recalculated after `initializeGame()`** — `cellWidth` and `cellHeight` are computed at object-declaration time from `Settings` fields that are all `0f` until `initializeSettings()` runs. `initializeGame()` recalculates them, but any call to `getXRate()`/`getYRate()` before `initializeGame()` uses zero-sized cells (→ divide-by-zero / infinite index). Currently safe because sounds are not called during FingerSelection, but fragile.
-20. **`checkScored()` assigns wrong colors on score** — `Logic.checkScored()` calls `setPuckColor(other, highBallColor, ...)` and `setPuckColor(scoring, lowBallColor, ...)`, which swaps the puck colors during the Scored state regardless of which player is actually high or low. `resetPlayerStates()` then restores both to their canonical colors. This appears intentional (a brief flash), but verify no edge case leaves colors permanently swapped if the game transitions to GameOver mid-scored.
-21. **`finger` circle is always drawn at puck position during FingerSelection** — `Logic.assignFingerLocation()` sets `fingerTargetLocation = player.puck` during FingerSelection, so the finger circles home to the puck's initial position each frame. The circles are never visible here (Drawing.drawPlayers is not called during FingerSelection), but it wastes movement calculations every frame.
-22. **`Sounds.initialize()` is called from `MainActivity` but `Sounds.initializeGame()` recalculates screen-bound cell sizes** — These are two separate initialization paths. `initialize()` is bound to the context/lifecycle; `initializeGame()` must be called whenever screen dimensions change. If `initializeGame()` is ever skipped, pitch spatialization silently uses wrong cell dimensions.
+1. **`Player.puckFillColor` is stale after `setPuckColor()` is called** — `puckFillColor` is set once at construction and referenced in `drawTail()` for the non-launched, non-shielded tail color. `Logic.setPuckColor()` → `puck.setFill()` updates `puck.fillColor` but not `Player.puckFillColor`. During the brief Scored state, the tail will briefly show the wrong color.
+2. **`alwaysBlackTextPaint` text size is hardcoded at `120f` pixels** — `PaintBucket.alwaysBlackTextPaint` and `textPaint` both use `textSize = 120f`, a raw pixel value. Should use a `screenRatio`-based size so score numbers scale properly on different screen densities.
+3. **Score text position may clip for double-digit scores** — `Drawing.drawScore()` uses a `screenRatio / 2`-based x-offset, which is tight for two-digit score strings at large text sizes.
+4. **`twoChargeCollisionId` and `teleportId` have no dedicated sound assets** — Placeholder sounds are used (`sheilded_collision` and `charge_activated`). Proper audio assets (`two_charge_collision.mp3`, `teleport.mp3`) should be added to `res/raw/`.
+5. **`Sounds` cell dimensions not recalculated after `initializeGame()`** — `cellWidth` and `cellHeight` are computed at object-declaration time when `Settings` fields are all `0f`. Currently safe because sounds are not called during FingerSelection, but fragile.
+6. **`checkScored()` assigns wrong colors on score** — Swaps puck colors during Scored state regardless of which player is actually high or low. `resetPlayerStates()` restores both. Appears intentional (brief flash) but verify no edge case leaves colors permanently swapped on GameOver.
+7. **`finger` circle movement wastes calculations during FingerSelection** — `Logic.assignFingerLocation()` sets `fingerTargetLocation = player.puck`; circles are never visible here but movement calculations run every frame.
+8. **`Sounds.initialize()` vs `Sounds.initializeGame()` are two separate init paths** — If `initializeGame()` is ever skipped, pitch spatialization silently uses wrong cell dimensions.
 
 ### Unfinished Features
 
-13. **Teleport mechanic is disabled** — The teleport system (puck disappears and reappears at finger location when hitting a score-zone wall) is fully implemented in `Player.kt` (`drawTeleport`, `prepareToTeleport`, `stopTeleportation`, teleport tickers) but the trigger lines in `Player.shouldBounce()` are commented out. Uncomment the `preparingToTeleport = true` lines to re-enable.
-14. **Standing-still charge bonus is disabled** — The sweet-spot "bonus movement" mechanic (holding still charges a bonus) is fully implemented but commented out in `Player.drawTo()` (lines ~146–164). `bonusMovement` field in `Puck.kt` exists for this.
-15. **Tutorial `ChargeBonusCanceledExplain` never triggers** — `TutorialView.playGame()` tracks `collisions` and shows `ChargeExplain` at 5 collisions, but `ChargeBonusCanceledExplain` is never triggered anywhere.
-16. **Social share buttons have no functionality** — `activity_main.xml` has Facebook, Twitter, TikTok buttons. Facebook's `onClick="loadAds"` just reloads ads. Twitter and TikTok have no click handler at all.
-17. **`Ads.kt` is scaffolding** — This activity is a copy of the AdMob sample "interstitial ad" template. It's reachable from `MainActivity.goToAds()` but the button is disconnected. Either wire it up or remove it.
-18. **`StingerTransition.kt`** — A screen transition animation class that bounces a circle up and down. It's never used anywhere in the app. Incomplete; `transitionTo()` is empty.
-19. **`Test.kt`** — Contains test/scratch code. Should be removed before ship.
-20. **Title text mismatch** — `activity_main.xml` title TextView shows "Pockey" but the app is called "Pock".
-21. **`PauseMenu` icon positions** — Settings, Reset, and Back icons in the pause menu (`PauseMenu.kt`) have swapped positions relative to what `Logic.menuCallback()` expects for left/right/middle touch zones. The touch detection zones in `Logic.onTouchEvent()` map: left → settings, middle → reset, right → back — but visual icon placement should be verified.
-22. **`Settings.gameOver` reset** — After `GameOver` state resets via `victoryTicker`, `Settings.gameOver` is reset inside `Logic.gameOver()` but the call chain through `Logic.scored()` also checks it. Verify no edge case where it stays `true` across rounds.
+1. **Teleport mechanic is disabled** — Fully implemented in `Player.kt` (`drawTeleport`, `prepareToTeleport`, `stopTeleportation`, teleport tickers) but trigger lines in `Player.shouldBounce()` are commented out. Uncomment the `preparingToTeleport = true` lines to re-enable.
+2. **Standing-still charge bonus is disabled** — Fully implemented but commented out in `Player.drawTo()` (lines ~146–164). `bonusMovement` field in `Puck.kt` exists for this.
+3. **Tutorial `ChargeBonusCanceledExplain` never triggers** — `TutorialView.playGame()` tracks `collisions` and shows `ChargeExplain` at 5 collisions, but `ChargeBonusCanceledExplain` is never triggered anywhere.
+4. **`Ads.kt` is scaffolding** — Copy of AdMob sample template. Reachable from `MainActivity.goToAds()` but the button is disconnected. Either wire it up or remove it.
+5. **`StingerTransition.kt`** — Screen transition animation (circle bounces up/down) that's never used. `transitionTo()` is empty.
+6. **`Test.kt`** — Contains test/scratch code. Remove before ship.
+7. **`PauseMenu` icon positions** — Settings, Reset, and Back icons in the pause menu (`PauseMenu.kt`) may have swapped positions relative to what `Logic.menuCallback()` expects for left/right/middle touch zones. Verify visual placement matches touch detection zones.
+8. **`Settings.gameOver` reset** — After `GameOver` state resets via `victoryTicker`, verify no edge case where `Settings.gameOver` stays `true` across rounds through the `Logic.scored()` call chain.
 
 ### Polish / Pre-launch
 
-23. **App icon** — Currently using default Android Studio launcher icon.
-24. **Play Store listing assets** — Screenshots, feature graphic, description needed.
-25. **Privacy policy** — Required for Play Store if collecting data (AdMob requires this).
-26. **`versionCode`** — Starts at 1; increment on each Play Store upload. Managed here in `app/build.gradle`.
+1. **Custom app launcher icon** — Currently using the default Android Studio adaptive icon. A custom icon is needed before Play Store submission.
+2. **Play Store listing assets** — Screenshots, feature graphic, description needed.
+3. **Privacy policy** — Required for Play Store if collecting data (AdMob requires this).
+4. **`versionCode`** — Starts at 1; increment on each Play Store upload. Managed in `app/build.gradle`.
 
 ---
 
@@ -158,7 +164,7 @@ Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Ho
 | minSdk | 26 (Android 8.0) |
 | targetSdk | 35 |
 | Java | 17 |
-| play-services-ads | 19.3.0 (old API — see issue #6) |
+| play-services-ads | 19.3.0 (old API — see blocker #5) |
 
 ## File Naming
 

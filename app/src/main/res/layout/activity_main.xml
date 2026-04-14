@@ -7,11 +7,22 @@
         android:background="?android:attr/colorBackground"
         tools:context=".MainActivity">
 
+    <ImageView
+            android:id="@+id/appIcon"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginTop="48dp"
+            android:src="@mipmap/ic_launcher_round"
+            android:contentDescription="@null"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
     <TextView
             android:id="@+id/Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="96dp"
+            android:layout_marginTop="12dp"
             android:text="Pock Pock"
             android:textAlignment="center"
             android:textSize="56sp"
@@ -20,13 +31,13 @@
             android:letterSpacing="0.05"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@+id/appIcon" />
 
     <com.google.android.material.button.MaterialButton
             android:id="@+id/playButton"
             android:layout_width="260dp"
             android:layout_height="56dp"
-            android:layout_marginTop="48dp"
+            android:layout_marginTop="28dp"
             android:onClick="goToGameView"
             android:text="Play"
             android:textSize="18sp"
@@ -40,7 +51,7 @@
             android:id="@+id/tutorialButton"
             android:layout_width="260dp"
             android:layout_height="56dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:onClick="goToTutorial"
             android:text="Tutorial"
             android:textSize="18sp"
@@ -55,7 +66,7 @@
             android:id="@+id/settingsButton"
             android:layout_width="260dp"
             android:layout_height="56dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:onClick="goToSettings"
             android:text="Settings"
             android:textSize="18sp"
@@ -70,7 +81,7 @@
             android:id="@+id/rewardedAdButton"
             android:layout_width="260dp"
             android:layout_height="56dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:enabled="false"
             android:onClick="showAd"
             android:text="Watch Ad"
@@ -86,7 +97,7 @@
             android:id="@+id/ballsButton"
             android:layout_width="260dp"
             android:layout_height="56dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:onClick="goToBalls"
             android:text="Balls"
             android:textSize="18sp"
@@ -101,7 +112,7 @@
             android:id="@+id/shareButton"
             android:layout_width="260dp"
             android:layout_height="56dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:text="Share"
             android:textSize="18sp"
             android:textColor="?android:attr/textColorPrimary"
@@ -115,7 +126,7 @@
             android:id="@+id/AdRatioText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="40dp"
             android:layout_marginEnd="16dp"
             android:text="100/100"
             android:textAlignment="textEnd"

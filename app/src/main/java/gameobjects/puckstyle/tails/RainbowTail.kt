@@ -10,11 +10,12 @@ import shapes.DrawablePoint
 import utility.PaintBucket
 
 class RainbowTail(override val theme: ColorTheme) : TailRenderer {
-    private var points: MutableList<DrawablePoint> = MutableList(Settings.tailLength) { DrawablePoint() }
+    private var points: MutableList<DrawablePoint>? = null
     private val hueOffset = if (theme.isWarm) 0f else 200f
 
     override fun render(canvas: Canvas, puck: Puck, shielded: Boolean, launched: Boolean, baseFillColor: Int) {
-        if (points.size == 0) points = MutableList(if (shielded) 80 else 20) { DrawablePoint() }
+        if (points == null) points = MutableList(if (shielded) 80 else 20) { DrawablePoint(puck.x, puck.y) }
+        val points = points!!
         for (i in points.size - 1 downTo 0) {
             if (i - 1 >= 0) points[i] = points[i - 1] else points[i] = DrawablePoint(puck)
             val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
@@ -30,5 +31,5 @@ class RainbowTail(override val theme: ColorTheme) : TailRenderer {
         }
     }
 
-    override fun clear() { points.clear() }
+    override fun clear() { points = null }
 }

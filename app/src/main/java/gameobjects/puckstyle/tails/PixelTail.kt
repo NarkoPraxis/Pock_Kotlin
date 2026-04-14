@@ -12,11 +12,12 @@ import utility.PaintBucket
 class PixelTail(override val theme: ColorTheme) : TailRenderer {
 
     private class Block(var x: Float = 0f, var y: Float = 0f)
-    private var blocks: MutableList<Block> = MutableList(Settings.tailLength) { Block() }
+    private var blocks: MutableList<Block>? = null
     private val paint = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
 
     override fun render(canvas: Canvas, puck: Puck, shielded: Boolean, launched: Boolean, baseFillColor: Int) {
-        if (blocks.size == 0) blocks = MutableList(if (shielded) 80 else 20) { Block() }
+        if (blocks == null) blocks = MutableList(if (shielded) 80 else 20) { Block(puck.x, puck.y) }
+        val blocks = blocks!!
         for (i in blocks.size - 1 downTo 0) {
             if (i - 1 >= 0) { blocks[i].x = blocks[i - 1].x; blocks[i].y = blocks[i - 1].y }
             else { blocks[i].x = puck.x; blocks[i].y = puck.y }
@@ -29,5 +30,5 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
         }
     }
 
-    override fun clear() { blocks.clear() }
+    override fun clear() { blocks = null }
 }
