@@ -49,6 +49,7 @@ class Player(
     var disableEffects = false
     var preparingToTeleport = false
     var lockedPointerId: Int = -1
+    var overchargeFrames: Int = 0
 
     var isFling: Boolean = false
     var isFlingHeld: Boolean = false
@@ -78,14 +79,6 @@ class Player(
         textSize = 40f
         color = Color.BLACK
         style = Paint.Style.FILL
-    }
-
-    val aimPaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-        strokeWidth = Settings.strokeWidth * 0.6f
     }
 
     val teleportPaint = Paint().apply {
@@ -155,15 +148,12 @@ class Player(
         }
         puck.currentCharge = charge
         puck.frame++
+        if (chargePowerLocked) overchargeFrames++ else overchargeFrames = 0
         if (preparingToTeleport || isTeleporting) {
             drawTeleport(canvas)
         } else {
             puck.drawTo(canvas)
             puck.tail.render(canvas, puck, shielded, isLaunched, puckFillColor)
-        }
-
-        if (isFling && isFlingHeld) {
-            drawFlingAim(canvas)
         }
 
         if (finger != previousFingerLocation || puck != previousPuckLocation) {
@@ -387,26 +377,6 @@ class Player(
         flingReleaseDir = null
         flingReleaseBasePower = 0f
         return shielded
-    }
-
-    private fun drawFlingAim(canvas: Canvas) {
-        val dx = flingStart.x - flingCurrent.x
-        val dy = flingStart.y - flingCurrent.y
-        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-        if (dist < 1f) return
-        val maxDist = Settings.screenRatio * 5f
-        val clipped = kotlin.math.min(dist, maxDist)
-        val nx = dx / dist
-        val ny = dy / dist
-        val lineLength = puck.radius + Settings.screenRatio * 3f * (clipped / maxDist)
-        aimPaint.color = puckFillColor
-        canvas.drawLine(
-            puck.x + nx * puck.radius,
-            puck.y + ny * puck.radius,
-            puck.x + nx * lineLength,
-            puck.y + ny * lineLength,
-            aimPaint
-        )
     }
 
     fun releaseCharge() : Boolean {

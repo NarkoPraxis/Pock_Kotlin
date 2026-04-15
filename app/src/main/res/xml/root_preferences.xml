@@ -80,6 +80,16 @@
                 android:entryValues="@array/control_scheme_values"
                 android:key="blue_control_scheme"
                 android:title="Blue Control Scheme" />
+        <SwitchPreferenceCompat
+                android:key="high_player_arrow"
+                android:title="High Player Arrow"
+                android:summary="Show aim arrow while charging (top player)"
+                android:defaultValue="true" />
+        <SwitchPreferenceCompat
+                android:key="low_player_arrow"
+                android:title="Low Player Arrow"
+                android:summary="Show aim arrow while charging (bottom player)"
+                android:defaultValue="true" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Visual">

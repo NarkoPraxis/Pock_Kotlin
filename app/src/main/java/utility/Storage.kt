@@ -173,6 +173,9 @@ object Storage {
     val highIsFling: Boolean get() = redControlScheme == "fling"
     val lowIsFling: Boolean get() = blueControlScheme == "fling"
 
+    val highPlayerArrow: Boolean get() = settings.getBoolean("high_player_arrow", true)
+    val lowPlayerArrow: Boolean get() = settings.getBoolean("low_player_arrow", true)
+
     private fun readFile(context: Context, fileName: String): String {
         val sb = StringBuilder()
         val inputStream = context.openFileInput(fileName)

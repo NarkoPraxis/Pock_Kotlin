@@ -86,6 +86,8 @@ object Logic {
         Settings.highBallType = Storage.loadHighBallType(Settings.highBallType)
         Settings.lowBallType = Storage.loadLowBallType(Settings.lowBallType)
         Settings.unlockProgress = Storage.unlockProgress
+        Settings.highPlayerArrow = Storage.highPlayerArrow
+        Settings.lowPlayerArrow = Storage.lowPlayerArrow
 
         Settings.screenWidth = width.toFloat()
         Settings.screenHeight = height.toFloat()
@@ -972,6 +974,8 @@ object Logic {
         Settings.highBallType = Storage.loadHighBallType(Settings.highBallType)
         Settings.lowBallType = Storage.loadLowBallType(Settings.lowBallType)
         Settings.unlockProgress = Storage.unlockProgress
+        Settings.highPlayerArrow = Storage.highPlayerArrow
+        Settings.lowPlayerArrow = Storage.lowPlayerArrow
         lowFingerState = FingerState.Unselected
         highFingerState = FingerState.Unselected
         topRightFinger.unlock()

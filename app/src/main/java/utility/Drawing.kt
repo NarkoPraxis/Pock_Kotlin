@@ -1,7 +1,9 @@
 package utility
 
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import enums.FingerState
 import enums.GameState
@@ -9,6 +11,7 @@ import gameobjects.Player
 import gameobjects.Settings
 import physics.Ticker
 import kotlin.math.sin
+import kotlin.math.sqrt
 import androidx.core.graphics.withScale
 
 object Drawing {
@@ -203,6 +206,106 @@ object Drawing {
     fun drawPlayers(canvas: Canvas) {
         Logic.highPlayer.drawTo(canvas)
         Logic.lowPlayer.drawTo(canvas)
+    }
+
+    private val aimArrowLinePaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val aimArrowFillPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+    }
+    private val aimArrowPath = Path()
+    private var aimArrowFrame = 0
+
+    fun drawAimArrows(canvas: Canvas) {
+        aimArrowFrame++
+        if (Settings.lowPlayerArrow) drawAimArrow(canvas, Logic.lowPlayer, isHigh = false)
+        if (Settings.highPlayerArrow) drawAimArrow(canvas, Logic.highPlayer, isHigh = true)
+    }
+
+    private fun drawAimArrow(canvas: Canvas, player: Player, isHigh: Boolean) {
+        if (!player.isFling || !player.isFlingHeld) return
+
+        // Tail = current finger position. Head/tip = touch-down position (launch direction).
+        val tailX = player.flingCurrent.x
+        val tailY = player.flingCurrent.y
+        val headX = player.flingStart.x
+        val headY = player.flingStart.y
+        val dx = headX - tailX
+        val dy = headY - tailY
+        val dist = sqrt(dx * dx + dy * dy)
+        if (dist < Settings.screenRatio * 0.3f) return
+
+        val themeColor = if (isHigh) PaintBucket.highBallStrokeColor else PaintBucket.lowBallStrokeColor
+        val chargeColor = PaintBucket.effectColor
+
+        // Fill reaches 100% when sweet spot begins, not when it ends.
+        val range = (Settings.sweetSpotMin - Settings.chargeStart).toFloat()
+        val ratio = ((player.charge - Settings.chargeStart) / range).coerceIn(0f, 1f)
+        val inSweetSpot = player.charge >= Settings.sweetSpotMin && player.charge <= Settings.sweetSpotMax
+        val overcharged = player.chargePowerLocked
+
+        var themeAlpha = 255
+        var chargeAlpha = 255
+        var fillLen = dist * ratio
+        var fillColor = chargeColor
+
+        if (inSweetSpot) {
+            val pulse = 0.7f + 0.3f * sin(aimArrowFrame * 0.35f)
+            chargeAlpha = (255 * pulse).toInt().coerceIn(0, 255)
+            themeAlpha = chargeAlpha
+            fillLen = dist
+        }
+        if (overcharged) {
+            val fade = (player.overchargeFrames / 12f).coerceIn(0f, 1f)
+            fillColor = lerpColor(chargeColor, themeColor, fade)
+        }
+
+        val ux = dx / dist
+        val uy = dy / dist
+        aimArrowLinePaint.strokeWidth = Settings.strokeWidth * 1.3f
+
+        val fillEndX = tailX + ux * fillLen
+        val fillEndY = tailY + uy * fillLen
+
+        if (fillLen < dist) {
+            aimArrowLinePaint.color = themeColor
+            aimArrowLinePaint.alpha = themeAlpha
+            canvas.drawLine(fillEndX, fillEndY, headX, headY, aimArrowLinePaint)
+        }
+        if (fillLen > 0f) {
+            aimArrowLinePaint.color = fillColor
+            aimArrowLinePaint.alpha = chargeAlpha
+            canvas.drawLine(tailX, tailY, fillEndX, fillEndY, aimArrowLinePaint)
+        }
+
+        val headFilled = fillLen >= dist
+        val headColor = if (headFilled) fillColor else themeColor
+        val headAlpha = if (headFilled) chargeAlpha else themeAlpha
+        aimArrowFillPaint.color = headColor
+        aimArrowFillPaint.alpha = headAlpha
+        val headSize = Settings.screenRatio * 0.8f
+        val perpX = -uy
+        val perpY = ux
+        aimArrowPath.reset()
+        aimArrowPath.moveTo(headX + ux * headSize, headY + uy * headSize)
+        aimArrowPath.lineTo(headX - ux * headSize * 0.2f + perpX * headSize * 0.75f,
+                            headY - uy * headSize * 0.2f + perpY * headSize * 0.75f)
+        aimArrowPath.lineTo(headX - ux * headSize * 0.2f - perpX * headSize * 0.75f,
+                            headY - uy * headSize * 0.2f - perpY * headSize * 0.75f)
+        aimArrowPath.close()
+        canvas.drawPath(aimArrowPath, aimArrowFillPaint)
+    }
+
+    private fun lerpColor(from: Int, to: Int, t: Float): Int {
+        val r = (Color.red(from) + (Color.red(to) - Color.red(from)) * t).toInt()
+        val g = (Color.green(from) + (Color.green(to) - Color.green(from)) * t).toInt()
+        val b = (Color.blue(from) + (Color.blue(to) - Color.blue(from)) * t).toInt()
+        return Color.rgb(r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
     }
 
     fun drawWalls(canvas: Canvas) {

@@ -76,4 +76,6 @@ object Settings {
     var scoreZoneHeight: Float = 3f
     var launchBonus: Float = 10f
     var pointsToWin: Int = 5
+    var highPlayerArrow: Boolean = true
+    var lowPlayerArrow: Boolean = true
 }

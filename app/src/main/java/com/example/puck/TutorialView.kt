@@ -128,6 +128,7 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
             Effects.drawEffects(canvas)
             Drawing.drawScores(canvas, Logic.highFingerState, Logic.highPlayer, Logic.lowFingerState,Logic.lowPlayer)
             Drawing.drawPlayers(canvas)
+            Drawing.drawAimArrows(canvas)
             if (Settings.gameState != GameState.CountDown) {
                 Drawing.drawCanScoreWalls(canvas)
             }

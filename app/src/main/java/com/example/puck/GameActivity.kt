@@ -95,6 +95,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         if (Settings.gameState != GameState.FingerSelection) {
             Effects.drawEffects(canvas)
             Drawing.drawPlayers(canvas)
+            Drawing.drawAimArrows(canvas)
             Drawing.drawScoreFlash(canvas)
             Drawing.drawScores(canvas, Logic.highFingerState, Logic.highPlayer, Logic.lowFingerState,Logic.lowPlayer)
             if (Settings.gameState != GameState.CountDown) {
