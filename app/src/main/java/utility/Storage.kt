@@ -166,13 +166,6 @@ object Storage {
         }
     }
 
-    val skipFingerSelection: Boolean get() = settings.getBoolean("skip_finger_selection", true)
-
-    val redControlScheme: String get() = settings.getString("red_control_scheme", "fling") ?: "fling"
-    val blueControlScheme: String get() = settings.getString("blue_control_scheme", "fling") ?: "fling"
-    val highIsFling: Boolean get() = redControlScheme == "fling"
-    val lowIsFling: Boolean get() = blueControlScheme == "fling"
-
     val highPlayerArrow: Boolean get() = settings.getBoolean("high_player_arrow", true)
     val lowPlayerArrow: Boolean get() = settings.getBoolean("low_player_arrow", true)
 

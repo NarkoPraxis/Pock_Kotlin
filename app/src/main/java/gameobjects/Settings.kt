@@ -40,7 +40,7 @@ object Settings {
     var tutorialPaused = false
     var playerPaused = false
     var gameOver = false
-    var gameState = GameState.FingerSelection
+    var gameState = GameState.BallSelection
     var longParticleSide = 0f
     var basePuckDistanceModifier = .05f// TODO: set by screen ratio
     var strokeWidth = 0f
@@ -50,7 +50,6 @@ object Settings {
     var ballRadius = 0f
     var middleX = 0f
     var middleY = 0f
-    val fingerSelectionThreshold : Int get() = refreshRate * 5
     val victoryThreshold : Int get() = refreshRate * 10
     var friction = .3f
     var screenLeft = 0f

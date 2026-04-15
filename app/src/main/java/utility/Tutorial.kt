@@ -14,8 +14,6 @@ object Tutorial {
     private lateinit var intro3 : TutorialBox
     private lateinit var intro4 : TutorialBox
     private lateinit var intro5 : TutorialBox
-    private lateinit var fingerSelection : TutorialBox
-    private lateinit var fingerSelection2 : TutorialBox
     private lateinit var aiming : TutorialBox
     private lateinit var aiming2 : TutorialBox
     private lateinit var aiming3 : TutorialBox
@@ -47,9 +45,7 @@ object Tutorial {
     var showing = false;
 
     fun initialize() {
-        fingerSelection2 = TutorialBox(R.string.tutorial_FingerSelection2)
-        fingerSelection = TutorialBox(R.string.tutorial_FingerSelection, fingerSelection2)
-        intro5 = TutorialBox(R.string.tutorial_Intro5, fingerSelection);
+        intro5 = TutorialBox(R.string.tutorial_Intro5);
         intro4 = TutorialBox(R.string.tutorial_Intro4, intro5)
         intro3 = TutorialBox(R.string.tutorial_Intro3, intro4)
         intro2 = TutorialBox(R.string.tutorial_Intro2, intro3)

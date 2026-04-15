@@ -38,10 +38,8 @@
     <string name="tutorial_Intro3">Hold the phone between you and your friend, then let your friend grab the top of your phone, but don\'t let go.</string>
     <string name="tutorial_Intro4">Are you both holding the phone comfortably between you? Good! If this feels awkward to you, you can always set the phone on a flat surface and play that way.</string>
     <string name="tutorial_Intro5">All set? Let\'s get started! </string>
-    <string name="tutorial_FingerSelection">Before each play session, you will be given the option to "Pick Your Finger".</string>
-    <string name="tutorial_FingerSelection2">Touch the finger you will using to play the game.</string>
-    <string name="tutorial_Aiming">Using your selected finger, touch the screen to aim where you want your Pock to go</string>
-    <string name="tutorial_Aiming2">Release your finger to fire your Pock in the chosen direction</string>
+    <string name="tutorial_Aiming">Touch and drag on your side of the screen to aim where you want your Pock to go</string>
+    <string name="tutorial_Aiming2">Release your finger to fling your Pock in the chosen direction</string>
     <string name="tutorial_Aiming3">Your goal is to bounce the opponent\'s Pock into one of the two goals on the top or bottom of the screen</string>
     <string name="tutorial_Aiming4">Why don\'t you give it a try?</string>
     <string name="tutorial_Charging_Bonus">Have you noticed the ring that grows while you are aiming your Pock? That is called your Charge ring</string>

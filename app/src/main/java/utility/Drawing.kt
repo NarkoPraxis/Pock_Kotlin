@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import enums.FingerState
 import enums.GameState
 import gameobjects.Player
 import gameobjects.Settings
@@ -103,62 +102,26 @@ object Drawing {
         canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
     }
 
-    fun drawCountDownRectangles(canvas: Canvas, top: FingerState, bottom:FingerState) {
-        when (top) {
-            FingerState.RightThumb, FingerState.RightPointer -> {
-                canvas.drawRect(0f, 0f, Settings.screenWidth * countDownProgressTicker.ratio, Settings.topGoalBottom, PaintBucket.highBallFillPaint)
-            }
-            FingerState.LeftThumb, FingerState.LeftPointer -> {
-                canvas.drawRect(Settings.screenWidth - (Settings.screenWidth * countDownProgressTicker.ratio), 0f, Settings.screenWidth, Settings.topGoalBottom, PaintBucket.highBallFillPaint)
-            }
-            else -> {}
-        }
-        when (bottom) {
-            FingerState.RightThumb, FingerState.RightPointer -> {
-                canvas.drawRect(Settings.screenWidth - (Settings.screenWidth * countDownProgressTicker.ratio), Settings.bottomGoalTop, Settings.screenWidth, Settings.screenHeight, PaintBucket.lowBallFillPaint)
-            }
-            FingerState.LeftThumb, FingerState.LeftPointer -> { // correct
-                canvas.drawRect(0f, Settings.bottomGoalTop, Settings.screenWidth * countDownProgressTicker.ratio, Settings.screenHeight, PaintBucket.lowBallFillPaint)
-            }
-            else -> {}
-        }
+    fun drawCountDownRectangles(canvas: Canvas) {
+        canvas.drawRect(0f, 0f, Settings.screenWidth * countDownProgressTicker.ratio, Settings.topGoalBottom, PaintBucket.highBallFillPaint)
+        canvas.drawRect(0f, Settings.bottomGoalTop, Settings.screenWidth * countDownProgressTicker.ratio, Settings.screenHeight, PaintBucket.lowBallFillPaint)
     }
 
-    private fun drawScore(canvas: Canvas, fingerState: FingerState, player: Player, popTicker: Ticker) {
+    private fun drawScore(canvas: Canvas, player: Player, popTicker: Ticker) {
         val xMargin = Settings.screenRatio * 3f
         val yMargin = Settings.screenRatio / 2f + 20f
         val scoreText = "${player.score}"
-        when (fingerState) {
-            FingerState.RightThumb, FingerState.RightPointer -> {
-                val scoreX = xMargin
-                val scoreY = Settings.screenHeight - yMargin
-                if (Settings.scorePopEnabled && !popTicker.finished) {
-                    popTicker.tick
-                    val scale = 1f + sin(popTicker.ratio * Math.PI.toFloat())
-                    canvas.save()
-                    canvas.scale(scale, scale, scoreX, scoreY)
-                    canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
-                    canvas.restore()
-                } else {
-                    canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
-                }
-            }
-            FingerState.LeftThumb, FingerState.LeftPointer -> {
-                val textWidth = PaintBucket.alwaysBlackTextPaint.measureText(scoreText)
-                val scoreX = Settings.screenWidth - xMargin - textWidth
-                val scoreY = Settings.screenHeight - yMargin
-                if (Settings.scorePopEnabled && !popTicker.finished) {
-                    popTicker.tick
-                    val scale = 1f + sin(popTicker.ratio * Math.PI.toFloat())
-                    canvas.save()
-                    canvas.scale(scale, scale, scoreX, scoreY)
-                    canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
-                    canvas.restore()
-                } else {
-                    canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
-                }
-            }
-            else -> {}
+        val scoreX = xMargin
+        val scoreY = Settings.screenHeight - yMargin
+        if (Settings.scorePopEnabled && !popTicker.finished) {
+            popTicker.tick
+            val scale = 1f + sin(popTicker.ratio * Math.PI.toFloat())
+            canvas.save()
+            canvas.scale(scale, scale, scoreX, scoreY)
+            canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
+            canvas.restore()
+        } else {
+            canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
         }
     }
 
@@ -181,14 +144,14 @@ object Drawing {
         }
     }
 
-    fun drawScores(canvas: Canvas, highFingerState: FingerState, highPlayer: Player, lowFingerState: FingerState, lowPlayer: Player) {
+    fun drawScores(canvas: Canvas, highPlayer: Player, lowPlayer: Player) {
         canvas.save()
         canvas.scale(-1f, -1f, Settings.screenWidth / 2f, Settings.screenHeight / 2f)
-        drawScore(canvas, highFingerState, highPlayer, Settings.highScorePopTicker)
+        drawScore(canvas, highPlayer, Settings.highScorePopTicker)
         checkWinner(canvas, highPlayer, lowPlayer)
         canvas.restore()
 
-        drawScore(canvas, lowFingerState, lowPlayer, Settings.lowScorePopTicker)
+        drawScore(canvas, lowPlayer, Settings.lowScorePopTicker)
         checkWinner(canvas, lowPlayer, highPlayer)
     }
 
@@ -228,7 +191,7 @@ object Drawing {
     }
 
     private fun drawAimArrow(canvas: Canvas, player: Player, isHigh: Boolean) {
-        if (!player.isFling || !player.isFlingHeld) return
+        if (!player.isFlingHeld) return
 
         // Tail = current finger position. Head/tip = touch-down position (launch direction).
         val tailX = player.flingCurrent.x

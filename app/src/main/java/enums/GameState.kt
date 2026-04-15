@@ -5,7 +5,7 @@ enum class GameState {
     Scored,
     CountDown,
     Tutorial,
-    FingerSelection,
+    BallSelection,
     GameOver,
     Temp,
 }

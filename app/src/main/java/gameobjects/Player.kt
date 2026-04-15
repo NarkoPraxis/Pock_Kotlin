@@ -51,7 +51,6 @@ class Player(
     var lockedPointerId: Int = -1
     var overchargeFrames: Int = 0
 
-    var isFling: Boolean = false
     var isFlingHeld: Boolean = false
     val flingStart = Point(0f, 0f)
     val flingCurrent = Point(0f, 0f)
@@ -140,12 +139,7 @@ class Player(
             puck.y = 500f
         }
 
-        if (isFling) {
-            finger.setLocation(puck.x, puck.y)
-        } else {
-            finger.moveTowardLocation(fingerTargetLocation)
-            finger.drawTo(canvas)
-        }
+        finger.setLocation(puck.x, puck.y)
         puck.currentCharge = charge
         puck.frame++
         if (chargePowerLocked) overchargeFrames++ else overchargeFrames = 0
@@ -359,7 +353,7 @@ class Player(
         }
     }
 
-    fun releaseFling() : Boolean {
+    fun releaseCharge() : Boolean {
         shouldReleaseCharge = false
         shielded = false
         val wasOvercharged = chargePowerLocked
@@ -370,26 +364,12 @@ class Player(
         val direction = flingReleaseDir ?: Point(0f, 0f)
         val basePower = flingReleaseBasePower
         val power = if (wasOvercharged) minOf(basePower, Settings.sweetSpotMax * 0.5f) else basePower
-        puck.movement = physics.Force(direction, power)
+        puck.movement = Force(direction, power)
         puck.shrinkTicker.reset()
         charge = 0f
         chargePowerLocked = false
         flingReleaseDir = null
         flingReleaseBasePower = 0f
-        return shielded
-    }
-
-    fun releaseCharge() : Boolean {
-        shouldReleaseCharge = false
-        shielded = false
-        if (charge >= Settings.sweetSpotMin && charge <= Settings.sweetSpotMax) {
-            shielded = true
-            Sounds.playChargeBlastOff(puck.x)
-        }
-        puck.movement = Force(puck.directionTo(finger), charge)
-        puck.shrinkTicker.reset()
-        charge = 0f
-        chargePowerLocked = false
         return shielded
     }
 }

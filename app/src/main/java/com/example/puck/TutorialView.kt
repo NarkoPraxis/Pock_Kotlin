@@ -8,7 +8,6 @@ import android.os.Handler
 import android.view.MotionEvent
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import enums.FingerState
 import enums.GameState
 import enums.TutorialState
 import gameobjects.Settings
@@ -51,7 +50,7 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
 
         runnable = Runnable {
             when (Settings.gameState) {
-                GameState.FingerSelection -> {
+                GameState.BallSelection -> {
 
                 }
                 GameState.CountDown -> {
@@ -121,12 +120,12 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
 
         if (Settings.gameState == GameState.CountDown) {
             Drawing.mirrorText(canvas, Logic.countDownText(), Settings.middleX,Settings.middleY / 2, PaintBucket.textPaint )
-            Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)
+            Drawing.drawCountDownRectangles(canvas)
             Drawing.drawCanScoreWalls(canvas)
         }
-        if (Settings.gameState != GameState.FingerSelection) {
+        if (Settings.gameState != GameState.BallSelection) {
             Effects.drawEffects(canvas)
-            Drawing.drawScores(canvas, Logic.highFingerState, Logic.highPlayer, Logic.lowFingerState,Logic.lowPlayer)
+            Drawing.drawScores(canvas, Logic.highPlayer, Logic.lowPlayer)
             Drawing.drawPlayers(canvas)
             Drawing.drawAimArrows(canvas)
             if (Settings.gameState != GameState.CountDown) {
@@ -145,26 +144,11 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
                     Logic.pauseMenu.drawTo(canvas)
                 }
             }
-        } else if (Settings.gameState == GameState.FingerSelection) {
+        } else {
             val textX = Settings.screenRatio * 2
             val textY = (6 * Settings.middleY) / 5f
-            Logic.bottomRightFinger.drawTo(canvas)
-            Logic.bottomLeftFinger.drawTo(canvas)
-            Logic.topRightFinger.drawTo(canvas)
-            Logic.topLeftFinger.drawTo(canvas)
-
-            if (Logic.lowFingerState != FingerState.Unselected && Logic.highFingerState != FingerState.Unselected) {
-                Drawing.mirrorText(canvas,Logic.countDownText(),textX, textY, PaintBucket.textPaint)
-                Logic.countDown()
-                Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)
-                Drawing.drawCanScoreWalls(canvas)
-            }
-            else {
-                Drawing.drawCanScoreWalls(canvas)
-                Drawing.mirrorText(canvas,"Pick Your Finger",textX, textY, PaintBucket.textPaint)
-            }
-
-            // Logic.showDebugInfo(canvas)
+            Drawing.drawCanScoreWalls(canvas)
+            Drawing.mirrorText(canvas,"Tap When Ready",textX, textY, PaintBucket.textPaint)
         }
 
         if (Settings.tutorialPaused) {
@@ -174,12 +158,6 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        if (Settings.gameState == GameState.FingerSelection) {
-            Drawing.countDownProgressTicker.reset()
-            Logic.countDownTicker.reset()
-            Logic.cdIndex = 0
-        }
-
         if (Settings.tutorialPaused) {
             Tutorial.onTouchEvent(event)
         }

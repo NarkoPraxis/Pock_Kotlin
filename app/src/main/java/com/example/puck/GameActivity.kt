@@ -38,7 +38,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         runnable = Runnable {
             Logic.updateCanScoreWall()
             when (Settings.gameState) {
-                GameState.FingerSelection -> {
+                GameState.BallSelection -> {
                 }
                 GameState.CountDown -> {
                     Logic.countDown()
@@ -89,15 +89,15 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
 
         if (Settings.gameState == GameState.CountDown) {
             Drawing.mirrorText(canvas, Logic.countDownText(), Settings.middleX,Settings.middleY / 2, PaintBucket.textPaint)
-            Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)
+            Drawing.drawCountDownRectangles(canvas)
             Drawing.drawCanScoreWalls(canvas)
         }
-        if (Settings.gameState != GameState.FingerSelection) {
+        if (Settings.gameState != GameState.BallSelection) {
             Effects.drawEffects(canvas)
             Drawing.drawPlayers(canvas)
             Drawing.drawAimArrows(canvas)
             Drawing.drawScoreFlash(canvas)
-            Drawing.drawScores(canvas, Logic.highFingerState, Logic.highPlayer, Logic.lowFingerState,Logic.lowPlayer)
+            Drawing.drawScores(canvas, Logic.highPlayer, Logic.lowPlayer)
             if (Settings.gameState != GameState.CountDown) {
                 Drawing.drawCanScoreWalls(canvas)
             }
@@ -106,36 +106,21 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
                 Logic.pauseMenu.drawTo(canvas)
             }
-        } else if (Settings.gameState == GameState.FingerSelection) {
+        } else {
             if (Settings.pauseGame) {
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
                 Logic.pauseMenu.drawTo(canvas)
             } else {
                 val textX = Settings.screenRatio * 2
                 val textY = (6 * Settings.middleY) / 5f
-                Logic.bottomRightFinger.drawTo(canvas)
-                Logic.bottomLeftFinger.drawTo(canvas)
-                Logic.topRightFinger.drawTo(canvas)
-                Logic.topLeftFinger.drawTo(canvas)
-
-                if (Logic.lowFingerState != FingerState.Unselected && Logic.highFingerState != FingerState.Unselected) {
-                    Drawing.mirrorText(canvas,Logic.countDownText(),textX, textY, PaintBucket.textPaint)
-                    Logic.countDown()
-                    Drawing.drawCountDownRectangles(canvas, Logic.highFingerState, Logic.lowFingerState)
-                    Drawing.drawCanScoreWalls(canvas)
-                }
-                else {
-                    Drawing.drawCanScoreWalls(canvas)
-                    Drawing.mirrorText(canvas,"Pick Your Finger",textX, textY, PaintBucket.textPaint)
-                }
+                Drawing.drawCanScoreWalls(canvas)
+                Drawing.mirrorText(canvas,"Tap When Ready",textX, textY, PaintBucket.textPaint)
 
                 Logic.highBallCard.drawTo(canvas)
                 Logic.lowBallCard.drawTo(canvas)
                 Logic.highBallPopup.drawTo(canvas)
                 Logic.lowBallPopup.drawTo(canvas)
             }
-
-            // Logic.showDebugInfo(canvas)
         }
 
     }
@@ -159,11 +144,6 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        if (Settings.gameState == GameState.FingerSelection) {
-            Drawing.countDownProgressTicker.reset(3 * Storage.countdownFramesPerBeat)
-            Logic.countDownTicker.reset(Storage.countdownFramesPerBeat)
-            Logic.cdIndex = 0
-        }
         Logic.onTouchEvent(event, context)
         return true
     }
