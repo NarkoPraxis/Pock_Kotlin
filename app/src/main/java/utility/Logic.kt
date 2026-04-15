@@ -10,8 +10,6 @@ import com.example.puck.GameView
 import com.example.puck.PlayView
 import com.example.puck.MainActivity
 import com.example.puck.SettingsActivity
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.InterstitialAd
 import enums.*
 import gameobjects.PauseMenu
 import gameobjects.Player
@@ -87,7 +85,7 @@ object Logic {
         Settings.pointsToWin = Storage.loadPointsToWin()
         Settings.highBallType = Storage.loadHighBallType(Settings.highBallType)
         Settings.lowBallType = Storage.loadLowBallType(Settings.lowBallType)
-        Settings.adsLeft = Storage.adsRemaining
+        Settings.unlockProgress = Storage.unlockProgress
 
         Settings.screenWidth = width.toFloat()
         Settings.screenHeight = height.toFloat()
@@ -197,6 +195,12 @@ object Logic {
         lowPlayer.puck.tail = lowTail
     }
 
+    private fun prepareCountDown() {
+        cdIndex = 0
+        countDownTicker.reset(Storage.countdownFramesPerBeat)
+        Drawing.countDownProgressTicker.reset(3 * Storage.countdownFramesPerBeat)
+    }
+
     fun countDown() {
         if (highBallPopup.isOpen || lowBallPopup.isOpen) return
         lowPlayer.disableEffects = true
@@ -204,20 +208,20 @@ object Logic {
         Drawing.countDownProgressTicker.tick
         if (countDownTicker.tick) {
             if (++cdIndex < countDownText.size) {
-                countDownTicker.reset()
+                countDownTicker.reset(Storage.countdownFramesPerBeat)
             }
             else {
                 lowPlayer.disableEffects = false
                 highPlayer.disableEffects = false
                 Settings.gameState = GameState.Play
-                countDownTicker.reset()
-                Drawing.countDownProgressTicker.reset()
+                countDownTicker.reset(Storage.countdownFramesPerBeat)
+                Drawing.countDownProgressTicker.reset(3 * Storage.countdownFramesPerBeat)
                 cdIndex = 0
             }
         }
     }
 
-    fun gameOver(ad: InterstitialAd) {
+    fun gameOver() {
         lowPlayer.disableEffects = true
         highPlayer.disableEffects = true
         if (!winnerSoundHasBeenPlayed) {
@@ -244,26 +248,20 @@ object Logic {
             highPlayer.charge = 0f
             Settings.pauseGame = false
             Settings.gameOver = false
-            Settings.gameState = GameState.FingerSelection
             GameEvents.gameReset.emit(Unit)
-            lowFingerState = FingerState.Unselected
-            highFingerState = FingerState.Unselected
-            bottomRightFinger.reset()
-            bottomLeftFinger.reset()
-            topLeftFinger.reset()
-            topRightFinger.reset()
 
-            if (!Settings.adShownToday && ad.isLoaded) {
-                val adCallback = object: AdListener() {
-                    override fun onAdClosed() {
-                        Settings.adsLeft -= 1
-                        Storage.storeAndUpdateAdsRemaining(Settings.adsLeft)
-                    }
-                }
-                ad.adListener = adCallback
-                ad.show()
-                Settings.adShownToday = true
-                Storage.storeAdShownDate()
+            if (Storage.skipFingerSelection && highFingerState != FingerState.Unselected && lowFingerState != FingerState.Unselected) {
+                canCollide = true
+                prepareCountDown()
+                Settings.gameState = GameState.CountDown
+            } else {
+                lowFingerState = FingerState.Unselected
+                highFingerState = FingerState.Unselected
+                bottomRightFinger.reset()
+                bottomLeftFinger.reset()
+                topLeftFinger.reset()
+                topRightFinger.reset()
+                Settings.gameState = GameState.FingerSelection
             }
         }
     }
@@ -599,8 +597,11 @@ object Logic {
         if (lowIsReady && highIsReady) {
             Settings.gameState = if (!Settings.gameOver && (lowPlayer.score >= Settings.pointsToWin || highPlayer.score >= Settings.pointsToWin)) {
                 Settings.gameOver = true
+                val victoryDelay = if (Storage.skipFingerSelection) Settings.refreshRate * 20 else Settings.victoryThreshold
+                victoryTicker.reset(victoryDelay)
                 GameState.GameOver
             } else {
+                prepareCountDown()
                 GameState.CountDown
             }
             highPlayer.disableEffects = false
@@ -914,7 +915,7 @@ object Logic {
         Settings.pointsToWin = Storage.loadPointsToWin()
         Settings.highBallType = Storage.loadHighBallType(Settings.highBallType)
         Settings.lowBallType = Storage.loadLowBallType(Settings.lowBallType)
-        Settings.adsLeft = Storage.adsRemaining
+        Settings.unlockProgress = Storage.unlockProgress
         lowFingerState = FingerState.Unselected
         highFingerState = FingerState.Unselected
         topRightFinger.unlock()

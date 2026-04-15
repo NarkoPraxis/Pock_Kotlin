@@ -8,17 +8,17 @@ import com.example.puck.R
 import enums.BallType
 import java.io.*
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 object Storage {
 
     lateinit var ad: SharedPreferences
     lateinit var settings: SharedPreferences
 
-
     private const val adPreferances = "adPreferences"
-    private const val remainingKey = "ads_remaining"
-    private const val lastSeenAdKey = "last_seen_ad_date"
+    private const val unlockProgressKey = "unlock_progress"
+    private const val adsWatchedTodayKey = "ads_watched_today"
+    private const val lastAdDateKey = "last_ad_date"
+    private const val lastAdTimestampKey = "last_ad_timestamp_ms"
     private const val shareRewardClaimedKey = "share_reward_claimed"
     private const val highBallTypeKey = "high_ball_type"
     private const val lowBallTypeKey = "low_ball_type"
@@ -26,6 +26,9 @@ object Storage {
     private const val S = "small"
     private const val D = "default"
     private const val L = "large"
+
+    private const val MAX_ADS_PER_DAY = 5
+    private const val HOURLY_COOLDOWN_MS = 60 * 60 * 1000L
 
     private lateinit var context: Context
 
@@ -35,33 +38,64 @@ object Storage {
         settings = PreferenceManager.getDefaultSharedPreferences(context)
     }
 
-    val adsRemaining : Int get() = ad.getInt(remainingKey, 100)
-    val lastSeenAdDate : String? get() = ad.getString(lastSeenAdKey, LocalDate.now().minusDays(1).toString())
+    // --- Unlock progress (0–100) ---
 
-    fun storeAdsRemaining(adsRemaining: Int) {
-        val editor = ad.edit()
-        editor.putInt(remainingKey, adsRemaining)
-        editor.apply()
+    val unlockProgress: Int get() = ad.getInt(unlockProgressKey, 0)
+
+    /** True when the user is allowed to watch an ad right now. */
+    fun canWatchAdNow(): Boolean {
+        if (unlockProgress >= 100) return false
+        val today = LocalDate.now().toString()
+        val lastDate = ad.getString(lastAdDateKey, "")
+        val watchedToday = if (lastDate == today) ad.getInt(adsWatchedTodayKey, 0) else 0
+        if (watchedToday >= MAX_ADS_PER_DAY) return false
+        val lastTimestamp = ad.getLong(lastAdTimestampKey, 0L)
+        return System.currentTimeMillis() - lastTimestamp >= HOURLY_COOLDOWN_MS
     }
 
-    fun storeAndUpdateAdsRemaining(adsRemaining: Int) {
-        val editor = ad.edit()
-        editor.putInt(remainingKey, adsRemaining)
-        editor.putString(lastSeenAdKey, LocalDateTime.now().toLocalDate().toString())
-        editor.apply()
+    /** How many ads the user has watched today (resets at midnight). */
+    fun adsWatchedToday(): Int {
+        val today = LocalDate.now().toString()
+        val lastDate = ad.getString(lastAdDateKey, "")
+        return if (lastDate == today) ad.getInt(adsWatchedTodayKey, 0) else 0
     }
 
-    fun storeAdShownDate() {
-        val editor = ad.edit()
-        editor.putString(lastSeenAdKey, LocalDateTime.now().toLocalDate().toString())
-        editor.apply()
+    /** Minutes remaining before the hourly cooldown expires. Returns 0 if ready. */
+    fun minutesUntilNextAd(): Long {
+        val lastTimestamp = ad.getLong(lastAdTimestampKey, 0L)
+        val msLeft = lastTimestamp + HOURLY_COOLDOWN_MS - System.currentTimeMillis()
+        return if (msLeft > 0) (msLeft / 60_000L) + 1 else 0
     }
+
+    /** Called when the user earns a reward: increments progress by 2% and records timestamps. */
+    fun recordAdWatched() {
+        val today = LocalDate.now().toString()
+        val lastDate = ad.getString(lastAdDateKey, "")
+        val watchedToday = if (lastDate == today) ad.getInt(adsWatchedTodayKey, 0) else 0
+        ad.edit()
+            .putInt(unlockProgressKey, (unlockProgress + 2).coerceAtMost(100))
+            .putLong(lastAdTimestampKey, System.currentTimeMillis())
+            .putInt(adsWatchedTodayKey, watchedToday + 1)
+            .putString(lastAdDateKey, today)
+            .apply()
+    }
+
+    /** Add bonus unlock progress (e.g. share reward = +10%). */
+    fun addBonusProgress(percent: Int) {
+        ad.edit()
+            .putInt(unlockProgressKey, (unlockProgress + percent).coerceAtMost(100))
+            .apply()
+    }
+
+    // --- Share reward ---
 
     val shareRewardClaimed: Boolean get() = ad.getBoolean(shareRewardClaimedKey, false)
 
     fun markShareRewardClaimed() {
         ad.edit().putBoolean(shareRewardClaimedKey, true).apply()
     }
+
+    // --- Ball type persistence ---
 
     fun loadHighBallType(default: BallType): BallType = readBallType(highBallTypeKey, default)
     fun loadLowBallType(default: BallType): BallType = readBallType(lowBallTypeKey, default)
@@ -74,45 +108,45 @@ object Storage {
         return try { BallType.valueOf(stored) } catch (e: IllegalArgumentException) { default }
     }
 
-    val darkMode : Boolean get() {
-        return settings.getBoolean("darkmode", false)
-    }
+    // --- App settings (from PreferenceManager) ---
 
-    val ballSize : String? get() = settings.getString("ball_sizes", D)
-    val tailLength : Int get() {
-        return when(settings.getString("tail_length", D)) {
+    val darkMode: Boolean get() = settings.getBoolean("darkmode", false)
+
+    val ballSize: String? get() = settings.getString("ball_sizes", D)
+    val tailLength: Int get() {
+        return when (settings.getString("tail_length", D)) {
             S -> 10
             D -> 20
             L -> 40
             else -> 20
         }
     }
-    val maxBonusTickerTime : Int get() {
-        return when(settings.getString("bonus_duration", D)) {
+    val maxBonusTickerTime: Int get() {
+        return when (settings.getString("bonus_duration", D)) {
             S -> 100
             D -> 200
             L -> 400
             else -> 200
         }
     }
-    val launchBonus : Float get() {
-        return when(settings.getString("bounce_bonus", D)) {
-            S-> 5f
+    val launchBonus: Float get() {
+        return when (settings.getString("bounce_bonus", D)) {
+            S -> 5f
             D -> 10f
             L -> 20f
             else -> 10f
         }
     }
-    val chargeSpeed : Float get() {
-        return when(settings.getString("charge_speed", D)) {
+    val chargeSpeed: Float get() {
+        return when (settings.getString("charge_speed", D)) {
             S -> .3f
             D -> .7f
             L -> 1.2f
             else -> .7f
         }
     }
-    val gameSpeed : Int get() {
-        return when(settings.getString("game_speed", D)) {
+    val gameSpeed: Int get() {
+        return when (settings.getString("game_speed", D)) {
             S -> 32
             D -> 16
             L -> 8
@@ -124,40 +158,25 @@ object Storage {
         return settings.getString("points_to_win", "5")?.toIntOrNull() ?: 5
     }
 
+    val countdownFramesPerBeat: Int get() {
+        return when (settings.getString("countdown_speed", "slow")) {
+            "fast" -> 18
+            "fastest" -> 10
+            else -> 33
+        }
+    }
 
+    val skipFingerSelection: Boolean get() = settings.getBoolean("skip_finger_selection", true)
 
-
-//    fun restoreDefaults(context: Context) {
-//        val settings = GameSettings()
-//        writeFile(context, customSettingsFileName, Json.stringify(GameSettings.serializer(), settings))
-//    }
-//
-//    fun writeSettings(context: Context, settings: GameSettings) {
-//        writeFile(context, customSettingsFileName, Json.stringify(GameSettings.serializer(), settings))
-//    }
-//
-//    fun getSettings(context: Context) : GameSettings {
-//        return try{
-//            val settingsString = readFile(context, customSettingsFileName)
-//            Json.parse(GameSettings.serializer(), settingsString)
-//        } catch(exc: Exception) {
-//            GameSettings()
-//        }
-//    }
-
-    private fun readFile(context: Context, fileName: String) : String {
+    private fun readFile(context: Context, fileName: String): String {
         val sb = StringBuilder()
-
-
         val inputStream = context.openFileInput(fileName)
         val streamReader = InputStreamReader(inputStream)
         val bufferedReader = BufferedReader(streamReader)
         var text: String? = null
-        while ({ text = bufferedReader.readLine(); text  }() != null) {
+        while ({ text = bufferedReader.readLine(); text }() != null) {
             sb.append(text)
         }
-
-
         return sb.toString()
     }
 

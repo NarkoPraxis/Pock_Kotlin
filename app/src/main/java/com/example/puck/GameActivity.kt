@@ -10,14 +10,11 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.InterstitialAd
-import com.google.android.gms.ads.MobileAds
 import enums.*
 import gameobjects.*
 import utility.*
 
-open class PlayView(context: Context, var ad: InterstitialAd, override var activity: AppCompatActivity) : GameView(context, activity) {
+open class PlayView(context: Context, override var activity: AppCompatActivity) : GameView(context, activity) {
     var handle: Handler = Handler()
     var runnable: Runnable = Runnable {}
     private var gameLoopPaused = false
@@ -54,7 +51,7 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
                     Logic.scored()
                 }
                 GameState.GameOver -> {
-                    Logic.gameOver(ad)
+                    Logic.gameOver()
                 }
                 GameState.Temp -> {
                 }
@@ -162,47 +159,22 @@ open class PlayView(context: Context, var ad: InterstitialAd, override var activ
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         if (Settings.gameState == GameState.FingerSelection) {
-            Drawing.countDownProgressTicker.reset()
-            Logic.countDownTicker.reset()
+            Drawing.countDownProgressTicker.reset(3 * Storage.countdownFramesPerBeat)
+            Logic.countDownTicker.reset(Storage.countdownFramesPerBeat)
             Logic.cdIndex = 0
         }
         Logic.onTouchEvent(event, context)
         return true
-//        when (motionEvent) {
-//            MotionEvent.ACTION_UP -> up++
-//            MotionEvent.ACTION_DOWN -> down++
-//            MotionEvent.ACTION_MOVE -> move++
-//            MotionEvent.ACTION_POINTER_UP -> upP++
-//            MotionEvent.ACTION_POINTER_DOWN -> downP++
-//            MotionEvent.ACTION_POINTER_1_UP -> up1++
-//            MotionEvent.ACTION_POINTER_1_DOWN -> down1++
-//            MotionEvent.ACTION_POINTER_2_UP -> up2++
-//            MotionEvent.ACTION_POINTER_2_DOWN -> down2++
-//            MotionEvent.ACTION_POINTER_3_UP -> up3++
-//            MotionEvent.ACTION_POINTER_3_DOWN -> down3++
-//            else -> other++
-//        }
     }
 }
 
 class GameActivity : AppCompatActivity() {
-    private lateinit var interstitialAd: InterstitialAd
     lateinit var playView: PlayView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (!Settings.adShownToday) {
-            MobileAds.initialize(this) {}
-            interstitialAd = InterstitialAd(this)
-            interstitialAd.adUnitId = "ca-app-pub-3940256099942544/1033173712"
-            interstitialAd.loadAd(AdRequest.Builder().build())
-        }
-        else {
-            interstitialAd = InterstitialAd(this)
-        }
-
-        playView = PlayView(this, interstitialAd, this)
+        playView = PlayView(this, this)
         playView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN
         playView.contentDescription = getString(R.string.gameViewDescription)
         setContentView(playView)

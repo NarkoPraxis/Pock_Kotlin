@@ -122,12 +122,13 @@ object Drawing {
     }
 
     private fun drawScore(canvas: Canvas, fingerState: FingerState, player: Player, popTicker: Ticker) {
-        val margin = Settings.screenRatio / 2f + 20
+        val xMargin = Settings.screenRatio * 3f
+        val yMargin = Settings.screenRatio / 2f + 20f
         val scoreText = "${player.score}"
         when (fingerState) {
             FingerState.RightThumb, FingerState.RightPointer -> {
-                val scoreX = margin
-                val scoreY = Settings.screenHeight - margin
+                val scoreX = xMargin
+                val scoreY = Settings.screenHeight - yMargin
                 if (Settings.scorePopEnabled && !popTicker.finished) {
                     popTicker.tick
                     val scale = 1f + sin(popTicker.ratio * Math.PI.toFloat())
@@ -140,8 +141,9 @@ object Drawing {
                 }
             }
             FingerState.LeftThumb, FingerState.LeftPointer -> {
-                val scoreX = Settings.screenWidth - margin * 3f
-                val scoreY = Settings.screenHeight - margin
+                val textWidth = PaintBucket.alwaysBlackTextPaint.measureText(scoreText)
+                val scoreX = Settings.screenWidth - xMargin - textWidth
+                val scoreY = Settings.screenHeight - yMargin
                 if (Settings.scorePopEnabled && !popTicker.finished) {
                     popTicker.tick
                     val scale = 1f + sin(popTicker.ratio * Math.PI.toFloat())

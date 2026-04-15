@@ -34,9 +34,7 @@ object Settings {
     val canScoreBottomWallTop: Float get() = canScoreBottomWallCenterY - canScoreWallHalfThick
     val canScoreBottomWallBottom: Float get() = canScoreBottomWallCenterY + canScoreWallHalfThick
     var refreshRate: Int = 16
-    val maxAds = 100
-    var adsLeft = 0
-    var adShownToday = false;
+    var unlockProgress = 0
     var pauseGame = false;
     var startWithTutorial = false
     var tutorialPaused = false

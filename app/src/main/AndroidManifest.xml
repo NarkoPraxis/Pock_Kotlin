@@ -25,11 +25,7 @@
                 android:name="com.google.android.gms.ads.APPLICATION_ID"
                 android:value="ca-app-pub-1111532606958888~7923000787" />
 
-        <activity
-                android:name=".Ads"
-                android:exported="false"
-                android:label="@string/title_activity_ads" />
-        <activity
+<activity
                 android:name=".BallUnlockActivity"
                 android:exported="false"
                 android:screenOrientation="portrait" />

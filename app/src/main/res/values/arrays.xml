@@ -43,6 +43,17 @@
         <item>Large</item>
     </string-array>
 
+    <string-array name="countdown_speeds">
+        <item>Slow</item>
+        <item>Fast</item>
+        <item>Fastest</item>
+    </string-array>
+    <string-array name="countdown_speed_values">
+        <item>slow</item>
+        <item>fast</item>
+        <item>fastest</item>
+    </string-array>
+
     <string-array name="points_to_win_entries">
         <item>3 points</item>
         <item>5 points</item>

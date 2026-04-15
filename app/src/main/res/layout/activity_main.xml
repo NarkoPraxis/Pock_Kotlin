@@ -5,18 +5,30 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="?android:attr/colorBackground"
+        android:fitsSystemWindows="true"
         tools:context=".MainActivity">
+
+    <com.example.puck.UnlockProgressBar
+            android:id="@+id/unlockProgressBar"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="16dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
     <ImageView
             android:id="@+id/appIcon"
             android:layout_width="80dp"
             android:layout_height="80dp"
-            android:layout_marginTop="48dp"
+            android:layout_marginTop="28dp"
             android:src="@mipmap/ic_launcher_round"
             android:contentDescription="@null"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@+id/unlockProgressBar" />
 
     <TextView
             android:id="@+id/Title"
@@ -84,7 +96,7 @@
             android:layout_marginTop="12dp"
             android:enabled="false"
             android:onClick="showAd"
-            android:text="Watch Ad"
+            android:text="Watch Ad to Unlock"
             android:textSize="18sp"
             android:textColor="?android:attr/textColorPrimary"
             app:cornerRadius="28dp"
@@ -121,18 +133,5 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/ballsButton" />
-
-    <TextView
-            android:id="@+id/AdRatioText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="40dp"
-            android:layout_marginEnd="16dp"
-            android:text="100/100"
-            android:textAlignment="textEnd"
-            android:textSize="18sp"
-            android:textColor="?android:attr/textColorPrimary"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

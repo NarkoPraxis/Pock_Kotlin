@@ -36,9 +36,9 @@ class BallUnlockView @JvmOverloads constructor(
     private var bouncingIndex: Int = -1
     private var bounceFrame: Int = 0
 
-    // Plan 01: per-slot tail instances; rebuilt when adsLeft changes
+    // Plan 01: per-slot tail instances; rebuilt when unlockProgress changes
     private var tails: Array<TailRenderer>? = null
-    private var tailsBuiltForAdsLeft: Int = -1
+    private var tailsBuiltForProgress: Int = -1
 
     private var scrollY: Float = 0f
     private var dragging: Boolean = false
@@ -80,10 +80,10 @@ class BallUnlockView @JvmOverloads constructor(
         }
     }
 
-    // Plan 01: rebuild per-slot tail array when adsLeft changes (new unlock happened)
+    // Plan 01: rebuild per-slot tail array when unlockProgress changes (new unlock happened)
     private fun ensureTails() {
-        val adsLeft = Settings.adsLeft
-        if (tails == null || tailsBuiltForAdsLeft != adsLeft) {
+        val progress = Settings.unlockProgress
+        if (tails == null || tailsBuiltForProgress != progress) {
             tails?.forEach { it.clear() }
             val types = BallType.values()
             tails = Array(types.size) { i ->
@@ -91,7 +91,7 @@ class BallUnlockView @JvmOverloads constructor(
                 val theme = if (i % 2 == 0) ColorTheme.Warm else ColorTheme.Cold
                 BallStyleFactory.build(type, theme).second
             }
-            tailsBuiltForAdsLeft = adsLeft
+            tailsBuiltForProgress = progress
         }
     }
 
@@ -141,7 +141,7 @@ class BallUnlockView @JvmOverloads constructor(
             canvas.drawRoundRect(b[0], b[1], b[2], b[3], ratio() * 0.4f, ratio() * 0.4f, cardBorder)
 
             // Set up previewPuck for this slot
-            val unlocked = BallStyleFactory.isUnlocked(type, Settings.adsLeft)
+            val unlocked = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
             val (skin, _) = BallStyleFactory.build(type, theme)
             previewPuck.x = cx
             previewPuck.y = puckY
@@ -176,11 +176,8 @@ class BallUnlockView @JvmOverloads constructor(
     }
 
     private fun unlockHint(type: BallType): String = when (type) {
-        BallType.Prism, BallType.Plasma -> "Unlock all ads"
-        else -> {
-            val threshold = 100 - type.ordinal * 10
-            "Ads ≤ $threshold"
-        }
+        BallType.Prism, BallType.Plasma -> "Reach 100%"
+        else -> "Reach ${type.ordinal * 10}%"
     }
 
     // Plan 03: removed canvas.drawCircle(lockFill) — puck body is already solid black for locked balls

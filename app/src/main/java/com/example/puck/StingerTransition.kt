@@ -7,12 +7,11 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.gms.ads.InterstitialAd
 import gameobjects.Settings
 import physics.Ticker
 import shapes.Circle
 
-class StingerTransition(context: Context, var ad: InterstitialAd, var activity: AppCompatActivity) : View(context) {
+class StingerTransition(context: Context, var activity: AppCompatActivity) : View(context) {
 
     var screenWidth = 0f
     var screenHeight = 0f

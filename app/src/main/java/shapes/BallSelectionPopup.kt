@@ -70,7 +70,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         utility.Logic.cdIndex = 0
     }
 
-    private fun isUnlocked(type: BallType): Boolean = BallStyleFactory.isUnlocked(type, Settings.adsLeft)
+    private fun isUnlocked(type: BallType): Boolean = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
 
     private fun rebuildCenterTail() {
         val types = BallType.values()

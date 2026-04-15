@@ -25,11 +25,11 @@ object BallStyleFactory {
 
     fun displayName(type: BallType): String = type.name
 
-    fun isUnlocked(type: BallType, adsLeft: Int): Boolean {
+    fun isUnlocked(type: BallType, unlockProgress: Int): Boolean {
         return when (type) {
             BallType.Classic -> true
-            BallType.Prism, BallType.Plasma -> adsLeft == 0
-            else -> adsLeft <= 100 - type.ordinal * 10
+            BallType.Prism, BallType.Plasma -> unlockProgress >= 100
+            else -> unlockProgress >= type.ordinal * 10
         }
     }
 
