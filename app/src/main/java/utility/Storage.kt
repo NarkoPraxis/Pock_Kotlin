@@ -168,6 +168,11 @@ object Storage {
 
     val skipFingerSelection: Boolean get() = settings.getBoolean("skip_finger_selection", true)
 
+    val redControlScheme: String get() = settings.getString("red_control_scheme", "fling") ?: "fling"
+    val blueControlScheme: String get() = settings.getString("blue_control_scheme", "fling") ?: "fling"
+    val highIsFling: Boolean get() = redControlScheme == "fling"
+    val lowIsFling: Boolean get() = blueControlScheme == "fling"
+
     private fun readFile(context: Context, fileName: String): String {
         val sb = StringBuilder()
         val inputStream = context.openFileInput(fileName)

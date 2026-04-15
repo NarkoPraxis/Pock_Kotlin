@@ -50,6 +50,13 @@ class Player(
     var preparingToTeleport = false
     var lockedPointerId: Int = -1
 
+    var isFling: Boolean = false
+    var isFlingHeld: Boolean = false
+    val flingStart = Point(0f, 0f)
+    val flingCurrent = Point(0f, 0f)
+    var flingReleaseDir: Point? = null
+    var flingReleaseBasePower: Float = 0f
+
     init {
         this.resetLocation = Point(puck.x, puck.y)
         setPuckStroke(puck.strokeColor)
@@ -71,6 +78,14 @@ class Player(
         textSize = 40f
         color = Color.BLACK
         style = Paint.Style.FILL
+    }
+
+    val aimPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        strokeWidth = Settings.strokeWidth * 0.6f
     }
 
     val teleportPaint = Paint().apply {
@@ -132,8 +147,12 @@ class Player(
             puck.y = 500f
         }
 
-        finger.moveTowardLocation(fingerTargetLocation)
-        finger.drawTo(canvas)
+        if (isFling) {
+            finger.setLocation(puck.x, puck.y)
+        } else {
+            finger.moveTowardLocation(fingerTargetLocation)
+            finger.drawTo(canvas)
+        }
         puck.currentCharge = charge
         puck.frame++
         if (preparingToTeleport || isTeleporting) {
@@ -141,6 +160,10 @@ class Player(
         } else {
             puck.drawTo(canvas)
             puck.tail.render(canvas, puck, shielded, isLaunched, puckFillColor)
+        }
+
+        if (isFling && isFlingHeld) {
+            drawFlingAim(canvas)
         }
 
         if (finger != previousFingerLocation || puck != previousPuckLocation) {
@@ -344,6 +367,46 @@ class Player(
                 charge += Settings.chargeIncreaseRate
             }
         }
+    }
+
+    fun releaseFling() : Boolean {
+        shouldReleaseCharge = false
+        shielded = false
+        val wasOvercharged = chargePowerLocked
+        if (charge >= Settings.sweetSpotMin && charge <= Settings.sweetSpotMax) {
+            shielded = true
+            Sounds.playChargeBlastOff(puck.x)
+        }
+        val direction = flingReleaseDir ?: Point(0f, 0f)
+        val basePower = flingReleaseBasePower
+        val power = if (wasOvercharged) minOf(basePower, Settings.sweetSpotMax * 0.5f) else basePower
+        puck.movement = physics.Force(direction, power)
+        puck.shrinkTicker.reset()
+        charge = 0f
+        chargePowerLocked = false
+        flingReleaseDir = null
+        flingReleaseBasePower = 0f
+        return shielded
+    }
+
+    private fun drawFlingAim(canvas: Canvas) {
+        val dx = flingStart.x - flingCurrent.x
+        val dy = flingStart.y - flingCurrent.y
+        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+        if (dist < 1f) return
+        val maxDist = Settings.screenRatio * 5f
+        val clipped = kotlin.math.min(dist, maxDist)
+        val nx = dx / dist
+        val ny = dy / dist
+        val lineLength = puck.radius + Settings.screenRatio * 3f * (clipped / maxDist)
+        aimPaint.color = puckFillColor
+        canvas.drawLine(
+            puck.x + nx * puck.radius,
+            puck.y + ny * puck.radius,
+            puck.x + nx * lineLength,
+            puck.y + ny * lineLength,
+            aimPaint
+        )
     }
 
     fun releaseCharge() : Boolean {

@@ -64,6 +64,15 @@
         <item>18 points</item>
         <item>20 points</item>
     </string-array>
+    <string-array name="control_scheme_names">
+        <item>Target</item>
+        <item>Fling</item>
+    </string-array>
+    <string-array name="control_scheme_values">
+        <item>target</item>
+        <item>fling</item>
+    </string-array>
+
     <string-array name="points_to_win_values">
         <item>3</item>
         <item>5</item>

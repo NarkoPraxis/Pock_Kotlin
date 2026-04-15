@@ -65,6 +65,23 @@
                 app:defaultValue="5" />
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="Controls">
+        <ListPreference
+                android:summary="%s"
+                android:defaultValue="fling"
+                android:entries="@array/control_scheme_names"
+                android:entryValues="@array/control_scheme_values"
+                android:key="red_control_scheme"
+                android:title="Red Control Scheme" />
+        <ListPreference
+                android:summary="%s"
+                android:defaultValue="fling"
+                android:entries="@array/control_scheme_names"
+                android:entryValues="@array/control_scheme_values"
+                android:key="blue_control_scheme"
+                android:title="Blue Control Scheme" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="Visual">
         <SwitchPreference
                 android:defaultValue="false"
