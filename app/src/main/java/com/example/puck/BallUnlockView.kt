@@ -87,9 +87,8 @@ class BallUnlockView @JvmOverloads constructor(
             tails?.forEach { it.clear() }
             val types = BallType.values()
             tails = Array(types.size) { i ->
-                val type = types[i]
                 val theme = if (i % 2 == 0) ColorTheme.Warm else ColorTheme.Cold
-                BallStyleFactory.build(type, theme).second
+                BallStyleFactory.build(types[i], theme).second
             }
             tailsBuiltForProgress = progress
         }
@@ -100,7 +99,7 @@ class BallUnlockView @JvmOverloads constructor(
         ensurePaints()
         if (!paintsReady) return
 
-        // Plan 00: re-apply light/dark colors each frame
+        // re-apply light/dark colors each frame
         cardBg.color = if (Storage.darkMode) Color.argb(220, 22, 22, 34) else Color.argb(220, 232, 232, 248)
         label.color = if (Storage.darkMode) Color.WHITE else Color.argb(230, 15, 15, 35)
         sublabel.color = if (Storage.darkMode) Color.argb(160, 255, 255, 255) else Color.argb(160, 20, 20, 50)
@@ -110,7 +109,7 @@ class BallUnlockView @JvmOverloads constructor(
         val savedRatio = Settings.screenRatio
         Settings.screenRatio = ratio()
 
-        // Plan 02: advance bounce frame once per draw (not per cell)
+        // advance bounce frame once per draw (not per cell)
         if (bouncingIndex >= 0) bounceFrame++
 
         val types = BallType.values()
@@ -125,7 +124,7 @@ class BallUnlockView @JvmOverloads constructor(
             val theme = if (i % 2 == 0) ColorTheme.Warm else ColorTheme.Cold
 
             val cx = (b[0] + b[2]) / 2f
-            // Plan 02: cell center Y offset upward slightly (like the popup)
+            // cell center Y offset upward slightly (like the popup)
             val baseCy = (b[1] + b[3]) / 2f - ratio() * 0.4f
             val bounce = if (i == bouncingIndex) {
                 val period = 40f
@@ -150,17 +149,17 @@ class BallUnlockView @JvmOverloads constructor(
             previewPuck.setFill(theme.primary)
             previewPuck.setStroke(theme.secondary)
             previewPuck.skin = skin
-            previewPuck.isPlaceholder = !unlocked  // Plan 03
-
-            // 2. Tail render (only when this ball is bouncing — Plan 01 + Plan 02)
-            if (i == bouncingIndex) {
-                tails?.get(i)?.renderForPreview(canvas, previewPuck, shielded = false, launched = false, baseFillColor = theme.primary)
-            }
+            previewPuck.isPlaceholder = !unlocked
 
             // 3. Puck body
             previewPuck.drawTo(canvas)
 
-            // 4. Lock overlay (Plan 03: no semi-transparent circle — puck is already a solid silhouette)
+            // 2. Tail render (only when this ball is bouncing)
+            if (i == bouncingIndex) {
+                tails?.get(i)?.renderForPreview(canvas, previewPuck, shielded = false, launched = false, baseFillColor = theme.primary)
+            }
+
+            // 4. Lock overlay
             if (!unlocked) drawLock(canvas, cx, puckY, pr)
 
             // 5. Name label + status (static — not affected by bounce)
@@ -180,7 +179,6 @@ class BallUnlockView @JvmOverloads constructor(
         else -> "Reach ${type.ordinal * 10}%"
     }
 
-    // Plan 03: removed canvas.drawCircle(lockFill) — puck body is already solid black for locked balls
     private fun drawLock(canvas: Canvas, lx: Float, ly: Float, radius: Float) {
         lockPaint.strokeWidth = ratio() * 0.22f
         val bodyW = radius * 0.8f

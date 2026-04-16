@@ -1,25 +1,33 @@
 package gameobjects.puckstyle
 
 import enums.BallType
+import gameobjects.puckstyle.launcheffects.*
 import gameobjects.puckstyle.skins.*
 import gameobjects.puckstyle.tails.*
+
+data class BallStyle(val skin: PuckSkin, val tail: TailRenderer, val launchEffect: LaunchEffect)
 
 object BallStyleFactory {
 
     fun build(type: BallType, theme: ColorTheme): Pair<PuckSkin, TailRenderer> {
+        val style = buildStyle(type, theme)
+        return style.skin to style.tail
+    }
+
+    fun buildStyle(type: BallType, theme: ColorTheme): BallStyle {
         return when (type) {
-            BallType.Classic -> ClassicSkin(theme) to ClassicTail(theme)
-            BallType.Neon    -> NeonSkin(theme)    to NeonTail(theme)
-            BallType.Ghost   -> GhostSkin(theme)   to GhostTail(theme)
-            BallType.Fire    -> FireSkin(theme)    to FireTail(theme)
-            BallType.Ice     -> IceSkin(theme)     to IceTail(theme)
-            BallType.Galaxy  -> GalaxySkin(theme)  to GalaxyTail(theme)
-            BallType.Spiral  -> SpiralSkin(theme)  to SpiralTail(theme)
-            BallType.Metal   -> MetalSkin(theme)   to MetalTail(theme)
-            BallType.Pixel   -> PixelSkin(theme)   to PixelTail(theme)
-            BallType.Rainbow -> RainbowSkin(theme) to RainbowTail(theme)
-            BallType.Prism   -> PrismSkin(theme)   to PrismTail(theme)
-            BallType.Plasma  -> PlasmaSkin(theme)  to PlasmaTail(theme)
+            BallType.Classic -> BallStyle(ClassicSkin(theme), ClassicTail(theme), ClassicLaunch(theme))
+            BallType.Neon    -> BallStyle(NeonSkin(theme),    NeonTail(theme),    NeonLaunch(theme))
+            BallType.Ghost   -> BallStyle(GhostSkin(theme),   GhostTail(theme),   GhostLaunch(theme))
+            BallType.Fire    -> BallStyle(FireSkin(theme),    FireTail(theme),    FireLaunch(theme))
+            BallType.Ice     -> BallStyle(IceSkin(theme),     IceTail(theme),     IceLaunch(theme))
+            BallType.Galaxy  -> BallStyle(GalaxySkin(theme),  GalaxyTail(theme),  GalaxyLaunch(theme))
+            BallType.Spiral  -> BallStyle(SpiralSkin(theme),  SpiralTail(theme),  SpiralLaunch(theme))
+            BallType.Metal   -> BallStyle(MetalSkin(theme),   MetalTail(theme),   MetalLaunch(theme))
+            BallType.Pixel   -> BallStyle(PixelSkin(theme),   PixelTail(theme),   PixelLaunch(theme))
+            BallType.Rainbow -> BallStyle(RainbowSkin(theme), RainbowTail(theme), RainbowLaunch(theme))
+            BallType.Prism   -> BallStyle(PrismSkin(theme),   PrismTail(theme),   PrismLaunch(theme))
+            BallType.Plasma  -> BallStyle(PlasmaSkin(theme),  PlasmaTail(theme),  PlasmaLaunch(theme))
         }
     }
 

@@ -40,7 +40,9 @@ object Storage {
 
     // --- Unlock progress (0–100) ---
 
-    val unlockProgress: Int get() = ad.getInt(unlockProgressKey, 0)
+   // TODO: uncomment this before launching game
+//    val unlockProgress: Int get() = ad.getInt(unlockProgressKey, 0)
+    val unlockProgress: Int get() = 100
 
     /** True when the user is allowed to watch an ad right now. */
     fun canWatchAdNow(): Boolean {

@@ -3,8 +3,10 @@ package gameobjects
 import android.graphics.Canvas
 import android.graphics.Paint
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.LaunchEffect
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.TailRenderer
+import gameobjects.puckstyle.launcheffects.ClassicLaunch
 import gameobjects.puckstyle.skins.ClassicSkin
 import gameobjects.puckstyle.tails.ClassicTail
 import physics.Force
@@ -17,6 +19,7 @@ class Puck(radius: Float, x: Float, y: Float, fillColor: Int, strokeColor: Int) 
 
     var skin: PuckSkin = ClassicSkin(ColorTheme(fillColor, strokeColor, PaintBucket.effectColor, true))
     var tail: TailRenderer = ClassicTail(skin.theme)
+    var launchEffect: LaunchEffect = ClassicLaunch(skin.theme)
     var currentCharge: Float = 0f
     var frame: Int = 0
     var isPlaceholder: Boolean = false

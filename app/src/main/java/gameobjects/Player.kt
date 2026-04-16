@@ -181,7 +181,7 @@ class Player(
 //        canvas.drawCircle(finger.x - direction.x * finger.radius, finger.y - direction.y * finger.radius, 10f, debug)
 
         if (!disableEffects) {
-            puck.drawCharge(canvas, charge)
+            puck.launchEffect.draw(canvas, this)
         }
 
         previousFingerLocation.x = fx
@@ -366,6 +366,7 @@ class Player(
         val power = if (wasOvercharged) minOf(basePower, Settings.sweetSpotMax * 0.5f) else basePower
         puck.movement = Force(direction, power)
         puck.shrinkTicker.reset()
+        puck.launchEffect.onRelease(this, shielded)
         charge = 0f
         chargePowerLocked = false
         flingReleaseDir = null
