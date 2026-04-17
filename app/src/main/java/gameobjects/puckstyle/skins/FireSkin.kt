@@ -1,30 +1,26 @@
 package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.RadialGradient
-import android.graphics.Shader
-import gameobjects.puckstyle.CachedShaderSkin
+import android.graphics.Paint
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
+import gameobjects.puckstyle.PuckSkin
 
-class FireSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
+class FireSkin(override val theme: ColorTheme) : PuckSkin {
 
-    private val centerColor = if (theme.isWarm) Color.rgb(255, 240, 180) else Color.rgb(220, 200, 255)
-    private val midColor = if (theme.isWarm) Color.rgb(255, 140, 40) else Color.rgb(160, 80, 230)
-    private val edgeColor = if (theme.isWarm) Color.rgb(180, 30, 20) else Color.rgb(70, 20, 140)
+    override val zIndex = 0
 
-    override fun createShader(radius: Float): Shader =
-        RadialGradient(0f, 0f, radius,
-            intArrayOf(centerColor, midColor, edgeColor),
-            floatArrayOf(0f, 0.55f, 1f),
-            Shader.TileMode.CLAMP)
+    private val fillPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+    private val borderPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        ensureShader(renderer.radius)
-        canvas.save()
-        canvas.translate(renderer.x, renderer.y)
-        canvas.drawCircle(0f, 0f, renderer.radius, fill)
-        canvas.restore()
+        val orbRadius = renderer.radius * 0.6f
+
+        fillPaint.color = theme.secondary
+        fillPaint.strokeWidth = renderer.strokePaint.strokeWidth
+        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, fillPaint)
+
+        fillPaint.color = theme.primary
+        canvas.drawCircle(renderer.x, renderer.y, orbRadius, fillPaint)
     }
 }
