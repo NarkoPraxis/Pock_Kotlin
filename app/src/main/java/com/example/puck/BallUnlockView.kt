@@ -158,8 +158,10 @@ class BallUnlockView @JvmOverloads constructor(
             previewRenderer.strokeColor = theme.secondary
             previewRenderer.baseFillColor = theme.primary
             previewRenderer.skin = style.skin
-            // Only show tail for the currently bouncing cell
-            previewRenderer.tail = if (i == bouncingIndex) tails?.get(i) else null
+            // Show tails for all cells; snap non-bouncing tails to position during scroll
+            val tail = tails?.get(i)
+            if (dragging && i != bouncingIndex) tail?.fillTo(cx, baseCy)
+            previewRenderer.tail = tail
             previewRenderer.preview = !unlocked
 
             // 2. Draw puck (z-index sort handles tail-behind-body ordering)

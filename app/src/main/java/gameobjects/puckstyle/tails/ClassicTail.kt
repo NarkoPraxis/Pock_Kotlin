@@ -12,6 +12,9 @@ class ClassicTail(override val theme: ColorTheme) : TailRenderer {
 
     private var points: MutableList<DrawablePoint>? = null
 
+    override val zIndex: Int
+        get() = 2
+
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
         if (points == null) {
             val length = if (renderer.shielded) 80 else 20
@@ -44,7 +47,9 @@ class ClassicTail(override val theme: ColorTheme) : TailRenderer {
         }
     }
 
-    override fun clear() {
-        points = null
+    override fun clear() { points = null }
+
+    override fun fillTo(x: Float, y: Float) {
+        points?.forEach { it.x = x; it.y = y }
     }
 }

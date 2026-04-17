@@ -50,4 +50,8 @@ class GalaxyTail(override val theme: ColorTheme) : TailRenderer {
     }
 
     override fun clear() { sparks.clear() }
+
+    override fun fillTo(x: Float, y: Float) {
+        sparks.forEach { it.x = x; it.y = y; it.vx = 0f; it.vy = 0f }
+    }
 }

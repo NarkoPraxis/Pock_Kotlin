@@ -10,7 +10,7 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import utility.Storage
-import kotlin.math.abs
+import kotlin.math.sin
 
 class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPopup) {
 
@@ -40,13 +40,6 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
     fun hitTest(x: Float, y: Float): Boolean =
         x > cx - w / 2f && x < cx + w / 2f && y > cy - h / 2f && y < cy + h / 2f
 
-    // Plan 02 + 04: abs(sin) for snappy bounce; doubled amplitude; faster period
-    private fun bounceOffset(): Float {
-        val period = 40f
-        val amplitude = Settings.screenRatio * 1.1f
-        return abs(amplitude * kotlin.math.sin(2 * Math.PI.toFloat() * previewRenderer.frame / period))
-    }
-
     fun drawTo(canvas: Canvas) {
         // Plan 00: re-apply light/dark colors each frame
         bg.color = if (Storage.darkMode) Color.argb(180, 18, 18, 28) else Color.argb(200, 235, 235, 245)
@@ -74,7 +67,7 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
             canvas.drawText(type.name, cx, labelcy + label.textSize / 3f, label)
             wasPopupOpen = true
         } else {
-            // Full tall card: puck (bouncing) + name label at bottom
+            // Full tall card: puck (slow hover float) + name label at bottom
 
             // Clear tail when transitioning from popup-open so it reseeds at current position
             if (wasPopupOpen) { tail?.clear(); wasPopupOpen = false }
@@ -88,10 +81,18 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
 
             val pr = halfW * 0.6f
             previewRenderer.frame++
-            val puckY = cy - bounceOffset()
+            // Gentle hover float (smooth sin, not snap-bounce) keeps tails visible.
+            // Amplitude must exceed ball radius (~screenRatio*0.84) so trail clears the ball boundary.
+            val hoverOffset = Settings.screenRatio * 1.5f *
+                sin(2 * Math.PI.toFloat() * previewRenderer.frame / 90f)
+            val puckY = cy - hoverOffset
             previewRenderer.x = cx
             previewRenderer.y = puckY
             previewRenderer.radius = pr
+            // strokeWidth must be synced each frame — renderer constructed before Settings.strokeWidth
+            // is set by initializeSettings(), so the baked-in value is 0f.
+            previewRenderer.strokePaint.strokeWidth = Settings.strokeWidth
+            previewRenderer.chargePaint.strokeWidth = Settings.strokeWidth
             previewRenderer.fillColor = theme.primary
             previewRenderer.strokeColor = theme.secondary
             previewRenderer.baseFillColor = theme.primary

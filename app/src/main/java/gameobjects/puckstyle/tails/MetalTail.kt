@@ -34,4 +34,8 @@ class MetalTail(override val theme: ColorTheme) : TailRenderer {
     }
 
     override fun clear() { points = null }
+
+    override fun fillTo(x: Float, y: Float) {
+        points?.forEach { it.x = x; it.y = y }
+    }
 }

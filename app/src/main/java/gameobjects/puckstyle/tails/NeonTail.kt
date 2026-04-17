@@ -66,4 +66,8 @@ class NeonTail(override val theme: ColorTheme) : TailRenderer {
     }
 
     override fun clear() { rings = null }
+
+    override fun fillTo(x: Float, y: Float) {
+        rings?.forEach { it.x = x; it.y = y }
+    }
 }

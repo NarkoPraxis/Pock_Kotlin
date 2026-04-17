@@ -32,4 +32,8 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
     }
 
     override fun clear() { blocks = null }
+
+    override fun fillTo(x: Float, y: Float) {
+        blocks?.forEach { it.x = x; it.y = y }
+    }
 }

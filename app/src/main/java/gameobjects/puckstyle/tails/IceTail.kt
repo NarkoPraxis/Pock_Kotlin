@@ -35,4 +35,8 @@ class IceTail(override val theme: ColorTheme) : TailRenderer {
     }
 
     override fun clear() { shards.clear() }
+
+    override fun fillTo(x: Float, y: Float) {
+        shards.forEach { it.x = x; it.y = y }
+    }
 }

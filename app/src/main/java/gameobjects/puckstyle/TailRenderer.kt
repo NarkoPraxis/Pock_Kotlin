@@ -15,6 +15,13 @@ interface TailRenderer {
     fun clear()
 
     /**
+     * Snap all history/particle positions to (x, y) without advancing state.
+     * Called for unselected balls in menus so their tail doesn't trail as the ball moves.
+     * Default no-op; override in each tail implementation.
+     */
+    fun fillTo(x: Float, y: Float) {}
+
+    /**
      * Routing wrapper called by PuckRenderer.draw(). Delegates to render() for unlocked balls;
      * for preview (placeholder) balls, wraps render() in a greyscale saveLayer so particle
      * fade effects remain intact while all colours map to near-black.

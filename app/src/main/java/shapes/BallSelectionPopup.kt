@@ -27,11 +27,12 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
     private val previewRenderer = PuckRenderer()
 
-    // Plan 02: per-popup tail for the snapped center ball
     private var snapIndex: Int = 0
-    private var centerTailType: BallType? = null
-    private var centerTail: TailRenderer? = null
     private var bounceFrame: Int = 0
+
+    // Per-slot tails — one per BallType, rendered for all balls at all times
+    private val slotTails: Array<TailRenderer?> = arrayOfNulls(BallType.values().size)
+    private val slotTailTypes: Array<BallType?> = arrayOfNulls(BallType.values().size)
 
     val w: Float get() = Settings.screenWidth.toFloat()
     val h: Float get() = Settings.screenRatio * 3.8f
@@ -58,8 +59,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         snapIndex = current.ordinal
         bounceFrame = 0
         dragging = false
-        centerTail?.clear()   // always reseed tail from current puck position on open
-        rebuildCenterTail()
+        slotTails[snapIndex]?.clear()   // reseed selected tail from current puck position on open
     }
 
     fun close() {
@@ -71,19 +71,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
     }
 
     private fun isUnlocked(type: BallType): Boolean = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
-
-    private fun rebuildCenterTail() {
-        val types = BallType.values()
-        if (snapIndex in types.indices) {
-            val type = types[snapIndex]
-            val theme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
-            if (centerTailType != type) {
-                centerTail?.clear()
-                centerTailType = type
-                centerTail = BallStyleFactory.buildStyle(type, theme).tail
-            }
-        }
-    }
 
     // Plan 04: select ball in-place without closing popup; snap/drag both call this
     private fun trySelect(type: BallType): Boolean {
@@ -134,7 +121,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     if (index != snapIndex) {
                         snapIndex = index
                         bounceFrame = 0
-                        rebuildCenterTail()
+                        slotTails[snapIndex]?.clear()
                     }
                     trySelect(types[index])
                 } else {
@@ -144,7 +131,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     if (snap != snapIndex) {
                         snapIndex = snap
                         bounceFrame = 0
-                        rebuildCenterTail()
+                        slotTails[snapIndex]?.clear()
                     }
                     trySelect(types[snapIndex])
                 }
@@ -160,10 +147,9 @@ class BallSelectionPopup(val isHigh: Boolean) {
         if (scrollX > max) scrollX = max
     }
 
-    // Plan 02 + 04: abs(sin) for snappy bounce; doubled amplitude; faster period
     private fun bounceOffset(): Float {
         val period = 40f
-        val amplitude = Settings.screenRatio * 1.1f
+        val amplitude = Settings.screenRatio * 2.5f
         return abs(amplitude * kotlin.math.sin(2 * Math.PI.toFloat() * bounceFrame / period))
     }
 
@@ -226,15 +212,24 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     Settings.screenRatio * 0.25f, Settings.screenRatio * 0.25f, slotBg)
             }
 
-            // Plan 04: non-center pucks drawn inside clip without bounce; center drawn after restore
+            // Build/cache per-slot tail
+            if (slotTailTypes[i] != type) {
+                slotTails[i]?.clear()
+                slotTailTypes[i] = type
+                slotTails[i] = BallStyleFactory.buildStyle(type, theme).tail
+            }
+
+            // Non-center pucks drawn inside clip without bounce; center drawn after restore.
+            // When dragging, snap non-selected tail history to current position (no trailing).
             if (!isCenter || dragging) {
                 previewRenderer.x = slotCenterX
                 previewRenderer.y = cy
+                if (dragging && i != snapIndex) slotTails[i]?.fillTo(slotCenterX, cy)
                 previewRenderer.fillColor = theme.primary
                 previewRenderer.strokeColor = theme.secondary
                 previewRenderer.preview = !isUnlocked(type)
                 previewRenderer.skin = BallStyleFactory.buildStyle(type, theme).skin
-                previewRenderer.tail = null
+                previewRenderer.tail = slotTails[i]
                 previewRenderer.draw(canvas)
                 if (!isUnlocked(type)) drawLock(canvas, slotCenterX, cy, pr)
             }
@@ -256,8 +251,8 @@ class BallSelectionPopup(val isHigh: Boolean) {
             previewRenderer.baseFillColor = theme.primary
             previewRenderer.preview = !isUnlocked(centerType)
             previewRenderer.skin = BallStyleFactory.buildStyle(centerType, theme).skin
-            // Tail injected for center ball only — z-index sort handles draw order
-            previewRenderer.tail = centerTail
+            // Tail injected for center ball — z-index sort handles draw order
+            previewRenderer.tail = slotTails[snapIndex.coerceIn(0, types.size - 1)]
             previewRenderer.draw(canvas)
             if (!isUnlocked(centerType)) drawLock(canvas, slotCenterX, puckY, pr)
         }
