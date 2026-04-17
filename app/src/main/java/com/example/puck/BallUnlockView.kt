@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -12,6 +14,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
+import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.TailRenderer
 import utility.PaintBucket
 import utility.Storage
@@ -36,9 +39,19 @@ class BallUnlockView @JvmOverloads constructor(
     private var bouncingIndex: Int = -1
     private var bounceFrame: Int = 0
 
-    // Plan 01: per-slot tail instances; rebuilt when unlockProgress changes
+    // Plan 01: per-slot skin+tail instances; rebuilt when unlockProgress changes.
+    // Skins are cached so randomized seeds (e.g. GalaxySkin.starSeeds) don't re-roll each frame.
     private var tails: Array<TailRenderer>? = null
+    private var skins: Array<PuckSkin>? = null
     private var tailsBuiltForProgress: Int = -1
+
+    private val animHandler = Handler(Looper.getMainLooper())
+    private val animRunnable = object : Runnable {
+        override fun run() {
+            invalidate()
+            animHandler.postDelayed(this, 16L)
+        }
+    }
 
     private var scrollY: Float = 0f
     private var dragging: Boolean = false
@@ -84,15 +97,15 @@ class BallUnlockView @JvmOverloads constructor(
         }
     }
 
-    // Plan 01: rebuild per-slot tail array when unlockProgress changes (new unlock happened)
+    // Plan 01: rebuild per-slot skin+tail arrays when unlockProgress changes (new unlock happened)
     private fun ensureTails() {
         val progress = Settings.unlockProgress
         if (tails == null || tailsBuiltForProgress != progress) {
             tails?.forEach { it.clear() }
             val types = BallType.values()
-            tails = Array(types.size) { i ->
-                BallStyleFactory.buildStyle(types[i], themeForCell(i)).tail
-            }
+            val styles = Array(types.size) { i -> BallStyleFactory.buildStyle(types[i], themeForCell(i)) }
+            tails = Array(types.size) { i -> styles[i].tail }
+            skins = Array(types.size) { i -> styles[i].skin }
             tailsBuiltForProgress = progress
         }
     }
@@ -149,7 +162,6 @@ class BallUnlockView @JvmOverloads constructor(
 
             // Configure previewRenderer for this slot
             val unlocked = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
-            val style = BallStyleFactory.buildStyle(type, theme)
             previewRenderer.x = cx
             previewRenderer.y = puckY
             previewRenderer.radius = pr
@@ -157,7 +169,7 @@ class BallUnlockView @JvmOverloads constructor(
             previewRenderer.fillColor = theme.primary
             previewRenderer.strokeColor = theme.secondary
             previewRenderer.baseFillColor = theme.primary
-            previewRenderer.skin = style.skin
+            previewRenderer.skin = skins?.get(i)
             // Show tails for all cells; snap non-bouncing tails to position during scroll
             val tail = tails?.get(i)
             if (dragging && i != bouncingIndex) tail?.fillTo(cx, baseCy)
@@ -179,7 +191,6 @@ class BallUnlockView @JvmOverloads constructor(
         }
 
         Settings.screenRatio = savedRatio
-        postInvalidateOnAnimation()
     }
 
     private fun unlockHint(type: BallType): String = when (type) {
@@ -198,6 +209,16 @@ class BallUnlockView @JvmOverloads constructor(
         val shackleR = bodyW / 2.6f
         canvas.drawArc(lx - shackleR, ly - bodyH * 0.85f, lx + shackleR, ly - bodyH * 0.1f,
             180f, 180f, false, lockPaint)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        animHandler.post(animRunnable)
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        animHandler.removeCallbacksAndMessages(null)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -236,7 +257,9 @@ class BallUnlockView @JvmOverloads constructor(
                                 // Second tap on the already-bouncing cell: toggle warm/cold theme
                                 warmFlags[i] = !warmFlags[i]
                                 tails?.getOrNull(i)?.clear()
-                                tails?.set(i, BallStyleFactory.buildStyle(types[i], themeForCell(i)).tail)
+                                val toggledStyle = BallStyleFactory.buildStyle(types[i], themeForCell(i))
+                                tails?.set(i, toggledStyle.tail)
+                                skins?.set(i, toggledStyle.skin)
                                 bounceFrame = 0
                             } else {
                                 // First tap or switching to a new cell

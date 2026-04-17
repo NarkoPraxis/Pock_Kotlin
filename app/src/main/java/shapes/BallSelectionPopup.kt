@@ -9,6 +9,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
+import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.TailRenderer
 import utility.PaintBucket
 import utility.Storage
@@ -30,8 +31,9 @@ class BallSelectionPopup(val isHigh: Boolean) {
     private var snapIndex: Int = 0
     private var bounceFrame: Int = 0
 
-    // Per-slot tails — one per BallType, rendered for all balls at all times
+    // Per-slot skins+tails — one per BallType, skin cached so randomized seeds don't re-roll each frame
     private val slotTails: Array<TailRenderer?> = arrayOfNulls(BallType.values().size)
+    private val slotSkins: Array<PuckSkin?> = arrayOfNulls(BallType.values().size)
     private val slotTailTypes: Array<BallType?> = arrayOfNulls(BallType.values().size)
 
     val w: Float get() = Settings.screenWidth.toFloat()
@@ -212,11 +214,13 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     Settings.screenRatio * 0.25f, Settings.screenRatio * 0.25f, slotBg)
             }
 
-            // Build/cache per-slot tail
+            // Build/cache per-slot skin+tail
             if (slotTailTypes[i] != type) {
                 slotTails[i]?.clear()
                 slotTailTypes[i] = type
-                slotTails[i] = BallStyleFactory.buildStyle(type, theme).tail
+                val style = BallStyleFactory.buildStyle(type, theme)
+                slotTails[i] = style.tail
+                slotSkins[i] = style.skin
             }
 
             // Non-center pucks drawn inside clip without bounce; center drawn after restore.
@@ -228,7 +232,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
                 previewRenderer.fillColor = theme.primary
                 previewRenderer.strokeColor = theme.secondary
                 previewRenderer.preview = !isUnlocked(type)
-                previewRenderer.skin = BallStyleFactory.buildStyle(type, theme).skin
+                previewRenderer.skin = slotSkins[i]
                 previewRenderer.tail = slotTails[i]
                 previewRenderer.draw(canvas)
                 if (!isUnlocked(type)) drawLock(canvas, slotCenterX, cy, pr)
@@ -250,7 +254,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
             previewRenderer.strokeColor = theme.secondary
             previewRenderer.baseFillColor = theme.primary
             previewRenderer.preview = !isUnlocked(centerType)
-            previewRenderer.skin = BallStyleFactory.buildStyle(centerType, theme).skin
+            previewRenderer.skin = slotSkins[snapIndex.coerceIn(0, types.size - 1)]
             // Tail injected for center ball — z-index sort handles draw order
             previewRenderer.tail = slotTails[snapIndex.coerceIn(0, types.size - 1)]
             previewRenderer.draw(canvas)

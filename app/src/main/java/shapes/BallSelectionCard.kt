@@ -8,6 +8,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
+import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.TailRenderer
 import utility.Storage
 import kotlin.math.sin
@@ -20,9 +21,10 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
 
     private val previewRenderer = PuckRenderer()
 
-    // Plan 02: per-card tail; rebuilt when selected ball type changes
+    // Plan 02: per-card skin+tail; rebuilt when selected ball type changes
     private var cachedType: BallType? = null
     private var tail: TailRenderer? = null
+    private var skin: PuckSkin? = null
     // Track popup open→closed transition to reseed tail at correct position
     private var wasPopupOpen: Boolean = false
 
@@ -76,15 +78,16 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
             if (cachedType != type) {
                 tail?.clear()
                 cachedType = type
-                tail = BallStyleFactory.buildStyle(type, theme).tail
+                val style = BallStyleFactory.buildStyle(type, theme)
+                tail = style.tail
+                skin = style.skin
             }
 
             val pr = halfW * 0.6f
             previewRenderer.frame++
             // Gentle hover float (smooth sin, not snap-bounce) keeps tails visible.
             // Amplitude must exceed ball radius (~screenRatio*0.84) so trail clears the ball boundary.
-            val hoverOffset = Settings.screenRatio * 1.5f *
-                sin(2 * Math.PI.toFloat() * previewRenderer.frame / 90f)
+            val hoverOffset = Settings.screenRatio * 0.5f * sin(2 * Math.PI.toFloat() * previewRenderer.frame / 90f)
             val puckY = cy - hoverOffset
             previewRenderer.x = cx
             previewRenderer.y = puckY
@@ -96,7 +99,7 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
             previewRenderer.fillColor = theme.primary
             previewRenderer.strokeColor = theme.secondary
             previewRenderer.baseFillColor = theme.primary
-            previewRenderer.skin = BallStyleFactory.buildStyle(type, theme).skin
+            previewRenderer.skin = skin
             previewRenderer.tail = tail
             previewRenderer.effect = null
             previewRenderer.effectEnabled = false
