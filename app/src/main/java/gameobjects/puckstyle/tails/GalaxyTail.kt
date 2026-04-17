@@ -3,10 +3,10 @@ package gameobjects.puckstyle.tails
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.random.Random
 
@@ -18,14 +18,14 @@ class GalaxyTail(override val theme: ColorTheme) : TailRenderer {
     private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val yellow = Color.rgb(255, 220, 80)
 
-    override fun render(canvas: Canvas, puck: Puck, shielded: Boolean, launched: Boolean, baseFillColor: Int) {
-        val spawn = if (launched) 4 else 2
+    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+        val spawn = if (renderer.launched) 4 else 2
         repeat(spawn) {
             val angle = Random.nextFloat() * Math.PI.toFloat() * 2
             val speed = Random.nextFloat() * 1.2f
             sparks.addLast(Star(
-                puck.x + (Random.nextFloat() - 0.5f) * puck.radius,
-                puck.y + (Random.nextFloat() - 0.5f) * puck.radius,
+                renderer.x + (Random.nextFloat() - 0.5f) * renderer.radius,
+                renderer.y + (Random.nextFloat() - 0.5f) * renderer.radius,
                 kotlin.math.cos(angle) * speed,
                 kotlin.math.sin(angle) * speed,
                 1f,

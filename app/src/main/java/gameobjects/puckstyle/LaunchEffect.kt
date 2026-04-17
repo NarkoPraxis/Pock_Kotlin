@@ -1,13 +1,14 @@
 package gameobjects.puckstyle
 
 import android.graphics.Canvas
-import gameobjects.Player
-
-enum class ChargePhase { Idle, Building, SweetSpot, Overcharged }
 
 interface LaunchEffect {
     val theme: ColorTheme
-    fun draw(canvas: Canvas, player: Player)
-    fun onRelease(player: Player, sweetSpotHit: Boolean)
+
+    /** Local z-index within a PuckRenderer composition. Default 1 (in front of body). */
+    val zIndex: Int get() = 1
+
+    fun draw(canvas: Canvas, renderer: PuckRenderer)
+    fun onRelease(x: Float, y: Float, radius: Float, sweetSpotHit: Boolean)
     fun reset()
 }

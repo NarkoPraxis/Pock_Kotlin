@@ -3,7 +3,6 @@ package gameobjects.puckstyle.launcheffects
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
-import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -14,33 +13,33 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     private val block = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
     private val rect = RectF()
 
-    override fun drawChargingPaddle(canvas: Canvas, puck: Puck) =
-        drawPixelBar(canvas, puck, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
+    override fun drawChargingPaddle(canvas: Canvas) =
+        drawPixelBar(canvas, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
 
     override fun drawStrikingPaddle(
-        canvas: Canvas, puck: Puck, cx: Float, cy: Float, aX: Float, aY: Float,
+        canvas: Canvas,
+        cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
         val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
-        drawPixelBar(canvas, puck, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
+        drawPixelBar(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
     }
 
     private fun drawPixelBar(
-        canvas: Canvas, puck: Puck, cx: Float, cy: Float, aX: Float, aY: Float,
+        canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
         ph: ChargePhase, fill: Float
     ) {
         canvas.save()
         val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
-        // Paddle is perpendicular to aim; rotate to +90 from aim angle.
         canvas.rotate(angle + 90f, cx, cy)
 
-        val totalLen = paddleHalfLength(puck) * 2f
-        val thick = puck.radius * 0.45f
+        val totalLen = paddleHalfLength() * 2f
+        val thick = currentRenderer.radius * 0.45f
         val cells = 6
         val cellW = totalLen / cells
         val startX = cx - totalLen / 2f
 
-        val base = if (ph == ChargePhase.Overcharged) theme.secondary else theme.secondary
+        val base = theme.secondary
         val fillColor = theme.accent
         val filledCells = (cells * fill).toInt()
         val center = cells / 2
@@ -55,14 +54,14 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.restore()
     }
 
-    override fun drawResidual(canvas: Canvas, puck: Puck, rx: Float, ry: Float, remaining: Float) {
+    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
         block.color = theme.accent
         block.alpha = (220 * remaining).toInt().coerceIn(0, 255)
-        val r = puck.radius * (0.8f + (1f - remaining) * 0.6f)
+        val r = currentRenderer.radius * (0.8f + (1f - remaining) * 0.6f)
         rect.set(rx - r, ry - r, rx + r, ry + r)
         canvas.drawRect(rect, block)
         block.alpha = 255
     }
 
-    override fun paddleThickness(puck: Puck): Float = Settings.strokeWidth * 1.6f
+    override fun paddleThickness(): Float = Settings.strokeWidth * 1.6f
 }

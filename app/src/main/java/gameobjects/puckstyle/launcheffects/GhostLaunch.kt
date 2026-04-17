@@ -2,7 +2,6 @@ package gameobjects.puckstyle.launcheffects
 
 import android.graphics.Canvas
 import android.graphics.Paint
-import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -17,19 +16,20 @@ class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         isAntiAlias = true; style = Paint.Style.STROKE; strokeWidth = Settings.strokeWidth * 0.8f
     }
 
-    override fun drawChargingPaddle(canvas: Canvas, puck: Puck) =
-        drawGhost(canvas, puck, paddleX, paddleY, phase, chargeFillRatio)
+    override fun drawChargingPaddle(canvas: Canvas) =
+        drawGhost(canvas, paddleX, paddleY, phase, chargeFillRatio)
 
     override fun drawStrikingPaddle(
-        canvas: Canvas, puck: Puck, cx: Float, cy: Float, aX: Float, aY: Float,
+        canvas: Canvas,
+        cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
         val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
-        drawGhost(canvas, puck, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
+        drawGhost(canvas, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
     }
 
-    private fun drawGhost(canvas: Canvas, puck: Puck, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val r = puck.radius * (0.75f + 0.05f * sin(frame * 0.2f))
+    private fun drawGhost(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
+        val r = currentRenderer.radius * (0.75f + 0.05f * sin(frame * 0.2f))
         val base = if (ph == ChargePhase.Overcharged) theme.secondary else theme.primary
         body.color = base
         body.alpha = 90
@@ -47,10 +47,10 @@ class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         outline.alpha = 255
     }
 
-    override fun drawResidual(canvas: Canvas, puck: Puck, rx: Float, ry: Float, remaining: Float) {
+    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
         body.color = theme.accent
         body.alpha = (140 * remaining).toInt().coerceIn(0, 255)
-        canvas.drawCircle(rx, ry, puck.radius * (1.2f + (1f - remaining)), body)
+        canvas.drawCircle(rx, ry, currentRenderer.radius * (1.2f + (1f - remaining)), body)
         body.alpha = 255
     }
 }

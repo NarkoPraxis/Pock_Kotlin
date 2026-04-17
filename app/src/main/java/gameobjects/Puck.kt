@@ -1,14 +1,12 @@
 package gameobjects
 
 import android.graphics.Canvas
-import android.graphics.Paint
+import android.graphics.Color
 import gameobjects.puckstyle.ColorTheme
-import gameobjects.puckstyle.LaunchEffect
-import gameobjects.puckstyle.PuckSkin
-import gameobjects.puckstyle.TailRenderer
-import gameobjects.puckstyle.launcheffects.ClassicLaunch
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.skins.ClassicSkin
 import gameobjects.puckstyle.tails.ClassicTail
+import gameobjects.puckstyle.launcheffects.ClassicLaunch
 import physics.Force
 import physics.Point
 import physics.Ticker
@@ -17,55 +15,73 @@ import utility.PaintBucket
 
 class Puck(radius: Float, x: Float, y: Float, fillColor: Int, strokeColor: Int) : Circle(radius, x, y, fillColor, strokeColor) {
 
-    var skin: PuckSkin = ClassicSkin(ColorTheme(fillColor, strokeColor, PaintBucket.effectColor, true))
-    var tail: TailRenderer = ClassicTail(skin.theme)
-    var launchEffect: LaunchEffect = ClassicLaunch(skin.theme)
-    var currentCharge: Float = 0f
-    var frame: Int = 0
-    var isPlaceholder: Boolean = false
-
-
-    var shrinkTicker = Ticker(((Settings.sweetSpotMax - Settings.sweetSpotMin) / Settings.chargeIncreaseRate).toInt())
-
-    val bonusPaint = Paint().apply {
-        color = PaintBucket.effectColor
-        isAntiAlias = true
-        isDither = true
-        style = Paint.Style.STROKE
-        strokeJoin = Paint.Join.ROUND
-        strokeCap = Paint.Cap.ROUND
-        strokeWidth = Settings.strokeWidth
+    val renderer: PuckRenderer = PuckRenderer().also { r ->
+        val theme = ColorTheme(fillColor, strokeColor, PaintBucket.effectColor, true)
+        r.skin = ClassicSkin(theme)
+        r.tail = ClassicTail(theme)
+        r.effect = ClassicLaunch(theme)
+        r.fillColor = fillColor
+        r.strokeColor = strokeColor
     }
 
-    val chargePaint = Paint().apply {
-        color = strokeColor
-        isAntiAlias = true
-        isDither = true
-        style = Paint.Style.STROKE
-        strokeJoin = Paint.Join.ROUND
-        strokeCap = Paint.Cap.ROUND
-        strokeWidth = Settings.strokeWidth
-    }
+    /** Preview mode — renders body as a dark silhouette and desaturates tail. Wraps renderer.preview. */
+    var isPlaceholder: Boolean
+        get() = renderer.preview
+        set(value) { renderer.preview = value }
 
-
-    override fun setStroke(stroke: Int) {
-        super.setStroke(stroke)
-        chargePaint.color = stroke
-    }
-
-    override fun drawTo(canvas: Canvas) {
-        skin.draw(canvas, this, radius)
-    }
-
-    override fun drawTo(radius: Float, canvas: Canvas) {
-        skin.draw(canvas, this, radius)
-    }
+    val shrinkTicker = Ticker(((Settings.sweetSpotMax - Settings.sweetSpotMin) / Settings.chargeIncreaseRate).toInt())
 
     var bonusMovement = false
     var movement: Force = Force()
     var launch: Force = Force()
 
-    fun getNextDirection() : Point {
+    override fun setStroke(stroke: Int) {
+        super.setStroke(stroke)
+        renderer.strokeColor = stroke
+    }
+
+    override fun setFill(fill: Int) {
+        super.setFill(fill)
+        renderer.fillColor = fill
+    }
+
+    /** Full z-ordered draw: syncs position/physics state into renderer then delegates. */
+    override fun drawTo(canvas: Canvas) {
+        syncRenderer()
+        renderer.draw(canvas)
+    }
+
+    /**
+     * Body-only draw at a custom radius — used by teleport shrink/grow animations.
+     * Does not go through z-ordering; just draws the skin at the given radius.
+     */
+    override fun drawTo(radius: Float, canvas: Canvas) {
+        syncRenderer()
+        val savedRadius = renderer.radius
+        renderer.radius = radius
+        val skin = renderer.skin
+        if (skin != null) {
+            if (renderer.preview) canvas.drawCircle(x, y, radius, PaintBucket.placeholderPaint)
+            else skin.drawBody(canvas, renderer)
+        } else {
+            canvas.drawCircle(x, y, radius, fillPaint)
+            canvas.drawCircle(x, y, radius, strokePaint)
+        }
+        renderer.radius = savedRadius
+    }
+
+    private fun syncRenderer() {
+        renderer.x = x
+        renderer.y = y
+        renderer.radius = radius
+        renderer.movementDirX = movement.direction.x
+        renderer.movementDirY = movement.direction.y
+        renderer.movementPower = movement.power
+        // fillColor, strokeColor, frame, currentCharge, shielded, launched, baseFillColor,
+        // and all effect state are set by Player before calling drawTo()
+    }
+
+    fun getNextDirection(): Point {
         val maxSpeed = if (launch.hasPower) Settings.maxPuckSpeed else Settings.maxPuckLaunchSpeed
         val nextDirection = (movement + launch).step(maxSpeed)
         if (!bonusMovement) {
@@ -80,37 +96,14 @@ class Puck(radius: Float, x: Float, y: Float, fillColor: Int, strokeColor: Int) 
         launch = Force()
     }
 
-    fun startBounce(bounceDirection: Point) : Point {
+    fun startBounce(bounceDirection: Point): Point {
         if (movement.hasPower) {
-            movement = Force(bounceDirection , movement.power + launch.power)
+            movement = Force(bounceDirection, movement.power + launch.power)
             launch.power = 0f
-        }
-        else if (launch.hasPower) {
-            launch = Force(bounceDirection , movement.power + launch.power)
+        } else if (launch.hasPower) {
+            launch = Force(bounceDirection, movement.power + launch.power)
             movement.power = 0f
         }
-
         return getNextDirection()
-    }
-
-    fun drawCharge(canvas: Canvas, charge: Float) {
-        if (charge > 0) {
-            val chargeRadius = radius * (charge / Settings.sweetSpotMax)
-            //draws circle for invulnerable check
-            if (charge > Settings.sweetSpotMin && charge <= Settings.sweetSpotMax) {
-                shrinkTicker.tick
-                canvas.drawCircle(x, y, radius * shrinkTicker.ratio, strokePaint)
-                canvas.drawCircle(x,y,radius, bonusPaint)
-            }
-            else if (shrinkTicker.finished && charge < Settings.sweetSpotMax / 2) {
-                canvas.drawCircle(x, y, radius / 2, strokePaint)
-            }
-            else if (!shrinkTicker.finished && charge <= Settings.sweetSpotMax) {
-                canvas.drawCircle(x, y, chargeRadius, chargePaint)
-            }
-            else {
-                canvas.drawCircle(x, y, chargeRadius, strokePaint);
-            }
-        }
     }
 }

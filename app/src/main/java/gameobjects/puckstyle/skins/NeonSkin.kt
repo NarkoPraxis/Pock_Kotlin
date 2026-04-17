@@ -3,9 +3,9 @@ package gameobjects.puckstyle.skins
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import gameobjects.Puck
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 
 class NeonSkin(override val theme: ColorTheme) : PuckSkin {
@@ -21,18 +21,18 @@ class NeonSkin(override val theme: ColorTheme) : PuckSkin {
         style = Paint.Style.STROKE
     }
 
-    override fun drawBody(canvas: Canvas, puck: Puck, radius: Float) {
-        val glowColor = if (puck.currentCharge > 0) Palette.cyclingPurple(puck.frame) else theme.primary
-        canvas.drawCircle(puck.x, puck.y, radius, darkFill)
+    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
+        val glowColor = if (renderer.currentCharge > 0) Palette.cyclingPurple(renderer.frame) else theme.primary
+        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, darkFill)
         glowPaint.color = Palette.withAlpha(glowColor, 60)
-        glowPaint.strokeWidth = puck.strokePaint.strokeWidth * 3f
-        canvas.drawCircle(puck.x, puck.y, radius, glowPaint)
+        glowPaint.strokeWidth = renderer.strokePaint.strokeWidth * 3f
+        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
         glowPaint.color = Palette.withAlpha(glowColor, 130)
-        glowPaint.strokeWidth = puck.strokePaint.strokeWidth * 1.8f
-        canvas.drawCircle(puck.x, puck.y, radius, glowPaint)
+        glowPaint.strokeWidth = renderer.strokePaint.strokeWidth * 1.8f
+        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
         glowPaint.color = glowColor
-        glowPaint.strokeWidth = puck.strokePaint.strokeWidth
-        canvas.drawCircle(puck.x, puck.y, radius, glowPaint)
-        puck.chargePaint.color = glowColor
+        glowPaint.strokeWidth = renderer.strokePaint.strokeWidth
+        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
+        renderer.chargePaint.color = glowColor
     }
 }

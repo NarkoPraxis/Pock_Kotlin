@@ -3,7 +3,6 @@ package gameobjects.puckstyle.launcheffects
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -22,20 +21,21 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         style = Paint.Style.FILL
     }
 
-    override fun drawChargingPaddle(canvas: Canvas, puck: Puck) {
-        drawFireball(canvas, puck, paddleX, paddleY, phase, chargeFillRatio)
+    override fun drawChargingPaddle(canvas: Canvas) {
+        drawFireball(canvas, paddleX, paddleY, phase, chargeFillRatio)
     }
 
     override fun drawStrikingPaddle(
-        canvas: Canvas, puck: Puck, cx: Float, cy: Float, aX: Float, aY: Float,
+        canvas: Canvas,
+        cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
         val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
-        drawFireball(canvas, puck, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
+        drawFireball(canvas, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
     }
 
-    private fun drawFireball(canvas: Canvas, puck: Puck, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val base = puck.radius * 0.6f
+    private fun drawFireball(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
+        val base = currentRenderer.radius * 0.6f
         val jitter = 1f + 0.08f * sin(frame * 0.9f)
         val outerR = base * jitter
 
@@ -56,12 +56,12 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         }
     }
 
-    override fun drawResidual(canvas: Canvas, puck: Puck, rx: Float, ry: Float, remaining: Float) {
+    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
         scorchPaint.color = Color.rgb(40, 20, 10)
         scorchPaint.alpha = (180 * remaining).toInt().coerceIn(0, 255)
-        canvas.drawCircle(rx, ry, puck.radius * (0.9f + (1f - remaining) * 0.3f), scorchPaint)
+        canvas.drawCircle(rx, ry, currentRenderer.radius * (0.9f + (1f - remaining) * 0.3f), scorchPaint)
     }
 
-    override fun paddleHalfLength(puck: Puck): Float = puck.radius * 0.6f
-    override fun paddleThickness(puck: Puck): Float = Settings.strokeWidth
+    override fun paddleHalfLength(): Float = currentRenderer.radius * 0.6f
+    override fun paddleThickness(): Float = Settings.strokeWidth
 }

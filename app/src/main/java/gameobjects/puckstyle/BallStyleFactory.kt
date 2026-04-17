@@ -5,14 +5,9 @@ import gameobjects.puckstyle.launcheffects.*
 import gameobjects.puckstyle.skins.*
 import gameobjects.puckstyle.tails.*
 
-data class BallStyle(val skin: PuckSkin, val tail: TailRenderer, val launchEffect: LaunchEffect)
+data class BallStyle(val skin: PuckSkin, val tail: TailRenderer, val effect: LaunchEffect)
 
 object BallStyleFactory {
-
-    fun build(type: BallType, theme: ColorTheme): Pair<PuckSkin, TailRenderer> {
-        val style = buildStyle(type, theme)
-        return style.skin to style.tail
-    }
 
     fun buildStyle(type: BallType, theme: ColorTheme): BallStyle {
         return when (type) {

@@ -5,10 +5,10 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.view.MotionEvent
 import enums.BallType
-import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import utility.PaintBucket
 import utility.Storage
@@ -25,7 +25,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
     private val slotBgSel = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
     private val lockPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; isAntiAlias = true; strokeCap = Paint.Cap.ROUND }
 
-    private val previewPuck = Puck(0f, 0f, 0f, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor)
+    private val previewRenderer = PuckRenderer()
 
     // Plan 02: per-popup tail for the snapped center ball
     private var snapIndex: Int = 0
@@ -80,7 +80,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
             if (centerTailType != type) {
                 centerTail?.clear()
                 centerTailType = type
-                centerTail = BallStyleFactory.build(type, theme).second
+                centerTail = BallStyleFactory.buildStyle(type, theme).tail
             }
         }
     }
@@ -192,6 +192,11 @@ class BallSelectionPopup(val isHigh: Boolean) {
         // Plan 02: increment bounce frame once per draw (not per slot)
         if (!dragging) bounceFrame++
 
+        // Shared renderer config: no effect in popup
+        previewRenderer.effectEnabled = false
+        previewRenderer.effect = null
+        previewRenderer.radius = pr
+
         canvas.save()
         canvas.clipRect(
             cx - halfW + Settings.screenRatio * 0.2f, cy - halfH + Settings.screenRatio * 0.2f,
@@ -218,17 +223,15 @@ class BallSelectionPopup(val isHigh: Boolean) {
             }
 
             // Plan 04: non-center pucks drawn inside clip without bounce; center drawn after restore
-            // Plan 04: slot name labels removed — card handles the name display
             if (!isCenter || dragging) {
-                previewPuck.x = slotCenterX
-                previewPuck.y = cy
-                previewPuck.radius = pr
-                previewPuck.setFill(theme.primary)
-                previewPuck.setStroke(theme.secondary)
-                previewPuck.isPlaceholder = !isUnlocked(type)
-                val (skin, _) = BallStyleFactory.build(type, theme)
-                previewPuck.skin = skin
-                previewPuck.drawTo(canvas)
+                previewRenderer.x = slotCenterX
+                previewRenderer.y = cy
+                previewRenderer.fillColor = theme.primary
+                previewRenderer.strokeColor = theme.secondary
+                previewRenderer.preview = !isUnlocked(type)
+                previewRenderer.skin = BallStyleFactory.buildStyle(type, theme).skin
+                previewRenderer.tail = null
+                previewRenderer.draw(canvas)
                 if (!isUnlocked(type)) drawLock(canvas, slotCenterX, cy, pr)
             }
         }
@@ -241,19 +244,17 @@ class BallSelectionPopup(val isHigh: Boolean) {
             val slotCenterX = cx - scrollX + snapIndex * slotW
             val puckY = cy - bounceOffset()
 
-            previewPuck.x = slotCenterX
-            previewPuck.y = puckY
-            previewPuck.radius = pr
-            previewPuck.setFill(theme.primary)
-            previewPuck.setStroke(theme.secondary)
-            previewPuck.isPlaceholder = !isUnlocked(centerType)
-            previewPuck.frame++
-            val (skin, _) = BallStyleFactory.build(centerType, theme)
-            previewPuck.skin = skin
-
-            // Plan 02 draw order: tail → puck → lock overlay
-            centerTail?.renderForPreview(canvas, previewPuck, shielded = false, launched = false, baseFillColor = theme.primary)
-            previewPuck.drawTo(canvas)
+            previewRenderer.frame++
+            previewRenderer.x = slotCenterX
+            previewRenderer.y = puckY
+            previewRenderer.fillColor = theme.primary
+            previewRenderer.strokeColor = theme.secondary
+            previewRenderer.baseFillColor = theme.primary
+            previewRenderer.preview = !isUnlocked(centerType)
+            previewRenderer.skin = BallStyleFactory.buildStyle(centerType, theme).skin
+            // Tail injected for center ball only — z-index sort handles draw order
+            previewRenderer.tail = centerTail
+            previewRenderer.draw(canvas)
             if (!isUnlocked(centerType)) drawLock(canvas, slotCenterX, puckY, pr)
         }
 

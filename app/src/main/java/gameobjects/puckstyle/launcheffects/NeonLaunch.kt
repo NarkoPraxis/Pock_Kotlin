@@ -2,7 +2,6 @@ package gameobjects.puckstyle.launcheffects
 
 import android.graphics.Canvas
 import android.graphics.Paint
-import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -17,22 +16,23 @@ class NeonLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         strokeCap = Paint.Cap.ROUND
     }
 
-    override fun drawChargingPaddle(canvas: Canvas, puck: Puck) {
-        drawHalo(canvas, puck, paddleX, paddleY, aimX, aimY, phase)
-        super.drawChargingPaddle(canvas, puck)
+    override fun drawChargingPaddle(canvas: Canvas) {
+        drawHalo(canvas, paddleX, paddleY, aimX, aimY, phase)
+        super.drawChargingPaddle(canvas)
     }
 
     override fun drawStrikingPaddle(
-        canvas: Canvas, puck: Puck, cx: Float, cy: Float, aX: Float, aY: Float,
+        canvas: Canvas,
+        cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
         val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
-        drawHalo(canvas, puck, cx, cy, aX, aY, ph)
-        super.drawStrikingPaddle(canvas, puck, cx, cy, aX, aY, sweet, overcharged, progress)
+        drawHalo(canvas, cx, cy, aX, aY, ph)
+        super.drawStrikingPaddle(canvas, cx, cy, aX, aY, sweet, overcharged, progress)
     }
 
-    private fun drawHalo(canvas: Canvas, puck: Puck, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase) {
-        val half = paddleHalfLength(puck)
+    private fun drawHalo(canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase) {
+        val half = paddleHalfLength()
         val perpX = -aY
         val perpY = aX
         val glowColor = if (ph == ChargePhase.Overcharged) theme.secondary else Palette.cyclingPurple(frame)

@@ -173,13 +173,13 @@ object Logic {
 
     fun applyBallStyles() {
         val highStyle = BallStyleFactory.buildStyle(Settings.highBallType, ColorTheme.Warm)
-        highPlayer.puck.skin = highStyle.skin
-        highPlayer.puck.tail = highStyle.tail
-        highPlayer.puck.launchEffect = highStyle.launchEffect
+        highPlayer.puck.renderer.skin = highStyle.skin
+        highPlayer.puck.renderer.tail = highStyle.tail
+        highPlayer.puck.renderer.effect = highStyle.effect
         val lowStyle = BallStyleFactory.buildStyle(Settings.lowBallType, ColorTheme.Cold)
-        lowPlayer.puck.skin = lowStyle.skin
-        lowPlayer.puck.tail = lowStyle.tail
-        lowPlayer.puck.launchEffect = lowStyle.launchEffect
+        lowPlayer.puck.renderer.skin = lowStyle.skin
+        lowPlayer.puck.renderer.tail = lowStyle.tail
+        lowPlayer.puck.renderer.effect = lowStyle.effect
     }
 
     private fun prepareCountDown() {

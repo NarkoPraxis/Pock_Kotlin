@@ -3,8 +3,6 @@ package gameobjects.puckstyle
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import gameobjects.Player
-import gameobjects.Puck
 import gameobjects.Settings
 import kotlin.math.max
 import kotlin.math.min
@@ -16,8 +14,8 @@ import kotlin.math.sqrt
  *
  * Kinematics (identical for every ball type):
  *  - Paddle sits behind the puck along the aim vector.
- *  - Distance from puck center ranges from `puck.radius` (touching outside) to
- *    `puck.radius + maxPullback` (roughly 1.5 puck radii).
+ *  - Distance from puck center ranges from `radius` (touching outside) to
+ *    `radius + maxPullback` (roughly 1.5 puck radii).
  *  - Distance is driven by the finger-drag magnitude (base power), NOT by charge.
  *  - Charge fills the paddle center-out with the shared effect color (purple).
  *  - SweetSpot phase = paddle fully filled + gentle alpha pulse.
@@ -28,8 +26,15 @@ import kotlin.math.sqrt
  *  - On a sweet-spot release only, a themed residual lingers briefly.
  *
  * Subclasses override only the visual primitives; the kinematics stay fixed.
+ * Subclasses access per-frame puck state via [currentRenderer].
  */
 abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect {
+
+    override val zIndex: Int get() = 1
+
+    /** Populated at the start of every [draw] call; valid for the entire frame. */
+    protected lateinit var currentRenderer: PuckRenderer
+        private set
 
     protected var frame = 0
         private set
@@ -84,34 +89,35 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         strokeCap = Paint.Cap.ROUND
     }
 
-    override fun draw(canvas: Canvas, player: Player) {
+    override fun draw(canvas: Canvas, renderer: PuckRenderer) {
+        currentRenderer = renderer
         frame++
-        updateState(player)
+        updateState(renderer)
 
         if (releaseFrames > 0) {
             val t = 1f - (releaseFrames.toFloat() / RELEASE_DURATION)
-            val cx = lerp(releaseFromX, player.puck.x, t)
-            val cy = lerp(releaseFromY, player.puck.y, t)
-            drawStrikingPaddle(canvas, player.puck, cx, cy, releaseAimX, releaseAimY, releaseSweet, releaseOvercharged, t)
+            val cx = lerp(releaseFromX, renderer.x, t)
+            val cy = lerp(releaseFromY, renderer.y, t)
+            drawStrikingPaddle(canvas, cx, cy, releaseAimX, releaseAimY, releaseSweet, releaseOvercharged, t)
             releaseFrames--
             if (releaseFrames == 0 && releaseSweet) {
-                residualX = player.puck.x
-                residualY = player.puck.y
+                residualX = renderer.x
+                residualY = renderer.y
                 residualFrames = RESIDUAL_DURATION
-                onSpawnResidual(player.puck, residualX, residualY, releaseAimX, releaseAimY)
+                onSpawnResidual(residualX, residualY, releaseAimX, releaseAimY)
             }
         } else if (phase != ChargePhase.Idle) {
-            drawChargingPaddle(canvas, player.puck)
+            drawChargingPaddle(canvas)
         }
 
         if (residualFrames > 0) {
             val r = residualFrames.toFloat() / RESIDUAL_DURATION
-            drawResidual(canvas, player.puck, residualX, residualY, r)
+            drawResidual(canvas, residualX, residualY, r)
             residualFrames--
         }
     }
 
-    override fun onRelease(player: Player, sweetSpotHit: Boolean) {
+    override fun onRelease(x: Float, y: Float, radius: Float, sweetSpotHit: Boolean) {
         if (phase == ChargePhase.Idle) {
             reset(); return
         }
@@ -122,7 +128,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         releaseSweet = sweetSpotHit
         releaseOvercharged = phase == ChargePhase.Overcharged
         releaseFrames = RELEASE_DURATION
-        onReleaseSpawn(player.puck, releaseSweet, releaseOvercharged)
+        onReleaseSpawn(x, y, radius, releaseSweet, releaseOvercharged)
     }
 
     override fun reset() {
@@ -133,32 +139,31 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
 
     // ---------- state update ----------
 
-    private fun updateState(player: Player) {
-        val puck = player.puck
-        val minDist = puck.radius
-        val maxDist = puck.radius * 2.5f
+    private fun updateState(renderer: PuckRenderer) {
+        val minDist = renderer.radius
+        val maxDist = renderer.radius * 2.5f
 
-        val dx = player.flingStart.x - player.flingCurrent.x
-        val dy = player.flingStart.y - player.flingCurrent.y
+        val dx = renderer.flingStartX - renderer.flingCurrentX
+        val dy = renderer.flingStartY - renderer.flingCurrentY
         val dist = sqrt(dx * dx + dy * dy)
         val maxDrag = Settings.screenRatio * 5f
 
-        if (player.isFlingHeld && dist > 1f) {
+        if (renderer.isFlingHeld && dist > 1f) {
             aimX = dx / dist
             aimY = dy / dist
             val t = min(dist, maxDrag) / maxDrag
             paddleDistance = minDist + (maxDist - minDist) * t
         } else {
             if (aimX == 0f && aimY == 0f) {
-                aimY = if (player.isHigh) 1f else -1f
+                aimY = if (renderer.isHigh) 1f else -1f
             }
             paddleDistance = minDist
         }
 
         phase = when {
-            player.chargePowerLocked -> ChargePhase.Overcharged
-            player.charge >= Settings.sweetSpotMin && player.charge <= Settings.sweetSpotMax -> ChargePhase.SweetSpot
-            player.isFlingHeld || player.charge > 0f -> ChargePhase.Building
+            renderer.chargePowerLocked -> ChargePhase.Overcharged
+            renderer.currentCharge >= Settings.sweetSpotMin && renderer.currentCharge <= Settings.sweetSpotMax -> ChargePhase.SweetSpot
+            renderer.isFlingHeld || renderer.currentCharge > 0f -> ChargePhase.Building
             else -> ChargePhase.Idle
         }
 
@@ -167,14 +172,14 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
             paddleDistance = min(paddleDistance, capped)
         }
 
-        paddleX = puck.x - aimX * paddleDistance
-        paddleY = puck.y - aimY * paddleDistance
+        paddleX = renderer.x - aimX * paddleDistance
+        paddleY = renderer.y - aimY * paddleDistance
 
         val range = max(1f, (Settings.sweetSpotMin - Settings.chargeStart))
         chargeFillRatio = when (phase) {
             ChargePhase.SweetSpot -> 1f
             ChargePhase.Overcharged -> 0f
-            ChargePhase.Building -> ((player.charge - Settings.chargeStart) / range).coerceIn(0f, 1f)
+            ChargePhase.Building -> ((renderer.currentCharge - Settings.chargeStart) / range).coerceIn(0f, 1f)
             ChargePhase.Idle -> 0f
         }
     }
@@ -182,43 +187,39 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     // ---------- drawing primitives (overridable) ----------
 
     /** Called each frame during Building / SweetSpot / Overcharged. */
-    protected open fun drawChargingPaddle(canvas: Canvas, puck: Puck) {
-        drawPaddleBar(canvas, puck, paddleX, paddleY, aimX, aimY, chargeFillRatio, phase, false)
+    protected open fun drawChargingPaddle(canvas: Canvas) {
+        drawPaddleBar(canvas, paddleX, paddleY, aimX, aimY, chargeFillRatio, phase, false)
     }
 
     /** Called each frame during the release-strike animation. */
     protected open fun drawStrikingPaddle(
-        canvas: Canvas, puck: Puck,
+        canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val fill = when {
-            sweet -> 1f
-            overcharged -> 0f
-            else -> 1f
-        }
+        val fill = if (overcharged) 0f else 1f
         val fakePhase = when {
             sweet -> ChargePhase.SweetSpot
             overcharged -> ChargePhase.Overcharged
             else -> ChargePhase.Building
         }
-        drawPaddleBar(canvas, puck, cx, cy, aX, aY, fill, fakePhase, true)
+        drawPaddleBar(canvas, cx, cy, aX, aY, fill, fakePhase, true)
     }
 
     /**
      * Paddle-bar primitive — line perpendicular to the aim vector, centered at (cx,cy).
      * Subclasses may ignore this and render a totally different shape via
-     * `drawChargingPaddle` / `drawStrikingPaddle` overrides.
+     * [drawChargingPaddle] / [drawStrikingPaddle] overrides.
      */
     protected fun drawPaddleBar(
-        canvas: Canvas, puck: Puck,
+        canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
         fillRatio: Float, ph: ChargePhase, striking: Boolean
     ) {
-        val half = paddleHalfLength(puck)
+        val half = paddleHalfLength()
         val perpX = -aY
         val perpY = aX
-        val thickness = paddleThickness(puck)
+        val thickness = paddleThickness()
 
         val baseColor = theme.secondary
         val chargeColor = theme.accent
@@ -248,24 +249,24 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         }
     }
 
-    protected open fun drawResidual(canvas: Canvas, puck: Puck, rx: Float, ry: Float, remaining: Float) {
+    protected open fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
         val a = (200 * remaining).toInt().coerceIn(0, 255)
         residualPaint.color = theme.accent
         residualPaint.alpha = a
         residualPaint.strokeWidth = Settings.strokeWidth * 0.6f
-        canvas.drawCircle(rx, ry, puck.radius * (1.4f - remaining * 0.4f), residualPaint)
+        canvas.drawCircle(rx, ry, currentRenderer.radius * (1.4f - remaining * 0.4f), residualPaint)
     }
 
     /** Hook: allows a subclass to spawn extra one-shot effects at release. */
-    protected open fun onReleaseSpawn(puck: Puck, sweet: Boolean, overcharged: Boolean) {}
+    protected open fun onReleaseSpawn(x: Float, y: Float, radius: Float, sweet: Boolean, overcharged: Boolean) {}
 
     /** Hook: allows a subclass to spawn extra effects once the strike lands. */
-    protected open fun onSpawnResidual(puck: Puck, rx: Float, ry: Float, aX: Float, aY: Float) {}
+    protected open fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {}
 
     // ---------- tuning knobs ----------
 
-    protected open fun paddleHalfLength(puck: Puck): Float = Settings.screenRatio
-    protected open fun paddleThickness(puck: Puck): Float = Settings.strokeWidth * 1.4f
+    protected open fun paddleHalfLength(): Float = Settings.screenRatio
+    protected open fun paddleThickness(): Float = Settings.strokeWidth * 1.4f
 
     protected fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 

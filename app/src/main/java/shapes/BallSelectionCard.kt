@@ -4,12 +4,11 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import enums.BallType
-import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
-import utility.PaintBucket
 import utility.Storage
 import kotlin.math.abs
 
@@ -19,7 +18,7 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
     private val border = Paint().apply { style = Paint.Style.STROKE; isAntiAlias = true }
     private val label = Paint().apply { textAlign = Paint.Align.CENTER; isAntiAlias = true }
 
-    private val previewPuck = Puck(0f, 0f, 0f, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor)
+    private val previewRenderer = PuckRenderer()
 
     // Plan 02: per-card tail; rebuilt when selected ball type changes
     private var cachedType: BallType? = null
@@ -45,7 +44,7 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
     private fun bounceOffset(): Float {
         val period = 40f
         val amplitude = Settings.screenRatio * 1.1f
-        return abs(amplitude * kotlin.math.sin(2 * Math.PI.toFloat() * previewPuck.frame / period))
+        return abs(amplitude * kotlin.math.sin(2 * Math.PI.toFloat() * previewRenderer.frame / period))
     }
 
     fun drawTo(canvas: Canvas) {
@@ -84,19 +83,22 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
             if (cachedType != type) {
                 tail?.clear()
                 cachedType = type
-                tail = BallStyleFactory.build(type, theme).second
+                tail = BallStyleFactory.buildStyle(type, theme).tail
             }
 
             val pr = halfW * 0.6f
-            previewPuck.frame++
+            previewRenderer.frame++
             val puckY = cy - bounceOffset()
-            previewPuck.x = cx
-            previewPuck.y = puckY
-            previewPuck.radius = pr
-            previewPuck.setFill(theme.primary)
-            previewPuck.setStroke(theme.secondary)
-            val (skin, _) = BallStyleFactory.build(type, theme)
-            previewPuck.skin = skin
+            previewRenderer.x = cx
+            previewRenderer.y = puckY
+            previewRenderer.radius = pr
+            previewRenderer.fillColor = theme.primary
+            previewRenderer.strokeColor = theme.secondary
+            previewRenderer.baseFillColor = theme.primary
+            previewRenderer.skin = BallStyleFactory.buildStyle(type, theme).skin
+            previewRenderer.tail = tail
+            previewRenderer.effect = null
+            previewRenderer.effectEnabled = false
 
             // Card background + border
             canvas.drawRoundRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH,
@@ -106,9 +108,8 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
             canvas.drawRoundRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH,
                 Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, border)
 
-            // Plan 02 draw order: tail → puck → name label
-            tail?.renderForPreview(canvas, previewPuck, shielded = false, launched = false, baseFillColor = theme.primary)
-            previewPuck.drawTo(canvas)
+            // z-index sort in renderer handles tail-behind-body draw order
+            previewRenderer.draw(canvas)
 
             label.textSize = Settings.screenRatio * 0.6f
             canvas.drawText(type.name, cx, cy + halfH - Settings.screenRatio * 0.4f, label)

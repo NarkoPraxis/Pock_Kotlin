@@ -62,7 +62,7 @@ constructor() : this(0f, 0f, 0f, Color.BLACK, Color.BLACK)
 //        strokePaint.apply { alpha = 50 }
     }
 
-    fun setFill(fill: Int) {
+    open fun setFill(fill: Int) {
         fillColor = fill
         fillPaint.apply { color = fillColor }
     }

@@ -8,10 +8,10 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import enums.BallType
-import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import utility.PaintBucket
 import utility.Storage
@@ -30,7 +30,7 @@ class BallUnlockView @JvmOverloads constructor(
     // Plan 03: lockFill circle removed — puck body is already solid black for locked balls
     private val lockPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; isAntiAlias = true; strokeCap = Paint.Cap.ROUND }
 
-    private val previewPuck = Puck(0f, 0f, 0f, Color.WHITE, Color.WHITE)
+    private val previewRenderer = PuckRenderer()
 
     // Plan 02: per-cell bounce state
     private var bouncingIndex: Int = -1
@@ -50,6 +50,10 @@ class BallUnlockView @JvmOverloads constructor(
 
     private val columns: Int = 2
     private val rows: Int = (BallType.values().size + columns - 1) / columns
+
+    // Per-cell warm/cold toggle; default mirrors the original left=warm, right=cold layout
+    private val warmFlags = BooleanArray(BallType.values().size) { i -> i % 2 == 0 }
+    private fun themeForCell(i: Int): ColorTheme = if (warmFlags[i]) ColorTheme.Warm else ColorTheme.Cold
 
     private fun ratio(): Float = max(1f, kotlin.math.min(width, height) / 18f)
     private fun cellSize(): Float = (width - ratio() * 2f) / columns - ratio() * 0.5f
@@ -87,8 +91,7 @@ class BallUnlockView @JvmOverloads constructor(
             tails?.forEach { it.clear() }
             val types = BallType.values()
             tails = Array(types.size) { i ->
-                val theme = if (i % 2 == 0) ColorTheme.Warm else ColorTheme.Cold
-                BallStyleFactory.build(types[i], theme).second
+                BallStyleFactory.buildStyle(types[i], themeForCell(i)).tail
             }
             tailsBuiltForProgress = progress
         }
@@ -113,15 +116,16 @@ class BallUnlockView @JvmOverloads constructor(
         if (bouncingIndex >= 0) bounceFrame++
 
         val types = BallType.values()
-        val cs = cellSize()
-        // Plan 01: use ratio() * 1.2f to match in-game ball size at screenRatio scale
         val pr = ratio() * 1.2f
+
+        previewRenderer.effectEnabled = false
+        previewRenderer.effect = null
 
         for (i in types.indices) {
             val b = cellBounds(i)
             if (b[3] < 0 || b[1] > height) continue
             val type = types[i]
-            val theme = if (i % 2 == 0) ColorTheme.Warm else ColorTheme.Cold
+            val theme = themeForCell(i)
 
             val cx = (b[0] + b[2]) / 2f
             // cell center Y offset upward slightly (like the popup)
@@ -139,30 +143,28 @@ class BallUnlockView @JvmOverloads constructor(
             cardBorder.strokeWidth = ratio() * 0.24f
             canvas.drawRoundRect(b[0], b[1], b[2], b[3], ratio() * 0.4f, ratio() * 0.4f, cardBorder)
 
-            // Set up previewPuck for this slot
+            // Configure previewRenderer for this slot
             val unlocked = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
-            val (skin, _) = BallStyleFactory.build(type, theme)
-            previewPuck.x = cx
-            previewPuck.y = puckY
-            previewPuck.radius = pr
-            previewPuck.frame = bounceFrame
-            previewPuck.setFill(theme.primary)
-            previewPuck.setStroke(theme.secondary)
-            previewPuck.skin = skin
-            previewPuck.isPlaceholder = !unlocked
+            val style = BallStyleFactory.buildStyle(type, theme)
+            previewRenderer.x = cx
+            previewRenderer.y = puckY
+            previewRenderer.radius = pr
+            previewRenderer.frame = bounceFrame
+            previewRenderer.fillColor = theme.primary
+            previewRenderer.strokeColor = theme.secondary
+            previewRenderer.baseFillColor = theme.primary
+            previewRenderer.skin = style.skin
+            // Only show tail for the currently bouncing cell
+            previewRenderer.tail = if (i == bouncingIndex) tails?.get(i) else null
+            previewRenderer.preview = !unlocked
 
-            // 3. Puck body
-            previewPuck.drawTo(canvas)
+            // 2. Draw puck (z-index sort handles tail-behind-body ordering)
+            previewRenderer.draw(canvas)
 
-            // 2. Tail render (only when this ball is bouncing)
-            if (i == bouncingIndex) {
-                tails?.get(i)?.renderForPreview(canvas, previewPuck, shielded = false, launched = false, baseFillColor = theme.primary)
-            }
-
-            // 4. Lock overlay
+            // 3. Lock overlay
             if (!unlocked) drawLock(canvas, cx, puckY, pr)
 
-            // 5. Name label + status (static — not affected by bounce)
+            // 4. Name label + status (static — not affected by bounce)
             label.textSize = ratio() * 0.7f
             canvas.drawText(type.name, cx, b[3] - ratio() * 0.85f, label)
             sublabel.textSize = ratio() * 0.45f
@@ -224,12 +226,19 @@ class BallUnlockView @JvmOverloads constructor(
                     for (i in types.indices) {
                         val b = cellBounds(i)
                         if (downX >= b[0] && downX <= b[2] && downY >= b[1] && downY <= b[3]) {
-                            if (bouncingIndex != i) {
+                            if (bouncingIndex == i) {
+                                // Second tap on the already-bouncing cell: toggle warm/cold theme
+                                warmFlags[i] = !warmFlags[i]
+                                tails?.getOrNull(i)?.clear()
+                                tails?.set(i, BallStyleFactory.buildStyle(types[i], themeForCell(i)).tail)
+                                bounceFrame = 0
+                            } else {
+                                // First tap or switching to a new cell
                                 tails?.getOrNull(bouncingIndex)?.clear()
+                                tails?.getOrNull(i)?.clear()
+                                bouncingIndex = i
+                                bounceFrame = 0
                             }
-                            tails?.getOrNull(i)?.clear()
-                            bouncingIndex = i
-                            bounceFrame = 0
                             break
                         }
                     }

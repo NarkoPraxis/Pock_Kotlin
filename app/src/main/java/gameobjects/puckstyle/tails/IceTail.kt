@@ -1,12 +1,10 @@
 package gameobjects.puckstyle.tails
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
-import gameobjects.Puck
-import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
 class IceTail(override val theme: ColorTheme) : TailRenderer {
@@ -17,11 +15,11 @@ class IceTail(override val theme: ColorTheme) : TailRenderer {
     private val maxShards = 120
     private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 
-    private val coreColor = if (theme.isWarm) Color.rgb(255, 210, 220) else Color.rgb(210, 250, 245)
-    private val midColor = if (theme.isWarm) Color.rgb(255, 170, 160) else Color.rgb(120, 220, 200)
+    private val coreColor = if (theme.isWarm) android.graphics.Color.rgb(255, 210, 220) else android.graphics.Color.rgb(210, 250, 245)
+    private val midColor = if (theme.isWarm) android.graphics.Color.rgb(255, 170, 160) else android.graphics.Color.rgb(120, 220, 200)
 
-    override fun render(canvas: Canvas, puck: Puck, shielded: Boolean, launched: Boolean, baseFillColor: Int) {
-        shards.addLast(Shard(puck.x, puck.y, puck.radius * 1.0f, 1f))
+    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+        shards.addLast(Shard(renderer.x, renderer.y, renderer.radius * 1.0f, 1f))
         while (shards.size > maxShards) shards.removeFirst()
 
         val it = shards.iterator()

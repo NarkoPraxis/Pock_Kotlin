@@ -60,7 +60,7 @@ class Player(
     init {
         this.resetLocation = Point(puck.x, puck.y)
         setPuckStroke(puck.strokeColor)
-        finger.setAlpha(50) //todo: get the correct colors so this isn't done through alpha anymore
+        finger.setAlpha(50)
     }
 
     private val debug = Paint().apply {
@@ -92,33 +92,23 @@ class Player(
 
     var fx: Float
         get() = finger.x
-        set(value) {
-            finger.x = value
-        }
+        set(value) { finger.x = value }
 
     var fy: Float
         get() = finger.y
-        set(value) {
-            finger.y = value
-        }
+        set(value) { finger.y = value }
 
     var px: Float
         get() = puck.x
-        set(value) {
-            puck.x = value
-        }
+        set(value) { puck.x = value }
 
     var py: Float
         get() = puck.y
-        set(value) {
-            puck.y = value
-        }
+        set(value) { puck.y = value }
 
     var pRadius: Float
         get() = puck.radius
-        set(value) {
-            puck.radius = value
-        }
+        set(value) { puck.radius = value }
 
     val power: Float
         get() = puck.movement.power + puck.launch.power
@@ -140,81 +130,57 @@ class Player(
         }
 
         finger.setLocation(puck.x, puck.y)
-        puck.currentCharge = charge
-        puck.frame++
+
+        // Sync all renderer state before drawing
+        val renderer = puck.renderer
+        renderer.frame++
+        renderer.currentCharge = charge
+        renderer.shielded = shielded
+        renderer.launched = isLaunched
+        renderer.baseFillColor = puckFillColor
+        renderer.chargePowerLocked = chargePowerLocked
+        renderer.isHigh = isHigh
+        renderer.isFlingHeld = isFlingHeld
+        renderer.flingStartX = flingStart.x
+        renderer.flingStartY = flingStart.y
+        renderer.flingCurrentX = flingCurrent.x
+        renderer.flingCurrentY = flingCurrent.y
+        renderer.effectEnabled = !disableEffects
+
         if (chargePowerLocked) overchargeFrames++ else overchargeFrames = 0
         if (preparingToTeleport || isTeleporting) {
             drawTeleport(canvas)
         } else {
             puck.drawTo(canvas)
-            puck.tail.render(canvas, puck, shielded, isLaunched, puckFillColor)
         }
 
         if (finger != previousFingerLocation || puck != previousPuckLocation) {
             touchLocked = false
             shrinkTicker.reset()
         }
-//        if (!disableEffects && !touchLocked && movementSpeed == 0f && touch != TouchState.Down && finger == previousFingerLocation) {
-//            bonusCountdown += Settings.chargeIncreaseRate * 2
-//
-//            if (bonusCountdown > Settings.sweetSpotMin && bonusCountdown <= Settings.sweetSpotMax) {
-//                shrinkTicker.tick
-//                canvas.drawCircle(puck.x, puck.y,puck.radius * shrinkTicker.ratio, puck.strokePaint)
-//                canvas.drawCircle(puck.x, puck.y, puck.radius , puck.bonusPaint)
-//            }
-//            else if (bonusCountdown <= Settings.sweetSpotMax) {
-//                canvas.drawCircle(puck.x, puck.y,puck.radius * (bonusCountdown / Settings.sweetSpotMax), puck.strokePaint)
-//            }
-//            else {
-//                touchLocked = true
-//                bonusCountdown = 0f
-//            }
-//        }
-//        else {
-//            bonusCountdown = 0f
-//        }
-
-
-
-
-//        val direction = directionToFinger()
-//        canvas.drawCircle(finger.x - direction.x * finger.radius, finger.y - direction.y * finger.radius, 10f, debug)
-
-        if (!disableEffects) {
-            puck.launchEffect.draw(canvas, this)
-        }
 
         previousFingerLocation.x = fx
         previousFingerLocation.y = fy
         previousPuckLocation.x = px
         previousPuckLocation.y = py
-
-//
-//        canvas.drawLine(puck.x, puck.y, (puck.movement.direction.x * puck.movement.power* 10) + puck.x,  (puck.movement.direction.y * puck.movement.power * 10) + puck.y, movementPaint )
-//        canvas.drawLine(puck.x, puck.y, (puck.launch.direction.x * puck.launch.power* 10) + puck.x,  (puck.launch.direction.y * puck.launch.power * 10) + puck.y, launchPaint )
-
-//        canvas.drawText("bcd: $bonusCountdown", finger.x, finger.y, debugText)
-//        canvas.drawText(if (bonusMovement) "BONUS" else "", finger.x, finger.y + 40, debugText)
-//        launchTo.drawTo(canvas)
     }
 
     private fun drawTeleport(canvas: Canvas) {
         if (preparingToTeleport) {
             prepareTicker.tick
             puck.drawTo(pRadius, canvas)
-//            canvas.drawCircle(px, py, pRadius * prepareTicker.ratio, teleportPaint)
             canvas.drawArc(px - pRadius, py - pRadius, px + pRadius, py + pRadius,
                 0f, 360f * prepareTicker.ratio, false, teleportPaint)
             if (prepareTicker.finished) {
                 preparingToTeleport = false
                 disappearing = true
                 prepareTicker.reset()
-                puck.tail.clear()
+                puck.renderer.tail?.clear()
             }
         }
         if (disappearing) {
             puck.drawTo(pRadius * teleportTicker.ratio, canvas)
-            canvas.drawCircle(px, py, pRadius* teleportTicker.ratio, teleportPaint)
+            canvas.drawCircle(px, py, pRadius * teleportTicker.ratio, teleportPaint)
             if (teleportTicker.tick) {
                 disappearing = false
                 reappearing = true
@@ -223,7 +189,7 @@ class Player(
             }
         } else if (reappearing) {
             puck.drawTo(pRadius - (pRadius * teleportTicker.ratio), canvas)
-            canvas.drawCircle(px, py, pRadius* teleportTicker.ratio, teleportPaint)
+            canvas.drawCircle(px, py, pRadius * teleportTicker.ratio, teleportPaint)
             if (teleportTicker.tick) {
                 stopTeleportation()
             }
@@ -248,15 +214,15 @@ class Player(
         puck.setStroke(color)
     }
 
-    fun notLocked() : Boolean {
+    fun notLocked(): Boolean {
         return touch != TouchState.Locked || motion == MotionStates.Free
     }
 
-    fun pucksIntersect(player: Player) : Boolean {
+    fun pucksIntersect(player: Player): Boolean {
         return puck.intersects(player.puck)
     }
 
-    fun directionToFinger() : Point {
+    fun directionToFinger(): Point {
         return puck.directionTo(finger)
     }
 
@@ -269,21 +235,20 @@ class Player(
         puck.clearForces()
     }
 
-    private fun shouldBounce(nextLocation: Point, nextDirection: Point) : Boolean {
+    private fun shouldBounce(nextLocation: Point, nextDirection: Point): Boolean {
         val nextX = nextLocation.x
         val nextY = nextLocation.y
         val leftConstraint = Settings.screenLeft + puck.radius
         val rightConstraint = Settings.screenRight - puck.radius
         val topConstraint = (if (puck.launch.hasPower) Settings.screenTop else Settings.topGoalBottom) + puck.radius
-        val bottomConstraint = (if (puck.launch.hasPower) Settings.screenBottom else Settings.bottomGoalTop ) - puck.radius
+        val bottomConstraint = (if (puck.launch.hasPower) Settings.screenBottom else Settings.bottomGoalTop) - puck.radius
         val savedDirection = Point(nextDirection.x, nextDirection.y)
 
         if (nextX < leftConstraint) {
             nextDirection.x = -nextDirection.x
             bounceDirection = Direction.LEFT
             Sounds.playWallSound(puck.y)
-        }
-        else if (nextX > rightConstraint) {
+        } else if (nextX > rightConstraint) {
             nextDirection.x = -nextDirection.x
             bounceDirection = Direction.RIGHT
             Sounds.playWallSound(puck.y)
@@ -292,21 +257,16 @@ class Player(
         if (nextY < topConstraint) {
             nextDirection.y = -nextDirection.y
             bounceDirection = Direction.TOP
-//            preparingToTeleport = true
-//            disableEffects = true
             Sounds.playGoalSound(puck.x)
-        }
-        else if (nextY > bottomConstraint) {
+        } else if (nextY > bottomConstraint) {
             nextDirection.y = -nextDirection.y
             bounceDirection = Direction.BOTTOM
-//            preparingToTeleport = true
-//            disableEffects = true
             Sounds.playGoalSound(puck.x)
         }
         return savedDirection.x != nextDirection.x || savedDirection.y != nextDirection.y
     }
 
-    fun applyForces() : Boolean {
+    fun applyForces(): Boolean {
         val nextDirection = puck.getNextDirection()
         var nextLocation = puck + nextDirection
         movementSpeed = puck.distanceTo(nextLocation)
@@ -319,17 +279,16 @@ class Player(
         return false
     }
 
-    //exclusively for adjusting player position when player doesn't have control
-    fun moveTowardPoint(point: Point, maxSpeed: Float = 15f) : Boolean {
+    fun moveTowardPoint(point: Point, maxSpeed: Float = 15f): Boolean {
         val dir = puck.directionTo(point)
         val dist = puck.distanceTo(point)
         var adjusted = dist * Settings.basePuckDistanceModifier
         adjusted = if (adjusted > maxSpeed) maxSpeed else if (adjusted < Settings.minPuckSpeed) Settings.minPuckSpeed else adjusted
 
-        return if (dist  < 5f ) {
+        return if (dist < 5f) {
             puck.setLocation(point.x, point.y)
             true
-        }else {
+        } else {
             puck.setLocation(px + dir.x * adjusted, py + dir.y * adjusted)
             false
         }
@@ -353,7 +312,7 @@ class Player(
         }
     }
 
-    fun releaseCharge() : Boolean {
+    fun releaseCharge(): Boolean {
         shouldReleaseCharge = false
         shielded = false
         val wasOvercharged = chargePowerLocked
@@ -366,7 +325,7 @@ class Player(
         val power = if (wasOvercharged) minOf(basePower, Settings.sweetSpotMax * 0.5f) else basePower
         puck.movement = Force(direction, power)
         puck.shrinkTicker.reset()
-        puck.launchEffect.onRelease(this, shielded)
+        puck.renderer.effect?.onRelease(puck.x, puck.y, puck.radius, shielded)
         charge = 0f
         chargePowerLocked = false
         flingReleaseDir = null
