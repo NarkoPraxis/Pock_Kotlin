@@ -193,9 +193,13 @@ class BallSelectionPopup(val isHigh: Boolean) {
         if (!dragging) bounceFrame++
 
         // Shared renderer config: no effect in popup
+        // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
+        // is set by initializeSettings(), so the baked-in value is 0f.
         previewRenderer.effectEnabled = false
         previewRenderer.effect = null
         previewRenderer.radius = pr
+        previewRenderer.strokePaint.strokeWidth = Settings.strokeWidth
+        previewRenderer.chargePaint.strokeWidth = Settings.strokeWidth
 
         canvas.save()
         canvas.clipRect(

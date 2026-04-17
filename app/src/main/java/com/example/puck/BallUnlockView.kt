@@ -120,6 +120,10 @@ class BallUnlockView @JvmOverloads constructor(
 
         previewRenderer.effectEnabled = false
         previewRenderer.effect = null
+        // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
+        // is set by initializeSettings(), so the baked-in value is 0f.
+        previewRenderer.strokePaint.strokeWidth = ratio() / 4f
+        previewRenderer.chargePaint.strokeWidth = ratio() / 4f
 
         for (i in types.indices) {
             val b = cellBounds(i)
