@@ -7,16 +7,17 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import gameobjects.puckstyle.CachedShaderSkin
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 
 class IceSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
 
-    private val centerColor = if (theme.isWarm) Color.rgb(255, 230, 235) else Color.rgb(220, 255, 250)
-    private val midColor = if (theme.isWarm) Color.rgb(255, 180, 160) else Color.rgb(120, 220, 200)
-    private val edgeColor = if (theme.isWarm) Color.rgb(230, 120, 140) else Color.rgb(60, 160, 140)
+    private val centerColor = theme.primary
+    private val midColor = Palette.lerpColor(theme.primary, Color.WHITE, 0.55f)
+    private val edgeColor = Color.WHITE
 
     private val rimStroke = Paint().apply {
-        color = if (theme.isWarm) Color.rgb(255, 220, 220) else Color.rgb(210, 255, 255)
+        color = Color.WHITE
         isAntiAlias = true
         style = Paint.Style.STROKE
     }
