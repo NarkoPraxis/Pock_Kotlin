@@ -13,6 +13,9 @@ class RainbowTail(override val theme: ColorTheme) : TailRenderer {
     private var points: MutableList<DrawablePoint>? = null
     private val hueOffset = Palette.themeHue(theme)
 
+    override val zIndex: Int
+        get() = 1
+
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
         if (points == null) points = MutableList(if (renderer.shielded) 80 else 20) { DrawablePoint(renderer.x, renderer.y) }
         val points = points!!
@@ -22,7 +25,7 @@ class RainbowTail(override val theme: ColorTheme) : TailRenderer {
             val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
             val color = when {
                 renderer.shielded -> PaintBucket.effectColor
-                renderer.currentCharge > 0 -> Palette.cyclingPurple(renderer.frame + i * 2)
+                renderer.currentCharge > 80 -> theme.accent
                 else -> Palette.hsvThemed(renderer.frame * 4f + hueOffset - i * 15f)
             }
             points[i].setColor(color)

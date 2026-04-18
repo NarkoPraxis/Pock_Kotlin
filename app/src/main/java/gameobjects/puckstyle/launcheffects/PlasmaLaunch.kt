@@ -37,7 +37,7 @@ class PlasmaLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
 
     private fun drawOrb(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         val r = currentRenderer.radius * (0.5f + 0.05f * sin(frame * 0.5f))
-        val outer = if (ph == ChargePhase.Overcharged) theme.secondary else Palette.cyclingPurple(frame)
+        val outer = if (ph == ChargePhase.Overcharged) theme.secondary else theme.accent
         core.color = outer
         core.alpha = 140
         canvas.drawCircle(cx, cy, r * 1.3f, core)
@@ -61,7 +61,7 @@ class PlasmaLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             val len = currentRenderer.radius * (0.6f + rand.nextFloat() * 0.6f)
             val ex = cx + cos(angle) * len
             val ey = cy + sin(angle) * len
-            arc.color = if (ph == ChargePhase.Overcharged) theme.secondary else Palette.cyclingPurple(frame + i)
+            arc.color = if (ph == ChargePhase.Overcharged) theme.secondary else theme.accent
             arc.alpha = 200
             canvas.drawLine(cx, cy, ex, ey, arc)
         }

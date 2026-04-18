@@ -35,7 +35,7 @@ class NeonLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val half = paddleHalfLength()
         val perpX = -aY
         val perpY = aX
-        val glowColor = if (ph == ChargePhase.Overcharged) theme.secondary else Palette.cyclingPurple(frame)
+        val glowColor = if (ph == ChargePhase.Overcharged) theme.secondary else theme.accent
         halo.color = Palette.withAlpha(glowColor, 70)
         halo.strokeWidth = Settings.strokeWidth * 3.2f
         canvas.drawLine(cx - perpX * half, cy - perpY * half, cx + perpX * half, cy + perpY * half, halo)
