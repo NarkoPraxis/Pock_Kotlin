@@ -13,8 +13,8 @@ import kotlin.random.Random
 class PlasmaSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
 
     private val core = Color.WHITE
-    private val mid = if (theme.isWarm) Color.rgb(255, 170, 60) else Color.rgb(120, 220, 255)
-    private val edge = if (theme.isWarm) Color.rgb(255, 60, 40) else Color.rgb(40, 100, 255)
+    private val mid = theme.primary
+    private val edge = theme.secondary
 
     private val arc = Paint().apply { color = core; isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
 
