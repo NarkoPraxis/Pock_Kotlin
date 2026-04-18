@@ -1,6 +1,7 @@
 package gameobjects.puckstyle.tails
 
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
@@ -12,7 +13,7 @@ import kotlin.math.exp
 class PixelTail(override val theme: ColorTheme) : TailRenderer {
 
     private class Block(var x: Float = 0f, var y: Float = 0f)
-    private class Ring(val x: Float, val y: Float, var size: Float, var alpha: Int, val isFront: Boolean)
+    private class Ring(val x: Float, val y: Float, var size: Float, var alpha: Int, val isFront: Boolean, val growRate: Float, val color: Int)
 
     private var blocks: MutableList<Block>? = null
     private val rings = mutableListOf<Ring>()
@@ -20,12 +21,16 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
     private val ringPaint = Paint().apply { isAntiAlias = false; style = Paint.Style.STROKE }
 
     private var wasLaunched  = false
+    private var wasShielded  = false
     private var pulseFade    = 0f
     private var shiftCounter = 0
+    private var rippleIndex  = -1   // collision ripple; -1 = idle
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        val justHit = renderer.launched && !wasLaunched
+        val justHit      = renderer.launched && !wasLaunched
+        val justShielded = renderer.shielded && !wasShielded
         wasLaunched = renderer.launched
+        wasShielded = renderer.shielded
         if (justHit) pulseFade = 1f
         pulseFade *= 0.82f
 
@@ -44,22 +49,35 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
 
         if (justHit) {
             rings.clear()
-            blocks.forEachIndexed { i, b ->
-                rings += Ring(b.x, b.y, computeSize(i, renderer.radius), 200, isFront = (i == 0))
-            }
+            rippleIndex = 0
+        }
+
+        // single purple front ring on shield earned — identical to the collision front ring except color
+        if (justShielded) {
+            val b = blocks[0]
+            rings += Ring(b.x, b.y, computeSize(0, renderer.radius), 200,
+                isFront = true, growRate = renderer.radius * 0.09f, color = PaintBucket.effectColor)
+        }
+
+        // collision ripple — one ring per frame, propagating down the tail
+        if (rippleIndex in blocks.indices) {
+            val b = blocks[rippleIndex]
+            rings += Ring(b.x, b.y, computeSize(rippleIndex, renderer.radius), 200,
+                isFront = (rippleIndex == 0), growRate = renderer.radius * 0.09f, color = renderer.strokeColor)
+            rippleIndex++
+            if (rippleIndex >= blocks.size) rippleIndex = -1
         }
 
         // rings drawn first — behind all blocks
         ringPaint.strokeWidth = renderer.radius * 0.3f
-        val growRate = renderer.radius * 0.09f
         val iter = rings.iterator()
         while (iter.hasNext()) {
             val r = iter.next()
-            r.size  += growRate
+            r.size  += r.growRate
             r.alpha -= if (r.isFront) 6 else 12
             if (r.alpha <= 0) { iter.remove(); continue }
             val half = r.size / 2f
-            ringPaint.color = Palette.withAlpha(renderer.strokeColor, r.alpha)
+            ringPaint.color = Palette.withAlpha(r.color, r.alpha)
             canvas.drawRect(r.x - half, r.y - half, r.x + half, r.y + half, ringPaint)
         }
 
@@ -88,7 +106,7 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
         else   -> (180f * (1f - (i - 3).toFloat() / (totalSize - 3).coerceAtLeast(1))).toInt().coerceAtLeast(0)
     }
 
-    override fun clear() { blocks = null; rings.clear(); wasLaunched = false; pulseFade = 0f; shiftCounter = 0 }
+    override fun clear() { blocks = null; rings.clear(); wasLaunched = false; wasShielded = false; pulseFade = 0f; shiftCounter = 0; rippleIndex = -1 }
 
     override fun fillTo(x: Float, y: Float) {
         blocks?.forEach { it.x = x; it.y = y }
