@@ -87,7 +87,7 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
             previewRenderer.frame++
             // Gentle hover float (smooth sin, not snap-bounce) keeps tails visible.
             // Amplitude must exceed ball radius (~screenRatio*0.84) so trail clears the ball boundary.
-            val hoverOffset = Settings.screenRatio * 0.5f * sin(2 * Math.PI.toFloat() * previewRenderer.frame / 90f)
+            val hoverOffset = Settings.screenRatio * 1.2f * sin(2 * Math.PI.toFloat() * previewRenderer.frame / 90f)
             val puckY = cy - hoverOffset
             previewRenderer.x = cx
             previewRenderer.y = puckY
@@ -112,8 +112,11 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
             canvas.drawRoundRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH,
                 Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, border)
 
-            // z-index sort in renderer handles tail-behind-body draw order
+            // Clip tail to card bounds so particles don't escape into the play area
+            canvas.save()
+            canvas.clipRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH)
             previewRenderer.draw(canvas)
+            canvas.restore()
 
             label.textSize = Settings.screenRatio * 0.6f
             canvas.drawText(type.name, cx, cy + halfH - Settings.screenRatio * 0.4f, label)

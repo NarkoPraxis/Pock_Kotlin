@@ -15,6 +15,7 @@ import utility.PaintBucket
 import utility.Storage
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 class BallSelectionPopup(val isHigh: Boolean) {
 
@@ -29,7 +30,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
     private val previewRenderer = PuckRenderer()
 
     private var snapIndex: Int = 0
-    private var bounceFrame: Int = 0
 
     // Per-slot skins+tails — one per BallType, skin cached so randomized seeds don't re-roll each frame
     private val slotTails: Array<TailRenderer?> = arrayOfNulls(BallType.values().size)
@@ -59,7 +59,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
         val current = if (isHigh) Settings.highBallType else Settings.lowBallType
         scrollX = current.ordinal * slotW
         snapIndex = current.ordinal
-        bounceFrame = 0
         dragging = false
         slotTails[snapIndex]?.clear()   // reseed selected tail from current puck position on open
     }
@@ -122,7 +121,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     scrollX = index * slotW
                     if (index != snapIndex) {
                         snapIndex = index
-                        bounceFrame = 0
                         slotTails[snapIndex]?.clear()
                     }
                     trySelect(types[index])
@@ -132,7 +130,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     scrollX = snap * slotW
                     if (snap != snapIndex) {
                         snapIndex = snap
-                        bounceFrame = 0
                         slotTails[snapIndex]?.clear()
                     }
                     trySelect(types[snapIndex])
@@ -147,12 +144,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
         val max = (BallType.values().size - 1) * slotW
         if (scrollX < 0f) scrollX = 0f
         if (scrollX > max) scrollX = max
-    }
-
-    private fun bounceOffset(): Float {
-        val period = 40f
-        val amplitude = Settings.screenRatio * 2.5f
-        return abs(amplitude * kotlin.math.sin(2 * Math.PI.toFloat() * bounceFrame / period))
     }
 
     fun drawTo(canvas: Canvas) {
@@ -177,8 +168,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         border.strokeWidth = Settings.screenRatio * 0.25f  // Plan 06: thicker border
         canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, border)
 
-        // Plan 02: increment bounce frame once per draw (not per slot)
-        if (!dragging) bounceFrame++
+        previewRenderer.frame++
 
         // Shared renderer config: no effect in popup
         // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
@@ -223,43 +213,29 @@ class BallSelectionPopup(val isHigh: Boolean) {
                 slotSkins[i] = style.skin
             }
 
-            // Non-center pucks drawn inside clip without bounce; center drawn after restore.
-            // When dragging, snap non-selected tail history to current position (no trailing).
-            if (!isCenter || dragging) {
-                previewRenderer.x = slotCenterX
-                previewRenderer.y = cy
-                if (dragging && i != snapIndex) slotTails[i]?.fillTo(slotCenterX, cy)
-                previewRenderer.fillColor = theme.primary
-                previewRenderer.strokeColor = theme.secondary
-                previewRenderer.preview = !isUnlocked(type)
-                previewRenderer.skin = slotSkins[i]
-                previewRenderer.tail = slotTails[i]
-                previewRenderer.draw(canvas)
-                if (!isUnlocked(type)) drawLock(canvas, slotCenterX, cy, pr)
-            }
-        }
+            val amplitude = if (isCenter) Settings.screenRatio * 0.9f else Settings.screenRatio * 0.45f
+            val phase = i * 0.7f
+            val puckY = cy + amplitude * sin(2 * Math.PI.toFloat() * previewRenderer.frame / 80f + phase)
 
-        canvas.restore()  // end clip
-
-        // Plan 02: draw center (bouncing) ball AFTER clip restore so it can overflow the strip
-        if (!dragging) {
-            val centerType = types[snapIndex.coerceIn(0, types.size - 1)]
-            val slotCenterX = cx - scrollX + snapIndex * slotW
-            val puckY = cy - bounceOffset()
-
-            previewRenderer.frame++
+            canvas.save()
+            canvas.clipRect(
+                slotCenterX - slotW / 2f, cy - halfH + Settings.screenRatio * 0.15f,
+                slotCenterX + slotW / 2f, cy + halfH - Settings.screenRatio * 0.15f
+            )
             previewRenderer.x = slotCenterX
             previewRenderer.y = puckY
             previewRenderer.fillColor = theme.primary
             previewRenderer.strokeColor = theme.secondary
             previewRenderer.baseFillColor = theme.primary
-            previewRenderer.preview = !isUnlocked(centerType)
-            previewRenderer.skin = slotSkins[snapIndex.coerceIn(0, types.size - 1)]
-            // Tail injected for center ball — z-index sort handles draw order
-            previewRenderer.tail = slotTails[snapIndex.coerceIn(0, types.size - 1)]
+            previewRenderer.preview = !isUnlocked(type)
+            previewRenderer.skin = slotSkins[i]
+            previewRenderer.tail = slotTails[i]
             previewRenderer.draw(canvas)
-            if (!isUnlocked(centerType)) drawLock(canvas, slotCenterX, puckY, pr)
+            if (!isUnlocked(type)) drawLock(canvas, slotCenterX, puckY, pr)
+            canvas.restore()
         }
+
+        canvas.restore()  // end global clip
 
         canvas.restore()
     }

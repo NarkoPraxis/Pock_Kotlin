@@ -1,7 +1,6 @@
 package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import gameobjects.puckstyle.ColorTheme
@@ -12,15 +11,23 @@ import gameobjects.puckstyle.PuckSkin
 class PrismSkin(override val theme: ColorTheme) : PuckSkin {
 
     private val facet = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-    private val edge = Paint().apply { color = Color.WHITE; isAntiAlias = true; style = Paint.Style.STROKE }
+    private val edge = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
     private val path = Path()
 
-    private val hues = if (theme.isWarm) floatArrayOf(0f, 30f, 340f, 15f, 50f, 5f)
-                       else floatArrayOf(200f, 240f, 280f, 180f, 220f, 260f)
+    private val baseHue = Palette.themeHue(theme)
+    private val hues = floatArrayOf(
+        baseHue,
+        baseHue + 40f,
+        baseHue - 30f,
+        baseHue + 20f,
+        baseHue + 60f,
+        baseHue - 15f
+    )
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
         val sides = 6
         val angleOffset = renderer.frame * 0.8f
+        val osc = kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f
         canvas.save()
         canvas.translate(renderer.x, renderer.y)
         canvas.rotate(angleOffset)
@@ -33,10 +40,11 @@ class PrismSkin(override val theme: ColorTheme) : PuckSkin {
             path.lineTo(kotlin.math.cos(a1) * renderer.radius, kotlin.math.sin(a1) * renderer.radius)
             path.lineTo(kotlin.math.cos(a2) * renderer.radius, kotlin.math.sin(a2) * renderer.radius)
             path.close()
-            facet.color = Palette.hsv(hues[i % hues.size] + renderer.frame * 2f, 0.8f, 0.95f)
+            facet.color = Palette.hsvThemed(hues[i % hues.size] + osc)
             canvas.drawPath(path, facet)
         }
         edge.strokeWidth = renderer.strokePaint.strokeWidth * 0.6f
+        edge.color = Palette.hsvHighlight(baseHue - osc)
 
         path.reset()
         for (i in 0 until sides) {

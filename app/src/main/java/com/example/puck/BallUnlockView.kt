@@ -112,8 +112,12 @@ class BallUnlockView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        val savedRatio = Settings.screenRatio
+        val savedStrokeWidth = Settings.strokeWidth
+        Settings.screenRatio = ratio()
+        Settings.strokeWidth = ratio() / 4f
         ensurePaints()
-        if (!paintsReady) return
+        if (!paintsReady) { Settings.screenRatio = savedRatio; Settings.strokeWidth = savedStrokeWidth; return }
 
         // re-apply light/dark colors each frame
         cardBg.color = if (Storage.darkMode) Color.argb(220, 22, 22, 34) else Color.argb(220, 232, 232, 248)
@@ -122,11 +126,7 @@ class BallUnlockView @JvmOverloads constructor(
 
         ensureTails()
 
-        val savedRatio = Settings.screenRatio
-        Settings.screenRatio = ratio()
-
-        // advance bounce frame once per draw (not per cell)
-        if (bouncingIndex >= 0) bounceFrame++
+        bounceFrame++
 
         val types = BallType.values()
         val pr = ratio() * 1.2f
@@ -147,12 +147,9 @@ class BallUnlockView @JvmOverloads constructor(
             val cx = (b[0] + b[2]) / 2f
             // cell center Y offset upward slightly (like the popup)
             val baseCy = (b[1] + b[3]) / 2f - ratio() * 0.4f
-            val bounce = if (i == bouncingIndex) {
-                val period = 40f
-                val amplitude = ratio() * 1.1f
-                abs(amplitude * sin(2 * Math.PI.toFloat() * bounceFrame / period))
-            } else 0f
-            val puckY = baseCy - bounce
+            val amplitude = if (i == bouncingIndex) ratio() * 1.1f else ratio() * 0.5f
+            val phase = i * 0.7f
+            val puckY = baseCy + amplitude * sin(2 * Math.PI.toFloat() * bounceFrame / 80f + phase)
 
             // 1. Card background + border
             canvas.drawRoundRect(b[0], b[1], b[2], b[3], ratio() * 0.4f, ratio() * 0.4f, cardBg)
@@ -170,14 +167,14 @@ class BallUnlockView @JvmOverloads constructor(
             previewRenderer.strokeColor = theme.secondary
             previewRenderer.baseFillColor = theme.primary
             previewRenderer.skin = skins?.get(i)
-            // Show tails for all cells; snap non-bouncing tails to position during scroll
-            val tail = tails?.get(i)
-            if (dragging && i != bouncingIndex) tail?.fillTo(cx, baseCy)
-            previewRenderer.tail = tail
+            previewRenderer.tail = tails?.get(i)
             previewRenderer.preview = !unlocked
 
-            // 2. Draw puck (z-index sort handles tail-behind-body ordering)
+            // 2. Draw puck clipped to card bounds so tail can't escape into adjacent cells
+            canvas.save()
+            canvas.clipRect(b[0], b[1], b[2], b[3])
             previewRenderer.draw(canvas)
+            canvas.restore()
 
             // 3. Lock overlay
             if (!unlocked) drawLock(canvas, cx, puckY, pr)
@@ -191,6 +188,7 @@ class BallUnlockView @JvmOverloads constructor(
         }
 
         Settings.screenRatio = savedRatio
+        Settings.strokeWidth = savedStrokeWidth
     }
 
     private fun unlockHint(type: BallType): String = when (type) {
