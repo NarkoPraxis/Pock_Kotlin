@@ -10,12 +10,13 @@ import gameobjects.puckstyle.PuckSkin
 class RainbowSkin(override val theme: ColorTheme) : PuckSkin {
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val stroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
-    private val hueOffset = if (theme.isWarm) 0f else 200f
+    private val hueOffset = Palette.themeHue(theme)
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
+        val baseHue = renderer.frame * 4f + hueOffset
         fill.color = if (renderer.currentCharge > 0) Palette.cyclingPurple(renderer.frame)
-                     else Palette.hsv(renderer.frame * 4f + hueOffset, 1f, 1f)
-        stroke.color = Palette.hsv(renderer.frame * 4f + hueOffset + 30f, 1f, 0.8f)
+                     else Palette.hsvThemed(baseHue)
+        stroke.color = Palette.hsvHighlight(-(renderer.frame * 4f) + hueOffset + 180f)
         stroke.strokeWidth = renderer.strokePaint.strokeWidth
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, fill)
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, stroke)

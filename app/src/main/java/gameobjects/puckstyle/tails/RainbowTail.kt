@@ -11,7 +11,7 @@ import utility.PaintBucket
 
 class RainbowTail(override val theme: ColorTheme) : TailRenderer {
     private var points: MutableList<DrawablePoint>? = null
-    private val hueOffset = if (theme.isWarm) 0f else 200f
+    private val hueOffset = Palette.themeHue(theme)
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
         if (points == null) points = MutableList(if (renderer.shielded) 80 else 20) { DrawablePoint(renderer.x, renderer.y) }
@@ -23,7 +23,7 @@ class RainbowTail(override val theme: ColorTheme) : TailRenderer {
             val color = when {
                 renderer.shielded -> PaintBucket.effectColor
                 renderer.currentCharge > 0 -> Palette.cyclingPurple(renderer.frame + i * 2)
-                else -> Palette.hsv(renderer.frame * 4f + hueOffset - i * 15f, 1f, 1f)
+                else -> Palette.hsvThemed(renderer.frame * 4f + hueOffset - i * 15f)
             }
             points[i].setColor(color)
             points[i].size = renderer.radius * 1.1f - Settings.strokeWidth - renderer.radius * ((i - 1).coerceAtLeast(0).toFloat() / (points.size - 1))
