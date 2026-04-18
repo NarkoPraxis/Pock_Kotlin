@@ -2,20 +2,20 @@ package gameobjects.puckstyle.tails
 
 import android.graphics.Canvas
 import android.graphics.Color
-import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
+import kotlin.math.pow
 import shapes.DrawablePoint
 import utility.PaintBucket
 
 class MetalTail(override val theme: ColorTheme) : TailRenderer {
     private var points: MutableList<DrawablePoint>? = null
     private val grey = Color.rgb(140, 140, 150)
-    private val darkGrey = Color.rgb(70, 70, 80)
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        if (points == null) points = MutableList(if (renderer.shielded) 80 else 20) { DrawablePoint(renderer.x, renderer.y) }
+        if (points == null) points = MutableList(if (renderer.shielded) 80 else 12) { DrawablePoint(renderer.x, renderer.y) }
         val points = points!!
         for (i in points.size - 1 downTo 0) {
             if (i - 1 >= 0) points[i] = points[i - 1]
@@ -23,12 +23,12 @@ class MetalTail(override val theme: ColorTheme) : TailRenderer {
             val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
             val color = when {
                 renderer.shielded -> PaintBucket.effectColor
-                i % 2 == 0 -> grey
-                else -> darkGrey
+                ratio < 0.5f -> Palette.lerpColor(grey, theme.primary, ratio * 2f)
+                else -> Palette.lerpColor(theme.primary, Color.WHITE, (ratio - 0.5f) * 2f)
             }
             points[i].setColor(color)
-            points[i].size = renderer.radius * 1.1f - Settings.strokeWidth - renderer.radius * ((i - 1).coerceAtLeast(0).toFloat() / (points.size - 1))
-            points[i].setAlpha((255f * (1 - ratio)).toInt())
+            points[i].size = renderer.radius * 0.95f
+            points[i].setAlpha((255f * (1f - ratio).pow(1.5f)).toInt())
             points[i].drawTo(canvas)
         }
     }

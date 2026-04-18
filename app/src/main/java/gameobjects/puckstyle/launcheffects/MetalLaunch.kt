@@ -44,8 +44,9 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         ph: ChargePhase, fill: Float
     ) {
         canvas.save()
+        // +90° so the rectangle face is perpendicular to aim (paddle, not spear)
         val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
-        canvas.rotate(angle, cx, cy)
+        canvas.rotate(angle + 90f, cx, cy)
 
         val halfLen = paddleHalfLength() * 0.9f
         val halfThick = currentRenderer.radius * 0.28f
