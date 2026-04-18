@@ -107,7 +107,8 @@ object Storage {
 
     private fun readBallType(key: String, default: BallType): BallType {
         val stored = ad.getString(key, null) ?: return default
-        return try { BallType.valueOf(stored) } catch (e: IllegalArgumentException) { default }
+        val migrated = if (stored == "Spiral") "Spinner" else stored
+        return try { BallType.valueOf(migrated) } catch (e: IllegalArgumentException) { default }
     }
 
     // --- App settings (from PreferenceManager) ---

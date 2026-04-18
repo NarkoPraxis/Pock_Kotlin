@@ -7,7 +7,7 @@ enum class BallType {
     Fire,
     Ice,
     Galaxy,
-    Spiral,
+    Spinner,
     Metal,
     Pixel,
     Rainbow,

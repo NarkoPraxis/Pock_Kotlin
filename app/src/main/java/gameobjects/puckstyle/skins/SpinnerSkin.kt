@@ -7,7 +7,7 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 
-class SpiralSkin(override val theme: ColorTheme) : PuckSkin {
+class SpinnerSkin(override val theme: ColorTheme) : PuckSkin {
 
     private val baseFill = Paint().apply { color = theme.primary; isAntiAlias = true; style = Paint.Style.FILL }
     private val arm = Paint().apply { color = theme.secondary; isAntiAlias = true; style = Paint.Style.FILL }

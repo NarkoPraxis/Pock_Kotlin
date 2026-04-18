@@ -32,7 +32,7 @@ class PuckRenderer {
     // Charge visual state — read by reactive skins (Neon, Ghost, Rainbow) and tails
     var currentCharge: Float = 0f
 
-    // Physics state — SpiralSkin uses movement direction and power for rotation speed
+    // Physics state — SpinnerSkin uses movement direction and power for rotation speed
     var movementDirX: Float = 0f
     var movementDirY: Float = 0f
     var movementPower: Float = 0f

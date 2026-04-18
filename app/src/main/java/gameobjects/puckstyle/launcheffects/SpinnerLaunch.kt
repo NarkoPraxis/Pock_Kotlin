@@ -8,7 +8,7 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 
 /** Spinning shuriken cross — two bars crossed, rotating while charging. */
-class SpiralLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
 
     private val bar = Paint().apply {
         isAntiAlias = true

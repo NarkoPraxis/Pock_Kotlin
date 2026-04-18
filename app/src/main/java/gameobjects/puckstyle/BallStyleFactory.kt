@@ -17,7 +17,7 @@ object BallStyleFactory {
             BallType.Fire    -> BallStyle(FireSkin(theme),    FireTail(theme),    FireLaunch(theme))
             BallType.Ice     -> BallStyle(IceSkin(theme),     IceTail(theme),     IceLaunch(theme))
             BallType.Galaxy  -> BallStyle(GalaxySkin(theme),  GalaxyTail(theme),  GalaxyLaunch(theme))
-            BallType.Spiral  -> BallStyle(SpiralSkin(theme),  SpiralTail(theme),  SpiralLaunch(theme))
+            BallType.Spinner -> BallStyle(SpinnerSkin(theme), SpinnerTail(theme), SpinnerLaunch(theme))
             BallType.Metal   -> BallStyle(MetalSkin(theme),   MetalTail(theme),   MetalLaunch(theme))
             BallType.Pixel   -> BallStyle(PixelSkin(theme),   PixelTail(theme),   PixelLaunch(theme))
             BallType.Rainbow -> BallStyle(RainbowSkin(theme), RainbowTail(theme), RainbowLaunch(theme))
