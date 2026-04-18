@@ -3,33 +3,100 @@ package gameobjects.puckstyle.skins
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
+import utility.PaintBucket
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.random.Random
+import androidx.core.graphics.withTranslation
 
 class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
 
-    private val yellow = Color.rgb(255, 220, 80)
-    private val darkFill = Paint().apply { color = Color.rgb(15, 10, 30); isAntiAlias = true; style = Paint.Style.FILL }
-    private val rim = Paint().apply { color = theme.primary; isAntiAlias = true; style = Paint.Style.STROKE }
-    private val star = Paint().apply { color = Color.WHITE; isAntiAlias = true; style = Paint.Style.FILL }
+    private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+    private val rim = Paint().apply { color = theme.primary; isAntiAlias = true; style = Paint.Style.FILL }
+    private val star = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+    private val starPath = Path()
+    private var lastRadius = -1f
 
-    private val starSeeds = List(12) { Triple(Random.nextFloat(), Random.nextFloat(), Random.nextFloat()) }
+    // FloatArray: [angle, radiusFraction, alphaFraction, sizeFraction] — pre-seeded edge noise blobs
+    private val edgeDots: List<FloatArray> = List(28) {
+        floatArrayOf(
+            Random.nextFloat() * Math.PI.toFloat() * 2f,
+            0.62f + Random.nextFloat() * 0.28f,
+            0.25f + Random.nextFloat() * 0.55f,
+            0.055f + Random.nextFloat() * 0.09f
+        )
+    }
+
+    // FloatArray: [angularPos, distSeed, twinklePhase, angularDrift, twinkleSpeed]
+    private val starSeeds: List<FloatArray> = List(24) {
+        floatArrayOf(
+            Random.nextFloat() * Math.PI.toFloat() * 2f,
+            Random.nextFloat(),
+            Random.nextFloat() * Math.PI.toFloat() * 2f,
+            (Random.nextFloat() - 0.5f) * 0.048f,
+            0.157f + Random.nextFloat() * 0.157f
+        )
+    }
+
+    private fun ensureShader(radius: Float, theme: ColorTheme) {
+        if (radius == lastRadius) return
+        val darkCenter = Color.argb(255, 0, 0, 0)
+        val preThemeEdge  = Palette.withAlpha(theme.primary, 130)
+        val themeEdge = Palette.withAlpha(theme.primary, 60)
+        val gone = Palette.withAlpha(theme.primary, 0)
+        fill.shader = RadialGradient(
+            0f, 0f, radius,
+            intArrayOf(darkCenter, Color.argb(160, 0,0,0), preThemeEdge, themeEdge, themeEdge),
+            floatArrayOf(0f, 0.5f, 0.7f, 0.9f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        lastRadius = radius
+    }
+
+    private fun drawStar(canvas: Canvas, cx: Float, cy: Float, outerR: Float, innerR: Float, paint: Paint) {
+        starPath.reset()
+        for (i in 0 until 8) {
+            val angle = (i * 45f - 90f) * Math.PI.toFloat() / 180f
+            val r = if (i % 2 == 0) outerR else innerR
+            val px = cx + cos(angle) * r
+            val py = cy + sin(angle) * r
+            if (i == 0) starPath.moveTo(px, py) else starPath.lineTo(px, py)
+        }
+        starPath.close()
+        canvas.drawPath(starPath, paint)
+    }
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, darkFill)
-        for ((sx, sy, tw) in starSeeds) {
-            val ang = sx * Math.PI.toFloat() * 2
-            val dist = sy * renderer.radius * 0.75f
-            val px = renderer.x + kotlin.math.cos(ang) * dist
-            val py = renderer.y + kotlin.math.sin(ang) * dist
-            val twinkle = (kotlin.math.sin((renderer.frame * 0.1f) + tw * 10f) + 1f) * 0.5f
-            star.alpha = (120 + 135 * twinkle).toInt()
-            canvas.drawCircle(px, py, renderer.radius * 0.06f * (0.6f + twinkle * 0.8f), star)
+        ensureShader(renderer.radius, theme)
+
+//        rim.strokeWidth = renderer.strokePaint.strokeWidth * 0.8f
+//        canvas.drawCircle(renderer.x, renderer.y, renderer.radius , rim)
+//        renderer.chargePaint.color = PaintBucket.effectColor
+
+        canvas.withTranslation(renderer.x, renderer.y) {
+            drawCircle(0f, 0f, renderer.radius * 0.85f, fill)
         }
-        rim.strokeWidth = renderer.strokePaint.strokeWidth * 0.8f
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, rim)
-        renderer.chargePaint.color = yellow
+
+        for (seed in starSeeds) {
+            seed[0] += seed[3]
+            val ang = seed[0]
+            val dist = (seed[1] * 0.72f + 0.05f) * renderer.radius
+            val px = renderer.x + cos(ang) * dist
+            val py = renderer.y + sin(ang) * dist
+            val twinkle = (sin(renderer.frame * seed[4] + seed[2]) + 1f) * 0.5f
+            star.alpha = (110 + 145 * twinkle).toInt()
+            star.color = Palette.withAlpha(theme.primary, star.alpha)
+            val outerR = renderer.radius * 0.12f * (0.6f + twinkle * 0.8f)
+            drawStar(canvas, px, py, outerR, outerR * 0.38f, star)
+        }
+
+
     }
 }
