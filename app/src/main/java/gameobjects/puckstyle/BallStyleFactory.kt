@@ -32,8 +32,16 @@ object BallStyleFactory {
     fun isUnlocked(type: BallType, unlockProgress: Int): Boolean {
         return when (type) {
             BallType.Classic, BallType.Chicken -> true
+            BallType.Neon    -> unlockProgress >= 10
+            BallType.Ghost   -> unlockProgress >= 20
+            BallType.Fire    -> unlockProgress >= 30
+            BallType.Ice     -> unlockProgress >= 40
+            BallType.Galaxy  -> unlockProgress >= 50
+            BallType.Spinner -> unlockProgress >= 60
+            BallType.Metal   -> unlockProgress >= 70
+            BallType.Pixel   -> unlockProgress >= 80
+            BallType.Rainbow -> unlockProgress >= 90
             BallType.Prism, BallType.Plasma -> unlockProgress >= 100
-            else -> unlockProgress >= type.ordinal * 10
         }
     }
 

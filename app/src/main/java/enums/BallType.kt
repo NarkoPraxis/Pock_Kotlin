@@ -2,6 +2,7 @@ package enums
 
 enum class BallType {
     Classic,
+    Chicken,
     Neon,
     Ghost,
     Fire,
@@ -12,6 +13,5 @@ enum class BallType {
     Pixel,
     Rainbow,
     Prism,
-    Plasma,
-    Chicken
+    Plasma
 }
