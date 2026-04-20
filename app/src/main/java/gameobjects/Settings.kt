@@ -21,7 +21,7 @@ object Settings {
     var lowScorePopTicker = Ticker(20, true)
 
     var canScoreWallProgress: Float = 0f
-    var canScoreWallHiding: Boolean = false
+    var canScore: Boolean = false
 
     // Wall sits inside the goal zone; its inner edge touches the play-area boundary.
     // Center is half a thickness inside the goal. As progress goes 0→1 the thickness

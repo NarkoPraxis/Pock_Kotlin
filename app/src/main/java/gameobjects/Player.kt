@@ -26,7 +26,6 @@ class Player(
     var previousPuckLocation = Point(0f, 0f)
     var fingerTargetLocation = Point(0f, 0f)
     var score = 0
-    var canScore = false
     var launchTo = Point(0f,0f)
     var launchFrom = Point(0f, 0f)
     var motion = MotionStates.Free
@@ -228,7 +227,6 @@ class Player(
 
     fun score() {
         if (score < Settings.pointsToWin) score++
-        canScore = false
     }
 
     fun clearPower() {
@@ -240,8 +238,9 @@ class Player(
         val nextY = nextLocation.y
         val leftConstraint = Settings.screenLeft + puck.radius
         val rightConstraint = Settings.screenRight - puck.radius
-        val topConstraint = (if (puck.launch.hasPower) Settings.screenTop else Settings.topGoalBottom) + puck.radius
-        val bottomConstraint = (if (puck.launch.hasPower) Settings.screenBottom else Settings.bottomGoalTop) - puck.radius
+        val canEnterGoal = puck.launch.hasPower && Settings.canScore
+        val topConstraint = (if (canEnterGoal) Settings.screenTop else Settings.topGoalBottom) + puck.radius
+        val bottomConstraint = (if (canEnterGoal) Settings.screenBottom else Settings.bottomGoalTop) - puck.radius
         val savedDirection = Point(nextDirection.x, nextDirection.y)
 
         if (nextX < leftConstraint) {

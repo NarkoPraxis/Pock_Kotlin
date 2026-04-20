@@ -238,8 +238,8 @@ object Logic {
             highPlayer.score = 0
             lowPlayer.disableEffects = false
             highPlayer.disableEffects = false
-            lowPlayer.canScore = false
-            highPlayer.canScore = false
+            Settings.canScore = false
+            Settings.canScoreWallProgress = 0f
             lowPlayer.lockedPointerId = -1
             highPlayer.lockedPointerId = -1
             lowPlayer.shielded = false
@@ -488,7 +488,7 @@ object Logic {
     fun updateCanScoreWall() {
         if (!this::highPlayer.isInitialized) return
         val delta = 0.4f
-        Settings.canScoreWallProgress = if (Settings.canScoreWallHiding)
+        Settings.canScoreWallProgress = if (Settings.canScore)
             (Settings.canScoreWallProgress + delta).coerceAtMost(1f)
         else
             (Settings.canScoreWallProgress - delta).coerceAtLeast(0f)
@@ -527,7 +527,7 @@ object Logic {
     }
 
     private fun checkScored(scoring: Player, other: Player) : Boolean {
-        if (scoring.canScore && (other.py < Settings.topGoalBottom + other.pRadius || other.py > Settings.bottomGoalTop - other.pRadius)) {
+        if (Settings.canScore && (other.py < Settings.topGoalBottom + other.pRadius || other.py > Settings.bottomGoalTop - other.pRadius)) {
             val highGoal = other.py < Settings.topGoalBottom  + other.pRadius
             scoring.score()
             other.clearPower()
@@ -546,6 +546,8 @@ object Logic {
             setPuckColor(other, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor)
             setPuckColor(scoring, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor)
             Settings.gameState = GameState.Scored
+            Settings.canScore = false
+            Settings.canScoreWallProgress = 0f
             Sounds.playScoreSound(other.py)
             Effects.clearCollisionEffects()
             Effects.addScoreEffect(
@@ -555,8 +557,6 @@ object Logic {
                 highGoal
             )
             return true
-        } else if (other.motion == MotionStates.Free && other.py > Settings.topGoalBottom + other.pRadius && other.py < Settings.bottomGoalTop - other.pRadius) {
-            scoring.canScore = true
         }
         return false
     }

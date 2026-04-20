@@ -34,8 +34,8 @@ object Drawing {
 
         canScoreListener?.let { GameEvents.canScore.disconnect(it) }
         cantScoreListener?.let { GameEvents.cantScore.disconnect(it) }
-        canScoreListener = { Settings.canScoreWallHiding = true }
-        cantScoreListener = { Settings.canScoreWallHiding = false }
+        canScoreListener = { Settings.canScore = true }
+        cantScoreListener = { Settings.canScore = false }
         GameEvents.canScore.connect(canScoreListener!!)
         GameEvents.cantScore.connect(cantScoreListener!!)
     }
@@ -419,6 +419,24 @@ object Drawing {
         canvas.drawText(text, x, y, textPaint) //bottom score
     }
 
+    fun drawRules(canvas: Canvas) {
+        val rules = listOf(
+            "Rules:",
+            "1. No Finger Wrestling",
+            "2. Bounce to Score",
+            "3. Purple is Power"
+        )
+        val paint = PaintBucket.rulesTextPaint
+        val textX = Settings.screenRatio * 2f
+        val lineHeight = Settings.screenRatio * 1.8f
+        val startY = Settings.bottomGoalTop - Settings.screenRatio * 11f
+
+        rules.forEachIndexed { i, line ->
+            val y = startY + i * lineHeight
+            mirrorText(canvas, line, textX, y, paint)
+        }
+    }
+
     fun drawGoalMenuHints(canvas: Canvas) {
         val cx = Settings.screenWidth / 2f
         val padding = Settings.screenRatio / 2
@@ -440,8 +458,7 @@ object Drawing {
 //        canvas.drawText("low Y: ${lowPlayer.puck.y}", 300f, 250f, debugText)
 //        canvas.drawText("scoreRange: ${Settings.topGoalBottom + highPlayer.pRadius}", 300f, 300f, debugText)
 //        canvas.drawText("low T: ${Settings.bottomGoalTop - highPlayer.pRadius}", 300f, 350f, debugText)
-//        canvas.drawText("high can score: ${highPlayer.canScore}", 300f, 400f, debugText)
-//        canvas.drawText("low can score: ${lowPlayer.canScore}", 300f, 450f, debugText)
+//        canvas.drawText("can score: ${Settings.canScore}", 300f, 400f, debugText)
 //        canvas.drawText("both: ${bothMovingCollisions}", 300f, 500f, debugText)
 //        canvas.drawText("bottomRight: ${bottomRight}", screenWidth - 300, 550f, debugText)
 //        canvas.drawText("bottomLeft: ${bottomLeft}", screenWidth - 300, 600f, debugText)

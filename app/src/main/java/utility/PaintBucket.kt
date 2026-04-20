@@ -39,6 +39,7 @@ object PaintBucket {
     lateinit var highPlayerHighlightPaint: Paint
     lateinit var lowPlayerHighlightPaint: Paint
     lateinit var menuHintPaint: Paint
+    lateinit var rulesTextPaint: Paint
 
     // Plan 03: shared paint for locked-ball silhouette placeholder — always dark grey, no initialization needed
     val placeholderPaint: Paint = Paint().apply {
@@ -216,6 +217,13 @@ object PaintBucket {
             textSize = Settings.screenRatio * 1.2f
             textAlign = Paint.Align.CENTER
             typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+
+        rulesTextPaint = Paint().apply {
+            color = if (Storage.darkMode) backgroundColor else Color.BLACK
+            textSize = Settings.screenRatio * 1.4f
+            style = Paint.Style.FILL
+            isAntiAlias = true
         }
 
     }

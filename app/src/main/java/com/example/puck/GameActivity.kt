@@ -111,10 +111,8 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
                 Logic.pauseMenu.drawTo(canvas)
             } else {
-                val textX = Settings.screenRatio * 2
-                val textY = (6 * Settings.middleY) / 5f
                 Drawing.drawCanScoreWalls(canvas)
-                Drawing.mirrorText(canvas,"Tap When Ready",textX, textY, PaintBucket.textPaint)
+                Drawing.drawRules(canvas)
 
                 Logic.highBallCard.drawTo(canvas)
                 Logic.lowBallCard.drawTo(canvas)
