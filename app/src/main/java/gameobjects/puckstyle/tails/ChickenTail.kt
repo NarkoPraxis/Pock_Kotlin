@@ -126,6 +126,12 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
             canvas.save()
             canvas.rotate(f.angle, f.x, f.y)
             canvas.drawOval(f.x - fw, f.y - fh, f.x + fw, f.y + fh, paint)
+            // Quill stem along long axis
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = fw * 0.35f
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.color = Palette.withAlpha(theme.secondary, f.alpha)
+            canvas.drawLine(f.x, f.y + fh * 1.3f, f.x, f.y - fh * 0.7f, paint)
             canvas.restore()
         }
     }

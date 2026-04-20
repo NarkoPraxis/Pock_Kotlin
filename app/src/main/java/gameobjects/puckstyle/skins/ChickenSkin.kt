@@ -65,6 +65,12 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
         drawWing(canvas, r, wingAngle, left = true)
         drawWing(canvas, r, wingAngle, left = false)
 
+        // 3b. Head feathers — drawn after wings so they sit on top of body highlight
+        drawHeadFeather(canvas, r,  0f,          -r * 0.88f,   0f, 1.5f)
+        drawHeadFeather(canvas, r, -r * 0.2f,   -r * 0.85f, -28f, 1.1f)
+        drawHeadFeather(canvas, r,  r * 0.2f,   -r * 0.85f,  28f, 1.1f)
+
+
         // 4. Eyes — ~1/3 larger than previous iteration
         val eyeR = r * 0.25f
         val eyeX = r * 0.30f
@@ -104,6 +110,31 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
         paint.color = theme.secondary
         canvas.drawPath(beakPath, paint)
 
+        canvas.restore()
+    }
+
+    private fun drawHeadFeather(canvas: Canvas, r: Float, attachX: Float, attachY: Float, rotDeg: Float, scale: Float) {
+        val fw = r * 0.18f * scale
+        val fh = r * 0.46f * scale
+        canvas.save()
+        canvas.rotate(rotDeg, attachX, attachY)
+        // Secondary outer shape
+        wingSecondary.reset()
+        wingSecondary.moveTo(attachX - fw * 0.7f,  attachY)
+        wingSecondary.quadTo(attachX - fw,          attachY - fh * 0.55f, attachX,         attachY - fh)
+        wingSecondary.quadTo(attachX + fw,          attachY - fh * 0.55f, attachX + fw * 0.7f, attachY)
+        wingSecondary.close()
+        paint.style = Paint.Style.FILL
+        paint.color = theme.secondary
+        canvas.drawPath(wingSecondary, paint)
+        // Primary inner shape — base extends below attachment to merge into body
+        wingPrimary.reset()
+        wingPrimary.moveTo(attachX - fw * 0.42f, attachY + fh * 0.18f)
+        wingPrimary.quadTo(attachX - fw * 0.75f, attachY - fh * 0.48f, attachX,         attachY - fh * 0.88f)
+        wingPrimary.quadTo(attachX + fw * 0.75f, attachY - fh * 0.48f, attachX + fw * 0.42f, attachY + fh * 0.18f)
+        wingPrimary.close()
+        paint.color = theme.primary
+        canvas.drawPath(wingPrimary, paint)
         canvas.restore()
     }
 
