@@ -24,7 +24,17 @@ object BallStyleFactory {
             BallType.Prism   -> BallStyle(PrismSkin(theme),   PrismTail(theme),   PrismLaunch(theme))
             BallType.Plasma   -> BallStyle(PlasmaSkin(theme),   PlasmaTail(theme),   PlasmaLaunch(theme))
             BallType.Chicken  -> BallStyle(ChickenSkin(theme),  ChickenTail(theme),  ChickenLaunch(theme))
+            BallType.Random   -> buildRandomStyle(theme)
         }
+    }
+
+    private fun buildRandomStyle(theme: ColorTheme): BallStyle {
+        val pool = BallType.entries.filter { it != BallType.Random }
+        val skin   = buildStyle(pool.random(), theme).skin
+        val tail   = buildStyle(pool.random(), theme).tail
+        val effect = buildStyle(pool.random(), theme).effect
+        val tailZ  = if (kotlin.random.Random.nextBoolean()) -1 else 1
+        return BallStyle(skin, ZIndexTailWrapper(tail, tailZ), effect)
     }
 
     fun displayName(type: BallType): String = type.name
@@ -41,7 +51,7 @@ object BallStyleFactory {
             BallType.Metal   -> unlockProgress >= 70
             BallType.Pixel   -> unlockProgress >= 80
             BallType.Rainbow -> unlockProgress >= 90
-            BallType.Prism, BallType.Plasma -> unlockProgress >= 100
+            BallType.Prism, BallType.Plasma, BallType.Random -> unlockProgress >= 100
         }
     }
 

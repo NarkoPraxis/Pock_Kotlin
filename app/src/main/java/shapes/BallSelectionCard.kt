@@ -72,15 +72,35 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
             // Full tall card: puck (slow hover float) + name label at bottom
 
             // Clear tail when transitioning from popup-open so it reseeds at current position
-            if (wasPopupOpen) { tail?.clear(); wasPopupOpen = false }
+            if (wasPopupOpen) {
+                tail?.clear()
+                wasPopupOpen = false
+                if (type == BallType.Random) cachedType = null  // force re-read of new random combo
+            }
 
             // Rebuild tail only when type changes (preserves particle history during animation)
             if (cachedType != type) {
                 tail?.clear()
                 cachedType = type
-                val style = BallStyleFactory.buildStyle(type, theme)
-                tail = style.tail
-                skin = style.skin
+                if (type == BallType.Random) {
+                    val resolvedSkin = popup.resolvedRandomSkin()
+                    val resolvedTail = popup.resolvedRandomTail()
+                    if (resolvedSkin != null && resolvedTail != null) {
+                        skin = resolvedSkin
+                        tail = resolvedTail
+                    } else {
+                        // Popup never opened (e.g. app restarted with Random selected) — build fallback
+                        val fallback = BallStyleFactory.buildStyle(BallType.Random, theme)
+                        skin = fallback.skin
+                        tail = fallback.tail
+                        if (isHigh) Settings.highResolvedStyle = fallback
+                        else Settings.lowResolvedStyle = fallback
+                    }
+                } else {
+                    val style = BallStyleFactory.buildStyle(type, theme)
+                    tail = style.tail
+                    skin = style.skin
+                }
             }
 
             val pr = halfW * 0.6f

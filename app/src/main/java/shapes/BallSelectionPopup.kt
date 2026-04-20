@@ -6,6 +6,7 @@ import android.graphics.Paint
 import android.view.MotionEvent
 import enums.BallType
 import gameobjects.Settings
+import gameobjects.puckstyle.BallStyle
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
@@ -34,6 +35,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
     // Per-slot skins+tails — one per BallType, skin cached so randomized seeds don't re-roll each frame
     private val slotTails: Array<TailRenderer?> = arrayOfNulls(BallType.values().size)
     private val slotSkins: Array<PuckSkin?> = arrayOfNulls(BallType.values().size)
+    private val slotStyles: Array<BallStyle?> = arrayOfNulls(BallType.values().size)
     private val slotTailTypes: Array<BallType?> = arrayOfNulls(BallType.values().size)
 
     val w: Float get() = Settings.screenWidth.toFloat()
@@ -61,6 +63,21 @@ class BallSelectionPopup(val isHigh: Boolean) {
         snapIndex = current.ordinal
         dragging = false
         slotTails[snapIndex]?.clear()   // reseed selected tail from current puck position on open
+
+        val randomIdx = BallType.Random.ordinal
+        val popupTheme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
+        slotTails[randomIdx]?.clear()
+        val randomStyle = BallStyleFactory.buildStyle(BallType.Random, popupTheme)
+        slotTails[randomIdx]     = randomStyle.tail
+        slotSkins[randomIdx]     = randomStyle.skin
+        slotStyles[randomIdx]    = randomStyle
+        slotTailTypes[randomIdx] = BallType.Random
+
+        if (current == BallType.Random) {
+            if (isHigh) Settings.highResolvedStyle = randomStyle
+            else Settings.lowResolvedStyle = randomStyle
+            utility.Logic.applyBallStyles()
+        }
     }
 
     fun close() {
@@ -76,11 +93,21 @@ class BallSelectionPopup(val isHigh: Boolean) {
     // Plan 04: select ball in-place without closing popup; snap/drag both call this
     private fun trySelect(type: BallType): Boolean {
         if (!isUnlocked(type)) return false
-        if (isHigh) { Settings.highBallType = type; Storage.saveHighBallType(type) }
-        else { Settings.lowBallType = type; Storage.saveLowBallType(type) }
+        if (isHigh) {
+            Settings.highBallType = type
+            Storage.saveHighBallType(type)
+            Settings.highResolvedStyle = if (type == BallType.Random) slotStyles[BallType.Random.ordinal] else null
+        } else {
+            Settings.lowBallType = type
+            Storage.saveLowBallType(type)
+            Settings.lowResolvedStyle = if (type == BallType.Random) slotStyles[BallType.Random.ordinal] else null
+        }
         utility.Logic.applyBallStyles()
         return true
     }
+
+    fun resolvedRandomSkin(): PuckSkin?     = slotSkins[BallType.Random.ordinal]
+    fun resolvedRandomTail(): TailRenderer? = slotTails[BallType.Random.ordinal]
 
     fun hitTest(x: Float, y: Float): Boolean =
         x > cx - w / 2f && x < cx + w / 2f && y > cy - h / 2f && y < cy + h / 2f
@@ -209,8 +236,9 @@ class BallSelectionPopup(val isHigh: Boolean) {
                 slotTails[i]?.clear()
                 slotTailTypes[i] = type
                 val style = BallStyleFactory.buildStyle(type, theme)
-                slotTails[i] = style.tail
-                slotSkins[i] = style.skin
+                slotTails[i]  = style.tail
+                slotSkins[i]  = style.skin
+                slotStyles[i] = style
             }
 
             val amplitude = if (isCenter) Settings.screenRatio * 0.9f else Settings.screenRatio * 0.45f

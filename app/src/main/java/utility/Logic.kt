@@ -172,11 +172,13 @@ object Logic {
     }
 
     fun applyBallStyles() {
-        val highStyle = BallStyleFactory.buildStyle(Settings.highBallType, ColorTheme.Warm)
+        val highStyle = Settings.highResolvedStyle
+            ?: BallStyleFactory.buildStyle(Settings.highBallType, ColorTheme.Warm)
         highPlayer.puck.renderer.skin = highStyle.skin
         highPlayer.puck.renderer.tail = highStyle.tail
         highPlayer.puck.renderer.effect = highStyle.effect
-        val lowStyle = BallStyleFactory.buildStyle(Settings.lowBallType, ColorTheme.Cold)
+        val lowStyle = Settings.lowResolvedStyle
+            ?: BallStyleFactory.buildStyle(Settings.lowBallType, ColorTheme.Cold)
         lowPlayer.puck.renderer.skin = lowStyle.skin
         lowPlayer.puck.renderer.tail = lowStyle.tail
         lowPlayer.puck.renderer.effect = lowStyle.effect

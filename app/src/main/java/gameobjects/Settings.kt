@@ -2,11 +2,14 @@ package gameobjects
 
 import enums.BallType
 import enums.GameState
+import gameobjects.puckstyle.BallStyle
 import physics.Ticker
 
 object Settings {
     var highBallType: BallType = BallType.Classic
     var lowBallType: BallType = BallType.Classic
+    var highResolvedStyle: BallStyle? = null
+    var lowResolvedStyle: BallStyle? = null
     val scoreFlashEnabled = true
     val scoreBurstEnabled = true
     val scorePopEnabled = true
