@@ -39,6 +39,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
             Logic.updateCanScoreWall()
             when (Settings.gameState) {
                 GameState.BallSelection -> {
+                    Logic.updateReadyFill()
                 }
                 GameState.CountDown -> {
                     Logic.countDown()
@@ -111,6 +112,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
                 Logic.pauseMenu.drawTo(canvas)
             } else {
+                Drawing.drawReadyFill(canvas)
                 Drawing.drawCanScoreWalls(canvas)
                 Drawing.drawRules(canvas)
 

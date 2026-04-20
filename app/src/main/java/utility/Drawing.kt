@@ -419,6 +419,22 @@ object Drawing {
         canvas.drawText(text, x, y, textPaint) //bottom score
     }
 
+    fun drawReadyFill(canvas: Canvas) {
+        if (Logic.highIsHolding) {
+            canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.middleY, PaintBucket.readyHighPaint)
+        }
+        if (Logic.lowIsHolding) {
+            canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, Settings.screenHeight, PaintBucket.readyLowPaint)
+        }
+        val progress = Settings.readyProgress
+        if (progress > 0f) {
+            val playHalfHeight = Settings.middleY - Settings.topGoalBottom
+            val fillHeight = progress * playHalfHeight
+            canvas.drawRect(0f, Settings.middleY - fillHeight, Settings.screenWidth, Settings.middleY, PaintBucket.readyMergePaint)
+            canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, Settings.middleY + fillHeight, PaintBucket.readyMergePaint)
+        }
+    }
+
     fun drawRules(canvas: Canvas) {
         val rules = listOf(
             "Rules:",

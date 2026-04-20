@@ -40,6 +40,9 @@ object PaintBucket {
     lateinit var lowPlayerHighlightPaint: Paint
     lateinit var menuHintPaint: Paint
     lateinit var rulesTextPaint: Paint
+    lateinit var readyHighPaint: Paint
+    lateinit var readyLowPaint: Paint
+    lateinit var readyMergePaint: Paint
 
     // Plan 03: shared paint for locked-ball silhouette placeholder — always dark grey, no initialization needed
     val placeholderPaint: Paint = Paint().apply {
@@ -224,6 +227,21 @@ object PaintBucket {
             textSize = Settings.screenRatio * 1.4f
             style = Paint.Style.FILL
             isAntiAlias = true
+        }
+
+        readyHighPaint = Paint().apply {
+            color = highBallColor
+            alpha = 100
+            style = Paint.Style.FILL
+        }
+        readyLowPaint = Paint().apply {
+            color = lowBallColor
+            alpha = 100
+            style = Paint.Style.FILL
+        }
+        readyMergePaint = Paint().apply {
+            color = Color.argb(180, 130, 30, 200)
+            style = Paint.Style.FILL
         }
 
     }

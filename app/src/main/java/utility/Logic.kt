@@ -53,8 +53,11 @@ object Logic {
 
     lateinit var gameView: GameView
 
-    var highReady = false
-    var lowReady = false
+    private var highReadyHolderId: Int = -1
+    private var lowReadyHolderId: Int = -1
+    val highIsHolding: Boolean get() = highReadyHolderId != -1
+    val lowIsHolding: Boolean get() = lowReadyHolderId != -1
+    private val readyFillSeconds = 2f
 
     var winnerSoundHasBeenPlayed = false
 
@@ -118,8 +121,9 @@ object Logic {
         Settings.pauseGame = false
         Settings.gameOver = false
         Settings.playerPaused = false
-        highReady = false
-        lowReady = false
+        highReadyHolderId = -1
+        lowReadyHolderId = -1
+        Settings.readyProgress = 0f
         highPlayer = Player(
             Puck(Settings.ballRadius, Settings.screenWidth / 4f, Settings.middleY, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight / 5, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
@@ -156,14 +160,14 @@ object Logic {
         // Route each side independently so both players can interact simultaneously
         if (y < Settings.middleY) {
             if (highBallPopup.isOpen) {
-                if (isDown && !highBallPopup.hitTest(x, y) && highBallCard.hitTest(x, y)) { return true }
+                if (isDown && !highBallPopup.hitTest(x, y)) { highBallPopup.close(); return false }
                 if (highBallPopup.handleTouchEvent(action, x, y)) return true
             } else if (isDown && highBallCard.hitTest(x, y)) {
                 highBallPopup.open(); return true
             }
         } else {
             if (lowBallPopup.isOpen) {
-                if (isDown && !lowBallPopup.hitTest(x, y) && lowBallCard.hitTest(x, y)) { return true }
+                if (isDown && !lowBallPopup.hitTest(x, y)) { lowBallPopup.close(); return false }
                 if (lowBallPopup.handleTouchEvent(action, x, y)) return true
             } else if (isDown && lowBallCard.hitTest(x, y)) {
                 lowBallPopup.open(); return true
@@ -192,14 +196,54 @@ object Logic {
         Drawing.countDownProgressTicker.reset(3 * Storage.countdownFramesPerBeat)
     }
 
-    private fun markReady(isHigh: Boolean) {
-        if (Settings.gameState != GameState.BallSelection) return
-        if (highBallPopup.isOpen || lowBallPopup.isOpen) return
-        if (isHigh) highReady = true else lowReady = true
-        if (highReady && lowReady) {
-            canCollide = true
-            prepareCountDown()
-            Settings.gameState = GameState.CountDown
+    fun updateReadyFill() {
+        val rate = Settings.refreshRate / (readyFillSeconds * 1000f)
+        if (highIsHolding && lowIsHolding) {
+            Settings.readyProgress = (Settings.readyProgress + rate).coerceAtMost(1f)
+            if (Settings.readyProgress >= 1f) {
+                highReadyHolderId = -1
+                lowReadyHolderId = -1
+                Settings.readyProgress = 0f
+                canCollide = true
+                prepareCountDown()
+                Settings.gameState = GameState.CountDown
+            }
+        } else {
+            Settings.readyProgress = (Settings.readyProgress - rate).coerceAtLeast(0f)
+        }
+    }
+
+    private fun handleReadyHold(event: MotionEvent?, motionEvent: Int?) {
+        if (event == null || motionEvent == null) return
+        val maskedAction = motionEvent and MotionEvent.ACTION_MASK
+        when (maskedAction) {
+            MotionEvent.ACTION_DOWN -> {
+                if (event.y < Settings.middleY) {
+                    if (highReadyHolderId == -1) highReadyHolderId = event.getPointerId(0)
+                } else {
+                    if (lowReadyHolderId == -1) lowReadyHolderId = event.getPointerId(0)
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                val pointerId = event.getPointerId(0)
+                if (pointerId == highReadyHolderId) highReadyHolderId = -1
+                if (pointerId == lowReadyHolderId) lowReadyHolderId = -1
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                val idx = event.actionIndex
+                val pid = event.getPointerId(idx)
+                val ay = event.getY(idx)
+                if (ay < Settings.middleY) {
+                    if (highReadyHolderId == -1) highReadyHolderId = pid
+                } else {
+                    if (lowReadyHolderId == -1) lowReadyHolderId = pid
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                val pid = event.getPointerId(event.actionIndex)
+                if (pid == highReadyHolderId) highReadyHolderId = -1
+                if (pid == lowReadyHolderId) lowReadyHolderId = -1
+            }
         }
     }
 
@@ -250,8 +294,9 @@ object Logic {
             highPlayer.charge = 0f
             Settings.pauseGame = false
             Settings.gameOver = false
-            highReady = false
-            lowReady = false
+            highReadyHolderId = -1
+            lowReadyHolderId = -1
+            Settings.readyProgress = 0f
             GameEvents.gameReset.emit(Unit)
             Settings.gameState = GameState.BallSelection
         }
@@ -621,6 +666,12 @@ object Logic {
 
         if (interceptBallMenu(event, motionEvent)) return
 
+        if (Settings.gameState == GameState.BallSelection) {
+            if (pointerCount > 1) checkPauseGame(pointerCount, event!!.getY(0), event.getY(1))
+            if (!Settings.pauseGame) handleReadyHold(event, motionEvent)
+            return
+        }
+
         if (pointerCount > 1) {
             checkPauseGame(pointerCount, event!!.getY(0), event.getY(1))
 
@@ -638,11 +689,9 @@ object Logic {
                     if (actionY < Settings.middleY && highPlayer.lockedPointerId == -1) {
                         highPlayer.lockedPointerId = actionPointerId
                         startFling(highPlayer, actionX, actionY)
-                        markReady(true)
                     } else if (actionY > Settings.middleY && lowPlayer.lockedPointerId == -1) {
                         lowPlayer.lockedPointerId = actionPointerId
                         startFling(lowPlayer, actionX, actionY)
-                        markReady(false)
                     }
                 } else if (maskedAction == MotionEvent.ACTION_POINTER_UP) {
                     if (actionPointerId == highPlayer.lockedPointerId) {
@@ -728,7 +777,6 @@ object Logic {
                             lowPlayer.lockedPointerId = event.getPointerId(0)
                         }
                         startFling(lowPlayer, x, y)
-                        markReady(false)
                     }
                     if (motionEvent == MotionEvent.ACTION_UP) {
                         Sounds.playLowPlayerSound(lowPlayer.fx)
@@ -749,7 +797,6 @@ object Logic {
                             highPlayer.lockedPointerId = event.getPointerId(0)
                         }
                         startFling(highPlayer, x, y)
-                        markReady(true)
                     }
                     if (motionEvent == MotionEvent.ACTION_UP) {
                         Sounds.playHighPlayerSound(highPlayer.fx)
@@ -807,8 +854,9 @@ object Logic {
         Settings.unlockProgress = Storage.unlockProgress
         Settings.highPlayerArrow = Storage.highPlayerArrow
         Settings.lowPlayerArrow = Storage.lowPlayerArrow
-        highReady = false
-        lowReady = false
+        highReadyHolderId = -1
+        lowReadyHolderId = -1
+        Settings.readyProgress = 0f
         Drawing.countDownProgressTicker.reset()
         countDownTicker.reset()
         Settings.pauseGame = false
