@@ -78,10 +78,14 @@
                 android:defaultValue="false"
                 android:key="darkmode"
                 android:title="@string/darkmode_label" />
+        <Preference
+                android:key="calibrate_score"
+                android:title="Calibrate Score Position"
+                app:layout="@layout/preference_button_calibrate" />
     </PreferenceCategory>
 
     <Preference android:title="Restore Defaults"
-            android:summary=""
+            android:summary="Reset all settings and score positions"
             android:key="restore_defaults"/>
 
 </PreferenceScreen>

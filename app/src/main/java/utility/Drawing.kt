@@ -107,21 +107,23 @@ object Drawing {
         canvas.drawRect(0f, Settings.bottomGoalTop, Settings.screenWidth * countDownProgressTicker.ratio, Settings.screenHeight, PaintBucket.lowBallFillPaint)
     }
 
-    private fun drawScore(canvas: Canvas, player: Player, popTicker: Ticker) {
+    private fun drawScore(canvas: Canvas, player: Player, popTicker: Ticker, xOffset: Float = 0f) {
+        val paint = PaintBucket.alwaysBlackTextPaint
+        paint.textSize = Settings.topGoalBottom * 0.85f
         val xMargin = Settings.screenRatio * 3f
-        val yMargin = Settings.screenRatio / 2f + 20f
+        val yMargin = Settings.topGoalBottom * 0.2f
         val scoreText = "${player.score}"
-        val scoreX = xMargin
+        val scoreX = xMargin + xOffset
         val scoreY = Settings.screenHeight - yMargin
         if (Settings.scorePopEnabled && !popTicker.finished) {
             popTicker.tick
             val scale = 1f + sin(popTicker.ratio * Math.PI.toFloat())
             canvas.save()
             canvas.scale(scale, scale, scoreX, scoreY)
-            canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
+            canvas.drawText(scoreText, scoreX, scoreY, paint)
             canvas.restore()
         } else {
-            canvas.drawText(scoreText, scoreX, scoreY, PaintBucket.alwaysBlackTextPaint)
+            canvas.drawText(scoreText, scoreX, scoreY, paint)
         }
     }
 
@@ -147,11 +149,11 @@ object Drawing {
     fun drawScores(canvas: Canvas, highPlayer: Player, lowPlayer: Player) {
         canvas.save()
         canvas.scale(-1f, -1f, Settings.screenWidth / 2f, Settings.screenHeight / 2f)
-        drawScore(canvas, highPlayer, Settings.highScorePopTicker)
+        drawScore(canvas, highPlayer, Settings.highScorePopTicker, Settings.scoreOffsetHigh)
         checkWinner(canvas, highPlayer, lowPlayer)
         canvas.restore()
 
-        drawScore(canvas, lowPlayer, Settings.lowScorePopTicker)
+        drawScore(canvas, lowPlayer, Settings.lowScorePopTicker, Settings.scoreOffsetLow)
         checkWinner(canvas, lowPlayer, highPlayer)
     }
 

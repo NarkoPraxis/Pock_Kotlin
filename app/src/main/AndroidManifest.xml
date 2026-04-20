@@ -20,6 +20,10 @@
                 android:exported="false"
                 android:label="@string/title_activity_settings"
                 android:screenOrientation="portrait" />
+        <activity
+                android:name=".ScoreCalibrationActivity"
+                android:exported="false"
+                android:screenOrientation="portrait" />
 
         <meta-data
                 android:name="com.google.android.gms.ads.APPLICATION_ID"

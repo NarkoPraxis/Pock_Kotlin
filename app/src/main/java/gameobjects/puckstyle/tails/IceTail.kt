@@ -26,7 +26,7 @@ class IceTail(override val theme: ColorTheme) : TailRenderer {
         shards.addLast(Shard(
             x = renderer.x,
             y = renderer.y,
-            iceSize = renderer.radius * 1.0f,
+            iceSize = renderer.radius * 1.2f,
             puddleSize = renderer.radius * 0.3f,
             life = 1f
         ))
@@ -36,8 +36,12 @@ class IceTail(override val theme: ColorTheme) : TailRenderer {
         while (it.hasNext()) {
             val s = it.next()
             s.life -= 0.012f
-            s.iceSize *= 0.982f
-            s.puddleSize *= 1.2f
+            s.iceSize *= 0.95f
+            if (s.life > 0.6f) {
+                s.puddleSize *= 1.2f
+            } else {
+                s.puddleSize *= 0.99f
+            }
             s.puddleSize = s.puddleSize.coerceIn(0f, renderer.radius * 1.5f)
             if (s.life <= 0f) { it.remove(); continue }
 
@@ -47,8 +51,10 @@ class IceTail(override val theme: ColorTheme) : TailRenderer {
             canvas.drawCircle(s.x, s.y, s.puddleSize, paint)
 
             // Ice crystal layer on top — shrinking white circle
-            paint.color = Palette.withAlpha(Color.WHITE, 255)
-            canvas.drawCircle(s.x, s.y, s.iceSize, paint)
+            if (s.iceSize > renderer.radius * 0.05f) {
+                paint.color = Palette.withAlpha(Color.WHITE, 255)
+                canvas.drawCircle(s.x, s.y, s.iceSize, paint)
+            }
         }
     }
 

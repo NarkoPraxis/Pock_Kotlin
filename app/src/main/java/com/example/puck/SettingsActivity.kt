@@ -1,10 +1,12 @@
 package com.example.puck
 
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
+import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import com.google.android.material.appbar.MaterialToolbar
@@ -57,6 +59,24 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
     class SettingsFragment : PreferenceFragmentCompat() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
+        }
+
+        override fun onPreferenceTreeClick(preference: Preference): Boolean {
+            return when (preference.key) {
+                "calibrate_score" -> {
+                    startActivity(Intent(requireContext(), ScoreCalibrationActivity::class.java))
+                    true
+                }
+                "restore_defaults" -> {
+                    PreferenceManager.getDefaultSharedPreferences(requireContext())
+                        .edit().clear().apply()
+                    PreferenceManager.setDefaultValues(requireContext(), R.xml.root_preferences, true)
+                    Storage.resetScoreOffsets()
+                    requireActivity().recreate()
+                    true
+                }
+                else -> super.onPreferenceTreeClick(preference)
+            }
         }
     }
 }

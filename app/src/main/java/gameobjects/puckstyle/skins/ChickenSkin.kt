@@ -69,7 +69,7 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
         drawHeadFeather(canvas, r,  0f,          -r * 0.88f,   0f, 1.5f)
         drawHeadFeather(canvas, r, -r * 0.2f,   -r * 0.85f, -28f, 1.1f)
         drawHeadFeather(canvas, r,  r * 0.2f,   -r * 0.85f,  28f, 1.1f)
-        
+
         // 4. Eyes — ~1/3 larger than previous iteration
         val eyeR = r * 0.25f
         val eyeX = r * 0.30f

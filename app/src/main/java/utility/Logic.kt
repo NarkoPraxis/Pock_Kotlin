@@ -78,6 +78,8 @@ object Logic {
         Settings.unlockProgress = Storage.unlockProgress
         Settings.highPlayerArrow = Storage.highPlayerArrow
         Settings.lowPlayerArrow = Storage.lowPlayerArrow
+        Settings.scoreOffsetHigh = Storage.scoreOffsetHigh.toFloat()
+        Settings.scoreOffsetLow = Storage.scoreOffsetLow.toFloat()
 
         Settings.screenWidth = width.toFloat()
         Settings.screenHeight = height.toFloat()

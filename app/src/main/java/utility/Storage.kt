@@ -22,6 +22,8 @@ object Storage {
     private const val shareRewardClaimedKey = "share_reward_claimed"
     private const val highBallTypeKey = "high_ball_type"
     private const val lowBallTypeKey = "low_ball_type"
+    private const val scoreOffsetHighKey = "score_offset_high"
+    private const val scoreOffsetLowKey = "score_offset_low"
 
     private const val S = "small"
     private const val D = "default"
@@ -104,6 +106,18 @@ object Storage {
 
     fun saveHighBallType(type: BallType) = ad.edit().putString(highBallTypeKey, type.name).apply()
     fun saveLowBallType(type: BallType) = ad.edit().putString(lowBallTypeKey, type.name).apply()
+
+    // --- Score position offsets ---
+
+    val scoreOffsetHigh: Int get() = ad.getInt(scoreOffsetHighKey, 0)
+    val scoreOffsetLow: Int get() = ad.getInt(scoreOffsetLowKey, 0)
+
+    fun saveScoreOffsetHigh(offset: Int) = ad.edit().putInt(scoreOffsetHighKey, offset).apply()
+    fun saveScoreOffsetLow(offset: Int) = ad.edit().putInt(scoreOffsetLowKey, offset).apply()
+
+    fun resetScoreOffsets() {
+        ad.edit().remove(scoreOffsetHighKey).remove(scoreOffsetLowKey).apply()
+    }
 
     private fun readBallType(key: String, default: BallType): BallType {
         val stored = ad.getString(key, null) ?: return default
