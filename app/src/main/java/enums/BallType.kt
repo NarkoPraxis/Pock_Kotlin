@@ -12,5 +12,6 @@ enum class BallType {
     Pixel,
     Rainbow,
     Prism,
-    Plasma
+    Plasma,
+    Chicken
 }

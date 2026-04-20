@@ -22,7 +22,8 @@ object BallStyleFactory {
             BallType.Pixel   -> BallStyle(PixelSkin(theme),   PixelTail(theme),   PixelLaunch(theme))
             BallType.Rainbow -> BallStyle(RainbowSkin(theme), RainbowTail(theme), RainbowLaunch(theme))
             BallType.Prism   -> BallStyle(PrismSkin(theme),   PrismTail(theme),   PrismLaunch(theme))
-            BallType.Plasma  -> BallStyle(PlasmaSkin(theme),  PlasmaTail(theme),  PlasmaLaunch(theme))
+            BallType.Plasma   -> BallStyle(PlasmaSkin(theme),   PlasmaTail(theme),   PlasmaLaunch(theme))
+            BallType.Chicken  -> BallStyle(ChickenSkin(theme),  ChickenTail(theme),  ChickenLaunch(theme))
         }
     }
 
@@ -30,7 +31,7 @@ object BallStyleFactory {
 
     fun isUnlocked(type: BallType, unlockProgress: Int): Boolean {
         return when (type) {
-            BallType.Classic -> true
+            BallType.Classic, BallType.Chicken -> true
             BallType.Prism, BallType.Plasma -> unlockProgress >= 100
             else -> unlockProgress >= type.ordinal * 10
         }

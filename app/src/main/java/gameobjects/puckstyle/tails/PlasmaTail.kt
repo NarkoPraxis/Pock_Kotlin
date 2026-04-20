@@ -23,7 +23,7 @@ class PlasmaTail(override val theme: ColorTheme) : TailRenderer {
     private val bolt = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
 
     override val zIndex: Int
-        get() = 2
+        get() = 1
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
         if (points == null) points = MutableList(if (renderer.shielded) 80 else 18) { Pos(renderer.x, renderer.y) }

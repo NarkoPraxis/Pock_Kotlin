@@ -192,6 +192,7 @@ class BallUnlockView @JvmOverloads constructor(
     }
 
     private fun unlockHint(type: BallType): String = when (type) {
+        BallType.Classic, BallType.Chicken -> "Unlocked"
         BallType.Prism, BallType.Plasma -> "Reach 100%"
         else -> "Reach ${type.ordinal * 10}%"
     }
