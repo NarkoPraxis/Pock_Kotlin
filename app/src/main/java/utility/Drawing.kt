@@ -18,8 +18,6 @@ object Drawing {
     lateinit var highScoreZone: RectF
     lateinit var lowScoreZone: RectF
 
-    val countDownProgressTicker = Ticker(99, true)
-
     var wallWidthParticleCount = 0
     var wallHeightParticleCount = 0
 
@@ -100,11 +98,6 @@ object Drawing {
         canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.screenHeight, PaintBucket.backgroundPaint)
         canvas.drawRect(highScoreZone, PaintBucket.goalPaint)
         canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
-    }
-
-    fun drawCountDownRectangles(canvas: Canvas) {
-        canvas.drawRect(0f, 0f, Settings.screenWidth * countDownProgressTicker.ratio, Settings.topGoalBottom, PaintBucket.highBallFillPaint)
-        canvas.drawRect(0f, Settings.bottomGoalTop, Settings.screenWidth * countDownProgressTicker.ratio, Settings.screenHeight, PaintBucket.lowBallFillPaint)
     }
 
     private fun drawScore(canvas: Canvas, player: Player, popTicker: Ticker, xOffset: Float = 0f) {

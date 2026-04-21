@@ -54,7 +54,9 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
 
                 }
                 GameState.CountDown -> {
-                    Logic.countDown()
+                    Logic.checkCharge()
+                    Logic.cancelChargesOnRelease()
+                    Logic.updateReadyFill()
                 }
                 GameState.Tutorial -> {
 
@@ -119,8 +121,7 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
         Drawing.drawArena(canvas)
 
         if (Settings.gameState == GameState.CountDown) {
-            Drawing.mirrorText(canvas, Logic.countDownText(), Settings.middleX,Settings.middleY / 2, PaintBucket.textPaint )
-            Drawing.drawCountDownRectangles(canvas)
+            Drawing.drawReadyFill(canvas)
             Drawing.drawCanScoreWalls(canvas)
         }
         if (Settings.gameState != GameState.BallSelection) {

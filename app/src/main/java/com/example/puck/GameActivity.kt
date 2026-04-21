@@ -39,10 +39,14 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
             Logic.updateCanScoreWall()
             when (Settings.gameState) {
                 GameState.BallSelection -> {
+                    Logic.checkCharge()
+                    Logic.cancelChargesOnRelease()
                     Logic.updateReadyFill()
                 }
                 GameState.CountDown -> {
-                    Logic.countDown()
+                    Logic.checkCharge()
+                    Logic.cancelChargesOnRelease()
+                    Logic.updateReadyFill()
                 }
                 GameState.Tutorial -> {
 
@@ -89,8 +93,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         }
 
         if (Settings.gameState == GameState.CountDown) {
-            Drawing.mirrorText(canvas, Logic.countDownText(), Settings.middleX,Settings.middleY / 2, PaintBucket.textPaint)
-            Drawing.drawCountDownRectangles(canvas)
+            Drawing.drawReadyFill(canvas)
             Drawing.drawCanScoreWalls(canvas)
         }
         if (Settings.gameState != GameState.BallSelection) {
@@ -120,6 +123,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
                 Logic.lowBallCard.drawTo(canvas)
                 Logic.highBallPopup.drawTo(canvas)
                 Logic.lowBallPopup.drawTo(canvas)
+                Drawing.drawAimArrows(canvas)
             }
         }
 

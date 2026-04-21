@@ -240,7 +240,7 @@ object PaintBucket {
             style = Paint.Style.FILL
         }
         readyMergePaint = Paint().apply {
-            color = Color.argb(180, 130, 30, 200)
+            color = goalColor
             style = Paint.Style.FILL
         }
 
