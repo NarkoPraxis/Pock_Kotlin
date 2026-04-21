@@ -92,6 +92,16 @@ Before each round, players choose a finger (Left Thumb, Right Thumb, Left Pointe
 - **Preview convention**: always call `previewPuck.setFill(theme.primary); previewPuck.setStroke(theme.secondary)` before `drawTo()`, or Classic renders with stale PaintBucket colors.
 - **Mirror drag**: for the mirrored high-player popup, drag delta must be inverted: `logicalX = 2*cx - screenX`.
 
+### Paddle System
+
+Each ball type has a **paddle** — a tethered visual object that sits behind the puck along the aim vector and communicates charge state to the player. Paddles are implemented in `gameobjects/puckstyle/launcheffects/` and the directory name `launcheffects` is a historical misnomer: the paddle is the primary concept, and the launch effect (animation of the paddle striking the puck) is secondary behavior the paddle also handles.
+
+- **`LaunchEffect` interface** and **`PaddleLaunchEffect` base class** define the paddle, not just a post-launch animation. When you see "LaunchEffect" in the code, think "paddle."
+- **`PaddleLaunchEffect`** handles all kinematics (distance from puck, aim direction, travel-to-strike animation) in one place. Subclasses (`ClassicLaunch`, `FireLaunch`, etc.) override only the visual drawing methods.
+- **Charge phases** (`ChargePhase` enum: `Idle`, `Building`, `SweetSpot`, `Overcharged`) are computed in `PaddleLaunchEffect.updateState()` from `Settings` constants and exposed to subclasses via `phase` and `chargeFillRatio`. All paddles should derive phase thresholds from `Settings` constants, never hardcode charge values.
+- **`chargePaint` in `PuckRenderer`** is the old charge ring visual. It is **deprecated** — the paddle replaced it. Do not add new logic to the charge ring.
+- **Residual effects**: on a sweet-spot release, `onSpawnResidual()` is called after the strike animation finishes. Currently these are short-lived (10 frames). The intended behavior is that sweet-spot residuals persist in the arena until the next goal is scored.
+
 ### Sound Design Convention
 
 Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Horizontal position → pitch rate from `getXRate()`, vertical position → rate from `getYRate()`. This gives positional audio flavor without spatial audio APIs.
