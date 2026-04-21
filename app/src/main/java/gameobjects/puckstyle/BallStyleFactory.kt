@@ -39,20 +39,24 @@ object BallStyleFactory {
 
     fun displayName(type: BallType): String = type.name
 
+    /** Returns the unlock threshold percentage, or null if always free. */
+    fun unlockThreshold(type: BallType): Int? = when (type) {
+        BallType.Classic, BallType.Chicken -> null
+        BallType.Neon    -> 10
+        BallType.Ghost   -> 20
+        BallType.Fire    -> 30
+        BallType.Ice     -> 40
+        BallType.Galaxy  -> 50
+        BallType.Spinner -> 60
+        BallType.Metal   -> 70
+        BallType.Pixel   -> 80
+        BallType.Rainbow -> 90
+        BallType.Prism, BallType.Plasma, BallType.Random -> 100
+    }
+
     fun isUnlocked(type: BallType, unlockProgress: Int): Boolean {
-        return when (type) {
-            BallType.Classic, BallType.Chicken -> true
-            BallType.Neon    -> unlockProgress >= 10
-            BallType.Ghost   -> unlockProgress >= 20
-            BallType.Fire    -> unlockProgress >= 30
-            BallType.Ice     -> unlockProgress >= 40
-            BallType.Galaxy  -> unlockProgress >= 50
-            BallType.Spinner -> unlockProgress >= 60
-            BallType.Metal   -> unlockProgress >= 70
-            BallType.Pixel   -> unlockProgress >= 80
-            BallType.Rainbow -> unlockProgress >= 90
-            BallType.Prism, BallType.Plasma, BallType.Random -> unlockProgress >= 100
-        }
+        val threshold = unlockThreshold(type) ?: return true
+        return unlockProgress >= threshold
     }
 
     fun all(): List<BallType> = BallType.values().toList()

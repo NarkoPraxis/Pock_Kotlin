@@ -47,7 +47,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toTopOf="@+id/unlockWatchAdButton"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -57,15 +57,46 @@
             android:id="@+id/unlockWatchAdButton"
             android:layout_width="260dp"
             android:layout_height="56dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="4dp"
             android:enabled="false"
             android:text="Watch Ad to Unlock"
             android:textSize="18sp"
             android:textColor="?android:attr/textColorPrimary"
             app:cornerRadius="28dp"
             app:backgroundTint="@color/effectColor"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/unlockAllButton"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+            android:id="@+id/unlockAllButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="16dp"
+            android:text="Purchase"
+            android:textSize="16sp"
+            android:textColor="?android:attr/textColorPrimary"
+            app:cornerRadius="28dp"
+            app:backgroundTint="@color/effectColor"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/unlockRestoreButton"
+            app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+            android:id="@+id/unlockRestoreButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:text="Restore"
+            android:textSize="16sp"
+            app:cornerRadius="28dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/unlockAllButton" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

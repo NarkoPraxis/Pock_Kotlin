@@ -191,10 +191,9 @@ class BallUnlockView @JvmOverloads constructor(
         Settings.strokeWidth = savedStrokeWidth
     }
 
-    private fun unlockHint(type: BallType): String = when (type) {
-        BallType.Classic, BallType.Chicken -> "Unlocked"
-        BallType.Prism, BallType.Plasma, BallType.Random -> "Reach 100%"
-        else -> "Reach ${type.ordinal * 10}%"
+    private fun unlockHint(type: BallType): String {
+        val threshold = BallStyleFactory.unlockThreshold(type) ?: return "Unlocked"
+        return "Reach $threshold%"
     }
 
     private fun drawLock(canvas: Canvas, lx: Float, ly: Float, radius: Float) {

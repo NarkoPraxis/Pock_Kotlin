@@ -157,12 +157,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateAdButton() {
         val progress = Storage.unlockProgress
-        binding.unlockProgressBar.visibility = if (progress >= 100) View.GONE else View.VISIBLE
         if (progress >= 100) {
-            binding.rewardedAdButton.text = "All balls unlocked!"
-            binding.rewardedAdButton.isEnabled = rewardedAd != null
+            binding.unlockProgressBar.visibility = View.GONE
+            binding.rewardedAdButton.visibility = View.GONE
             return
         }
+        binding.unlockProgressBar.visibility = View.VISIBLE
+        binding.rewardedAdButton.visibility = View.VISIBLE
         val watchedToday = Storage.adsWatchedToday()
         if (watchedToday >= 5) {
             binding.rewardedAdButton.text = "Come back tomorrow"

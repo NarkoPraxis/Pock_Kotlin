@@ -43,8 +43,8 @@ object Storage {
     // --- Unlock progress (0–100) ---
 
    // TODO: uncomment this before launching game
-//    val unlockProgress: Int get() = ad.getInt(unlockProgressKey, 0)
-    val unlockProgress: Int get() = 100
+    //val unlockProgress: Int get() = ad.getInt(unlockProgressKey, 0)
+     val unlockProgress: Int get() = 100
 
     /** True when the user is allowed to watch an ad right now. */
     fun canWatchAdNow(): Boolean {
@@ -82,6 +82,11 @@ object Storage {
             .putInt(adsWatchedTodayKey, watchedToday + 1)
             .putString(lastAdDateKey, today)
             .apply()
+    }
+
+    /** Directly set unlock progress (e.g. after IAP purchase). */
+    fun saveUnlockProgress(progress: Int) {
+        ad.edit().putInt(unlockProgressKey, progress.coerceIn(0, 100)).apply()
     }
 
     /** Add bonus unlock progress (e.g. share reward = +10%). */

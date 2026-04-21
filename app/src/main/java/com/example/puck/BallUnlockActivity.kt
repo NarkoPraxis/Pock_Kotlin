@@ -3,6 +3,7 @@ package com.example.puck
 import android.app.Activity
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.ads.AdRequest
@@ -13,12 +14,15 @@ import com.google.android.gms.ads.OnUserEarnedRewardListener
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import gameobjects.Settings
+import utility.PurchaseManager
 import utility.Storage
 
 class BallUnlockActivity : AppCompatActivity() {
 
     private lateinit var progressBar: UnlockProgressBar
     private lateinit var watchAdButton: Button
+    private lateinit var unlockAllButton: Button
+    private lateinit var restoreButton: Button
     private lateinit var view: BallUnlockView
     private var rewardedAd: RewardedAd? = null
 
@@ -29,6 +33,8 @@ class BallUnlockActivity : AppCompatActivity() {
 
         progressBar = findViewById(R.id.unlockProgressBar)
         watchAdButton = findViewById(R.id.unlockWatchAdButton)
+        unlockAllButton = findViewById(R.id.unlockAllButton)
+        restoreButton = findViewById(R.id.unlockRestoreButton)
         view = findViewById(R.id.ballUnlockView)
         val back = findViewById<Button>(R.id.backButton)
 
@@ -39,23 +45,40 @@ class BallUnlockActivity : AppCompatActivity() {
 
         back.setOnClickListener { finish() }
         watchAdButton.setOnClickListener { showAd() }
+        unlockAllButton.setOnClickListener { PurchaseManager.purchaseUnlockAll(this) }
+        restoreButton.setOnClickListener {
+            PurchaseManager.restorePurchases(this) { success ->
+                if (success) refreshUI()
+            }
+        }
 
-        updateAdButton()
-        if (Storage.canWatchAdNow()) loadAd()
+        PurchaseManager.initialize(this) { refreshUI() }
+
+        refreshUI()
+        if (canLoadAdNow()) loadAd()
     }
 
     override fun onResume() {
         super.onResume()
-        // Refresh state when returning from another screen or after time passes.
         Settings.unlockProgress = Storage.unlockProgress
         progressBar.progress = Settings.unlockProgress
-        updateAdButton()
-        if (rewardedAd == null && Storage.canWatchAdNow()) loadAd()
+        refreshUI()
+        if (rewardedAd == null && canLoadAdNow()) loadAd()
+    }
+
+    private fun canLoadAdNow(): Boolean {
+        if (Storage.adsWatchedToday() >= 5) return false
+        return Storage.minutesUntilNextAd() == 0L
     }
 
     override fun onPause() {
         super.onPause()
         view.clearTails()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        PurchaseManager.destroy()
     }
 
     private fun loadAd() {
@@ -68,12 +91,12 @@ class BallUnlockActivity : AppCompatActivity() {
                 override fun onAdLoaded(ad: RewardedAd) {
                     rewardedAd = ad
                     Log.i("BallUnlock", "Ad loaded")
-                    updateAdButton()
+                    refreshUI()
                 }
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     rewardedAd = null
                     Log.i("BallUnlock", "Ad failed: ${error.code}")
-                    updateAdButton()
+                    refreshUI()
                 }
             }
         )
@@ -84,8 +107,8 @@ class BallUnlockActivity : AppCompatActivity() {
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 rewardedAd = null
-                updateAdButton()
-                if (Storage.canWatchAdNow()) loadAd()
+                refreshUI()
+                if (canLoadAdNow()) loadAd()
             }
         }
         ad.show(this as Activity, OnUserEarnedRewardListener { _ ->
@@ -93,20 +116,46 @@ class BallUnlockActivity : AppCompatActivity() {
             Settings.unlockProgress = Storage.unlockProgress
             progressBar.progress = Settings.unlockProgress
             view.invalidate()
-            updateAdButton()
+            refreshUI()
         })
     }
 
-    private fun updateAdButton() {
+    private fun refreshUI() {
         val progress = Storage.unlockProgress
-        progressBar.visibility = if (progress >= 100) android.view.View.GONE else android.view.View.VISIBLE
+        Settings.unlockProgress = progress
+        progressBar.progress = progress
+        view.invalidate()
+
         if (progress >= 100) {
-            watchAdButton.text = "All balls unlocked!"
+            progressBar.visibility = View.GONE
+            unlockAllButton.visibility = View.GONE
+            restoreButton.visibility = View.GONE
+            watchAdButton.visibility = View.VISIBLE
+            val watchedToday = Storage.adsWatchedToday()
+            if (watchedToday >= 5) {
+                watchAdButton.text = "Come back tomorrow"
+                watchAdButton.isEnabled = false
+                return
+            }
+            val mins = Storage.minutesUntilNextAd()
+            if (mins > 0) {
+                val timeText = if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m"
+                watchAdButton.text = "Next ad in $timeText"
+                watchAdButton.isEnabled = false
+                return
+            }
             watchAdButton.isEnabled = rewardedAd != null
+            watchAdButton.text = "Support Me?"
             return
         }
+
+        progressBar.visibility = View.VISIBLE
+        unlockAllButton.visibility = View.VISIBLE
+        restoreButton.visibility = View.VISIBLE
+
         val watchedToday = Storage.adsWatchedToday()
         if (watchedToday >= 5) {
+            watchAdButton.visibility = View.VISIBLE
             watchAdButton.text = "Come back tomorrow"
             watchAdButton.isEnabled = false
             return
@@ -114,10 +163,12 @@ class BallUnlockActivity : AppCompatActivity() {
         val mins = Storage.minutesUntilNextAd()
         if (mins > 0) {
             val timeText = if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m"
+            watchAdButton.visibility = View.VISIBLE
             watchAdButton.text = "Next ad in $timeText"
             watchAdButton.isEnabled = false
             return
         }
+        watchAdButton.visibility = View.VISIBLE
         watchAdButton.isEnabled = rewardedAd != null
         watchAdButton.text = "Watch Ad to Unlock"
     }

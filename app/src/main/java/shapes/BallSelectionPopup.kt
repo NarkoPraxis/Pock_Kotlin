@@ -141,7 +141,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
                 if (dragDistance < Settings.screenRatio * 0.6f) {
                     // Tap: snap to tapped slot, select if unlocked — popup stays open
                     val slotLogicalX = logicalX - (cx - scrollX)
-                    val index = (slotLogicalX / slotW).toInt().coerceIn(0, types.size - 1)
+                    val index = (slotLogicalX / slotW).roundToInt().coerceIn(0, types.size - 1)
                     scrollX = index * slotW
                     if (index != snapIndex) {
                         snapIndex = index
@@ -180,7 +180,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         val halfH = h / 2f
         val theme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
         val types = BallType.values()
-        val pr = slotW * 0.32f
+        val pr = Settings.ballRadius
         val centerIndex = scrollX / slotW
 
         canvas.save()
