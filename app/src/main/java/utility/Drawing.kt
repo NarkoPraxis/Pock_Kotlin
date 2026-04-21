@@ -207,30 +207,37 @@ object Drawing {
         val inSweetSpot = player.charge >= Settings.sweetSpotMin && player.charge <= Settings.sweetSpotMax
         val overcharged = player.chargePowerLocked
 
+        val ux = dx / dist
+        val uy = dy / dist
+
+        // Clamp visual arrow length to 1/3 screen width; head stays fixed, tail moves inward
+        val maxArrowLength = Settings.screenWidth / 3f
+        val visualDist = dist.coerceAtMost(maxArrowLength)
+        val visualTailX = headX - ux * visualDist
+        val visualTailY = headY - uy * visualDist
+
         var themeAlpha = 255
         var chargeAlpha = 255
-        var fillLen = dist * ratio
+        var fillLen = visualDist * ratio
         var fillColor = chargeColor
 
         if (inSweetSpot) {
             val pulse = 0.7f + 0.3f * sin(aimArrowFrame * 0.35f)
             chargeAlpha = (255 * pulse).toInt().coerceIn(0, 255)
             themeAlpha = chargeAlpha
-            fillLen = dist
+            fillLen = visualDist
         }
         if (overcharged) {
             val fade = (player.overchargeFrames / 12f).coerceIn(0f, 1f)
             fillColor = lerpColor(chargeColor, themeColor, fade)
         }
 
-        val ux = dx / dist
-        val uy = dy / dist
         aimArrowLinePaint.strokeWidth = Settings.strokeWidth * 1.3f
 
-        val fillEndX = tailX + ux * fillLen
-        val fillEndY = tailY + uy * fillLen
+        val fillEndX = visualTailX + ux * fillLen
+        val fillEndY = visualTailY + uy * fillLen
 
-        if (fillLen < dist) {
+        if (fillLen < visualDist) {
             aimArrowLinePaint.color = themeColor
             aimArrowLinePaint.alpha = themeAlpha
             canvas.drawLine(fillEndX, fillEndY, headX, headY, aimArrowLinePaint)
@@ -238,10 +245,10 @@ object Drawing {
         if (fillLen > 0f) {
             aimArrowLinePaint.color = fillColor
             aimArrowLinePaint.alpha = chargeAlpha
-            canvas.drawLine(tailX, tailY, fillEndX, fillEndY, aimArrowLinePaint)
+            canvas.drawLine(visualTailX, visualTailY, fillEndX, fillEndY, aimArrowLinePaint)
         }
 
-        val headFilled = fillLen >= dist
+        val headFilled = fillLen >= visualDist
         val headColor = if (headFilled) fillColor else themeColor
         val headAlpha = if (headFilled) chargeAlpha else themeAlpha
         aimArrowFillPaint.color = headColor

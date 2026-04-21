@@ -840,44 +840,38 @@ object Logic {
                 }
             }
             else {
-                if (y > Settings.middleY) {
-                    if (motionEvent == MotionEvent.ACTION_DOWN) {
+                val pointerId = event.getPointerId(0)
+                if (motionEvent == MotionEvent.ACTION_DOWN) {
+                    // Ownership is fixed at touch-down based on starting y position
+                    if (y > Settings.middleY) {
                         highTouchedFirst = false
-                        if (lowPlayer.lockedPointerId == -1) {
-                            lowPlayer.lockedPointerId = event.getPointerId(0)
-                        }
+                        if (lowPlayer.lockedPointerId == -1) lowPlayer.lockedPointerId = pointerId
                         startFling(lowPlayer, x, y)
-                    }
-                    if (motionEvent == MotionEvent.ACTION_UP) {
-                        Sounds.playLowPlayerSound(lowPlayer.fx)
-                        endFling(lowPlayer, x, y)
-                        if (event.getPointerId(0) == lowPlayer.lockedPointerId) {
-                            lowPlayer.lockedPointerId = -1
-                        }
-                    }
-                    updateFlingCurrent(lowPlayer, x, y)
-                    if (lowPlayer.notLocked()) {
                         setSingleTouch(motionEvent, lowPlayer)
-                    }
-                }
-                else {
-                    if (motionEvent == MotionEvent.ACTION_DOWN) {
+                    } else {
                         highTouchedFirst = true
-                        if (highPlayer.lockedPointerId == -1) {
-                            highPlayer.lockedPointerId = event.getPointerId(0)
-                        }
+                        if (highPlayer.lockedPointerId == -1) highPlayer.lockedPointerId = pointerId
                         startFling(highPlayer, x, y)
+                        setSingleTouch(motionEvent, highPlayer)
                     }
-                    if (motionEvent == MotionEvent.ACTION_UP) {
-                        Sounds.playHighPlayerSound(highPlayer.fx)
-                        endFling(highPlayer, x, y)
-                        if (event.getPointerId(0) == highPlayer.lockedPointerId) {
+                } else {
+                    // Route MOVE and UP by locked pointer ID so the arrow can cross the midline
+                    if (pointerId == highPlayer.lockedPointerId) {
+                        if (motionEvent == MotionEvent.ACTION_UP) {
+                            Sounds.playHighPlayerSound(highPlayer.fx)
+                            endFling(highPlayer, x, y)
                             highPlayer.lockedPointerId = -1
                         }
-                    }
-                    updateFlingCurrent(highPlayer, x, y)
-                    if (highPlayer.notLocked()) {
-                        setSingleTouch(motionEvent, highPlayer)
+                        updateFlingCurrent(highPlayer, x, y)
+                        if (highPlayer.notLocked()) setSingleTouch(motionEvent, highPlayer)
+                    } else if (pointerId == lowPlayer.lockedPointerId) {
+                        if (motionEvent == MotionEvent.ACTION_UP) {
+                            Sounds.playLowPlayerSound(lowPlayer.fx)
+                            endFling(lowPlayer, x, y)
+                            lowPlayer.lockedPointerId = -1
+                        }
+                        updateFlingCurrent(lowPlayer, x, y)
+                        if (lowPlayer.notLocked()) setSingleTouch(motionEvent, lowPlayer)
                     }
                 }
             }
