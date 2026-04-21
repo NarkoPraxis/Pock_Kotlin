@@ -3,6 +3,7 @@ package gameobjects.puckstyle.tails
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -35,8 +36,11 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
         pulseFade *= 0.82f
 
         // shift every 3rd frame → wide gaps between squares; 15 blocks gives locked tail after index ~10
-        val len = if (renderer.shielded) 60 else 15
-        if (blocks == null) blocks = MutableList(len) { Block(renderer.x, renderer.y) }
+        val len = ((if (renderer.shielded) 60 else 15) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        if (blocks == null || blocks!!.size != len) {
+            blocks = MutableList(len) { Block(renderer.x, renderer.y) }
+            rippleIndex = -1
+        }
         val blocks = blocks!!
 
         shiftCounter = (shiftCounter + 1) % 3

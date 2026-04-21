@@ -3,6 +3,7 @@ package gameobjects.puckstyle.tails
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -30,12 +31,12 @@ class IceTail(override val theme: ColorTheme) : TailRenderer {
             puddleSize = renderer.radius * 0.3f,
             life = 1f
         ))
-        while (shards.size > maxShards) shards.removeFirst()
+        while (shards.size > (maxShards * Settings.tailLengthMultiplier).toInt()) shards.removeFirst()
 
         val it = shards.iterator()
         while (it.hasNext()) {
             val s = it.next()
-            s.life -= 0.012f
+            s.life -= 0.012f / Settings.tailLengthMultiplier
             s.iceSize *= 0.95f
             if (s.life > 0.6f) {
                 s.puddleSize *= 1.2f

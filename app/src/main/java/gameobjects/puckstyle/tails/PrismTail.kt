@@ -3,6 +3,7 @@ package gameobjects.puckstyle.tails
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -39,8 +40,8 @@ class PrismTail(override val theme: ColorTheme) : TailRenderer {
     private val sinA = FloatArray(7)
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        val historySize = if (renderer.shielded) 80 else 40
-        if (history == null) {
+        val historySize = ((if (renderer.shielded) 80 else 40) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        if (history == null || history!!.size != historySize) {
             history = MutableList(historySize) { Frame().apply {
                 x = renderer.x; y = renderer.y
                 angle = renderer.frame * 0.8f

@@ -76,6 +76,11 @@ object Settings {
     var chargeIncreaseRate: Float = 1f
     var maxPower: Float = 30f
     var tailLength: Int = 20
+    val tailLengthMultiplier: Float get() = when (tailLength) {
+        10 -> 0.5f
+        40 -> 1.5f
+        else -> 1.0f
+    }
     var scoreZoneHeight: Float = 3f
     var launchBonus: Float = 10f
     var pointsToWin: Int = 5

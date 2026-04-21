@@ -2,6 +2,7 @@ package gameobjects.puckstyle.tails
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -49,8 +50,8 @@ class NeonTail(override val theme: ColorTheme) : TailRenderer {
     }
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        val len = if (renderer.shielded) 50 else 30
-        if (rings == null) rings = MutableList(len) { Ring(renderer.x, renderer.y) }
+        val len = ((if (renderer.shielded) 50 else 30) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        if (rings == null || rings!!.size != len) rings = MutableList(len) { Ring(renderer.x, renderer.y) }
         val rings = rings!!
 
         for (i in rings.size - 1 downTo 0) {

@@ -22,7 +22,8 @@ class GhostTail(override val theme: ColorTheme) : TailRenderer {
         get() = 2
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        if (points == null) points = MutableList(if (renderer.shielded) 80 else 20) { Ghost(renderer.x, renderer.y) }
+        val ghostLen = ((if (renderer.shielded) 80 else 20) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        if (points == null || points!!.size != ghostLen) points = MutableList(ghostLen) { Ghost(renderer.x, renderer.y) }
         val points = points!!
         for (i in points.size - 1 downTo 0) {
             if (i - 1 >= 0) points[i] = points[i - 1].copy()

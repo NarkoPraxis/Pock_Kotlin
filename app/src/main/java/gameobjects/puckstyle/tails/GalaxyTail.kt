@@ -54,7 +54,7 @@ class GalaxyTail(override val theme: ColorTheme) : TailRenderer {
                 0.157f + Random.nextFloat() * 0.157f
             ))
         }
-        while (sparks.size > 100) sparks.removeFirst()
+        while (sparks.size > (100 * Settings.tailLengthMultiplier).toInt()) sparks.removeFirst()
 
         val it = sparks.iterator()
         while (it.hasNext()) {
@@ -63,7 +63,7 @@ class GalaxyTail(override val theme: ColorTheme) : TailRenderer {
             s.y += s.vy
             s.vx *= 0.97f
             s.vy *= 0.97f
-            s.life -= 0.01f
+            s.life -= 0.01f / Settings.tailLengthMultiplier
             if (s.life <= 0f) { it.remove(); continue }
             val twinkle = 0.75f + 0.25f * sin(renderer.frame * s.twinkleSpeed + s.twinkleSeed * Math.PI.toFloat() * 2f)
             paint.color = Palette.withAlpha(theme.primary, (255f * s.life).toInt())

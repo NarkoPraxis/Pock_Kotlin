@@ -251,21 +251,12 @@ class BallUnlockView @JvmOverloads constructor(
                     for (i in types.indices) {
                         val b = cellBounds(i)
                         if (downX >= b[0] && downX <= b[2] && downY >= b[1] && downY <= b[3]) {
-                            if (bouncingIndex == i) {
-                                // Second tap on the already-bouncing cell: toggle warm/cold theme
-                                warmFlags[i] = !warmFlags[i]
-                                tails?.getOrNull(i)?.clear()
-                                val toggledStyle = BallStyleFactory.buildStyle(types[i], themeForCell(i))
-                                tails?.set(i, toggledStyle.tail)
-                                skins?.set(i, toggledStyle.skin)
-                                bounceFrame = 0
-                            } else {
-                                // First tap or switching to a new cell
-                                tails?.getOrNull(bouncingIndex)?.clear()
-                                tails?.getOrNull(i)?.clear()
-                                bouncingIndex = i
-                                bounceFrame = 0
-                            }
+                            warmFlags[i] = !warmFlags[i]
+                            tails?.getOrNull(i)?.clear()
+                            val toggledStyle = BallStyleFactory.buildStyle(types[i], themeForCell(i))
+                            tails?.set(i, toggledStyle.tail)
+                            skins?.set(i, toggledStyle.skin)
+                            bouncingIndex = i
                             break
                         }
                     }

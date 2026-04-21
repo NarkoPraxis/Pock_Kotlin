@@ -4,6 +4,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.EggSplat
 import gameobjects.puckstyle.Palette
@@ -89,7 +90,7 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
         val fpIter = footprints.iterator()
         while (fpIter.hasNext()) {
             val f = fpIter.next()
-            f.alpha -= 3
+            f.alpha -= (3f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
             if (f.alpha <= 0) { fpIter.remove(); continue }
             paint.color = Palette.withAlpha(theme.secondary, f.alpha)
             drawFoot(canvas, f, r)
@@ -97,7 +98,7 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
 
         // Layer 3: feather particles
         featherSpawnTimer++
-        if (featherSpawnTimer >= 2 && speed > r * 0.005f && feathers.size < 55) {
+        if (featherSpawnTimer >= 2 && speed > r * 0.005f && feathers.size < (55 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)) {
             featherSpawnTimer = 0
             feathers += Feather(
                 x = renderer.x + (Random.nextFloat() - 0.5f) * r * 2.0f,
@@ -118,7 +119,7 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
             f.x += f.driftX
             f.y += f.driftY
             f.angle += f.spin
-            f.alpha -= 5
+            f.alpha -= (5f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
             if (f.alpha <= 0) { featherIter.remove(); continue }
             val c = Palette.lerpColor(theme.primary, theme.secondary, f.colorMix)
             paint.style = Paint.Style.FILL

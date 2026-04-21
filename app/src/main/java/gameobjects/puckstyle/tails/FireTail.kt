@@ -39,14 +39,14 @@ class FireTail(override val theme: ColorTheme) : TailRenderer {
                 isCore
             ))
         }
-        while (sparks.size > maxSparks) sparks.removeFirst()
+        while (sparks.size > (maxSparks * Settings.tailLengthMultiplier).toInt()) sparks.removeFirst()
 
         val it = sparks.iterator()
         while (it.hasNext()) {
             val s = it.next()
             s.x += s.vx
             s.y += s.vy
-            s.life -= 0.04f
+            s.life -= 0.04f / Settings.tailLengthMultiplier
             if (s.life <= 0f) { it.remove(); continue }
             val t = 1f - s.life
 
