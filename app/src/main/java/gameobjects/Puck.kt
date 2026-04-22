@@ -1,12 +1,11 @@
 package gameobjects
 
 import android.graphics.Canvas
-import android.graphics.Color
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.skins.ClassicSkin
 import gameobjects.puckstyle.tails.ClassicTail
-import gameobjects.puckstyle.launcheffects.ClassicLaunch
+import gameobjects.puckstyle.paddles.ClassicLaunch
 import physics.Force
 import physics.Point
 import physics.Ticker

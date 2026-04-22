@@ -1,14 +1,12 @@
-package gameobjects.puckstyle.launcheffects
+package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import utility.Effects
-import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 

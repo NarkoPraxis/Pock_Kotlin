@@ -1,4 +1,4 @@
-package gameobjects.puckstyle.launcheffects
+package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -7,7 +7,6 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.EggSplat
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
-import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.atan2
 import kotlin.math.sin

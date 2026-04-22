@@ -648,9 +648,10 @@ object Logic {
             Sounds.playScoreSound(other.py)
             Effects.clearCollisionEffects()
             Effects.clearPersistentEffects()
-            scoring.puck.renderer.skin?.onScore(
+            // Todo: refactor this so it's not "other" the effect spawned should match the puck entering the goal, not the other way around
+            other.puck.renderer.skin?.onScore(
                 other.puckFillColor,
-                Point(other.px, if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop),
+                Point(other.px,if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop),
                 highGoal
             )
             return true

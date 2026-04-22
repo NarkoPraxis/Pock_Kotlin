@@ -1,7 +1,7 @@
 package gameobjects.puckstyle
 
 import enums.BallType
-import gameobjects.puckstyle.launcheffects.*
+import gameobjects.puckstyle.paddles.*
 import gameobjects.puckstyle.skins.*
 import gameobjects.puckstyle.tails.*
 

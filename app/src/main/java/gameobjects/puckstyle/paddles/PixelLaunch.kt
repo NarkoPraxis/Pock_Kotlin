@@ -1,4 +1,4 @@
-package gameobjects.puckstyle.launcheffects
+package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
 import android.graphics.Paint
