@@ -23,7 +23,8 @@ import kotlin.math.sqrt
  *    the player's theme color (no purple).
  *  - On release, paddle slides to puck center along the aim vector in a fixed
  *    number of frames (travel time constant regardless of distance).
- *  - On a sweet-spot release only, a themed residual lingers briefly.
+ *  - On a sweet-spot release only, onSpawnResidual() is called once the strike lands,
+ *    allowing subclasses to add persistent effects to Effects.
  *
  * Subclasses override only the visual primitives; the kinematics stay fixed.
  * Subclasses access per-frame puck state via [currentRenderer].
@@ -71,10 +72,8 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     private var releaseSweet = false
     private var releaseOvercharged = false
 
-    // ----- residual state -----
-    private var residualFrames = 0
-    private var residualX = 0f
-    private var residualY = 0f
+    // ----- strike callback -----
+    private var strikeCallback: (() -> Unit)? = null
 
     // ----- paint scratch -----
     protected val paddlePaint = Paint().apply {
@@ -83,10 +82,9 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
-    protected val residualPaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
+
+    override fun registerStrikeCallback(onStrike: () -> Unit) {
+        strikeCallback = onStrike
     }
 
     override fun draw(canvas: Canvas, renderer: PuckRenderer) {
@@ -100,26 +98,23 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
             val cy = lerp(releaseFromY, renderer.y, t)
             drawStrikingPaddle(canvas, cx, cy, releaseAimX, releaseAimY, releaseSweet, releaseOvercharged, t)
             releaseFrames--
-            if (releaseFrames == 0 && releaseSweet) {
-                residualX = renderer.x
-                residualY = renderer.y
-                residualFrames = RESIDUAL_DURATION
-                onSpawnResidual(residualX, residualY, releaseAimX, releaseAimY)
+            if (releaseFrames == 0) {
+                strikeCallback?.invoke()
+                strikeCallback = null
+                if (releaseSweet) {
+                    onSpawnResidual(renderer.x, renderer.y, releaseAimX, releaseAimY)
+                }
             }
         } else if (phase != ChargePhase.Idle) {
             drawChargingPaddle(canvas)
-        }
-
-        if (residualFrames > 0) {
-            val r = residualFrames.toFloat() / RESIDUAL_DURATION
-            drawResidual(canvas, residualX, residualY, r)
-            residualFrames--
         }
     }
 
     override fun onRelease(x: Float, y: Float, radius: Float, sweetSpotHit: Boolean) {
         if (phase == ChargePhase.Idle) {
-            reset(); return
+            strikeCallback?.invoke()
+            reset()
+            return
         }
         releaseFromX = paddleX
         releaseFromY = paddleY
@@ -133,8 +128,8 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
 
     override fun reset() {
         releaseFrames = 0
-        residualFrames = 0
         phase = ChargePhase.Idle
+        strikeCallback = null
     }
 
     // ---------- state update ----------
@@ -249,18 +244,10 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         }
     }
 
-    protected open fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
-        val a = (200 * remaining).toInt().coerceIn(0, 255)
-        residualPaint.color = theme.accent
-        residualPaint.alpha = a
-        residualPaint.strokeWidth = Settings.strokeWidth * 0.6f
-        canvas.drawCircle(rx, ry, currentRenderer.radius * (1.4f - remaining * 0.4f), residualPaint)
-    }
-
     /** Hook: allows a subclass to spawn extra one-shot effects at release. */
     protected open fun onReleaseSpawn(x: Float, y: Float, radius: Float, sweet: Boolean, overcharged: Boolean) {}
 
-    /** Hook: allows a subclass to spawn extra effects once the strike lands. */
+    /** Hook: called once when the strike animation finishes on a sweet-spot release. Add to Effects.persistentEffects here. */
     protected open fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {}
 
     // ---------- tuning knobs ----------
@@ -275,6 +262,5 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
 
     companion object {
         const val RELEASE_DURATION = 5
-        const val RESIDUAL_DURATION = 10
     }
 }

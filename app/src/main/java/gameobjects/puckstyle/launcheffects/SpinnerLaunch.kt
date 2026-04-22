@@ -2,10 +2,12 @@ package gameobjects.puckstyle.launcheffects
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RectF
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import utility.Effects
 
 /** Spinning shuriken cross — two bars crossed, rotating while charging. */
 class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
@@ -51,12 +53,35 @@ class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.restore()
     }
 
-    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
-        bar.color = theme.accent
-        bar.alpha = (200 * remaining).toInt().coerceIn(0, 255)
-        bar.strokeWidth = Settings.strokeWidth * 0.6f
-        bar.style = Paint.Style.STROKE
-        canvas.drawCircle(rx, ry, currentRenderer.radius * (1f + (1f - remaining) * 1.2f), bar)
-        bar.alpha = 255
+    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
+        Effects.addPersistentEffect(SpinnerMark(rx, ry, currentRenderer.radius, theme.accent))
+    }
+
+    private class SpinnerMark(
+        private val cx: Float, private val cy: Float,
+        private val radius: Float, private val color: Int
+    ) : Effects.PersistentEffect {
+        private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
+        private val oval = RectF()
+        private var frame = 0
+        override val isDone = false
+
+        override fun step() { frame++ }
+
+        override fun draw(canvas: Canvas) {
+            val t = (frame / 200f).coerceIn(0f, 1f)
+            val alpha = (180 * (1f - t * 0.9f)).toInt().coerceIn(0, 255)
+            if (alpha <= 0) return
+            paint.color = color
+            paint.alpha = alpha
+            paint.strokeWidth = Settings.strokeWidth * 0.6f
+            val r = radius * 1.4f
+            oval.set(cx - r, cy - r, cx + r, cy + r)
+            // 4 curved arc segments arranged radially, like residual smear of spinning blades
+            for (i in 0 until 4) {
+                canvas.drawArc(oval, i * 90f + 20f, 50f, false, paint)
+            }
+            paint.alpha = 255
+        }
     }
 }

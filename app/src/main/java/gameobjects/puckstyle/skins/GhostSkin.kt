@@ -3,6 +3,7 @@ package gameobjects.puckstyle.skins
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -33,7 +34,7 @@ class GhostSkin(override val theme: ColorTheme) : PuckSkin {
     }
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        val glowColor = if (renderer.currentCharge > 0) theme.accent else theme.primary
+        val glowColor = if (renderer.currentCharge >= Settings.chargeStart) theme.accent else theme.primary
         val sw = renderer.strokePaint.strokeWidth
 
         // Animated aura rings drawn behind the orb — each has its own oscillation phase

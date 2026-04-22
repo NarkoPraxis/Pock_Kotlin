@@ -1,12 +1,10 @@
 package gameobjects.puckstyle.tails
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
-import gameobjects.puckstyle.EggSplat
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
@@ -18,17 +16,13 @@ import kotlin.random.Random
 
 class ChickenTail(override val theme: ColorTheme) : TailRenderer {
 
-    // ---- Layer 1: collision egg splats ----
-    private val splats = mutableListOf<EggSplat>()
-    private var wasLaunched = false
-
-    // ---- Layer 2: footsteps ----
+    // ---- Layer 1: footsteps ----
     private class Footprint(val x: Float, val y: Float, val angle: Float, var alpha: Int = 180)
     private val footprints = mutableListOf<Footprint>()
     private var stepTimer = 0
     private var stepSide = 1f
 
-    // ---- Layer 3: feather particles ----
+    // ---- Layer 2: feather particles ----
     private class Feather(
         var x: Float, var y: Float,
         val driftX: Float, val driftY: Float,
@@ -62,20 +56,7 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
         prevX = renderer.x
         prevY = renderer.y
 
-        // Layer 1: collision egg splats
-        if (renderer.launched && !wasLaunched) {
-            splats += EggSplat(renderer.x, renderer.y, r, theme)
-        }
-        wasLaunched = renderer.launched
-        val splatIter = splats.iterator()
-        while (splatIter.hasNext()) {
-            val s = splatIter.next()
-            if (s.isDone) { splatIter.remove(); continue }
-            s.step()
-            s.draw(canvas, paint)
-        }
-
-        // Layer 2: footsteps
+        // Layer 1: footsteps
         stepTimer++
         if (stepTimer >= 14 && speed > r * 0.01f) {
             stepTimer = 0
@@ -96,7 +77,7 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
             drawFoot(canvas, f, r)
         }
 
-        // Layer 3: feather particles
+        // Layer 2: feather particles
         featherSpawnTimer++
         if (featherSpawnTimer >= 2 && speed > r * 0.005f && feathers.size < (55 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)) {
             featherSpawnTimer = 0
@@ -156,12 +137,10 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
     }
 
     override fun clear() {
-        splats.clear()
         footprints.clear()
         feathers.clear()
         prevX = Float.NaN
         prevY = Float.NaN
-        wasLaunched = false
         stepTimer = 0
         featherSpawnTimer = 0
     }

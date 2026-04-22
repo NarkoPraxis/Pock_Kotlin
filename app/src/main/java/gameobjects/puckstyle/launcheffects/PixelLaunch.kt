@@ -7,6 +7,10 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import utility.Effects
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 
 /** Chunky 8-bit brick paddle. Charge fills as discrete pixel segments. */
 class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
@@ -54,14 +58,51 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.restore()
     }
 
-    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
-        block.color = theme.accent
-        block.alpha = (220 * remaining).toInt().coerceIn(0, 255)
-        val r = currentRenderer.radius * (0.8f + (1f - remaining) * 0.6f)
-        rect.set(rx - r, ry - r, rx + r, ry + r)
-        canvas.drawRect(rect, block)
-        block.alpha = 255
+    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
+        Effects.addPersistentEffect(PixelDebris(rx, ry, currentRenderer.radius, theme.accent, theme.secondary))
     }
 
     override fun paddleThickness(): Float = Settings.strokeWidth * 1.6f
+
+    private class PixelDebris(
+        cx: Float, cy: Float,
+        radius: Float,
+        private val accentColor: Int,
+        private val secondaryColor: Int
+    ) : Effects.PersistentEffect {
+        private val paint = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
+        private var frame = 0
+        override val isDone = false
+
+        private class Fragment(val x: Float, val y: Float, val size: Float, val color: Int, val winkFrame: Int)
+        private val frags: List<Fragment>
+
+        init {
+            val rand = Random(cx.toLong() xor cy.toLong())
+            frags = List(10) {
+                val angle = rand.nextFloat() * 2f * Math.PI.toFloat()
+                val dist = rand.nextFloat() * radius * 2.5f
+                val fx = cx + cos(angle) * dist
+                val fy = cy + sin(angle) * dist
+                val sz = radius * (0.1f + rand.nextFloat() * 0.14f)
+                val c = if (rand.nextBoolean()) accentColor else secondaryColor
+                val wink = 60 + rand.nextInt(180)
+                Fragment(fx, fy, sz, c, wink)
+            }
+        }
+
+        override fun step() { frame++ }
+
+        override fun draw(canvas: Canvas) {
+            for (frag in frags) {
+                if (frame >= frag.winkFrame) continue
+                val alpha = if (frame > frag.winkFrame - 20) {
+                    (255 * (frag.winkFrame - frame) / 20).coerceIn(0, 255)
+                } else 200
+                paint.color = frag.color
+                paint.alpha = alpha
+                canvas.drawRect(frag.x - frag.size, frag.y - frag.size, frag.x + frag.size, frag.y + frag.size, paint)
+            }
+        }
+    }
 }

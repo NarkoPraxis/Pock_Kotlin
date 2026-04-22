@@ -406,21 +406,13 @@ object Logic {
                     highPlayer.shielded = false
                     lowPlayer.launch(Force(direction, Settings.launchBonus + highPlayer.power))
                     highPlayer.launch(Force(-direction, Settings.minLaunchPower))
-                    Effects.addShieldedCollisionEffect(
-                        highPlayer.puckFillColor,
-                        lowPlayer.puckFillColor,
-                        intersection
-                    )
+                    highPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else if (lowPlayer.shielded && !highPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
                     lowPlayer.shielded = false
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPlayer.power))
                     lowPlayer.launch(Force(direction, Settings.minLaunchPower))
-                    Effects.addShieldedCollisionEffect(
-                        lowPlayer.puckFillColor,
-                        highPlayer.puckFillColor,
-                        intersection
-                    )
+                    lowPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else if (lowPlayer.shielded && highPlayer.shielded) {
                     Sounds.playDoubleChargeCollision(collisionPoint.x)
                     highPlayer.shielded = false
@@ -429,11 +421,8 @@ object Logic {
                     val highPower = highPlayer.power
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPower))
                     lowPlayer.launch(Force(direction, Settings.launchBonus + highPower))
-                    Effects.addShieldedCollisionEffect(
-                        PaintBucket.effectColor,
-                        PaintBucket.effectColor,
-                        intersection
-                    )
+                    highPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
+                    lowPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else {
                     val highPower = highPlayer.power
                     val lowPower = lowPlayer.power
@@ -455,17 +444,15 @@ object Logic {
                     } else {
                         Sounds.playHighPlayerSound(collisionPoint.x)
                     }
+                    val highSpeed = highPlayer.movementSpeed
+                    val lowSpeed = lowPlayer.movementSpeed
+                    if (highSpeed >= lowSpeed && highSpeed >= Settings.minLaunchPower) {
+                        highPlayer.puck.renderer.skin?.onCollisionWin(intersection, highSpeed)
+                    } else if (lowSpeed > highSpeed && lowSpeed >= Settings.minLaunchPower) {
+                        lowPlayer.puck.renderer.skin?.onCollisionWin(intersection, lowSpeed)
+                    }
                 }
                 resetTails(highPlayer, lowPlayer)
-
-                //Collision Effect
-                Effects.addPuckCollisionEffect(
-                    highPlayer.movementSpeed,
-                    lowPlayer.movementSpeed,
-                    highPlayer.puckFillColor,
-                    lowPlayer.puckFillColor,
-                    collisionPoint
-                )
                 GameEvents.canScore.emit(Unit)
                 canCollide = false
                 return true
@@ -660,10 +647,10 @@ object Logic {
             Settings.canScoreWallProgress = 0f
             Sounds.playScoreSound(other.py)
             Effects.clearCollisionEffects()
-            Effects.addScoreEffect(
-                scoring.puckFillColor,
+            Effects.clearPersistentEffects()
+            scoring.puck.renderer.skin?.onScore(
                 other.puckFillColor,
-                Point(other.px, if (highGoal) Settings.topGoalBottom  else  Settings.bottomGoalTop),
+                Point(other.px, if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop),
                 highGoal
             )
             return true

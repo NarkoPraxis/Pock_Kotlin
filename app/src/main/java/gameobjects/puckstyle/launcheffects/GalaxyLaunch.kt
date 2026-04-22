@@ -7,6 +7,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import utility.Effects
 
 /** Mini-planet with a ring, perpendicular to aim. */
 class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
@@ -41,7 +42,7 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             body.alpha = 255
         }
 
-        ring.color = if (ph == ChargePhase.Overcharged) theme.secondary else Color.rgb(255, 220, 140)
+        ring.color = if (ph == ChargePhase.Overcharged) theme.secondary else theme.primary
         ring.strokeWidth = Settings.strokeWidth * 0.6f
         val len = paddleHalfLength()
         canvas.drawLine(cx - pX * len, cy - pY * len, cx + pX * len, cy + pY * len, ring)
@@ -49,10 +50,30 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         ring.alpha = 255
     }
 
-    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
-        ring.color = Color.rgb(255, 220, 140)
-        ring.alpha = (200 * remaining).toInt().coerceIn(0, 255)
-        ring.strokeWidth = Settings.strokeWidth * 0.5f
-        canvas.drawCircle(rx, ry, currentRenderer.radius * (1f + (1f - remaining) * 0.8f), ring)
+    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
+        Effects.addPersistentEffect(NebulaMark(rx, ry, currentRenderer.radius, theme.accent))
+    }
+
+    private class NebulaMark(
+        private val cx: Float, private val cy: Float,
+        private val radius: Float, private val color: Int
+    ) : Effects.PersistentEffect {
+        private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private var frame = 0
+        override val isDone = false
+
+        override fun step() { frame++ }
+
+        override fun draw(canvas: Canvas) {
+            val t = (frame.toFloat() / 120f).coerceIn(0f, 1f)
+            val r = radius * (0.8f + t * 1.2f)
+            val alpha = (75 * (1f - t * 0.7f)).toInt().coerceIn(0, 255)
+            paint.color = color
+            paint.alpha = alpha
+            canvas.drawCircle(cx, cy, r, paint)
+            paint.alpha = (alpha * 0.5f).toInt()
+            canvas.drawCircle(cx, cy, r * 0.45f, paint)
+            paint.alpha = 255
+        }
     }
 }

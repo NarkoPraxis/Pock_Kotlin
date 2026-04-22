@@ -2,11 +2,15 @@ package gameobjects.puckstyle.launcheffects
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import utility.Effects
+import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.random.Random
 
 /** Translucent ghost-puck double trailing behind the real one. */
 class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
@@ -47,10 +51,39 @@ class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         outline.alpha = 255
     }
 
-    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
-        body.color = theme.accent
-        body.alpha = (140 * remaining).toInt().coerceIn(0, 255)
-        canvas.drawCircle(rx, ry, currentRenderer.radius * (1.2f + (1f - remaining)), body)
-        body.alpha = 255
+    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
+        Effects.addPersistentEffect(EctoplasmMark(rx, ry, currentRenderer.radius, theme.accent))
+    }
+
+    private class EctoplasmMark(
+        cx: Float, cy: Float,
+        radius: Float, private val color: Int
+    ) : Effects.PersistentEffect {
+        private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private val blobPts: Array<FloatArray>
+        private var frame = 0
+        override val isDone = false
+
+        init {
+            val rand = Random(cx.toLong() xor cy.toLong())
+            blobPts = Array(5) {
+                floatArrayOf(
+                    cx + (rand.nextFloat() - 0.5f) * radius * 1.4f,
+                    cy + (rand.nextFloat() - 0.5f) * radius * 1.4f,
+                    radius * (0.35f + rand.nextFloat() * 0.4f)
+                )
+            }
+        }
+
+        override fun step() { frame++ }
+
+        override fun draw(canvas: Canvas) {
+            val pulse = 0.4f + 0.6f * (0.5f + 0.5f * sin(frame * 0.04f))
+            val alpha = (85 * pulse).toInt().coerceIn(0, 255)
+            paint.color = color
+            paint.alpha = alpha
+            for (b in blobPts) canvas.drawCircle(b[0], b[1], b[2], paint)
+            paint.alpha = 255
+        }
     }
 }

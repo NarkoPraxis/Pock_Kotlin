@@ -67,8 +67,8 @@ class PrismTail(override val theme: ColorTheme) : TailRenderer {
             this.osc = osc
         }
 
-        // chargeRatio: 0 at chargeStart(10), 1 at sweetSpotMax(50)
-        val chargeRatio = ((renderer.currentCharge - 10f) / 40f).coerceIn(0f, 1f)
+        val chargeRange = Settings.sweetSpotMax.toFloat() - Settings.chargeStart
+        val chargeRatio = ((renderer.currentCharge - Settings.chargeStart) / chargeRange).coerceIn(0f, 1f)
 
         for (i in history.indices) {
             val entry = history[i]

@@ -8,8 +8,11 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import utility.Effects
+import kotlin.math.cos
+import kotlin.math.sin
 
-/** Ice shard: diamond-shape perpendicular to aim. Sweet-spot leaves a frost puff. */
+/** Ice shard: diamond-shape perpendicular to aim. Sweet-spot leaves a frost mark that evaporates to a water puddle. */
 class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
 
     private val shardFill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
@@ -59,9 +62,62 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.drawPath(path, shardStroke)
     }
 
-    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
-        shardFill.color = Color.rgb(220, 240, 255)
-        shardFill.alpha = (160 * remaining).toInt().coerceIn(0, 255)
-        canvas.drawCircle(rx, ry, currentRenderer.radius * (1f + (1f - remaining) * 0.6f), shardFill)
+    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
+        Effects.addPersistentEffect(IcePuddle(rx, ry, currentRenderer.radius, theme))
+    }
+
+    private class IcePuddle(
+        private val cx: Float, private val cy: Float,
+        private val radius: Float, private val theme: ColorTheme
+    ) : Effects.PersistentEffect {
+        private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private val stroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
+        private val crystalPath = Path()
+        private var frame = 0
+        private val evaporateDuration = 120f
+        override val isDone = false
+
+        override fun step() { frame++ }
+
+        override fun draw(canvas: Canvas) {
+            if (frame < evaporateDuration) {
+                val t = frame / evaporateDuration
+                val crystalR = radius * (1.2f - t * 0.7f)
+                val alpha = (160 * (1f - t * 0.5f)).toInt().coerceIn(0, 255)
+                drawCrystal(canvas, crystalR, alpha)
+                // Water puddle appears as crystal evaporates
+                fill.color = theme.primary
+                fill.alpha = (70 * t).toInt().coerceIn(0, 255)
+                canvas.drawCircle(cx, cy, radius * 0.5f * t, fill)
+            } else {
+                // Water puddle persists at low opacity until goal clears it
+                fill.color = theme.secondary
+                fill.alpha = 55
+                canvas.drawCircle(cx, cy, radius * 0.5f, fill)
+                fill.color = theme.primary
+                fill.alpha = 40
+                canvas.drawCircle(cx, cy, radius * 0.3f, fill)
+            }
+        }
+
+        private fun drawCrystal(canvas: Canvas, r: Float, alpha: Int) {
+            crystalPath.reset()
+            val pts = 8
+            for (i in 0 until pts) {
+                val angle = (i * 360.0 / pts * Math.PI / 180.0).toFloat()
+                val outerR = r * (if (i % 2 == 0) 1f else 0.55f)
+                val x = cx + cos(angle) * outerR
+                val y = cy + sin(angle) * outerR
+                if (i == 0) crystalPath.moveTo(x, y) else crystalPath.lineTo(x, y)
+            }
+            crystalPath.close()
+            fill.color = Color.rgb(220, 240, 255)
+            fill.alpha = (alpha * 0.65f).toInt()
+            canvas.drawPath(crystalPath, fill)
+            stroke.color = Color.WHITE
+            stroke.alpha = alpha
+            stroke.strokeWidth = Settings.strokeWidth * 0.5f
+            canvas.drawPath(crystalPath, stroke)
+        }
     }
 }

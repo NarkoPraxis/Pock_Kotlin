@@ -33,7 +33,7 @@ class GhostTail(override val theme: ColorTheme) : TailRenderer {
             val alpha = (255f * (1 - ratio)).toInt()
             val glowColor = when {
                 renderer.shielded -> PaintBucket.effectColor
-                renderer.currentCharge > 0 -> theme.accent
+                renderer.currentCharge >= Settings.chargeStart -> theme.accent
                 else -> theme.primary
             }
             // Outer aura ring drawn first so the white fill sits on top cleanly
@@ -50,7 +50,7 @@ class GhostTail(override val theme: ColorTheme) : TailRenderer {
             val alpha = (255f * (1 - ratio)).toInt()
             val glowColor = when {
                 renderer.shielded -> PaintBucket.effectColor
-                renderer.currentCharge > 0 -> theme.accent
+                renderer.currentCharge >= Settings.chargeStart -> theme.accent
                 else -> theme.primary
             }
             // White fill disc

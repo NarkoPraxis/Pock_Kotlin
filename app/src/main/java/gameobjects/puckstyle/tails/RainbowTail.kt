@@ -26,7 +26,7 @@ class RainbowTail(override val theme: ColorTheme) : TailRenderer {
             val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
             val color = when {
                 renderer.shielded -> PaintBucket.effectColor
-                renderer.currentCharge > 80 -> theme.accent
+                renderer.currentCharge >= Settings.sweetSpotMin -> theme.accent
                 else -> Palette.hsvThemed(renderer.frame * 4f + hueOffset - i * 15f)
             }
             points[i].setColor(color)

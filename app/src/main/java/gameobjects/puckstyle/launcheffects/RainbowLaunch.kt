@@ -8,11 +8,14 @@ import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
+import utility.Effects
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.sin
 
 /**
  * A small cartoon cloud. Sweet spot makes it crackle; sweet-spot release fires a lightning bolt
- * into the puck and leaves a rainbow glow.
+ * into the puck and leaves a rainbow smear.
  */
 class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
 
@@ -73,14 +76,41 @@ class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.drawLine(midX, midY, px, py, bolt)
     }
 
-    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
-        bolt.style = Paint.Style.STROKE
-        bolt.strokeWidth = Settings.strokeWidth * 0.8f
-        for (i in 0 until 5) {
-            bolt.color = Palette.hsv(i * 60f + frame * 2f, 1f, 1f)
-            bolt.alpha = (180 * remaining).toInt().coerceIn(0, 255)
-            canvas.drawCircle(rx, ry, currentRenderer.radius * (1f + i * 0.15f) * (1f + (1f - remaining) * 0.5f), bolt)
+    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
+        Effects.addPersistentEffect(RainbowSmear(rx, ry, aX, aY, currentRenderer.radius))
+    }
+
+    private class RainbowSmear(
+        private val cx: Float, private val cy: Float,
+        private val aX: Float, private val aY: Float,
+        private val radius: Float
+    ) : Effects.PersistentEffect {
+        private val paint = Paint().apply {
+            isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
         }
-        bolt.alpha = 255
+        private var frame = 0
+        override val isDone = false
+
+        override fun step() { frame++ }
+
+        override fun draw(canvas: Canvas) {
+            val t = (frame / 240f).coerceIn(0f, 1f)
+            val sat = 1f - t * 0.85f
+            val alpha = (155 * (1f - t * 0.65f)).toInt().coerceIn(0, 255)
+            paint.strokeWidth = radius * 0.18f
+            val baseAngle = atan2(aY, aX) + Math.PI.toFloat() / 2f
+            val len = radius * 1.1f
+            for (i in 0 until 5) {
+                val angle = baseAngle + (i - 2f) * 0.28f
+                paint.color = Palette.hsv(i * 72f, sat, 0.9f)
+                paint.alpha = alpha
+                canvas.drawLine(
+                    cx - cos(angle) * len, cy - sin(angle) * len,
+                    cx + cos(angle) * len, cy + sin(angle) * len,
+                    paint
+                )
+            }
+            paint.alpha = 255
+        }
     }
 }

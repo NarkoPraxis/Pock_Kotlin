@@ -56,6 +56,9 @@ class Player(
     var flingReleaseDir: Point? = null
     var flingReleaseBasePower: Float = 0f
 
+    private var pendingLaunchDir: Point? = null
+    private var pendingLaunchPower: Float = 0f
+
     init {
         this.resetLocation = Point(puck.x, puck.y)
         setPuckStroke(puck.strokeColor)
@@ -322,13 +325,21 @@ class Player(
         val direction = flingReleaseDir ?: Point(0f, 0f)
         val basePower = flingReleaseBasePower
         val power = if (wasOvercharged) minOf(basePower, Settings.sweetSpotMax * 0.5f) else basePower
-        puck.movement = Force(direction, power)
+        pendingLaunchDir = direction
+        pendingLaunchPower = power
         puck.shrinkTicker.reset()
+        puck.renderer.effect?.registerStrikeCallback { applyPendingLaunch() }
         puck.renderer.effect?.onRelease(puck.x, puck.y, puck.radius, shielded)
         charge = 0f
         chargePowerLocked = false
         flingReleaseDir = null
         flingReleaseBasePower = 0f
         return shielded
+    }
+
+    private fun applyPendingLaunch() {
+        val dir = pendingLaunchDir ?: return
+        puck.movement = Force(dir, pendingLaunchPower)
+        pendingLaunchDir = null
     }
 }

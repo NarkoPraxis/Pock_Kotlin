@@ -9,6 +9,10 @@ import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
+import utility.Effects
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 
 /** Triangular prism. Sweet spot refracts rainbow streaks across the paddle. */
 class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
@@ -79,12 +83,48 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         edge.alpha = 255
     }
 
-    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
-        for (i in 0 until 6) {
-            edge.color = Palette.hsv(i * 60f + frame * 2f, 1f, 1f)
-            edge.alpha = (160 * remaining).toInt().coerceIn(0, 255)
-            canvas.drawCircle(rx, ry, currentRenderer.radius * (0.9f + i * 0.15f) * (1f + (1f - remaining) * 0.4f), edge)
+    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
+        Effects.addPersistentEffect(PrismScatter(rx, ry, currentRenderer.radius))
+    }
+
+    private class PrismScatter(
+        cx: Float, cy: Float,
+        private val radius: Float
+    ) : Effects.PersistentEffect {
+        private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private var frame = 0
+        override val isDone = false
+
+        private class Glint(val x: Float, val y: Float, val hue: Float, val fadeStart: Int, val fadeEnd: Int)
+        private val glints: List<Glint>
+
+        init {
+            val rand = Random(cx.toLong() xor cy.toLong())
+            glints = List(6) { i ->
+                val hue = i * 60f
+                val angle = rand.nextFloat() * 2f * Math.PI.toFloat()
+                val dist = radius * (0.4f + rand.nextFloat() * 2f)
+                val start = 30 + rand.nextInt(120)
+                val end = start + 30 + rand.nextInt(60)
+                Glint(cx + cos(angle) * dist, cy + sin(angle) * dist, hue, start, end)
+            }
         }
-        edge.alpha = 255
+
+        override fun step() { frame++ }
+
+        override fun draw(canvas: Canvas) {
+            for (g in glints) {
+                val alpha = when {
+                    frame < g.fadeStart -> 180
+                    frame < g.fadeEnd -> (180 * (g.fadeEnd - frame) / (g.fadeEnd - g.fadeStart)).coerceIn(0, 255)
+                    else -> 0
+                }
+                if (alpha <= 0) continue
+                paint.color = Palette.hsv(g.hue, 0.7f, 1f)
+                paint.alpha = alpha
+                canvas.drawCircle(g.x, g.y, radius * 0.2f, paint)
+            }
+            paint.alpha = 255
+        }
     }
 }

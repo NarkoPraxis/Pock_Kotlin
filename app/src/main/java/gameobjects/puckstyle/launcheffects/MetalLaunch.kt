@@ -8,6 +8,8 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import utility.Effects
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -44,14 +46,13 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         ph: ChargePhase, fill: Float
     ) {
         canvas.save()
-        // +90° so the rectangle face is perpendicular to aim (paddle, not spear)
         val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
         canvas.rotate(angle + 90f, cx, cy)
 
         val halfLen = paddleHalfLength() * 0.9f
         val halfThick = currentRenderer.radius * 0.28f
 
-        stick.color = if (ph == ChargePhase.Overcharged) theme.secondary else Color.rgb(180, 40, 30)
+        stick.color = if (ph == ChargePhase.Overcharged) theme.secondary else theme.primary
         rect.set(cx - halfLen, cy - halfThick, cx + halfLen, cy + halfThick)
         canvas.drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
 
@@ -76,7 +77,7 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             val flicker = 0.6f + 0.4f * sin(frame * 0.9f)
             spark.color = Color.rgb(255, 220, 100)
             spark.alpha = (255 * flicker).toInt().coerceIn(0, 255)
-            canvas.drawCircle(fuseTipX, fuseTipY, halfThick * 0.55f, spark)
+            canvas.drawCircle(fuseTipX, fuseTipY, halfThick * 0.85f, spark)
             spark.alpha = 255
         }
         canvas.restore()
@@ -95,16 +96,50 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         spark.alpha = 255
     }
 
-    override fun drawResidual(canvas: Canvas, rx: Float, ry: Float, remaining: Float) {
-        val rand = Random(frame.toLong())
-        spark.color = Color.rgb(30, 20, 10)
-        spark.alpha = (200 * remaining).toInt().coerceIn(0, 255)
-        canvas.drawCircle(rx, ry, currentRenderer.radius * (1.1f + (1f - remaining) * 0.5f), spark)
-        for (i in 0 until 5) {
-            val dx = (rand.nextFloat() - 0.5f) * currentRenderer.radius * 3f
-            val dy = (rand.nextFloat() - 0.5f) * currentRenderer.radius * 3f
-            canvas.drawCircle(rx + dx, ry + dy, currentRenderer.radius * 0.12f, spark)
+    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
+        Effects.addPersistentEffect(MetalScorch(rx, ry, currentRenderer.radius))
+    }
+
+    private class MetalScorch(
+        private val cx: Float, private val cy: Float,
+        private val radius: Float
+    ) : Effects.PersistentEffect {
+        private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private var frame = 0
+        override val isDone = false
+
+        private class Spark(val dx: Float, val dy: Float, var alpha: Float, val fadeRate: Float)
+        private val sparks: List<Spark>
+
+        init {
+            val rand = Random(cx.toLong())
+            sparks = List(7) {
+                val angle = rand.nextFloat() * 2f * Math.PI.toFloat()
+                val dist = radius * (0.9f + rand.nextFloat() * 1.5f)
+                Spark(
+                    cos(angle) * dist, sin(angle) * dist,
+                    200f, 0.25f + rand.nextFloat() * 0.6f
+                )
+            }
         }
-        spark.alpha = 255
+
+        override fun step() {
+            frame++
+            for (s in sparks) s.alpha = (s.alpha - s.fadeRate).coerceAtLeast(0f)
+        }
+
+        override fun draw(canvas: Canvas) {
+            // Dark scorch mark persists
+            fill.color = Color.rgb(30, 20, 10)
+            fill.alpha = 160
+            canvas.drawCircle(cx, cy, radius * 1.1f, fill)
+            // Metallic sparks wink out
+            for (s in sparks) {
+                if (s.alpha <= 0f) continue
+                fill.color = Color.rgb(180, 160, 100)
+                fill.alpha = s.alpha.toInt().coerceIn(0, 255)
+                canvas.drawCircle(cx + s.dx, cy + s.dy, radius * 0.09f, fill)
+            }
+        }
     }
 }
