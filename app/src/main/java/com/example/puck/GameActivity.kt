@@ -84,16 +84,13 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
 
         Drawing.drawArena(canvas)
 
-        if (Settings.gameState == GameState.Play || Settings.gameState == GameState.CountDown) {
-            Drawing.drawTouchHighlights(canvas, Logic.highPlayer, Logic.lowPlayer)
-        }
 
         if (Settings.gameState == GameState.Play) {
             Drawing.drawGoalMenuHints(canvas)
         }
 
         if (Settings.gameState == GameState.CountDown) {
-            Drawing.drawReadyFill(canvas)
+
             Drawing.drawCanScoreWalls(canvas)
         }
         if (Settings.gameState != GameState.BallSelection) {

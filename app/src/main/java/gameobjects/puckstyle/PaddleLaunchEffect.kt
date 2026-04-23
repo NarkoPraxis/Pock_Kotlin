@@ -72,6 +72,8 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     private var releaseSweet = false
     private var releaseOvercharged = false
 
+    private var maxDist = 0f
+
     // ----- strike callback -----
     private var strikeCallback: (() -> Unit)? = null
 
@@ -136,7 +138,8 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
 
     private fun updateState(renderer: PuckRenderer) {
         val minDist = renderer.radius
-        val maxDist = renderer.radius * 2.5f
+        maxDist = renderer.radius * 5f
+        val maxWidth = renderer.radius * 2.5f
 
         val dx = renderer.flingStartX - renderer.flingCurrentX
         val dy = renderer.flingStartY - renderer.flingCurrentY

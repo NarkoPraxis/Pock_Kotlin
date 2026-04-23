@@ -96,6 +96,15 @@ object Drawing {
 
     fun drawArena(canvas: Canvas) {
         canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.screenHeight, PaintBucket.backgroundPaint)
+
+
+        if (Settings.gameState == GameState.CountDown) {
+            drawReadyFill(canvas)
+        }
+
+        drawTouchHighlights(canvas, Logic.highPlayer, Logic.lowPlayer)
+
+
         canvas.drawRect(highScoreZone, PaintBucket.goalPaint)
         canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
     }

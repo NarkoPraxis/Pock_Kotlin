@@ -11,7 +11,7 @@ import utility.Effects
 class ClassicLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(ClassicResidual(rx, ry, currentRenderer.radius, theme.accent))
+        Effects.addPersistentEffect(ClassicResidual(rx, ry, currentRenderer.radius, theme.primary))
     }
 
     private class ClassicResidual(
@@ -30,10 +30,10 @@ class ClassicLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         override fun draw(canvas: Canvas) {
             val t = (frame.toFloat() / 30f).coerceIn(0f, 1f)
             val r = radius * (1f + t)
-            val alpha = ((1f - t * 0.5f) * 70f).toInt().coerceIn(0, 255)
+            val alpha = (255f - 255f * (t- 0.2f)).toInt().coerceIn(0, 255)
             paint.color = color
             paint.alpha = alpha
-            paint.strokeWidth = Settings.strokeWidth * 0.5f
+            paint.strokeWidth = Settings.strokeWidth * 2f
             canvas.drawCircle(cx, cy, r, paint)
         }
     }

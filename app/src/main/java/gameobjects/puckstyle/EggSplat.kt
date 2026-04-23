@@ -6,6 +6,8 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import gameobjects.Settings
+import utility.PaintBucket
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -17,7 +19,7 @@ class EggSplat(
     val theme: ColorTheme
 ) {
     private var frame = 0
-    val isDone get() = frame > 65
+    val isDone get() = false
 
     private data class Blob(val dx: Float, val dy: Float, val rx: Float, val ry: Float, val rot: Float)
     private val blobs: List<Blob>
@@ -44,8 +46,8 @@ class EggSplat(
     fun draw(canvas: Canvas, paint: Paint) {
         when {
             frame <= 35 -> drawSplat(canvas, paint, 255)
-            frame <= 65 -> {
-                val alpha = (255 * (1f - (frame - 35f) / 30f)).toInt().coerceIn(0, 255)
+            frame > 35 -> {
+                val alpha = (255 * (1f - (frame - 35f) / 30f)).toInt().coerceIn(100, 255)
                 drawSplat(canvas, paint, alpha)
             }
         }

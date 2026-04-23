@@ -92,7 +92,7 @@ class ClassicSkin(override val theme: ColorTheme) : PuckSkin {
         color: Int, position: Point, radius: Float
     ) : Effects.PersistentEffect {
         private val explosion = Explosion(
-            PaintBucket.effectColor, color, PaintBucket.backgroundColor,
+            PaintBucket.effectColor, color, color,
             position, radius, true, Direction.FULL, 100
         )
         override val isDone get() = explosion.finished
