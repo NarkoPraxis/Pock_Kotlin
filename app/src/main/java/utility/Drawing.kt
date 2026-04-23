@@ -436,9 +436,13 @@ object Drawing {
             canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, Settings.screenHeight, PaintBucket.readyLowPaint)
         }
         val progress = Settings.readyProgress
-        if (progress > 0f) {
+        // Only start the merge fill once pucks have reached their start positions (progress >= 0.4f),
+        // matching the fly animation threshold in BallSelectionCard so the fill never shows while
+        // a ball is still in the goal.
+        if (progress >= 0.4f) {
+            val fillRatio = (progress - 0.4f) / 0.6f
             val playHalfHeight = Settings.middleY - Settings.topGoalBottom
-            val fillHeight = progress * playHalfHeight
+            val fillHeight = fillRatio * playHalfHeight
             canvas.drawRect(0f, Settings.middleY - fillHeight, Settings.screenWidth, Settings.middleY, PaintBucket.readyMergePaint)
             canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, Settings.middleY + fillHeight, PaintBucket.readyMergePaint)
         }

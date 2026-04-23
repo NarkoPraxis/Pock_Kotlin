@@ -55,6 +55,10 @@ object Logic {
     val lowIsHolding: Boolean get() = lowReadyHolderId != -1
     private val readyFillSeconds = 1f
 
+    // Tracks which pointer is driving each popup's drag so multi-touch routes correctly
+    private var highPopupDragPointerId: Int = -1
+    private var lowPopupDragPointerId: Int = -1
+
     var winnerSoundHasBeenPlayed = false
 
 
@@ -119,6 +123,8 @@ object Logic {
         Settings.playerPaused = false
         highReadyHolderId = -1
         lowReadyHolderId = -1
+        highPopupDragPointerId = -1
+        lowPopupDragPointerId = -1
         Settings.readyProgress = 0f
         val highCardY = Settings.topGoalBottom / 2f + Settings.screenRatio * 2f
         val lowCardY = (Settings.screenHeight + Settings.bottomGoalTop) / 2f - Settings.screenRatio * 2f
@@ -152,29 +158,81 @@ object Logic {
         if (event == null) return false
         if (Settings.gameState != GameState.BallSelection || Settings.pauseGame) return false
         if (Settings.readyProgress > 0f) return false
-        val x = event.x
-        val y = event.y
         val action = motionEvent ?: return false
         val maskedAction = action and MotionEvent.ACTION_MASK
-        val isDown = maskedAction == MotionEvent.ACTION_DOWN || maskedAction == MotionEvent.ACTION_POINTER_DOWN
 
-        // Route each side independently so both players can interact simultaneously
-        if (y < Settings.middleY) {
-            if (highBallPopup.isOpen) {
-                if (isDown && !highBallPopup.hitTest(x, y)) { highBallPopup.close(); return false }
-                if (highBallPopup.handleTouchEvent(action, x, y)) return true
-            } else if (isDown && highBallCard.hitTest(x, y)) {
-                highBallPopup.open(); return true
+        when (maskedAction) {
+            MotionEvent.ACTION_MOVE -> {
+                // Drive each open popup from its own tracked pointer so both players can scroll simultaneously
+                var consumed = false
+                if (highBallPopup.isOpen && highPopupDragPointerId >= 0) {
+                    val pIdx = event.findPointerIndex(highPopupDragPointerId)
+                    if (pIdx >= 0 && highBallPopup.handleTouchEvent(action, event.getX(pIdx), event.getY(pIdx))) consumed = true
+                }
+                if (lowBallPopup.isOpen && lowPopupDragPointerId >= 0) {
+                    val pIdx = event.findPointerIndex(lowPopupDragPointerId)
+                    if (pIdx >= 0 && lowBallPopup.handleTouchEvent(action, event.getX(pIdx), event.getY(pIdx))) consumed = true
+                }
+                return consumed
             }
-        } else {
-            if (lowBallPopup.isOpen) {
-                if (isDown && !lowBallPopup.hitTest(x, y)) { lowBallPopup.close(); return false }
-                if (lowBallPopup.handleTouchEvent(action, x, y)) return true
-            } else if (isDown && lowBallCard.hitTest(x, y)) {
-                lowBallPopup.open(); return true
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                // Use the action pointer's coordinates (not pointer 0) so multi-touch routes to the correct side
+                val idx = event.actionIndex
+                val x = event.getX(idx)
+                val y = event.getY(idx)
+                val pid = event.getPointerId(idx)
+                if (y < Settings.middleY) {
+                    if (highBallPopup.isOpen) {
+                        if (!highBallPopup.hitTest(x, y)) { highBallPopup.close(); highPopupDragPointerId = -1; return false }
+                        if (highPopupDragPointerId == -1) {
+                            highPopupDragPointerId = pid
+                            highBallPopup.handleTouchEvent(action, x, y)
+                        }
+                        return true
+                    } else if (highBallCard.hitTest(x, y)) {
+                        highBallPopup.open(); return true
+                    }
+                } else {
+                    if (lowBallPopup.isOpen) {
+                        if (!lowBallPopup.hitTest(x, y)) { lowBallPopup.close(); lowPopupDragPointerId = -1; return false }
+                        if (lowPopupDragPointerId == -1) {
+                            lowPopupDragPointerId = pid
+                            lowBallPopup.handleTouchEvent(action, x, y)
+                        }
+                        return true
+                    } else if (lowBallCard.hitTest(x, y)) {
+                        lowBallPopup.open(); return true
+                    }
+                }
+                return false
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                val idx = event.actionIndex
+                val pid = event.getPointerId(idx)
+                val x = event.getX(idx)
+                val y = event.getY(idx)
+                if (pid == highPopupDragPointerId) {
+                    highPopupDragPointerId = -1
+                    if (highBallPopup.isOpen) highBallPopup.handleTouchEvent(action, x, y)
+                    return true
+                }
+                if (pid == lowPopupDragPointerId) {
+                    lowPopupDragPointerId = -1
+                    if (lowBallPopup.isOpen) lowBallPopup.handleTouchEvent(action, x, y)
+                    return true
+                }
+                // Untracked pointer lifting — consume if that side's popup is open to prevent
+                // the lift from registering as a ready-hold release while a carousel is visible
+                return (y < Settings.middleY && highBallPopup.isOpen) || (y >= Settings.middleY && lowBallPopup.isOpen)
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                if (highBallPopup.isOpen) highBallPopup.handleTouchEvent(action, event.x, event.y)
+                if (lowBallPopup.isOpen) lowBallPopup.handleTouchEvent(action, event.x, event.y)
+                highPopupDragPointerId = -1
+                lowPopupDragPointerId = -1
+                return false
             }
         }
-
         return false
     }
 
@@ -200,6 +258,11 @@ object Logic {
                 lowReadyHolderId = -1
                 Settings.readyProgress = 0f
                 canCollide = true
+                // Guarantee puck positions before entering Play regardless of frame rate
+                highPlayer.puck.x = highPlayer.resetLocation.x
+                highPlayer.puck.y = highPlayer.resetLocation.y
+                lowPlayer.puck.x = lowPlayer.resetLocation.x
+                lowPlayer.puck.y = lowPlayer.resetLocation.y
                 highPlayer.disableEffects = false
                 lowPlayer.disableEffects = false
                 Settings.gameState = GameState.Play
@@ -357,6 +420,8 @@ object Logic {
             Settings.gameOver = false
             highReadyHolderId = -1
             lowReadyHolderId = -1
+            highPopupDragPointerId = -1
+            lowPopupDragPointerId = -1
             Settings.readyProgress = 0f
             GameEvents.gameReset.emit(Unit)
             Settings.gameState = GameState.BallSelection
@@ -896,6 +961,8 @@ object Logic {
     fun closeBallPopups() {
         highBallPopup.close()
         lowBallPopup.close()
+        highPopupDragPointerId = -1
+        lowPopupDragPointerId = -1
     }
 
     fun resetGame(sizeChanged: KFunction5<GameView, Int, Int, Int, Int, Unit>) {
