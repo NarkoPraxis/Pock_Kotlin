@@ -133,17 +133,20 @@ object Drawing {
                 val pulse = 0.7f + 0.3f * sin(chargeFillFrame * 0.35f)
                 (pulse * 255).toInt().coerceIn(0, 255)
             }
-            ChargePhase.Overcharged -> 128
+            ChargePhase.Overcharged -> {
+                val pulse = 0.5f + 0.5f * sin(chargeFillFrame * 0.6f)
+                (pulse * 200).toInt().coerceIn(0, 255)
+            }
             ChargePhase.Idle -> return
         }
         paint.color = color
         paint.alpha = alpha
         if (isHigh) {
-            val top = Settings.topGoalBottom + (1f - ratio) * (Settings.middleY - Settings.topGoalBottom)
-            canvas.drawRect(0f, top, Settings.screenWidth, Settings.middleY, paint)
+            val bottom = Settings.topGoalBottom + ratio * (Settings.middleY - Settings.topGoalBottom)
+            canvas.drawRect(0f, Settings.topGoalBottom, Settings.screenWidth, bottom, paint)
         } else {
-            val bottom = Settings.bottomGoalTop - (1f - ratio) * (Settings.bottomGoalTop - Settings.middleY)
-            canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, bottom, paint)
+            val top = Settings.bottomGoalTop - ratio * (Settings.bottomGoalTop - Settings.middleY)
+            canvas.drawRect(0f, top, Settings.screenWidth, Settings.bottomGoalTop, paint)
         }
     }
 
