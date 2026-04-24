@@ -40,6 +40,7 @@ object PaintBucket {
     lateinit var lowPlayerHighlightPaint: Paint
     lateinit var menuHintPaint: Paint
     lateinit var rulesTextPaint: Paint
+    lateinit var rulesTitlePaint: Paint
     lateinit var chargeFillHighPaint: Paint
     lateinit var chargeFillLowPaint: Paint
 
@@ -226,6 +227,14 @@ object PaintBucket {
             textSize = Settings.screenRatio * 1.4f
             style = Paint.Style.FILL
             isAntiAlias = true
+        }
+
+        rulesTitlePaint = Paint().apply {
+            color = if (Storage.darkMode) backgroundColor else Color.BLACK
+            textSize = Settings.screenRatio * 1.4f
+            style = Paint.Style.FILL
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
 
         chargeFillHighPaint = Paint().apply {

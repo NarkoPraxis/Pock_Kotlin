@@ -72,6 +72,8 @@ object Logic {
         Settings.unlockProgress = Storage.unlockProgress
         Settings.highPlayerArrow = Storage.highPlayerArrow
         Settings.lowPlayerArrow = Storage.lowPlayerArrow
+        Settings.highPlayerChargeFill = Storage.highPlayerChargeFill
+        Settings.lowPlayerChargeFill = Storage.lowPlayerChargeFill
         Settings.scoreOffsetHigh = Storage.scoreOffsetHigh.toFloat()
         Settings.scoreOffsetLow = Storage.scoreOffsetLow.toFloat()
 
@@ -115,6 +117,7 @@ object Logic {
         Settings.playerPaused = false
         highPopupDragPointerId = -1
         lowPopupDragPointerId = -1
+        Drawing.resetTipIndices()
         val highStartX = Settings.screenWidth / 4f
         val lowStartX = Settings.screenWidth * (3 / 4f)
         highPlayer = Player(
@@ -179,6 +182,7 @@ object Logic {
                             highPopupDragPointerId = pid
                             highBallPopup.handleTouchEvent(action, x, y)
                         }
+                        Drawing.cycleHighTip()
                         return true
                     }
                 } else {
@@ -187,6 +191,7 @@ object Logic {
                             lowPopupDragPointerId = pid
                             lowBallPopup.handleTouchEvent(action, x, y)
                         }
+                        Drawing.cycleLowTip()
                         return true
                     }
                 }
@@ -288,11 +293,13 @@ object Logic {
         when (masked) {
             MotionEvent.ACTION_DOWN -> {
                 if (actionY < Settings.middleY) {
+                    Drawing.cycleHighTip()
                     highTouchedFirst = true
                     if (highPlayer.lockedPointerId == -1) highPlayer.lockedPointerId = actionPointerId
                     startFling(highPlayer, actionX, actionY)
                     setSingleTouch(motionEvent, highPlayer)
                 } else {
+                    Drawing.cycleLowTip()
                     highTouchedFirst = false
                     if (lowPlayer.lockedPointerId == -1) lowPlayer.lockedPointerId = actionPointerId
                     startFling(lowPlayer, actionX, actionY)
@@ -301,10 +308,12 @@ object Logic {
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 if (actionY < Settings.middleY && highPlayer.lockedPointerId == -1) {
+                    Drawing.cycleHighTip()
                     highPlayer.lockedPointerId = actionPointerId
                     startFling(highPlayer, actionX, actionY)
                     highPlayer.touch = TouchState.Down
                 } else if (actionY >= Settings.middleY && lowPlayer.lockedPointerId == -1) {
+                    Drawing.cycleLowTip()
                     lowPlayer.lockedPointerId = actionPointerId
                     startFling(lowPlayer, actionX, actionY)
                     lowPlayer.touch = TouchState.Down
@@ -376,6 +385,8 @@ object Logic {
             lowPopupDragPointerId = -1
             GameEvents.gameReset.emit(Unit)
             Settings.gameState = GameState.BallSelection
+            Drawing.cycleHighTip()
+            Drawing.cycleLowTip()
             highPlayer.puck.x = highPlayer.resetLocation.x
             highPlayer.puck.y = highPlayer.resetLocation.y
             lowPlayer.puck.x = lowPlayer.resetLocation.x
@@ -925,11 +936,15 @@ object Logic {
         Settings.unlockProgress = Storage.unlockProgress
         Settings.highPlayerArrow = Storage.highPlayerArrow
         Settings.lowPlayerArrow = Storage.lowPlayerArrow
+        Settings.highPlayerChargeFill = Storage.highPlayerChargeFill
+        Settings.lowPlayerChargeFill = Storage.lowPlayerChargeFill
         Settings.pauseGame = false
         sizeChanged(gameView, Settings.screenWidth.toInt(), Settings.screenHeight.toInt(),Settings.screenWidth.toInt(), Settings.screenHeight.toInt())
         Settings.gameState = GameState.BallSelection
         Settings.gameOver = false
         Settings.playerPaused = false
+        Drawing.cycleHighTip()
+        Drawing.cycleLowTip()
     }
 
     private fun resetPlayerStates(highPlayer: Player, lowPlayer: Player) {

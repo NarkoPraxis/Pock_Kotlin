@@ -85,6 +85,8 @@ object Settings {
     var pointsToWin: Int = 5
     var highPlayerArrow: Boolean = true
     var lowPlayerArrow: Boolean = true
+    var highPlayerChargeFill: Boolean = true
+    var lowPlayerChargeFill: Boolean = true
     var scoreOffsetHigh: Float = 0f
     var scoreOffsetLow: Float = 0f
 }

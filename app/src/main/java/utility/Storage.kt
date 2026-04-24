@@ -190,6 +190,8 @@ object Storage {
 
     val highPlayerArrow: Boolean get() = settings.getBoolean("high_player_arrow", true)
     val lowPlayerArrow: Boolean get() = settings.getBoolean("low_player_arrow", true)
+    val highPlayerChargeFill: Boolean get() = settings.getBoolean("high_player_charge_fill", true)
+    val lowPlayerChargeFill: Boolean get() = settings.getBoolean("low_player_charge_fill", true)
 
     private fun readFile(context: Context, fileName: String): String {
         val sb = StringBuilder()

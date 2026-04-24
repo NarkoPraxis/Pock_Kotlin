@@ -112,8 +112,8 @@ object Drawing {
 
     fun drawChargeFill(canvas: Canvas) {
         chargeFillFrame++
-        drawPlayerChargeFill(canvas, Logic.highPlayer, isHigh = true)
-        drawPlayerChargeFill(canvas, Logic.lowPlayer, isHigh = false)
+        if (Settings.highPlayerChargeFill) drawPlayerChargeFill(canvas, Logic.highPlayer, isHigh = true)
+        if (Settings.lowPlayerChargeFill) drawPlayerChargeFill(canvas, Logic.lowPlayer, isHigh = false)
     }
 
     private fun drawPlayerChargeFill(canvas: Canvas, player: Player, isHigh: Boolean) {
@@ -479,21 +479,55 @@ object Drawing {
         canvas.drawText(bottomText, x, y, textPaint) //bottom score
     }
 
+    private val tipPages: List<List<String>> = listOf(
+        listOf("Scoring:", "   Knock your opponent", "   into either purple zone", "   to score a point."),
+        listOf("Charging:", "   Hold to build power.", "   Release when purple", "   Gain a shield!"),
+        listOf("Purple Shields:", "   A shielded puck", "   wins every bounce", "   so time your release!"),
+        listOf("Overcharge:", "   Charging too long", "   resets your power.", "   Don't hold forever!"),
+        listOf("Both Shielded:", "   If both pucks are", "   shielded, both shields", "   cancel out. Plan ahead.")
+    )
+
+    var highTipIndex: Int = 0
+        private set
+    var lowTipIndex: Int = 0
+        private set
+
+    fun resetTipIndices() {
+        highTipIndex = 0
+        lowTipIndex = 0
+    }
+
+    fun cycleHighTip() {
+        highTipIndex = pickNewTipIndex(highTipIndex)
+    }
+
+    fun cycleLowTip() {
+        lowTipIndex = pickNewTipIndex(lowTipIndex)
+    }
+
+    private fun pickNewTipIndex(current: Int): Int {
+        val size = tipPages.size
+        if (size <= 1) return current
+        val newIndex = current + 1
+        if (newIndex >= size) {
+            return 0
+        }
+        return newIndex
+        //val choices = (0 until size).filter { it != current }
+        //return choices.random()
+    }
+
     fun drawRules(canvas: Canvas) {
-        val rules = listOf(
-            "Rules:",
-            "1. No Finger Wrestling",
-            "2. Bounce to Score",
-            "3. Purple is Power"
-        )
-        val paint = PaintBucket.rulesTextPaint
+        val highPage = tipPages[highTipIndex]
+        val lowPage = tipPages[lowTipIndex]
         val textX = Settings.screenRatio * 2f
         val lineHeight = Settings.screenRatio * 1.8f
         val startY = Settings.bottomGoalTop - Settings.screenRatio * 11f
-
-        rules.forEachIndexed { i, line ->
+        val lineCount = maxOf(highPage.size, lowPage.size)
+        for (i in 0 until lineCount) {
             val y = startY + i * lineHeight
-            mirrorText(canvas, line, textX, y, paint)
+            val paint = if (i == 0) PaintBucket.rulesTitlePaint else PaintBucket.rulesTextPaint
+            mirrorText(canvas, highPage.getOrElse(i) { "" }, lowPage.getOrElse(i) { "" }, textX, y, paint)
         }
     }
 
