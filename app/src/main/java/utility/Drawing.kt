@@ -107,6 +107,7 @@ object Drawing {
 
         canvas.drawRect(highScoreZone, PaintBucket.goalPaint)
         canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
+        drawGoalMenuHints(canvas)
     }
 
     private fun drawScore(canvas: Canvas, player: Player, popTicker: Ticker, xOffset: Float = 0f) {
@@ -173,6 +174,32 @@ object Drawing {
     fun drawPlayers(canvas: Canvas) {
         Logic.highPlayer.drawTo(canvas)
         Logic.lowPlayer.drawTo(canvas)
+    }
+
+    private val exitFillPaint = Paint().apply {
+        style = Paint.Style.FILL
+        isAntiAlias = false
+    }
+
+    fun drawExitHoldFill(canvas: Canvas) {
+        val highProgress = Logic.highExitProgress
+        if (highProgress > 0f) {
+            val holdX = Logic.highExitHoldX
+            val left = holdX * (1f - highProgress)
+            val right = holdX + (Settings.screenWidth - holdX) * highProgress
+            exitFillPaint.color = Logic.highPlayer.puck.strokeColor
+            exitFillPaint.alpha = 180
+            canvas.drawRect(left, 0f, right, Settings.topGoalBottom, exitFillPaint)
+        }
+        val lowProgress = Logic.lowExitProgress
+        if (lowProgress > 0f) {
+            val holdX = Logic.lowExitHoldX
+            val left = holdX * (1f - lowProgress)
+            val right = holdX + (Settings.screenWidth - holdX) * lowProgress
+            exitFillPaint.color = Logic.lowPlayer.puck.strokeColor
+            exitFillPaint.alpha = 180
+            canvas.drawRect(left, Settings.bottomGoalTop, right, Settings.screenHeight, exitFillPaint)
+        }
     }
 
     private val aimArrowLinePaint = Paint().apply {
@@ -476,10 +503,10 @@ object Drawing {
 
 //        canvas.drawText("2 FINGER TOUCH", cx, highHintY, PaintBucket.menuHintPaint)
         canvas.withScale(-1f, -1f, cx, highHintY) {
-            drawText("2 FINGER TOUCH", cx, highHintY, PaintBucket.menuHintPaint)
+            drawText("Hold Here To Return", cx, highHintY, PaintBucket.menuHintPaint)
         }
 
-        canvas.drawText("2 FINGER TOUCH", cx, lowHintY, PaintBucket.menuHintPaint)
+        canvas.drawText("Hold Here To Return", cx, lowHintY, PaintBucket.menuHintPaint)
     }
 
     fun showDebugInfo(canvas: Canvas) {

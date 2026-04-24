@@ -36,6 +36,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
     private fun startPlayers() {
         handle.removeCallbacksAndMessages(null)
         runnable = Runnable {
+            Logic.updateExitHold()
             Logic.updateCanScoreWall()
             when (Settings.gameState) {
                 GameState.BallSelection -> {
@@ -84,11 +85,6 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
 
         Drawing.drawArena(canvas)
 
-
-        if (Settings.gameState == GameState.Play) {
-            Drawing.drawGoalMenuHints(canvas)
-        }
-
         if (Settings.gameState == GameState.CountDown) {
 
             Drawing.drawCanScoreWalls(canvas)
@@ -124,6 +120,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
             }
         }
 
+        Drawing.drawExitHoldFill(canvas)
     }
 
     fun pauseGameLoop() {
