@@ -6,10 +6,16 @@ import android.os.Bundle
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
+import androidx.viewpager2.adapter.FragmentStateAdapter
+import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.tabs.TabLayout
+import com.google.android.material.tabs.TabLayoutMediator
 import utility.Sounds
 import utility.Storage
 
@@ -18,16 +24,23 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
     override fun onCreate(savedInstanceState: Bundle?) {
         if (Storage.darkMode) setTheme(R.style.SettingsThemeDark) else setTheme(R.style.SettingsThemeLight)
         super.onCreate(savedInstanceState)
-        // Let the AppBarLayout in the layout absorb the status bar inset (edge-to-edge)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.settings_activity)
+
         val toolbar = findViewById<MaterialToolbar>(R.id.settings_toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportFragmentManager
-            .beginTransaction()
-            .replace(R.id.settings, SettingsFragment())
-            .commit()
+
+        val pager = findViewById<ViewPager2>(R.id.settings_pager)
+        val tabs = findViewById<TabLayout>(R.id.settings_tabs)
+        pager.adapter = SettingsPagerAdapter(this)
+        TabLayoutMediator(tabs, pager) { tab, position ->
+            tab.text = when (position) {
+                0 -> "Gameplay"
+                1 -> "Controls"
+                else -> "Visual"
+            }
+        }.attach()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -56,9 +69,30 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
         if (key == "darkmode") recreate()
     }
 
-    class SettingsFragment : PreferenceFragmentCompat() {
+    private class SettingsPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {
+        override fun getItemCount() = 3
+        override fun createFragment(position: Int): Fragment = when (position) {
+            0 -> GameplayFragment()
+            1 -> ControlsFragment()
+            else -> VisualFragment()
+        }
+    }
+
+    class GameplayFragment : PreferenceFragmentCompat() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            setPreferencesFromResource(R.xml.root_preferences, rootKey)
+            setPreferencesFromResource(R.xml.gameplay_preferences, rootKey)
+        }
+    }
+
+    class ControlsFragment : PreferenceFragmentCompat() {
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+            setPreferencesFromResource(R.xml.controls_preferences, rootKey)
+        }
+    }
+
+    class VisualFragment : PreferenceFragmentCompat() {
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+            setPreferencesFromResource(R.xml.visual_preferences, rootKey)
         }
 
         override fun onPreferenceTreeClick(preference: Preference): Boolean {
@@ -68,9 +102,11 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
                     true
                 }
                 "restore_defaults" -> {
-                    PreferenceManager.getDefaultSharedPreferences(requireContext())
-                        .edit().clear().apply()
-                    PreferenceManager.setDefaultValues(requireContext(), R.xml.root_preferences, true)
+                    val ctx = requireContext()
+                    PreferenceManager.getDefaultSharedPreferences(ctx).edit().clear().apply()
+                    PreferenceManager.setDefaultValues(ctx, R.xml.gameplay_preferences, true)
+                    PreferenceManager.setDefaultValues(ctx, R.xml.controls_preferences, true)
+                    PreferenceManager.setDefaultValues(ctx, R.xml.visual_preferences, true)
                     Storage.resetScoreOffsets()
                     requireActivity().recreate()
                     true

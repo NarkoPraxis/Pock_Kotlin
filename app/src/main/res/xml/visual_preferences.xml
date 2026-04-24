@@ -1,0 +1,17 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreference
+            android:defaultValue="false"
+            android:key="darkmode"
+            android:title="@string/darkmode_label" />
+    <Preference
+            android:key="calibrate_score"
+            android:title="Calibrate Score Position"
+            app:layout="@layout/preference_button_calibrate" />
+    <Preference
+            android:title="Restore Defaults"
+            android:summary="Reset all settings and score positions"
+            android:key="restore_defaults" />
+
+</PreferenceScreen>

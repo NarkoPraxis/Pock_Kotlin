@@ -35,7 +35,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         Sounds.initialize(this)
         Sounds.playMenuAmbiance()
-        PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false)
+        PreferenceManager.setDefaultValues(this, R.xml.gameplay_preferences, false)
+        PreferenceManager.setDefaultValues(this, R.xml.controls_preferences, false)
+        PreferenceManager.setDefaultValues(this, R.xml.visual_preferences, false)
 
         MobileAds.initialize(this) {}
 

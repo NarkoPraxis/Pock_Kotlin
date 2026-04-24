@@ -1,0 +1,61 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <ListPreference
+            android:summary="%s"
+            android:defaultValue="default"
+            android:entries="@array/ball_sizes"
+            android:entryValues="@array/game_values"
+            android:key="ball_sizes"
+            android:title="Ball Size" />
+    <ListPreference
+            android:summary="%s"
+            android:defaultValue="default"
+            android:entries="@array/tail_lengths"
+            android:entryValues="@array/game_values"
+            android:key="tail_length"
+            android:title="Tail Length" />
+    <ListPreference
+            android:summary="%s"
+            android:defaultValue="default"
+            android:entries="@array/bonus_durations"
+            android:entryValues="@array/game_values"
+            android:key="bonus_duration"
+            android:title="Bonus Time" />
+    <ListPreference
+            android:summary="%1$s"
+            android:defaultValue="default"
+            android:entries="@array/bounce_bonuses"
+            android:entryValues="@array/game_values"
+            android:key="bounce_bonus"
+            android:title="Power Bounce Bonus" />
+    <ListPreference
+            android:summary="%s"
+            android:defaultValue="default"
+            android:entries="@array/charge_speeds"
+            android:entryValues="@array/game_values"
+            android:key="charge_speed"
+            android:title="Charge Speed" />
+    <ListPreference
+            android:summary="%s"
+            android:defaultValue="default"
+            android:entries="@array/game_speeds"
+            android:entryValues="@array/game_values"
+            android:key="game_speed"
+            android:title="Game Speed" />
+    <ListPreference
+            android:summary="%s"
+            android:defaultValue="slow"
+            android:entries="@array/countdown_speeds"
+            android:entryValues="@array/countdown_speed_values"
+            android:key="countdown_speed"
+            android:title="Countdown Speed" />
+    <ListPreference
+            app:key="points_to_win"
+            app:title="Points to Win"
+            app:summary="%s"
+            app:entries="@array/points_to_win_entries"
+            app:entryValues="@array/points_to_win_values"
+            app:defaultValue="5" />
+
+</PreferenceScreen>
