@@ -12,8 +12,8 @@ import gameobjects.puckstyle.PuckRenderer
 
 class IceSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
 
-    private val centerColor = theme.primary
-    private val midColor = Palette.lerpColor(theme.primary, Color.WHITE, 0.55f)
+    private val centerColor = theme.main.primary
+    private val midColor = Palette.lerpColor(theme.main.primary, Color.WHITE, 0.55f)
     private val edgeColor = Color.WHITE
 
     private val rimStroke = Paint().apply {

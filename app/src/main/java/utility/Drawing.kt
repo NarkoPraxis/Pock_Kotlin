@@ -124,9 +124,9 @@ object Drawing {
         val theme = effect.theme
         val paint = if (isHigh) PaintBucket.chargeFillHighPaint else PaintBucket.chargeFillLowPaint
         val color = when (ph) {
-            ChargePhase.Building -> theme.primary
-            ChargePhase.SweetSpot -> theme.accent
-            ChargePhase.Overcharged -> theme.secondary
+            ChargePhase.Building -> theme.main.primary
+            ChargePhase.SweetSpot -> theme.accent.primary
+            ChargePhase.Overcharged -> theme.main.secondary
             ChargePhase.Idle -> return
         }
         val alpha = when (ph) {

@@ -46,7 +46,7 @@ class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.drawOval(cx - eggW, cy - eggH, cx + eggW, cy + eggH, eggPaint)
 
         if (fillRatio > 0f && ph != ChargePhase.Overcharged) {
-            eggPaint.color = Palette.withAlpha(theme.accent, (220 * pulse).toInt())
+            eggPaint.color = Palette.withAlpha(theme.accent.primary, (220 * pulse).toInt())
             canvas.drawOval(cx - eggW * fillRatio, cy - eggH * fillRatio,
                             cx + eggW * fillRatio, cy + eggH * fillRatio, eggPaint)
         }

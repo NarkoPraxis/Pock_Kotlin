@@ -37,15 +37,15 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val outerR = base * jitter
 
         val outerColor = when (ph) {
-            ChargePhase.Overcharged -> theme.secondary
-            else -> theme.primary
+            ChargePhase.Overcharged -> theme.main.secondary
+            else -> theme.main.primary
         }
         flamePaint.color = outerColor
         flamePaint.alpha = 255
         canvas.drawCircle(cx, cy, outerR, flamePaint)
 
         if (fill > 0f) {
-            val coreColor = if (ph == ChargePhase.SweetSpot) theme.accent else theme.secondary
+            val coreColor = if (ph == ChargePhase.SweetSpot) theme.accent.primary else theme.main.secondary
             flamePaint.color = coreColor
             val pulse = if (ph == ChargePhase.SweetSpot) 0.8f + 0.2f * sin(frame * 0.4f) else 1f
             flamePaint.alpha = (255 * pulse).toInt().coerceIn(0, 255)
@@ -54,7 +54,7 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(FireScorch(rx, ry, currentRenderer.radius, theme.primary))
+        Effects.addPersistentEffect(FireScorch(rx, ry, currentRenderer.radius, theme.main.primary))
     }
 
     override fun paddleHalfLength(): Float = currentRenderer.radius * 0.6f

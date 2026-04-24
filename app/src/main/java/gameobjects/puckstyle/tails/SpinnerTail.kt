@@ -45,8 +45,8 @@ class SpinnerTail(override val theme: ColorTheme) : TailRenderer {
         val angleStep = 18f * Math.PI.toFloat() / 180f
         val strokeWidth = sw
 
-        val color  = if (renderer.shielded) PaintBucket.effectColor else theme.primary
-        val hilite = if (renderer.shielded) PaintBucket.effectColor else theme.secondary
+        val color  = if (renderer.shielded) PaintBucket.effectColor else theme.main.primary
+        val hilite = if (renderer.shielded) PaintBucket.effectColor else theme.main.secondary
 
         tipPaint.strokeWidth = strokeWidth * 3f
         centerPaint.strokeWidth = strokeWidth * 2f

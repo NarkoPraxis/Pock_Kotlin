@@ -16,11 +16,11 @@ class FireSkin(override val theme: ColorTheme) : PuckSkin {
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
         val orbRadius = renderer.radius * 0.6f
 
-        fillPaint.color = theme.secondary
+        fillPaint.color = theme.main.secondary
         fillPaint.strokeWidth = renderer.strokePaint.strokeWidth
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, fillPaint)
 
-        fillPaint.color = theme.primary
+        fillPaint.color = theme.main.primary
         canvas.drawCircle(renderer.x, renderer.y, orbRadius, fillPaint)
     }
 }

@@ -8,6 +8,7 @@ import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import utility.Effects
+import androidx.core.graphics.withRotation
 
 /** Spinning shuriken cross — two bars crossed, rotating while charging. */
 class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
@@ -35,26 +36,25 @@ class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
         ph: ChargePhase, fill: Float, spin: Float
     ) {
-        canvas.save()
-        canvas.rotate(Math.toDegrees(spin.toDouble()).toFloat(), cx, cy)
-        val half = paddleHalfLength() * 0.9f
-        val pX = -aY
-        val pY = aX
-        bar.color = theme.secondary
-        bar.strokeWidth = paddleThickness()
-        canvas.drawLine(cx - pX * half, cy - pY * half, cx + pX * half, cy + pY * half, bar)
-        canvas.drawLine(cx - aX * half, cy - aY * half, cx + aX * half, cy + aY * half, bar)
-        if (fill > 0f) {
-            bar.color = theme.accent
-            val fh = half * fill
-            canvas.drawLine(cx - pX * fh, cy - pY * fh, cx + pX * fh, cy + pY * fh, bar)
-            canvas.drawLine(cx - aX * fh, cy - aY * fh, cx + aX * fh, cy + aY * fh, bar)
+        canvas.withRotation(Math.toDegrees(spin.toDouble()).toFloat(), cx, cy) {
+            val half = paddleHalfLength() * 0.9f
+            val pX = -aY
+            val pY = aX
+            bar.color = theme.main.secondary
+            bar.strokeWidth = paddleThickness()
+            drawLine(cx - pX * half, cy - pY * half, cx + pX * half, cy + pY * half, bar)
+            drawLine(cx - aX * half, cy - aY * half, cx + aX * half, cy + aY * half, bar)
+            if (fill > 0f) {
+                bar.color = theme.accent.primary
+                val fh = half * fill
+                drawLine(cx - pX * fh, cy - pY * fh, cx + pX * fh, cy + pY * fh, bar)
+                drawLine(cx - aX * fh, cy - aY * fh, cx + aX * fh, cy + aY * fh, bar)
+            }
         }
-        canvas.restore()
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(SpinnerMark(rx, ry, currentRenderer.radius, theme.accent))
+        Effects.addPersistentEffect(SpinnerMark(rx, ry, currentRenderer.radius, theme.accent.primary))
     }
 
     private class SpinnerMark(

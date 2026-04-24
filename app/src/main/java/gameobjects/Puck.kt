@@ -1,6 +1,7 @@
 package gameobjects
 
 import android.graphics.Canvas
+import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.skins.ClassicSkin
@@ -12,10 +13,9 @@ import physics.Ticker
 import shapes.Circle
 import utility.PaintBucket
 
-class Puck(radius: Float, x: Float, y: Float, fillColor: Int, strokeColor: Int) : Circle(radius, x, y, fillColor, strokeColor) {
+class Puck(radius: Float, x: Float, y: Float, theme: ColorTheme) : Circle(radius, x, y, theme.main.primary, theme.main.secondary) {
 
     val renderer: PuckRenderer = PuckRenderer().also { r ->
-        val theme = ColorTheme(fillColor, strokeColor, PaintBucket.effectColor, true)
         r.skin = ClassicSkin(theme)
         r.tail = ClassicTail(theme)
         r.effect = ClassicLaunch(theme)

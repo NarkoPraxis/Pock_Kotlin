@@ -33,6 +33,9 @@ object PaintBucket {
     lateinit var wallPaint: Paint
     lateinit var canScoreWallPaint: Paint
     var canScoreWallColor = 0
+    var inertPrimaryColor = 0
+    var inertSecondaryColor = 0
+    var effectSecondaryColor = 0
     lateinit var tutorialTextPaint: Paint
     lateinit var tutorialStrokePaint: Paint
     lateinit var scoreFlashPaint: Paint
@@ -70,6 +73,18 @@ object PaintBucket {
         goalHsv[1] = (goalHsv[1] * 2f).coerceAtMost(1f)
         canScoreWallColor = Color.HSVToColor(goalHsv)
 
+        val highHsv = FloatArray(3)
+        Color.colorToHSV(highBallColor, highHsv)
+        val lowHsv = FloatArray(3)
+        Color.colorToHSV(lowBallColor, lowHsv)
+        val avgS = (highHsv[1] + lowHsv[1]) / 2f
+        val avgV = (highHsv[2] + lowHsv[2]) / 2f
+        inertPrimaryColor = Color.HSVToColor(floatArrayOf(0f, avgS, avgV))
+        inertSecondaryColor = Color.HSVToColor(floatArrayOf(0f, (avgS * 2f).coerceAtMost(1f), avgV))
+
+        val effectHsv = FloatArray(3)
+        Color.colorToHSV(effectColor, effectHsv)
+        effectSecondaryColor = Color.HSVToColor(floatArrayOf(effectHsv[0], (effectHsv[1] * 2f).coerceAtMost(1f), effectHsv[2]))
 
         STROKE_WIDTH = Settings.screenRatio / 12f
 

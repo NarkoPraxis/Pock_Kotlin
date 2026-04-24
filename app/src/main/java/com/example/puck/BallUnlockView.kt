@@ -153,7 +153,7 @@ class BallUnlockView @JvmOverloads constructor(
 
             // 1. Card background + border
             canvas.drawRoundRect(b[0], b[1], b[2], b[3], ratio() * 0.4f, ratio() * 0.4f, cardBg)
-            cardBorder.color = theme.primary
+            cardBorder.color = theme.main.primary
             cardBorder.strokeWidth = ratio() * 0.24f
             canvas.drawRoundRect(b[0], b[1], b[2], b[3], ratio() * 0.4f, ratio() * 0.4f, cardBorder)
 
@@ -163,9 +163,9 @@ class BallUnlockView @JvmOverloads constructor(
             previewRenderer.y = puckY
             previewRenderer.radius = pr
             previewRenderer.frame = bounceFrame
-            previewRenderer.fillColor = theme.primary
-            previewRenderer.strokeColor = theme.secondary
-            previewRenderer.baseFillColor = theme.primary
+            previewRenderer.fillColor = theme.main.primary
+            previewRenderer.strokeColor = theme.main.secondary
+            previewRenderer.baseFillColor = theme.main.primary
             previewRenderer.skin = skins?.get(i)
             previewRenderer.tail = tails?.get(i)
             previewRenderer.preview = !unlocked

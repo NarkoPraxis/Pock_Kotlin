@@ -51,7 +51,7 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         path.lineTo(cx - aX * depth, cy - aY * depth)
         path.close()
 
-        fill.color = if (ph == ChargePhase.Overcharged) theme.secondary else Color.WHITE
+        fill.color = if (ph == ChargePhase.Overcharged) theme.main.secondary else Color.WHITE
         fill.alpha = 200
         canvas.drawPath(path, fill)
         if (ratio > 0f) {
@@ -60,7 +60,7 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             canvas.drawPath(path, fill)
         }
         fill.alpha = 255
-        edge.color = theme.secondary
+        edge.color = theme.main.secondary
         canvas.drawPath(path, edge)
     }
 

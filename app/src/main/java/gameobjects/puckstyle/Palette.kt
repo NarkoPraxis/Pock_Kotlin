@@ -43,7 +43,7 @@ object Palette {
      */
     fun themeHue(theme: ColorTheme): Float {
         val hsv = FloatArray(3)
-        Color.colorToHSV(theme.primary, hsv)
+        Color.colorToHSV(theme.main.primary, hsv)
         return hsv[0]
     }
 

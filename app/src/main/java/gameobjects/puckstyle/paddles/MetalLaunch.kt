@@ -52,12 +52,12 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val halfLen = paddleHalfLength() * 0.9f
         val halfThick = currentRenderer.radius * 0.28f
 
-        stick.color = if (ph == ChargePhase.Overcharged) theme.secondary else theme.primary
+        stick.color = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.main.primary
         rect.set(cx - halfLen, cy - halfThick, cx + halfLen, cy + halfThick)
         canvas.drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
 
         if (fill > 0f) {
-            stick.color = theme.accent
+            stick.color = theme.accent.primary
             stick.alpha = (220 * fill).toInt().coerceIn(0, 255)
             val bandHalf = halfLen * fill
             rect.set(cx - bandHalf, cy - halfThick * 0.6f, cx + bandHalf, cy + halfThick * 0.6f)

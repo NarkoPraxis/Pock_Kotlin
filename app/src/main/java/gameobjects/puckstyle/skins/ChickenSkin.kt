@@ -52,13 +52,13 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
 
         // 1. Body fill
         paint.style = Paint.Style.FILL
-        paint.color = theme.primary
+        paint.color = theme.main.primary
         canvas.drawCircle(0f, 0f, r, paint)
 
         // 2. Secondary stroke highlight
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = sw
-        paint.color = theme.secondary
+        paint.color = theme.main.secondary
         canvas.drawCircle(0f, 0f, r, paint)
 
         // 3. Wings
@@ -80,7 +80,7 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
             paint.color = Color.WHITE
             canvas.drawCircle(-eyeX, eyeY, eyeR, paint)
             canvas.drawCircle( eyeX, eyeY, eyeR, paint)
-            paint.color = theme.secondary
+            paint.color = theme.main.secondary
             canvas.drawCircle(-eyeX, eyeY, eyeR * 0.72f, paint)
             canvas.drawCircle( eyeX, eyeY, eyeR * 0.72f, paint)
             paint.color = Color.BLACK
@@ -93,7 +93,7 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = r * 0.08f
             paint.strokeCap = Paint.Cap.ROUND
-            paint.color = theme.secondary
+            paint.color = theme.main.secondary
             canvas.drawLine(-eyeX - eyeR * 0.65f, eyeY, -eyeX + eyeR * 0.65f, eyeY, paint)
             canvas.drawLine( eyeX - eyeR * 0.65f, eyeY,  eyeX + eyeR * 0.65f, eyeY, paint)
         }
@@ -106,7 +106,7 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
         beakPath.close()
         paint.style = Paint.Style.FILL
         paint.strokeCap = Paint.Cap.BUTT
-        paint.color = theme.secondary
+        paint.color = theme.main.secondary
         canvas.drawPath(beakPath, paint)
 
         canvas.restore()
@@ -124,7 +124,7 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
         wingSecondary.quadTo(attachX + fw,          attachY - fh * 0.55f, attachX + fw * 0.7f, attachY)
         wingSecondary.close()
         paint.style = Paint.Style.FILL
-        paint.color = theme.secondary
+        paint.color = theme.main.secondary
         canvas.drawPath(wingSecondary, paint)
         // Primary inner shape — base extends below attachment to merge into body
         wingPrimary.reset()
@@ -132,7 +132,7 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
         wingPrimary.quadTo(attachX - fw * 0.75f, attachY - fh * 0.48f, attachX,         attachY - fh * 0.88f)
         wingPrimary.quadTo(attachX + fw * 0.75f, attachY - fh * 0.48f, attachX + fw * 0.42f, attachY + fh * 0.18f)
         wingPrimary.close()
-        paint.color = theme.primary
+        paint.color = theme.main.primary
         canvas.drawPath(wingPrimary, paint)
         canvas.restore()
     }
@@ -153,7 +153,7 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
         wingSecondary.quadTo(s * r * 1.58f,  r * 0.06f, s * r * 1.22f,  r * 0.33f)  // tip → lower
         wingSecondary.quadTo(s * r * 0.92f,  r * 0.38f, s * r * 0.72f,  r * 0.13f)  // lower → attachment
         wingSecondary.close()
-        paint.color = theme.secondary
+        paint.color = theme.main.secondary
         canvas.drawPath(wingSecondary, paint)
 
         // Primary — smaller inner shape; attachment pulled into body to merge with body fill
@@ -163,7 +163,7 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
         wingPrimary.quadTo(s * r * 1.50f,  r * 0.04f, s * r * 1.16f,  r * 0.27f)   // tip → lower
         wingPrimary.quadTo(s * r * 0.90f,  r * 0.33f, s * r * 0.50f,  r * 0.10f)   // lower → inner attachment
         wingPrimary.close()
-        paint.color = theme.primary
+        paint.color = theme.main.primary
         canvas.drawPath(wingPrimary, paint)
 
         canvas.restore()

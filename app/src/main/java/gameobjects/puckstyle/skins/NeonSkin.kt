@@ -25,15 +25,15 @@ class NeonSkin(override val theme: ColorTheme) : PuckSkin {
 //        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, subtleFill)
 
         // 4 glow rings, outermost first — body always stays theme color, charging shown via chargePaint
-        glowPaint.color = Palette.withAlpha(theme.primary, 25);  glowPaint.strokeWidth = sw * 5.0f
+        glowPaint.color = Palette.withAlpha(theme.main.primary, 25);  glowPaint.strokeWidth = sw * 5.0f
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-        glowPaint.color = Palette.withAlpha(theme.primary, 45);  glowPaint.strokeWidth = sw * 3.2f
+        glowPaint.color = Palette.withAlpha(theme.main.primary, 45);  glowPaint.strokeWidth = sw * 3.2f
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-        glowPaint.color = Palette.withAlpha(theme.primary, 110); glowPaint.strokeWidth = sw * 1.8f
+        glowPaint.color = Palette.withAlpha(theme.main.primary, 110); glowPaint.strokeWidth = sw * 1.8f
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-        glowPaint.color = Palette.withAlpha(theme.primary, 220); glowPaint.strokeWidth = sw
+        glowPaint.color = Palette.withAlpha(theme.main.primary, 220); glowPaint.strokeWidth = sw
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
 
-        renderer.chargePaint.color = theme.accent
+        renderer.chargePaint.color = theme.accent.primary
     }
 }

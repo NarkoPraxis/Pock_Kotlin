@@ -9,9 +9,9 @@ import gameobjects.puckstyle.PuckSkin
 
 class SpinnerSkin(override val theme: ColorTheme) : PuckSkin {
 
-    private val baseFill = Paint().apply { color = theme.primary; isAntiAlias = true; style = Paint.Style.FILL }
-    private val arm = Paint().apply { color = theme.secondary; isAntiAlias = true; style = Paint.Style.FILL }
-    private val rim = Paint().apply { color = theme.secondary; isAntiAlias = true; style = Paint.Style.STROKE }
+    private val baseFill = Paint().apply { color = theme.main.primary; isAntiAlias = true; style = Paint.Style.FILL }
+    private val arm = Paint().apply { color = theme.main.secondary; isAntiAlias = true; style = Paint.Style.FILL }
+    private val rim = Paint().apply { color = theme.main.secondary; isAntiAlias = true; style = Paint.Style.STROKE }
 
     private val path = Path()
     private var rotation = 0f

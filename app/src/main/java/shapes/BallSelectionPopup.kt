@@ -187,7 +187,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
         // Popup background + border
         canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, bg)
-        border.color = theme.primary
+        border.color = theme.main.primary
         border.strokeWidth = Settings.screenRatio * 0.25f  // Plan 06: thicker border
         canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, border)
 
@@ -217,7 +217,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
             val type = types[i]
 
             if (isCenter) {
-                slotBgSel.color = Color.argb(90, Color.red(theme.primary), Color.green(theme.primary), Color.blue(theme.primary))
+                slotBgSel.color = Color.argb(90, Color.red(theme.main.primary), Color.green(theme.main.primary), Color.blue(theme.main.primary))
                 canvas.drawRoundRect(slotCenterX - slotW * 0.45f, cy - halfH + Settings.screenRatio * 0.4f,
                     slotCenterX + slotW * 0.45f, cy + halfH - Settings.screenRatio * 0.4f,
                     Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, slotBgSel)
@@ -248,9 +248,9 @@ class BallSelectionPopup(val isHigh: Boolean) {
             )
             previewRenderer.x = slotCenterX
             previewRenderer.y = puckY
-            previewRenderer.fillColor = theme.primary
-            previewRenderer.strokeColor = theme.secondary
-            previewRenderer.baseFillColor = theme.primary
+            previewRenderer.fillColor = theme.main.primary
+            previewRenderer.strokeColor = theme.main.secondary
+            previewRenderer.baseFillColor = theme.main.primary
             previewRenderer.preview = !isUnlocked(type)
             previewRenderer.skin = slotSkins[i]
             previewRenderer.tail = slotTails[i]

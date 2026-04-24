@@ -34,7 +34,7 @@ class GhostSkin(override val theme: ColorTheme) : PuckSkin {
     }
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        val glowColor = if (renderer.currentCharge >= Settings.chargeStart) theme.accent else theme.primary
+        val glowColor = if (renderer.currentCharge >= Settings.chargeStart) theme.accent.primary else theme.main.primary
         val sw = renderer.strokePaint.strokeWidth
 
         // Animated aura rings drawn behind the orb — each has its own oscillation phase

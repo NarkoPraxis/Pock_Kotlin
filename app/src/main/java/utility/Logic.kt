@@ -121,13 +121,13 @@ object Logic {
         val highStartX = Settings.screenWidth / 4f
         val lowStartX = Settings.screenWidth * (3 / 4f)
         highPlayer = Player(
-            Puck(Settings.ballRadius, highStartX, Settings.middleY, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
+            Puck(Settings.ballRadius, highStartX, Settings.middleY, ColorTheme.Warm),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight / 5, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
             true
         )
         highPlayer.resetLocation = Point(highStartX, Settings.middleY)
         lowPlayer = Player(
-            Puck(Settings.ballRadius, lowStartX, Settings.middleY, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor),
+            Puck(Settings.ballRadius, lowStartX, Settings.middleY, ColorTheme.Cold),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight - Settings.screenHeight / 5, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor),
             false
         )

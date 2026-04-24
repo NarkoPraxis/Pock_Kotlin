@@ -46,12 +46,12 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         path.lineTo(cx - aX * shortR, cy - aY * shortR)
         path.close()
 
-        val base = if (ph == ChargePhase.Overcharged) theme.secondary else Color.rgb(180, 220, 255)
+        val base = if (ph == ChargePhase.Overcharged) theme.main.secondary else Color.rgb(180, 220, 255)
         shardFill.color = base
         canvas.drawPath(path, shardFill)
 
         if (fill > 0f) {
-            shardFill.color = theme.accent
+            shardFill.color = theme.accent.primary
             shardFill.alpha = (180 * fill).toInt().coerceIn(0, 255)
             canvas.drawPath(path, shardFill)
             shardFill.alpha = 255
@@ -86,15 +86,15 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
                 val alpha = (160 * (1f - t * 0.5f)).toInt().coerceIn(0, 255)
                 drawCrystal(canvas, crystalR, alpha)
                 // Water puddle appears as crystal evaporates
-                fill.color = theme.primary
+                fill.color = theme.main.primary
                 fill.alpha = (70 * t).toInt().coerceIn(0, 255)
                 canvas.drawCircle(cx, cy, radius * 0.5f * t, fill)
             } else {
                 // Water puddle persists at low opacity until goal clears it
-                fill.color = theme.secondary
+                fill.color = theme.main.secondary
                 fill.alpha = 55
                 canvas.drawCircle(cx, cy, radius * 0.5f, fill)
-                fill.color = theme.primary
+                fill.color = theme.main.primary
                 fill.alpha = 40
                 canvas.drawCircle(cx, cy, radius * 0.3f, fill)
             }

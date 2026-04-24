@@ -25,8 +25,8 @@ class MetalTail(override val theme: ColorTheme) : TailRenderer {
             val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
             val color = when {
                 renderer.shielded -> PaintBucket.effectColor
-                ratio < 0.5f -> Palette.lerpColor(grey, theme.primary, ratio * 2f)
-                else -> Palette.lerpColor(theme.primary, Color.WHITE, (ratio - 0.5f) * 2f)
+                ratio < 0.5f -> Palette.lerpColor(grey, theme.main.primary, ratio * 2f)
+                else -> Palette.lerpColor(theme.main.primary, Color.WHITE, (ratio - 0.5f) * 2f)
             }
             points[i].setColor(color)
             points[i].size = renderer.radius * 0.95f

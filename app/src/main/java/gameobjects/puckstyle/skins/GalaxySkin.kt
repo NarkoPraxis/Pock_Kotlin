@@ -19,7 +19,7 @@ import androidx.core.graphics.withTranslation
 class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
 
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-    private val rim = Paint().apply { color = theme.primary; isAntiAlias = true; style = Paint.Style.FILL }
+    private val rim = Paint().apply { color = theme.main.primary; isAntiAlias = true; style = Paint.Style.FILL }
     private val star = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val starPath = Path()
     private var lastRadius = -1f
@@ -48,9 +48,9 @@ class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
     private fun ensureShader(radius: Float, theme: ColorTheme) {
         if (radius == lastRadius) return
         val darkCenter = Color.argb(255, 0, 0, 0)
-        val preThemeEdge  = Palette.withAlpha(theme.primary, 130)
-        val themeEdge = Palette.withAlpha(theme.primary, 60)
-        val gone = Palette.withAlpha(theme.primary, 0)
+        val preThemeEdge  = Palette.withAlpha(theme.main.primary, 130)
+        val themeEdge = Palette.withAlpha(theme.main.primary, 60)
+        val gone = Palette.withAlpha(theme.main.primary, 0)
         fill.shader = RadialGradient(
             0f, 0f, radius,
             intArrayOf(darkCenter, Color.argb(160, 0,0,0), preThemeEdge, themeEdge, themeEdge),
@@ -92,7 +92,7 @@ class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
             val py = renderer.y + sin(ang) * dist
             val twinkle = (sin(renderer.frame * seed[4] + seed[2]) + 1f) * 0.5f
             star.alpha = (110 + 145 * twinkle).toInt()
-            star.color = Palette.withAlpha(theme.primary, star.alpha)
+            star.color = Palette.withAlpha(theme.main.primary, star.alpha)
             val outerR = renderer.radius * 0.12f * (0.6f + twinkle * 0.8f)
             drawStar(canvas, px, py, outerR, outerR * 0.38f, star)
         }

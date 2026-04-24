@@ -42,7 +42,7 @@ class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
 
     private fun drawCloud(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         val r = currentRenderer.radius * 0.4f
-        val color = if (ph == ChargePhase.Overcharged) theme.secondary else Color.rgb(230, 235, 245)
+        val color = if (ph == ChargePhase.Overcharged) theme.main.secondary else Color.rgb(230, 235, 245)
         cloud.color = color
         canvas.drawCircle(cx, cy, r * 1.1f, cloud)
         canvas.drawCircle(cx - r * 0.9f, cy + r * 0.2f, r * 0.8f, cloud)
@@ -50,7 +50,7 @@ class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.drawCircle(cx, cy - r * 0.55f, r * 0.85f, cloud)
 
         if (fill > 0f) {
-            cloud.color = theme.accent
+            cloud.color = theme.accent.primary
             cloud.alpha = (200 * fill).toInt().coerceIn(0, 255)
             canvas.drawCircle(cx, cy, r * 0.8f * fill, cloud)
             cloud.alpha = 255

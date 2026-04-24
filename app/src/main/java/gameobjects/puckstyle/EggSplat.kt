@@ -73,7 +73,7 @@ class EggSplat(
 
         // Yolk — large, centered, no growth animation
         val yolkR = radius * 0.61f
-        paint.color = Palette.withAlpha(theme.primary, alpha)
+        paint.color = Palette.withAlpha(theme.main.primary, alpha)
         canvas.drawCircle(cx, cy, yolkR, paint)
     }
 }

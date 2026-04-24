@@ -22,16 +22,16 @@ class ClassicSkin(override val theme: ColorTheme) : PuckSkin {
     }
 
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(ClassicScoreEffect(theme.primary, otherColor, position, Settings.screenRatio / 3f, highGoal))
+        Effects.addPersistentEffect(ClassicScoreEffect(theme.main.primary, otherColor, position, Settings.screenRatio / 3f, highGoal))
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {
         val radiusModifier = 3f * (speed / Settings.maxPuckSpeed)
-        Effects.addPersistentEffect(ClassicCollisionEffect(theme.primary, position, Settings.screenRatio * radiusModifier))
+        Effects.addPersistentEffect(ClassicCollisionEffect(theme.main.primary, position, Settings.screenRatio * radiusModifier))
     }
 
     override fun onShieldedCollision(position: Point) {
-        Effects.addPersistentEffect(ClassicCollisionEffect(theme.primary, position, Settings.screenRatio * 3f))
+        Effects.addPersistentEffect(ClassicCollisionEffect(theme.main.primary, position, Settings.screenRatio * 3f))
     }
 
     private class ClassicScoreEffect(

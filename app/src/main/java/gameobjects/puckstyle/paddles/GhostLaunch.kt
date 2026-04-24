@@ -32,7 +32,7 @@ class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
 
     private fun drawGhost(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         val r = currentRenderer.radius * (0.75f + 0.05f * sin(frame * 0.2f))
-        val base = if (ph == ChargePhase.Overcharged) theme.secondary else theme.primary
+        val base = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.main.primary
         body.color = base
         body.alpha = 90
         canvas.drawCircle(cx, cy, r, body)
@@ -41,7 +41,7 @@ class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.drawCircle(cx, cy, r, outline)
 
         if (fill > 0f) {
-            body.color = theme.accent
+            body.color = theme.accent.primary
             body.alpha = (150 * fill).toInt().coerceIn(0, 255)
             canvas.drawCircle(cx, cy, r * fill, body)
         }
@@ -50,7 +50,7 @@ class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(EctoplasmMark(rx, ry, currentRenderer.radius, theme.accent))
+        Effects.addPersistentEffect(EctoplasmMark(rx, ry, currentRenderer.radius, theme.accent.primary))
     }
 
     private class EctoplasmMark(

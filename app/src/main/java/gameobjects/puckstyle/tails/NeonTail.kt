@@ -59,7 +59,7 @@ class NeonTail(override val theme: ColorTheme) : TailRenderer {
             else             { rings[i].x = renderer.x;     rings[i].y = renderer.y     }
 
             val ratio = i.toFloat() / (rings.size - 1).coerceAtLeast(1)
-            val color = if (renderer.shielded) PaintBucket.effectColor else theme.primary
+            val color = if (renderer.shielded) PaintBucket.effectColor else theme.main.primary
             paint.color = Palette.withAlpha(color, neonAlpha(ratio))
             paint.strokeWidth = renderer.strokePaint.strokeWidth
             canvas.drawCircle(rings[i].x, rings[i].y, renderer.radius, paint)

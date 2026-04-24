@@ -6,6 +6,7 @@ import android.graphics.Paint
 import enums.Direction
 import enums.MotionStates
 import enums.TouchState
+import gameobjects.puckstyle.ColorTheme
 import physics.Force
 import physics.Point
 import physics.Ticker
@@ -15,9 +16,9 @@ import utility.PaintBucket
 import utility.Sounds
 
 class Player(
-             var puck: Puck = Puck(0f, 0f,0f, Color.BLACK, Color.LTGRAY),
-             var finger: Circle = Circle(0f, 0f,0f, Color.BLACK, Color.GRAY),
-             var isHigh: Boolean = true
+    var puck: Puck = Puck(0f, 0f,0f, ColorTheme.Cold),
+    var finger: Circle = Circle(0f, 0f,0f, Color.BLACK, Color.GRAY),
+    var isHigh: Boolean = true
 ) {
 
     var resetLocation = Point(0f, 0f)

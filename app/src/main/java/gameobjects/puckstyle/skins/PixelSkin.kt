@@ -7,8 +7,8 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 
 class PixelSkin(override val theme: ColorTheme) : PuckSkin {
-    private val fill = Paint().apply { color = theme.primary; isAntiAlias = false; style = Paint.Style.FILL }
-    private val stroke = Paint().apply { color = theme.secondary; isAntiAlias = false; style = Paint.Style.STROKE }
+    private val fill = Paint().apply { color = theme.main.primary; isAntiAlias = false; style = Paint.Style.FILL }
+    private val stroke = Paint().apply { color = theme.main.secondary; isAntiAlias = false; style = Paint.Style.STROKE }
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
         val side = renderer.radius * 1.7f

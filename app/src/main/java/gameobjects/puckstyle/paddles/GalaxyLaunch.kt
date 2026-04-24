@@ -31,18 +31,18 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val pX = -aY
         val pY = aX
 
-        val core = if (ph == ChargePhase.Overcharged) theme.secondary else Color.rgb(80, 40, 140)
+        val core = if (ph == ChargePhase.Overcharged) theme.main.secondary else Color.rgb(80, 40, 140)
         body.color = core
         canvas.drawCircle(cx, cy, r, body)
 
         if (fill > 0f) {
-            body.color = theme.accent
+            body.color = theme.accent.primary
             body.alpha = (220 * fill).toInt().coerceIn(0, 255)
             canvas.drawCircle(cx, cy, r * fill, body)
             body.alpha = 255
         }
 
-        ring.color = if (ph == ChargePhase.Overcharged) theme.secondary else theme.primary
+        ring.color = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.main.primary
         ring.strokeWidth = Settings.strokeWidth * 0.6f
         val len = paddleHalfLength()
         canvas.drawLine(cx - pX * len, cy - pY * len, cx + pX * len, cy + pY * len, ring)
@@ -51,7 +51,7 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(NebulaMark(rx, ry, currentRenderer.radius, theme.accent))
+        Effects.addPersistentEffect(NebulaMark(rx, ry, currentRenderer.radius, theme.accent.primary))
     }
 
     private class NebulaMark(
