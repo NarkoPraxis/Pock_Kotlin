@@ -58,14 +58,6 @@ object Logic {
     private var highBallSelectionReady = false
     private var lowBallSelectionReady = false
 
-    private var highExitHolderId = -1
-    private var lowExitHolderId = -1
-    var highExitProgress = 0f
-    var lowExitProgress = 0f
-    var highExitHoldX = 0f
-    var lowExitHoldX = 0f
-    private val exitHoldSeconds = 2f
-
     enum class Result {
         High,
         Low,
@@ -130,12 +122,6 @@ object Logic {
         lowPopupDragPointerId = -1
         highBallSelectionReady = false
         lowBallSelectionReady = false
-        highExitHolderId = -1
-        lowExitHolderId = -1
-        highExitProgress = 0f
-        lowExitProgress = 0f
-        highExitHoldX = 0f
-        lowExitHoldX = 0f
         val highCardY = Settings.topGoalBottom / 2f + Settings.screenRatio * 2f
         val lowCardY = (Settings.screenHeight + Settings.bottomGoalTop) / 2f - Settings.screenRatio * 2f
         highPlayer = Player(
@@ -163,85 +149,6 @@ object Logic {
     fun reset() {
         countPauseTouches = 0
         tempGameState = GameState.Play
-    }
-
-    private fun trackExitHold(event: MotionEvent?) {
-        if (event == null) return
-        val masked = event.action and MotionEvent.ACTION_MASK
-        val actionIdx = event.actionIndex
-        val actionPid = event.getPointerId(actionIdx)
-        val actionX = event.getX(actionIdx)
-        val actionY = event.getY(actionIdx)
-        when (masked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                if (actionY < Settings.topGoalBottom && highExitHolderId == -1) {
-                    highExitHolderId = actionPid
-                    highExitHoldX = actionX
-                    highExitProgress = 0f
-                }
-                if (actionY > Settings.bottomGoalTop && lowExitHolderId == -1) {
-                    lowExitHolderId = actionPid
-                    lowExitHoldX = actionX
-                    lowExitProgress = 0f
-                }
-            }
-            MotionEvent.ACTION_MOVE -> {
-                if (highExitHolderId != -1) {
-                    val idx = event.findPointerIndex(highExitHolderId)
-                    if (idx >= 0 && event.getY(idx) >= Settings.topGoalBottom) {
-                        highExitHolderId = -1
-                        highExitProgress = 0f
-                    }
-                }
-                if (lowExitHolderId != -1) {
-                    val idx = event.findPointerIndex(lowExitHolderId)
-                    if (idx >= 0 && event.getY(idx) <= Settings.bottomGoalTop) {
-                        lowExitHolderId = -1
-                        lowExitProgress = 0f
-                    }
-                }
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                if (actionPid == highExitHolderId) {
-                    highExitHolderId = -1
-                    highExitProgress = 0f
-                }
-                if (actionPid == lowExitHolderId) {
-                    lowExitHolderId = -1
-                    lowExitProgress = 0f
-                }
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                highExitHolderId = -1
-                highExitProgress = 0f
-                lowExitHolderId = -1
-                lowExitProgress = 0f
-            }
-        }
-    }
-
-    fun updateExitHold() {
-        val rate = Settings.refreshRate / (exitHoldSeconds * 1000f)
-        if (highExitHolderId != -1) {
-            highExitProgress = (highExitProgress + rate).coerceAtMost(1f)
-            if (highExitProgress >= 1f) { triggerExit(); return }
-        }
-        if (lowExitHolderId != -1) {
-            lowExitProgress = (lowExitProgress + rate).coerceAtMost(1f)
-            if (lowExitProgress >= 1f) { triggerExit(); return }
-        }
-    }
-
-    private fun triggerExit() {
-        if (leaving) return
-        leaving = true
-        Effects.clearPersistentEffects()
-        Effects.collisions.clear()
-        Sounds.playMenuAmbiance()
-        val intent = Intent(activity, MainActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        ContextCompat.startActivity(activity, intent, Bundle())
-        activity.finish()
     }
 
     private fun interceptBallMenu(event: MotionEvent?, motionEvent: Int?): Boolean {
@@ -841,7 +748,6 @@ object Logic {
     }
 
     fun onTouchEvent(event: MotionEvent?, context: Context) {
-        trackExitHold(event)
         val motionEvent = event?.action
         var pointerCount = event?.pointerCount
         if (pointerCount == null) {

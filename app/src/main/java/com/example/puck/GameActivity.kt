@@ -38,7 +38,6 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
     private fun startPlayers() {
         handle.removeCallbacksAndMessages(null)
         runnable = Runnable {
-            Logic.updateExitHold()
             Logic.updateCanScoreWall()
             when (Settings.gameState) {
                 GameState.BallSelection -> {
@@ -110,7 +109,6 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
             }
         }
 
-        Drawing.drawExitHoldFill(canvas)
     }
 
     fun pauseGameLoop() {
@@ -195,11 +193,5 @@ class GameActivity : AppCompatActivity() {
         Logic.unregisterPhaseCallbacks()
     }
 
-    override fun onBackPressed() {
-        if (Settings.pauseGame) {
-            super.onBackPressed()
-        } else {
-            //donothing
-        }
-    }
+
 }
