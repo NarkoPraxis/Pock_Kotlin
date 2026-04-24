@@ -53,11 +53,7 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
                 GameState.BallSelection -> {
 
                 }
-                GameState.CountDown -> {
-                    Logic.checkCharge()
-                    Logic.cancelChargesOnRelease()
-                    Logic.updateReadyFill()
-                }
+                GameState.CountDown -> { /* dead state */ }
                 GameState.Tutorial -> {
 
                 }
@@ -118,20 +114,15 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
             return
         }
 
-        Drawing.drawArena(canvas)
+        Drawing.drawArenaBackground(canvas)
+        Drawing.drawChargeFill(canvas)
 
-        if (Settings.gameState == GameState.CountDown) {
-            Drawing.drawReadyFill(canvas)
-            Drawing.drawCanScoreWalls(canvas)
-        }
         if (Settings.gameState != GameState.BallSelection) {
             Effects.drawEffects(canvas)
             Drawing.drawScores(canvas, Logic.highPlayer, Logic.lowPlayer)
             Drawing.drawPlayers(canvas)
             Drawing.drawAimArrows(canvas)
-            if (Settings.gameState != GameState.CountDown) {
-                Drawing.drawCanScoreWalls(canvas)
-            }
+            Drawing.drawCanScoreWalls(canvas)
             Drawing.drawWalls(canvas)
             if (Settings.pauseGame) {
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)

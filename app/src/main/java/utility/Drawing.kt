@@ -8,6 +8,7 @@ import android.graphics.RectF
 import enums.GameState
 import gameobjects.Player
 import gameobjects.Settings
+import gameobjects.puckstyle.ChargePhase
 import physics.Ticker
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -94,20 +95,56 @@ object Drawing {
         }
     }
 
-    fun drawArena(canvas: Canvas) {
+    fun drawArenaBackground(canvas: Canvas) {
         canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.screenHeight, PaintBucket.backgroundPaint)
-
-
-        if (Settings.gameState == GameState.CountDown) {
-            drawReadyFill(canvas)
-        }
-
-        drawTouchHighlights(canvas, Logic.highPlayer, Logic.lowPlayer)
-
-
         canvas.drawRect(highScoreZone, PaintBucket.goalPaint)
         canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
+        drawTouchHighlights(canvas, Logic.highPlayer, Logic.lowPlayer)
+    }
+
+    fun drawArenaForeground(canvas: Canvas) {
         drawGoalMenuHints(canvas)
+    }
+
+    private var chargeFillFrame = 0
+
+    fun drawChargeFill(canvas: Canvas) {
+        chargeFillFrame++
+        drawPlayerChargeFill(canvas, Logic.highPlayer, isHigh = true)
+        drawPlayerChargeFill(canvas, Logic.lowPlayer, isHigh = false)
+    }
+
+    private fun drawPlayerChargeFill(canvas: Canvas, player: Player, isHigh: Boolean) {
+        val effect = player.puck.renderer.effect ?: return
+        val ph = effect.phase
+        if (ph == ChargePhase.Idle) return
+        val ratio = effect.chargeFillRatio
+        val theme = effect.theme
+        val paint = if (isHigh) PaintBucket.chargeFillHighPaint else PaintBucket.chargeFillLowPaint
+        val color = when (ph) {
+            ChargePhase.Building -> theme.primary
+            ChargePhase.SweetSpot -> theme.accent
+            ChargePhase.Overcharged -> theme.secondary
+            ChargePhase.Idle -> return
+        }
+        val alpha = when (ph) {
+            ChargePhase.Building -> 128
+            ChargePhase.SweetSpot -> {
+                val pulse = 0.7f + 0.3f * sin(chargeFillFrame * 0.35f)
+                (pulse * 255).toInt().coerceIn(0, 255)
+            }
+            ChargePhase.Overcharged -> 128
+            ChargePhase.Idle -> return
+        }
+        paint.color = color
+        paint.alpha = alpha
+        if (isHigh) {
+            val top = Settings.topGoalBottom + (1f - ratio) * (Settings.middleY - Settings.topGoalBottom)
+            canvas.drawRect(0f, top, Settings.screenWidth, Settings.middleY, paint)
+        } else {
+            val bottom = Settings.bottomGoalTop - (1f - ratio) * (Settings.bottomGoalTop - Settings.middleY)
+            canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, bottom, paint)
+        }
     }
 
     private fun drawScore(canvas: Canvas, player: Player, popTicker: Ticker, xOffset: Float = 0f) {
@@ -453,26 +490,6 @@ object Drawing {
         canvas.drawText(text, x, y, textPaint)
         canvas.restore()
         canvas.drawText(text, x, y, textPaint) //bottom score
-    }
-
-    fun drawReadyFill(canvas: Canvas) {
-        if (Logic.highIsHolding) {
-            canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.middleY, PaintBucket.readyHighPaint)
-        }
-        if (Logic.lowIsHolding) {
-            canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, Settings.screenHeight, PaintBucket.readyLowPaint)
-        }
-        val progress = Settings.readyProgress
-        // Only start the merge fill once pucks have reached their start positions (progress >= 0.4f),
-        // matching the fly animation threshold in BallSelectionCard so the fill never shows while
-        // a ball is still in the goal.
-        if (progress >= 0.4f) {
-            val fillRatio = (progress - 0.4f) / 0.6f
-            val playHalfHeight = Settings.middleY - Settings.topGoalBottom
-            val fillHeight = fillRatio * playHalfHeight
-            canvas.drawRect(0f, Settings.middleY - fillHeight, Settings.screenWidth, Settings.middleY, PaintBucket.readyMergePaint)
-            canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, Settings.middleY + fillHeight, PaintBucket.readyMergePaint)
-        }
     }
 
     fun drawRules(canvas: Canvas) {

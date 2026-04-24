@@ -20,6 +20,7 @@ interface TailRenderer {
      * Default no-op; override in each tail implementation.
      */
     fun fillTo(x: Float, y: Float) {}
+    fun onPhaseChanged(phase: ChargePhase) {}
 
     /**
      * Routing wrapper called by PuckRenderer.draw(). Delegates to render() for unlocked balls;

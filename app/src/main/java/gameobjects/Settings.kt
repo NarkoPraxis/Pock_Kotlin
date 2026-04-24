@@ -22,7 +22,6 @@ object Settings {
 
     var canScoreWallProgress: Float = 0f
     var canScore: Boolean = false
-    var readyProgress: Float = 0f
 
     // Wall sits inside the goal zone; its inner edge touches the play-area boundary.
     // Center is half a thickness inside the goal. As progress goes 0→1 the thickness

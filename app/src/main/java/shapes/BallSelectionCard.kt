@@ -41,21 +41,13 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
         val theme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
         val halfW = w / 2f
         val halfH = h / 2f
-        val progress = Settings.readyProgress
-        val cardAlpha = ((1f - progress * 2f).coerceIn(0f, 1f) * 255f).toInt()
         val p = player()
 
         if (!popup.isOpen) {
-            if (progress == 0f) {
-                val hoverOffset = Settings.screenRatio * 1.0f * sin(2 * Math.PI.toFloat() * frame / 90f)
-                p.puck.x = cx
-                p.puck.y = cy - hoverOffset
-                frame++
-            } else {
-                val flyT = smoothStep((progress / 0.4f).coerceAtMost(1f))
-                p.puck.x = cx + (p.resetLocation.x - cx) * flyT
-                p.puck.y = cy + (p.resetLocation.y - cy) * flyT
-            }
+            val hoverOffset = Settings.screenRatio * 1.0f * sin(2 * Math.PI.toFloat() * frame / 90f)
+            p.puck.x = cx
+            p.puck.y = cy - hoverOffset
+            frame++
         }
 
         canvas.save()
@@ -66,6 +58,7 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
             bg.alpha = 255
             border.alpha = 255
             label.alpha = 255
+
             canvas.drawRoundRect(cx - halfW, labelcy - halfH, cx + halfW, labelcy + halfH,
                 Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, bg)
             border.color = theme.primary
@@ -74,47 +67,38 @@ class BallSelectionCard(val isHigh: Boolean, private val popup: BallSelectionPop
                 Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, border)
             canvas.drawText(type.name, cx, labelcy + label.textSize / 3f, label)
         } else {
-            bg.alpha = cardAlpha
+            bg.alpha = 255
             canvas.drawRoundRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH,
                 Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, bg)
             border.color = theme.primary
-            border.alpha = cardAlpha
+            border.alpha = 255
             border.strokeWidth = Settings.screenRatio * 0.22f
             canvas.drawRoundRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH,
                 Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, border)
             label.textSize = Settings.screenRatio * 0.6f
-            label.alpha = cardAlpha
+            label.alpha = 255
             canvas.drawText(type.name, cx, cy + halfH - Settings.screenRatio * 0.4f, label)
         }
 
         canvas.restore()
 
         if (!popup.isOpen) {
-            if (progress >= 0.4f) {
-                p.drawTo(canvas)
-            } else {
-                // Show ball without charge/shield/effect indicators until it reaches game position
-                val r = p.puck.renderer
-                r.frame++
-                r.currentCharge = 0f
-                r.shielded = false
-                r.launched = false
-                r.baseFillColor = p.puckFillColor
-                r.chargePowerLocked = false
-                r.isHigh = p.isHigh
-                r.isFlingHeld = false
-                r.effectEnabled = false
-                if (progress == 0f) {
-                    canvas.save()
-                    canvas.clipRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH)
-                    p.puck.drawTo(canvas)
-                    canvas.restore()
-                } else {
-                    p.puck.drawTo(canvas)
-                }
-            }
+            // Show ball clipped to the card bounds while hovering in the goal zone
+            val r = p.puck.renderer
+            r.frame++
+            r.currentCharge = 0f
+            r.shielded = false
+            r.launched = false
+            r.baseFillColor = p.puckFillColor
+            r.chargePowerLocked = false
+            r.isHigh = p.isHigh
+            r.isFlingHeld = false
+            r.effectEnabled = false
+            canvas.save()
+            canvas.clipRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH)
+            p.puck.drawTo(canvas)
+            canvas.restore()
         }
     }
 
-    private fun smoothStep(t: Float): Float = t * t * (3f - 2f * t)
 }

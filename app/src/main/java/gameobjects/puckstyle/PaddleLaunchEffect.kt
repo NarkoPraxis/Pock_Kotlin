@@ -40,8 +40,50 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     protected var frame = 0
         private set
 
-    protected var phase: ChargePhase = ChargePhase.Idle
-        private set
+    // --- charge state (SSoT owned here) ---
+    private var _currentCharge = 0f
+    private var _chargePowerLocked = false
+
+    override val currentCharge: Float get() = _currentCharge
+    override val chargePowerLocked: Boolean get() = _chargePowerLocked
+
+    override fun increaseCharge() {
+        if (!_chargePowerLocked) {
+            if (_currentCharge < Settings.chargeStart) {
+                _currentCharge = Settings.chargeStart
+            } else if (_currentCharge >= Settings.sweetSpotMax) {
+                _currentCharge = Settings.sweetSpotMax * .5f
+                _chargePowerLocked = true
+            } else {
+                _currentCharge += Settings.chargeIncreaseRate
+            }
+        }
+    }
+
+    override fun clearCharge() {
+        _currentCharge = 0f
+        _chargePowerLocked = false
+    }
+
+    // --- phase with listener dispatch ---
+    private val phaseListeners = mutableListOf<(ChargePhase) -> Unit>()
+    private var _phase: ChargePhase = ChargePhase.Idle
+        set(value) {
+            if (field != value) {
+                field = value
+                phaseListeners.forEach { it(value) }
+            }
+        }
+
+    override val phase: ChargePhase get() = _phase
+
+    override fun registerPhaseCallback(onPhaseChanged: (ChargePhase) -> Unit) {
+        phaseListeners.add(onPhaseChanged)
+    }
+
+    override fun unregisterAllPhaseCallbacks() {
+        phaseListeners.clear()
+    }
 
     /** Unit vector pointing in the direction the puck will launch. */
     protected var aimX = 0f
@@ -60,8 +102,8 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         private set
 
     /** 0..1 — how far the center-out charge fill has travelled. 1 in SweetSpot. */
-    protected var chargeFillRatio = 0f
-        private set
+    private var _chargeFillRatio = 0f
+    override val chargeFillRatio: Float get() = _chargeFillRatio
 
     // ----- release anim state -----
     private var releaseFrames = 0
@@ -107,13 +149,13 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
                     onSpawnResidual(renderer.x, renderer.y, releaseAimX, releaseAimY)
                 }
             }
-        } else if (phase != ChargePhase.Idle) {
+        } else if (_phase != ChargePhase.Idle) {
             drawChargingPaddle(canvas)
         }
     }
 
     override fun onRelease(x: Float, y: Float, radius: Float, sweetSpotHit: Boolean) {
-        if (phase == ChargePhase.Idle) {
+        if (_phase == ChargePhase.Idle) {
             strikeCallback?.invoke()
             reset()
             return
@@ -123,14 +165,16 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         releaseAimX = aimX
         releaseAimY = aimY
         releaseSweet = sweetSpotHit
-        releaseOvercharged = phase == ChargePhase.Overcharged
+        releaseOvercharged = _phase == ChargePhase.Overcharged
         releaseFrames = RELEASE_DURATION
         onReleaseSpawn(x, y, radius, releaseSweet, releaseOvercharged)
     }
 
     override fun reset() {
         releaseFrames = 0
-        phase = ChargePhase.Idle
+        _phase = ChargePhase.Idle
+        _currentCharge = 0f
+        _chargePowerLocked = false
         strikeCallback = null
     }
 
@@ -139,7 +183,6 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     private fun updateState(renderer: PuckRenderer) {
         val minDist = renderer.radius
         maxDist = renderer.radius * 5f
-        val maxWidth = renderer.radius * 2.5f
 
         val dx = renderer.flingStartX - renderer.flingCurrentX
         val dy = renderer.flingStartY - renderer.flingCurrentY
@@ -158,14 +201,14 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
             paddleDistance = minDist
         }
 
-        phase = when {
-            renderer.chargePowerLocked -> ChargePhase.Overcharged
-            renderer.currentCharge >= Settings.sweetSpotMin && renderer.currentCharge <= Settings.sweetSpotMax -> ChargePhase.SweetSpot
-            renderer.isFlingHeld || renderer.currentCharge > 0f -> ChargePhase.Building
+        _phase = when {
+            _chargePowerLocked -> ChargePhase.Overcharged
+            _currentCharge >= Settings.sweetSpotMin && _currentCharge <= Settings.sweetSpotMax -> ChargePhase.SweetSpot
+            renderer.isFlingHeld || _currentCharge > 0f -> ChargePhase.Building
             else -> ChargePhase.Idle
         }
 
-        if (phase == ChargePhase.Overcharged) {
+        if (_phase == ChargePhase.Overcharged) {
             val capped = minDist + (maxDist - minDist) * 0.5f
             paddleDistance = min(paddleDistance, capped)
         }
@@ -174,10 +217,10 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         paddleY = renderer.y - aimY * paddleDistance
 
         val range = max(1f, (Settings.sweetSpotMin - Settings.chargeStart))
-        chargeFillRatio = when (phase) {
+        _chargeFillRatio = when (_phase) {
             ChargePhase.SweetSpot -> 1f
             ChargePhase.Overcharged -> 0f
-            ChargePhase.Building -> ((renderer.currentCharge - Settings.chargeStart) / range).coerceIn(0f, 1f)
+            ChargePhase.Building -> ((_currentCharge - Settings.chargeStart) / range).coerceIn(0f, 1f)
             ChargePhase.Idle -> 0f
         }
     }
@@ -186,7 +229,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
 
     /** Called each frame during Building / SweetSpot / Overcharged. */
     protected open fun drawChargingPaddle(canvas: Canvas) {
-        drawPaddleBar(canvas, paddleX, paddleY, aimX, aimY, chargeFillRatio, phase, false)
+        drawPaddleBar(canvas, paddleX, paddleY, aimX, aimY, _chargeFillRatio, _phase, false)
     }
 
     /** Called each frame during the release-strike animation. */

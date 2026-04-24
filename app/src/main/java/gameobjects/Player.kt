@@ -31,11 +31,11 @@ class Player(
     var motion = MotionStates.Free
     var touch = TouchState.Up
     var movementSpeed = Settings.minPuckSpeed
-    var charge = 0f
+    val charge: Float get() = puck.renderer.effect?.currentCharge ?: 0f
     var bonusCountdown = 0f
     var shielded = false
     var shouldReleaseCharge = false
-    var chargePowerLocked = false
+    val chargePowerLocked: Boolean get() = puck.renderer.effect?.chargePowerLocked ?: false
     var touchLocked = false
     var disappearing = false
     var reappearing = false
@@ -302,16 +302,11 @@ class Player(
     }
 
     fun increaseCharge() {
-        if (!chargePowerLocked) {
-            if (charge < Settings.chargeStart) {
-                charge = Settings.chargeStart
-            } else if (charge >= Settings.sweetSpotMax) {
-                charge = Settings.sweetSpotMax * .5f
-                chargePowerLocked = true
-            } else {
-                charge += Settings.chargeIncreaseRate
-            }
-        }
+        puck.renderer.effect?.increaseCharge()
+    }
+
+    fun clearCharge() {
+        puck.renderer.effect?.clearCharge()
     }
 
     fun releaseCharge(): Boolean {
@@ -330,8 +325,7 @@ class Player(
         puck.shrinkTicker.reset()
         puck.renderer.effect?.registerStrikeCallback { applyPendingLaunch() }
         puck.renderer.effect?.onRelease(puck.x, puck.y, puck.radius, shielded)
-        charge = 0f
-        chargePowerLocked = false
+        puck.renderer.effect?.clearCharge()
         flingReleaseDir = null
         flingReleaseBasePower = 0f
         return shielded

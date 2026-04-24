@@ -42,16 +42,10 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
                 GameState.BallSelection -> {
                     Logic.checkCharge()
                     Logic.cancelChargesOnRelease()
-                    Logic.updateReadyFill()
+                    Logic.checkBallSelectionEnd()
                 }
-                GameState.CountDown -> {
-                    Logic.checkCharge()
-                    Logic.cancelChargesOnRelease()
-                    Logic.updateReadyFill()
-                }
-                GameState.Tutorial -> {
-
-                }
+                GameState.CountDown -> { /* dead state */ }
+                GameState.Tutorial -> { }
                 GameState.Play -> playGame()
                 GameState.Scored -> {
                     Logic.scored()
@@ -59,8 +53,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
                 GameState.GameOver -> {
                     Logic.gameOver()
                 }
-                GameState.Temp -> {
-                }
+                GameState.Temp -> { }
             }
             invalidate()
             handle.postDelayed(runnable, Settings.refreshRate.toLong())
@@ -83,22 +76,18 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
             return
         }
 
-        Drawing.drawArena(canvas)
+        Drawing.drawArenaBackground(canvas)
+        Drawing.drawChargeFill(canvas)
 
-        if (Settings.gameState == GameState.CountDown) {
-
-            Drawing.drawCanScoreWalls(canvas)
-        }
         if (Settings.gameState != GameState.BallSelection) {
             Effects.drawEffects(canvas)
             Drawing.drawPlayers(canvas)
             Drawing.drawAimArrows(canvas)
             Drawing.drawScoreFlash(canvas)
             Drawing.drawScores(canvas, Logic.highPlayer, Logic.lowPlayer)
-            if (Settings.gameState != GameState.CountDown) {
-                Drawing.drawCanScoreWalls(canvas)
-            }
+            Drawing.drawCanScoreWalls(canvas)
             Drawing.drawWalls(canvas)
+            Drawing.drawArenaForeground(canvas)
             if (Settings.pauseGame) {
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
                 Logic.pauseMenu.drawTo(canvas)
@@ -108,15 +97,14 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
                 Logic.pauseMenu.drawTo(canvas)
             } else {
-                Drawing.drawReadyFill(canvas)
                 Drawing.drawCanScoreWalls(canvas)
                 Drawing.drawRules(canvas)
-
                 Logic.highBallCard.drawTo(canvas)
                 Logic.lowBallCard.drawTo(canvas)
                 Logic.highBallPopup.drawTo(canvas)
                 Logic.lowBallPopup.drawTo(canvas)
                 Drawing.drawAimArrows(canvas)
+                Drawing.drawArenaForeground(canvas)
             }
         }
 
@@ -173,6 +161,11 @@ class GameActivity : AppCompatActivity() {
         super.onResume()
         Sounds.resumeAll()
         playView.resumeGameLoop()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Logic.unregisterPhaseCallbacks()
     }
 
     override fun onBackPressed() {

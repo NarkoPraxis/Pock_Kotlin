@@ -14,4 +14,5 @@ interface PuckSkin {
     fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {}
     fun onCollisionWin(position: Point, speed: Float) {}
     fun onShieldedCollision(position: Point) {}
+    fun onPhaseChanged(phase: ChargePhase) {}
 }

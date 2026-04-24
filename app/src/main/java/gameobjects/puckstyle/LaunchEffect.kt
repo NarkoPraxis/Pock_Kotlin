@@ -17,4 +17,18 @@ interface LaunchEffect {
      * The default implementation fires the callback immediately (for non-animated effects).
      */
     fun registerStrikeCallback(onStrike: () -> Unit) { onStrike() }
+
+    // --- readable charge/phase state ---
+    val phase: ChargePhase get() = ChargePhase.Idle
+    val chargeFillRatio: Float get() = 0f
+    val currentCharge: Float get() = 0f
+    val chargePowerLocked: Boolean get() = false
+
+    // --- charge control ---
+    fun increaseCharge() {}
+    fun clearCharge() {}
+
+    // --- phase change events ---
+    fun registerPhaseCallback(onPhaseChanged: (ChargePhase) -> Unit) {}
+    fun unregisterAllPhaseCallbacks() {}
 }
