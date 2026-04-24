@@ -122,6 +122,7 @@ object Logic {
         this.activity = activity
         this.gameView = gameView
         leaving = false
+        Settings.gameState = GameState.BallSelection
         Settings.pauseGame = false
         Settings.gameOver = false
         Settings.playerPaused = false
@@ -234,8 +235,9 @@ object Logic {
     private fun triggerExit() {
         if (leaving) return
         leaving = true
+        Effects.clearPersistentEffects()
+        Effects.collisions.clear()
         Sounds.playMenuAmbiance()
-        resetGame(GameView::doOnSizeChange)
         val intent = Intent(activity, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         ContextCompat.startActivity(activity, intent, Bundle())
@@ -996,8 +998,9 @@ object Logic {
         when(menuSelection){
             MenuSelection.back -> {
                 leaving = true
+                Effects.clearPersistentEffects()
+                Effects.collisions.clear()
                 Sounds.playMenuAmbiance()
-                resetGame(GameView::doOnSizeChange)
                 val intent = Intent(context, MainActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 ContextCompat.startActivity(context, intent, Bundle())
@@ -1008,8 +1011,9 @@ object Logic {
             }
             MenuSelection.settings -> {
                 leaving = true
+                Effects.clearPersistentEffects()
+                Effects.collisions.clear()
                 Sounds.playMenuAmbiance()
-                resetGame(GameView::doOnSizeChange)
                 val intent = Intent(context, SettingsActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 ContextCompat.startActivity(context, intent, Bundle())
