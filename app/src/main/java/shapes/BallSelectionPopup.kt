@@ -119,8 +119,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
         when (masked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                // Tap outside popup closes it (Plan 05: no close X needed)
-                if (!hitTest(x, y)) { close(); return true }
+                if (!hitTest(x, y)) return false
                 dragging = true
                 lastLogicalX = logicalX
                 dragDistance = 0f

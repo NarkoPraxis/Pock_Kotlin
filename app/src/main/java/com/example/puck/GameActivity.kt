@@ -98,13 +98,14 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
                 canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
                 Logic.pauseMenu.drawTo(canvas)
             } else {
+                Effects.drawEffects(canvas)
+                Drawing.drawPlayers(canvas)
+                Drawing.drawAimArrows(canvas)
                 Drawing.drawCanScoreWalls(canvas)
                 Drawing.drawRules(canvas)
-                Logic.highBallCard.drawTo(canvas)
-                Logic.lowBallCard.drawTo(canvas)
+                Drawing.drawWalls(canvas)
                 Logic.highBallPopup.drawTo(canvas)
                 Logic.lowBallPopup.drawTo(canvas)
-                Drawing.drawAimArrows(canvas)
                 Drawing.drawArenaForeground(canvas)
             }
         }

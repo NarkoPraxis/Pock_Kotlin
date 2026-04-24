@@ -33,8 +33,6 @@ object Logic {
 
     val highBallPopup = shapes.BallSelectionPopup(isHigh = true)
     val lowBallPopup = shapes.BallSelectionPopup(isHigh = false)
-    val highBallCard = shapes.BallSelectionCard(isHigh = true, popup = highBallPopup, player = { highPlayer })
-    val lowBallCard = shapes.BallSelectionCard(isHigh = false, popup = lowBallPopup, player = { lowPlayer })
 
     lateinit var activity: AppCompatActivity
 
@@ -54,9 +52,6 @@ object Logic {
     private var lowPopupDragPointerId: Int = -1
 
     var winnerSoundHasBeenPlayed = false
-
-    private var highBallSelectionReady = false
-    private var lowBallSelectionReady = false
 
     enum class Result {
         High,
@@ -120,22 +115,20 @@ object Logic {
         Settings.playerPaused = false
         highPopupDragPointerId = -1
         lowPopupDragPointerId = -1
-        highBallSelectionReady = false
-        lowBallSelectionReady = false
-        val highCardY = Settings.topGoalBottom / 2f + Settings.screenRatio * 2f
-        val lowCardY = (Settings.screenHeight + Settings.bottomGoalTop) / 2f - Settings.screenRatio * 2f
+        val highStartX = Settings.screenWidth / 4f
+        val lowStartX = Settings.screenWidth * (3 / 4f)
         highPlayer = Player(
-            Puck(Settings.ballRadius, Settings.middleX, highCardY, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
+            Puck(Settings.ballRadius, highStartX, Settings.middleY, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight / 5, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
             true
         )
-        highPlayer.resetLocation = Point(Settings.screenWidth / 4f, Settings.middleY)
+        highPlayer.resetLocation = Point(highStartX, Settings.middleY)
         lowPlayer = Player(
-            Puck(Settings.ballRadius, Settings.middleX, lowCardY, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor),
+            Puck(Settings.ballRadius, lowStartX, Settings.middleY, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight - Settings.screenHeight / 5, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor),
             false
         )
-        lowPlayer.resetLocation = Point(Settings.screenWidth * (3/4f), Settings.middleY)
+        lowPlayer.resetLocation = Point(lowStartX, Settings.middleY)
 
         applyBallStyles()
         registerPhaseCallbacks()
@@ -143,6 +136,9 @@ object Logic {
         victoryTicker = Ticker(Settings.victoryThreshold)
 
         pauseMenu = PauseMenu(this.activity)
+
+        highBallPopup.open()
+        lowBallPopup.open()
 
     }
 
@@ -178,26 +174,20 @@ object Logic {
                 val y = event.getY(idx)
                 val pid = event.getPointerId(idx)
                 if (y < Settings.middleY) {
-                    if (highBallPopup.isOpen) {
-                        if (!highBallPopup.hitTest(x, y)) { highBallPopup.close(); highPopupDragPointerId = -1; return false }
+                    if (highBallPopup.isOpen && highBallPopup.hitTest(x, y)) {
                         if (highPopupDragPointerId == -1) {
                             highPopupDragPointerId = pid
                             highBallPopup.handleTouchEvent(action, x, y)
                         }
                         return true
-                    } else if (highBallCard.hitTest(x, y)) {
-                        highBallPopup.open(); return true
                     }
                 } else {
-                    if (lowBallPopup.isOpen) {
-                        if (!lowBallPopup.hitTest(x, y)) { lowBallPopup.close(); lowPopupDragPointerId = -1; return false }
+                    if (lowBallPopup.isOpen && lowBallPopup.hitTest(x, y)) {
                         if (lowPopupDragPointerId == -1) {
                             lowPopupDragPointerId = pid
                             lowBallPopup.handleTouchEvent(action, x, y)
                         }
                         return true
-                    } else if (lowBallCard.hitTest(x, y)) {
-                        lowBallPopup.open(); return true
                     }
                 }
                 return false
@@ -217,9 +207,8 @@ object Logic {
                     if (lowBallPopup.isOpen) lowBallPopup.handleTouchEvent(action, x, y)
                     return true
                 }
-                // Untracked pointer lifting — consume if that side's popup is open to prevent
-                // the lift from registering as a ready-hold release while a carousel is visible
-                return (y < Settings.middleY && highBallPopup.isOpen) || (y >= Settings.middleY && lowBallPopup.isOpen)
+                // Untracked pointer lifting in the popup area — consume only if the lift lands inside the carousel
+                return highBallPopup.hitTest(x, y) || lowBallPopup.hitTest(x, y)
             }
             MotionEvent.ACTION_CANCEL -> {
                 if (highBallPopup.isOpen) highBallPopup.handleTouchEvent(action, event.x, event.y)
@@ -246,16 +235,12 @@ object Logic {
     }
 
     fun checkBallSelectionEnd() {
-        if (highBallSelectionReady && lowBallSelectionReady) {
-            highBallSelectionReady = false
-            lowBallSelectionReady = false
+        if (highPlayer.charge > Settings.chargeStart && lowPlayer.charge > Settings.chargeStart) {
+            highBallPopup.isOpen = false
+            lowBallPopup.isOpen = false
+            highPopupDragPointerId = -1
+            lowPopupDragPointerId = -1
             canCollide = true
-            highPlayer.puck.x = highPlayer.resetLocation.x
-            highPlayer.puck.y = highPlayer.resetLocation.y
-            lowPlayer.puck.x = lowPlayer.resetLocation.x
-            lowPlayer.puck.y = lowPlayer.resetLocation.y
-            highPlayer.disableEffects = false
-            lowPlayer.disableEffects = false
             Settings.gameState = GameState.Play
         }
     }
@@ -329,12 +314,10 @@ object Logic {
                 if (actionPointerId == highPlayer.lockedPointerId) {
                     endFling(highPlayer, actionX, actionY)
                     highPlayer.lockedPointerId = -1
-                    highBallSelectionReady = true
                     setSingleTouch(motionEvent, highPlayer)
                 } else if (actionPointerId == lowPlayer.lockedPointerId) {
                     endFling(lowPlayer, actionX, actionY)
                     lowPlayer.lockedPointerId = -1
-                    lowBallSelectionReady = true
                     setSingleTouch(motionEvent, lowPlayer)
                 }
             }
@@ -342,13 +325,11 @@ object Logic {
                 if (actionPointerId == highPlayer.lockedPointerId) {
                     endFling(highPlayer, actionX, actionY)
                     highPlayer.lockedPointerId = -1
-                    highBallSelectionReady = true
                     highPlayer.touch = TouchState.Ready
                     highPlayer.shouldReleaseCharge = true
                 } else if (actionPointerId == lowPlayer.lockedPointerId) {
                     endFling(lowPlayer, actionX, actionY)
                     lowPlayer.lockedPointerId = -1
-                    lowBallSelectionReady = true
                     lowPlayer.touch = TouchState.Ready
                     lowPlayer.shouldReleaseCharge = true
                 }
@@ -391,16 +372,16 @@ object Logic {
             highPlayer.clearCharge()
             Settings.pauseGame = false
             Settings.gameOver = false
-            highBallSelectionReady = false
-            lowBallSelectionReady = false
             highPopupDragPointerId = -1
             lowPopupDragPointerId = -1
             GameEvents.gameReset.emit(Unit)
             Settings.gameState = GameState.BallSelection
-            highPlayer.puck.x = Settings.middleX
-            highPlayer.puck.y = Settings.topGoalBottom / 2f + Settings.screenRatio * 2f
-            lowPlayer.puck.x = Settings.middleX
-            lowPlayer.puck.y = (Settings.screenHeight + Settings.bottomGoalTop) / 2f - Settings.screenRatio * 2f
+            highPlayer.puck.x = highPlayer.resetLocation.x
+            highPlayer.puck.y = highPlayer.resetLocation.y
+            lowPlayer.puck.x = lowPlayer.resetLocation.x
+            lowPlayer.puck.y = lowPlayer.resetLocation.y
+            highBallPopup.open()
+            lowBallPopup.open()
         }
     }
 
@@ -944,8 +925,6 @@ object Logic {
         Settings.unlockProgress = Storage.unlockProgress
         Settings.highPlayerArrow = Storage.highPlayerArrow
         Settings.lowPlayerArrow = Storage.lowPlayerArrow
-        highBallSelectionReady = false
-        lowBallSelectionReady = false
         Settings.pauseGame = false
         sizeChanged(gameView, Settings.screenWidth.toInt(), Settings.screenHeight.toInt(),Settings.screenWidth.toInt(), Settings.screenHeight.toInt())
         Settings.gameState = GameState.BallSelection

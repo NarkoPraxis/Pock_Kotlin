@@ -471,6 +471,14 @@ object Drawing {
         canvas.drawText(text, x, y, textPaint) //bottom score
     }
 
+    fun mirrorText(canvas: Canvas, topText: String, bottomText: String, x: Float, y: Float, textPaint: Paint) {
+        canvas.save()
+        canvas.scale(-1f, -1f, Settings.screenWidth / 2, Settings.screenHeight / 2)
+        canvas.drawText(topText, x, y, textPaint)
+        canvas.restore()
+        canvas.drawText(bottomText, x, y, textPaint) //bottom score
+    }
+
     fun drawRules(canvas: Canvas) {
         val rules = listOf(
             "Rules:",
