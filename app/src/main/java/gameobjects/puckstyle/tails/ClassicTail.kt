@@ -16,7 +16,7 @@ class ClassicTail(override val theme: ColorTheme) : TailRenderer {
         get() = 2
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        val length = ((if (renderer.shielded) 80 else 20) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        val length = (20 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != length) {
             points = MutableList(length) { DrawablePoint(renderer.x, renderer.y) }
         }

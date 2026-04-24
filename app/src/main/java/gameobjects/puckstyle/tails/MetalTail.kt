@@ -16,7 +16,7 @@ class MetalTail(override val theme: ColorTheme) : TailRenderer {
     private val grey = Color.rgb(140, 140, 150)
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        val metalLen = ((if (renderer.shielded) 80 else 12) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        val metalLen = (12 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != metalLen) points = MutableList(metalLen) { DrawablePoint(renderer.x, renderer.y) }
         val points = points!!
         for (i in points.size - 1 downTo 0) {

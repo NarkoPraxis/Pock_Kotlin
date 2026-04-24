@@ -116,6 +116,7 @@ Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Ho
 - **`Ticker`**: The game's timing primitive. Ascending tickers count up to a max and expose `ratio` (0.0–1.0) and `finished`. Use ascending tickers for progress animations, descending for countdowns.
 - **Touch routing**: Single-touch goes to whichever player's half the touch is in. Multi-touch: pointer 0 and pointer 1 are mapped to high/low based on `highTouchedFirst` (which player put their finger down first). This is set in `ACTION_DOWN` handling.
 - **Player symmetry**: `highPlayer` and `lowPlayer` are always both initialized. Actions on one almost always have a parallel action on the other.
+- **Tail length is fixed**: Tails must never change length based on charge state or shield state. Always use the base length (`baseCount * Settings.tailLengthMultiplier`). If a tail implementation varies length on `shielded` or charge phase, correct it to use the constant base value. (`ClassicTail` and `MetalTail` previously grew to 80 on shield — this is fixed.)
 
 ---
 
