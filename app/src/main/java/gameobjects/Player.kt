@@ -63,6 +63,11 @@ class Player(
     var inertLocked: Boolean = false
     var fatigueInertLocked: Boolean = false
 
+    var hitStunFramesRemaining: Int = 0
+    var hitStunTotalFrames: Int = 0
+    val isHitStunned: Boolean get() = hitStunFramesRemaining > 0
+    val hitStunRatio: Float get() = if (hitStunTotalFrames > 0) hitStunFramesRemaining.toFloat() / hitStunTotalFrames else 0f
+
     private var pendingLaunchDir: Point? = null
     private var pendingLaunchPower: Float = 0f
 
@@ -154,20 +159,23 @@ class Player(
         renderer.flingCurrentX = flingCurrent.x
         renderer.flingCurrentY = flingCurrent.y
         renderer.effectEnabled = !disableEffects
-        renderer.inertLocked = inertLocked || fatigueInertLocked
-        if (inertLocked || fatigueInertLocked) {
-            val theme = puck.renderer.effect?.theme ?: puck.renderer.skin?.theme
-            if (theme != null) {
-                renderer.fillColor = theme.inert.primary
-                renderer.strokeColor = theme.inert.secondary
-                renderer.baseFillColor = theme.inert.primary
-            }
-        } else {
-            val theme = puck.renderer.effect?.theme ?: puck.renderer.skin?.theme
-            if (theme != null) {
-                renderer.fillColor = theme.main.primary
-                renderer.strokeColor = theme.main.secondary
-                renderer.baseFillColor = theme.main.primary
+        val isInertLocked = inertLocked || fatigueInertLocked
+        renderer.inertLocked = isInertLocked
+        renderer.hitStunned = isHitStunned
+        renderer.hitStunRatio = hitStunRatio
+        val theme = puck.renderer.effect?.theme ?: puck.renderer.skin?.theme
+        if (theme != null) {
+            val targetFill = if (isInertLocked) theme.inert.primary else theme.main.primary
+            val targetStroke = if (isInertLocked) theme.inert.secondary else theme.main.secondary
+            if (isHitStunned) {
+                val r = hitStunRatio
+                renderer.fillColor = blendColors(targetFill, theme.inert.primary, r)
+                renderer.strokeColor = blendColors(targetStroke, theme.inert.secondary, r)
+                renderer.baseFillColor = renderer.fillColor
+            } else {
+                renderer.fillColor = targetFill
+                renderer.strokeColor = targetStroke
+                renderer.baseFillColor = targetFill
             }
         }
 
@@ -324,6 +332,7 @@ class Player(
     }
 
     fun increaseCharge() {
+        if (isHitStunned) return
         puck.renderer.effect?.increaseCharge()
     }
 
@@ -332,6 +341,19 @@ class Player(
     }
 
     fun releaseCharge(): Boolean {
+        if (isHitStunned) {
+            val effect = puck.renderer.effect
+            if (effect?.phase == ChargePhase.SweetSpot) {
+                // Shield overrides hit-stun
+                hitStunFramesRemaining = 0
+                hitStunTotalFrames = 0
+            } else {
+                flingReleaseDir = null
+                flingReleaseBasePower = 0f
+                shouldReleaseCharge = false
+                return false
+            }
+        }
         shouldReleaseCharge = false
         shielded = false
         val effect = puck.renderer.effect
@@ -363,6 +385,14 @@ class Player(
         flingReleaseDir = null
         flingReleaseBasePower = 0f
         return shielded
+    }
+
+    private fun blendColors(from: Int, to: Int, t: Float): Int {
+        val r = (Color.red(from) + (Color.red(to) - Color.red(from)) * t).toInt()
+        val g = (Color.green(from) + (Color.green(to) - Color.green(from)) * t).toInt()
+        val b = (Color.blue(from) + (Color.blue(to) - Color.blue(from)) * t).toInt()
+        val a = (Color.alpha(from) + (Color.alpha(to) - Color.alpha(from)) * t).toInt()
+        return Color.argb(a.coerceIn(0, 255), r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
     }
 
     private fun applyPendingLaunch() {

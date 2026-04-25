@@ -22,6 +22,7 @@ import physics.Force
 import physics.Point
 import physics.Ticker
 import shapes.Circle
+import kotlin.math.roundToInt
 import kotlin.reflect.KFunction5
 
 object Logic {
@@ -426,9 +427,12 @@ object Logic {
                         )
                     )
                     lowPlayer.launch(Force(direction, Settings.launchBonus + Settings.sweetSpotMax))
+                    applyHitStun(highPlayer, highPlayer.puck.impactPower)
+                    applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
                 } else if (highPlayer.reappearing) {
                     Sounds.playTeleportFinish(highPlayer.px)
                     lowPlayer.launch(Force(direction, Settings.launchBonus + Settings.sweetSpotMax))
+                    applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
                 } else if (lowPlayer.reappearing) {
                     Sounds.playTeleportFinish(lowPlayer.px)
                     highPlayer.launch(
@@ -437,12 +441,14 @@ object Logic {
                             Settings.launchBonus + Settings.sweetSpotMax
                         )
                     )
+                    applyHitStun(highPlayer, highPlayer.puck.impactPower)
                 } else if (highPlayer.shielded && !lowPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
                     highPlayer.shielded = false
                     lowPlayer.launch(Force(direction, Settings.launchBonus + highPlayer.power))
                     highPlayer.launch(Force(-direction, Settings.minLaunchPower))
                     lowPlayer.inertLocked = true
+                    applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
                     highPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else if (lowPlayer.shielded && !highPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
@@ -450,6 +456,7 @@ object Logic {
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPlayer.power))
                     lowPlayer.launch(Force(direction, Settings.minLaunchPower))
                     highPlayer.inertLocked = true
+                    applyHitStun(highPlayer, highPlayer.puck.impactPower)
                     lowPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else if (lowPlayer.shielded && highPlayer.shielded) {
                     Sounds.playDoubleChargeCollision(collisionPoint.x)
@@ -459,6 +466,7 @@ object Logic {
                     val highPower = highPlayer.power
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPower))
                     lowPlayer.launch(Force(direction, Settings.launchBonus + highPower))
+                    // both shielded — no hit-stun for either
                     highPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                     lowPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else {
@@ -476,6 +484,8 @@ object Logic {
                             if (highPower < Settings.minLaunchPower) Settings.minLaunchPower else highPower
                         )
                     )
+                    applyHitStun(highPlayer, highPlayer.puck.impactPower)
+                    applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
 
                     if (highPlayer.power > lowPlayer.power) {
                         Sounds.playLowPlayerSound(collisionPoint.x)
@@ -523,6 +533,8 @@ object Logic {
     fun adjustPlayerPositions() : Boolean {
         val highBonus = adjustPlayerPosition(highPlayer)
         val lowBonus = adjustPlayerPosition(lowPlayer)
+        if (highPlayer.hitStunFramesRemaining > 0) highPlayer.hitStunFramesRemaining--
+        if (lowPlayer.hitStunFramesRemaining > 0) lowPlayer.hitStunFramesRemaining--
         return highBonus && lowBonus
     }
 
@@ -976,9 +988,24 @@ object Logic {
         lowPlayer.inertLocked = false
         highPlayer.fatigueInertLocked = false
         lowPlayer.fatigueInertLocked = false
+        highPlayer.hitStunFramesRemaining = 0
+        highPlayer.hitStunTotalFrames = 0
+        lowPlayer.hitStunFramesRemaining = 0
+        lowPlayer.hitStunTotalFrames = 0
 
         highPlayer.setPuckStroke(PaintBucket.highBallStrokeColor)
         lowPlayer.setPuckStroke(PaintBucket.lowBallStrokeColor)
+    }
+
+    private fun applyHitStun(struckPlayer: Player, impactPower: Float) {
+        val range = Settings.hitStunMaxImpactPower - Settings.hitStunMinImpactPower
+        val t = ((impactPower - Settings.hitStunMinImpactPower) / range).coerceIn(0f, 1f)
+        val durationSeconds = t * Settings.hitStunMaxSeconds
+        if (durationSeconds < Settings.hitStunMinSeconds) return
+        val fps = 1000f / Settings.refreshRate
+        val frames = (durationSeconds * fps).roundToInt()
+        struckPlayer.hitStunFramesRemaining = frames
+        struckPlayer.hitStunTotalFrames = frames
     }
 
     fun setPuckColor(player: Player, fill: Int, stroke: Int) {

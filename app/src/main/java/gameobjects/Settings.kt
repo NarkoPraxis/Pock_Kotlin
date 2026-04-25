@@ -93,4 +93,9 @@ object Settings {
     var lowPlayerChargeFill: Boolean = true
     var scoreOffsetHigh: Float = 0f
     var scoreOffsetLow: Float = 0f
+
+    val hitStunMinImpactPower: Float get() = minLaunchPower
+    val hitStunMaxImpactPower: Float get() = maxPuckLaunchSpeed
+    val hitStunMinSeconds: Float = 0.15f
+    val hitStunMaxSeconds: Float = 0.5f
 }

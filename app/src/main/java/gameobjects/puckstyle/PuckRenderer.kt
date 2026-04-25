@@ -76,6 +76,8 @@ class PuckRenderer {
     var baseFillColor: Int = Color.WHITE  // canonical fill color for tail trails
     var effectEnabled: Boolean = true
     var inertLocked: Boolean = false
+    var hitStunned: Boolean = false
+    var hitStunRatio: Float = 0f  // 1.0 = full inert, fades to 0.0 as stun expires
 
     // Launch effect state forwarded from Player so effect.draw needs no Player reference
     var chargePowerLocked: Boolean = false

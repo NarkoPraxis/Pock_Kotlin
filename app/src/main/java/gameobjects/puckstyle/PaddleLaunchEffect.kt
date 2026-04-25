@@ -302,8 +302,17 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         val thickness = paddleThickness()
 
         val isInert = currentRenderer.inertLocked || ph == ChargePhase.Inert
-        val baseColor = if (isInert) theme.inert.secondary else theme.main.secondary
-        val chargeColor = theme.accent.primary
+        val hitStunBlend = currentRenderer.hitStunned && !isInert
+        val hitStunR = if (hitStunBlend) currentRenderer.hitStunRatio else 0f
+        val baseColor = when {
+            isInert -> theme.inert.secondary
+            hitStunBlend -> blendColor(theme.main.secondary, theme.inert.secondary, hitStunR)
+            else -> theme.main.secondary
+        }
+        val chargeColor = if (hitStunBlend)
+            blendColor(theme.accent.primary, theme.inert.primary, hitStunR)
+        else
+            theme.accent.primary
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
 
         paddlePaint.strokeWidth = thickness
@@ -316,7 +325,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
             paddlePaint
         )
 
-        if (fillRatio > 0f) {
+        if (fillRatio > 0f && !isInert) {
             val fillHalf = half * fillRatio
             paddlePaint.color = chargeColor
             paddlePaint.alpha = (255 * pulse).toInt().coerceIn(0, 255)
@@ -343,6 +352,14 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
 
     protected fun withAlpha(color: Int, alpha: Int): Int =
         Color.argb(alpha.coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
+
+    protected fun blendColor(from: Int, to: Int, t: Float): Int {
+        val r = (Color.red(from) + (Color.red(to) - Color.red(from)) * t).toInt()
+        val g = (Color.green(from) + (Color.green(to) - Color.green(from)) * t).toInt()
+        val b = (Color.blue(from) + (Color.blue(to) - Color.blue(from)) * t).toInt()
+        val a = (Color.alpha(from) + (Color.alpha(to) - Color.alpha(from)) * t).toInt()
+        return Color.argb(a.coerceIn(0, 255), r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
+    }
 
     companion object {
         const val RELEASE_DURATION = 5
