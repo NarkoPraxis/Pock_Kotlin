@@ -45,7 +45,7 @@ class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             drawLine(cx - pX * half, cy - pY * half, cx + pX * half, cy + pY * half, bar)
             drawLine(cx - aX * half, cy - aY * half, cx + aX * half, cy + aY * half, bar)
             if (fill > 0f) {
-                bar.color = theme.accent.primary
+                bar.color = theme.effect.primary
                 val fh = half * fill
                 drawLine(cx - pX * fh, cy - pY * fh, cx + pX * fh, cy + pY * fh, bar)
                 drawLine(cx - aX * fh, cy - aY * fh, cx + aX * fh, cy + aY * fh, bar)
@@ -54,7 +54,7 @@ class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(SpinnerMark(rx, ry, currentRenderer.radius, theme.accent.primary))
+        Effects.addPersistentEffect(SpinnerMark(rx, ry, currentRenderer.radius, theme.effect.primary))
     }
 
     private class SpinnerMark(

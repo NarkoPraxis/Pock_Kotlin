@@ -48,7 +48,7 @@ class IceTail(override val theme: ColorTheme) : TailRenderer {
 
             // Puddle layer — peaks at mid-life, then fades as water evaporates
             val puddleAlpha = (90f * s.life * (1f - s.life)).toInt().coerceIn(0, 180)
-            paint.color = Palette.withAlpha(theme.main.primary, puddleAlpha)
+            paint.color = Palette.withAlpha(resolvedColors(renderer).primary, puddleAlpha)
             canvas.drawCircle(s.x, s.y, s.puddleSize, paint)
 
             // Ice crystal layer on top — shrinking white circle

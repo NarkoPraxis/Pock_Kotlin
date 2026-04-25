@@ -60,7 +60,7 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             canvas.drawPath(path, fill)
         }
         fill.alpha = 255
-        edge.color = theme.main.secondary
+        edge.color = resolvedColors(currentRenderer).secondary
         canvas.drawPath(path, edge)
     }
 

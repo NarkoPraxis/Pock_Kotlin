@@ -37,7 +37,7 @@ class NeonLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val half = paddleHalfLength()
         val perpX = -aY
         val perpY = aX
-        val glowColor = if (ph == ChargePhase.Inert) theme.main.secondary else theme.accent.primary
+        val glowColor = if (ph == ChargePhase.Inert) theme.main.secondary else theme.effect.primary
 
         val outerAlpha: Int
         val innerAlpha: Int
@@ -60,7 +60,7 @@ class NeonLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(NeonScar(rx, ry, -aY, aX, currentRenderer.radius, theme.accent.primary))
+        Effects.addPersistentEffect(NeonScar(rx, ry, -aY, aX, currentRenderer.radius, theme.effect.primary))
     }
 
     private class NeonScar(

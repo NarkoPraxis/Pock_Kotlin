@@ -16,8 +16,6 @@ class PlasmaTail(override val theme: ColorTheme) : TailRenderer {
     private var points: MutableList<Pos>? = null
 
     private val core = Color.WHITE
-    private val mid = theme.main.primary
-    private val edge = theme.main.secondary
 
     private val dot = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val bolt = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
@@ -34,6 +32,9 @@ class PlasmaTail(override val theme: ColorTheme) : TailRenderer {
             else { points[i].x = renderer.x; points[i].y = renderer.y }
         }
 
+        val stateColors = resolvedColors(renderer)
+        val mid = stateColors.primary
+        val edge = stateColors.secondary
         val n = points.size
         for (i in 0 until n) {
             val ratio = i.toFloat() / (n - 1).coerceAtLeast(1)

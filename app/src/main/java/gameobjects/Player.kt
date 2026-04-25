@@ -165,17 +165,16 @@ class Player(
         renderer.hitStunRatio = hitStunRatio
         val theme = puck.renderer.effect?.theme ?: puck.renderer.skin?.theme
         if (theme != null) {
-            val targetFill = if (isInertLocked) theme.inert.primary else theme.main.primary
-            val targetStroke = if (isInertLocked) theme.inert.secondary else theme.main.secondary
+            val targetColors = renderer.resolveColorGroup(theme)
             if (isHitStunned) {
                 val r = hitStunRatio
-                renderer.fillColor = blendColors(targetFill, theme.inert.primary, r)
-                renderer.strokeColor = blendColors(targetStroke, theme.inert.secondary, r)
+                renderer.fillColor = blendColors(targetColors.primary, theme.inert.primary, r)
+                renderer.strokeColor = blendColors(targetColors.secondary, theme.inert.secondary, r)
                 renderer.baseFillColor = renderer.fillColor
             } else {
-                renderer.fillColor = targetFill
-                renderer.strokeColor = targetStroke
-                renderer.baseFillColor = targetFill
+                renderer.fillColor = targetColors.primary
+                renderer.strokeColor = targetColors.secondary
+                renderer.baseFillColor = targetColors.primary
             }
         }
 

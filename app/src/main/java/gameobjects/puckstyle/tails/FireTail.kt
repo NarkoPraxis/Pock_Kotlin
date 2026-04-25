@@ -49,8 +49,8 @@ class FireTail(override val theme: ColorTheme) : TailRenderer {
             s.life -= 0.04f / Settings.tailLengthMultiplier
             if (s.life <= 0f) { it.remove(); continue }
             val t = 1f - s.life
-
-            val c = Palette.lerpColor(theme.main.secondary, theme.main.primary, t)
+            val colors = resolvedColors(renderer)
+            val c = Palette.lerpColor(colors.secondary, colors.primary, t)
 
 
             paint.color = Palette.withAlpha(c, (255f * s.life).toInt())

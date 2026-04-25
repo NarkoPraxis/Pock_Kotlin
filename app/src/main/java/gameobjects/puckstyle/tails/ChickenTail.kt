@@ -45,6 +45,7 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
         val r = renderer.radius
+        val colors = resolvedColors(renderer)
 
         var speed = 0f
         if (!prevX.isNaN()) {
@@ -73,7 +74,7 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
             val f = fpIter.next()
             f.alpha -= (3f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
             if (f.alpha <= 0) { fpIter.remove(); continue }
-            paint.color = Palette.withAlpha(theme.main.secondary, f.alpha)
+            paint.color = Palette.withAlpha(colors.secondary, f.alpha)
             drawFoot(canvas, f, r)
         }
 
@@ -102,7 +103,7 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
             f.angle += f.spin
             f.alpha -= (5f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
             if (f.alpha <= 0) { featherIter.remove(); continue }
-            val c = Palette.lerpColor(theme.main.primary, theme.main.secondary, f.colorMix)
+            val c = Palette.lerpColor(colors.primary, colors.secondary, f.colorMix)
             paint.style = Paint.Style.FILL
             paint.color = Palette.withAlpha(c, f.alpha)
             canvas.save()
@@ -112,7 +113,7 @@ class ChickenTail(override val theme: ColorTheme) : TailRenderer {
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = fw * 0.35f
             paint.strokeCap = Paint.Cap.ROUND
-            paint.color = Palette.withAlpha(theme.main.secondary, f.alpha)
+            paint.color = Palette.withAlpha(colors.secondary, f.alpha)
             canvas.drawLine(f.x, f.y + fh * 1.3f, f.x, f.y - fh * 0.7f, paint)
             canvas.restore()
         }

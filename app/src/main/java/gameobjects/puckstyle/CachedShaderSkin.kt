@@ -23,6 +23,9 @@ abstract class CachedShaderSkin(override val theme: ColorTheme) : PuckSkin {
         }
     }
 
-    /** Called only when radius changes. Build and return the new shader. */
+    /** Forces the shader to rebuild on the next ensureShader call, e.g. when theme state changes. */
+    protected fun invalidateShader() { lastRadius = -1f }
+
+    /** Called only when radius changes (or after invalidateShader). Build and return the new shader. */
     protected abstract fun createShader(radius: Float): Shader
 }

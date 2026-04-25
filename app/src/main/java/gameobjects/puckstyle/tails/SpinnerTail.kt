@@ -7,7 +7,6 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
-import utility.PaintBucket
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -45,8 +44,9 @@ class SpinnerTail(override val theme: ColorTheme) : TailRenderer {
         val angleStep = 18f * Math.PI.toFloat() / 180f
         val strokeWidth = sw
 
-        val color  = if (renderer.shielded) PaintBucket.effectColor else theme.main.primary
-        val hilite = if (renderer.shielded) PaintBucket.effectColor else theme.main.secondary
+        val colors = resolvedColors(renderer)
+        val color  = colors.primary
+        val hilite = colors.secondary
 
         tipPaint.strokeWidth = strokeWidth * 3f
         centerPaint.strokeWidth = strokeWidth * 2f

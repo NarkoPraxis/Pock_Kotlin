@@ -9,19 +9,23 @@ import gameobjects.puckstyle.PuckSkin
 
 class SpinnerSkin(override val theme: ColorTheme) : PuckSkin {
 
-    private val baseFill = Paint().apply { color = theme.main.primary; isAntiAlias = true; style = Paint.Style.FILL }
-    private val arm = Paint().apply { color = theme.main.secondary; isAntiAlias = true; style = Paint.Style.FILL }
-    private val rim = Paint().apply { color = theme.main.secondary; isAntiAlias = true; style = Paint.Style.STROKE }
+    private val baseFill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+    private val arm = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+    private val rim = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
 
     private val path = Path()
     private var rotation = 0f
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
+        val colors = resolvedColors(renderer)
         val mag = kotlin.math.sqrt(
             (renderer.movementDirX * renderer.movementPower).let { it * it } +
             (renderer.movementDirY * renderer.movementPower).let { it * it }
         )
         rotation += (mag * 0.5f + 1.5f)
+        baseFill.color = colors.primary
+        arm.color = colors.secondary
+        rim.color = colors.secondary
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, baseFill)
         rim.strokeWidth = renderer.strokePaint.strokeWidth * 0.7f
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, rim)

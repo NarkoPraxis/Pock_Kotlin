@@ -9,6 +9,9 @@ interface PuckSkin {
     /** Local z-index within a PuckRenderer composition. Default 0 (body layer). */
     val zIndex: Int get() = 0
 
+    /** Returns the ColorGroup this skin should use for the current frame based on renderer state. */
+    fun resolvedColors(renderer: PuckRenderer): ColorGroup = renderer.resolveColorGroup(theme)
+
     fun drawBody(canvas: Canvas, renderer: PuckRenderer)
 
     fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {}

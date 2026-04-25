@@ -66,7 +66,7 @@ class GalaxyTail(override val theme: ColorTheme) : TailRenderer {
             s.life -= 0.01f / Settings.tailLengthMultiplier
             if (s.life <= 0f) { it.remove(); continue }
             val twinkle = 0.75f + 0.25f * sin(renderer.frame * s.twinkleSpeed + s.twinkleSeed * Math.PI.toFloat() * 2f)
-            paint.color = Palette.withAlpha(theme.main.primary, (255f * s.life).toInt())
+            paint.color = Palette.withAlpha(resolvedColors(renderer).primary, (255f * s.life).toInt())
             val outerR = Settings.screenRatio * 0.32f * s.life * twinkle
             drawStar(canvas, s.x, s.y, outerR, outerR * 0.38f)
         }

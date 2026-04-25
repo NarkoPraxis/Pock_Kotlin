@@ -6,7 +6,6 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import shapes.DrawablePoint
-import utility.PaintBucket
 
 class ClassicTail(override val theme: ColorTheme) : TailRenderer {
 
@@ -21,6 +20,7 @@ class ClassicTail(override val theme: ColorTheme) : TailRenderer {
             points = MutableList(length) { DrawablePoint(renderer.x, renderer.y) }
         }
         val points = points!!
+        val colors = resolvedColors(renderer)
 
         fun ratio(i: Int) = (i.toFloat() / (points.size - 1))
 
@@ -31,18 +31,10 @@ class ClassicTail(override val theme: ColorTheme) : TailRenderer {
                 points[i] = DrawablePoint(renderer.x, renderer.y, renderer.strokeColor)
             }
 
-            if (renderer.shielded) points[i].setColor(theme.accent.primary)
-            else if (renderer.launched) points[i].setColor(renderer.fillColor)
-            else points[i].setColor(renderer.baseFillColor)
-
+            points[i].setColor(colors.primary)
             val baseSize = renderer.radius * 1.1f
-            if (renderer.shielded) {
-                points[i].size = baseSize - Settings.strokeWidth - renderer.radius * ratio(i - 1)
-                points[i].setAlpha((255f * (1 - ratio(i))).toInt())
-            } else {
-                points[i].size = baseSize - Settings.strokeWidth - renderer.radius * ratio(i - 1)
-            }
-
+            points[i].size = baseSize - Settings.strokeWidth - renderer.radius * ratio(i - 1)
+            points[i].setAlpha((255f * (1 - ratio(i))).toInt())
             points[i].drawTo(canvas)
         }
     }

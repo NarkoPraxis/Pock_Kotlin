@@ -10,7 +10,6 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
-import utility.PaintBucket
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -23,6 +22,7 @@ class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
     private val star = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val starPath = Path()
     private var lastRadius = -1f
+    private var lastColors = theme.main
 
     // FloatArray: [angle, radiusFraction, alphaFraction, sizeFraction] — pre-seeded edge noise blobs
     private val edgeDots: List<FloatArray> = List(28) {
@@ -45,12 +45,12 @@ class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
         )
     }
 
-    private fun ensureShader(radius: Float, theme: ColorTheme) {
+    private fun ensureShader(radius: Float) {
         if (radius == lastRadius) return
         val darkCenter = Color.argb(255, 0, 0, 0)
-        val preThemeEdge  = Palette.withAlpha(theme.main.primary, 130)
-        val themeEdge = Palette.withAlpha(theme.main.primary, 60)
-        val gone = Palette.withAlpha(theme.main.primary, 0)
+        val preThemeEdge  = Palette.withAlpha(lastColors.primary, 130)
+        val themeEdge = Palette.withAlpha(lastColors.primary, 60)
+        val gone = Palette.withAlpha(lastColors.primary, 0)
         fill.shader = RadialGradient(
             0f, 0f, radius,
             intArrayOf(darkCenter, Color.argb(160, 0,0,0), preThemeEdge, themeEdge, themeEdge),
@@ -74,11 +74,15 @@ class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
     }
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        ensureShader(renderer.radius, theme)
+        val colors = resolvedColors(renderer)
+        if (colors != lastColors) {
+            lastColors = colors
+            lastRadius = -1f
+        }
+        ensureShader(renderer.radius)
 
 //        rim.strokeWidth = renderer.strokePaint.strokeWidth * 0.8f
 //        canvas.drawCircle(renderer.x, renderer.y, renderer.radius , rim)
-//        renderer.chargePaint.color = PaintBucket.effectColor
 
         canvas.withTranslation(renderer.x, renderer.y) {
             drawCircle(0f, 0f, renderer.radius * 0.85f, fill)
@@ -92,11 +96,9 @@ class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
             val py = renderer.y + sin(ang) * dist
             val twinkle = (sin(renderer.frame * seed[4] + seed[2]) + 1f) * 0.5f
             star.alpha = (110 + 145 * twinkle).toInt()
-            star.color = Palette.withAlpha(theme.main.primary, star.alpha)
+            star.color = Palette.withAlpha(lastColors.primary, star.alpha)
             val outerR = renderer.radius * 0.12f * (0.6f + twinkle * 0.8f)
             drawStar(canvas, px, py, outerR, outerR * 0.38f, star)
         }
-
-
     }
 }

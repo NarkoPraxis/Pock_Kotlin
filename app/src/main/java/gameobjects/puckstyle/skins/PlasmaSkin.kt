@@ -12,19 +12,22 @@ import kotlin.random.Random
 
 class PlasmaSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
 
-    private val core = Color.WHITE
-    private val mid = theme.main.primary
-    private val edge = theme.main.secondary
+    private var lastColors = theme.main
 
-    private val arc = Paint().apply { color = core; isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
+    private val arc = Paint().apply { color = Color.WHITE; isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
 
     override fun createShader(radius: Float): Shader =
         RadialGradient(0f, 0f, radius,
-            intArrayOf(core, mid, edge),
+            intArrayOf(Color.WHITE, lastColors.primary, lastColors.secondary),
             floatArrayOf(0f, 0.4f, 1f),
             Shader.TileMode.CLAMP)
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
+        val colors = resolvedColors(renderer)
+        if (colors != lastColors) {
+            lastColors = colors
+            invalidateShader()
+        }
         ensureShader(renderer.radius)
         canvas.save()
         canvas.translate(renderer.x, renderer.y)

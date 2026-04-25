@@ -45,7 +45,7 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.drawCircle(cx, cy, outerR, flamePaint)
 
         if (fill > 0f) {
-            val coreColor = if (ph == ChargePhase.SweetSpot) theme.accent.primary else theme.main.secondary
+            val coreColor = if (ph == ChargePhase.SweetSpot) theme.effect.primary else theme.main.secondary
             flamePaint.color = coreColor
             val pulse = if (ph == ChargePhase.SweetSpot) 0.8f + 0.2f * sin(frame * 0.4f) else 1f
             flamePaint.alpha = (255 * pulse).toInt().coerceIn(0, 255)

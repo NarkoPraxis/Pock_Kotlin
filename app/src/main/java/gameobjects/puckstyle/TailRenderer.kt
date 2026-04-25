@@ -11,6 +11,9 @@ interface TailRenderer {
     /** Local z-index within a PuckRenderer composition. Default -1 (behind body). */
     val zIndex: Int get() = -1
 
+    /** Returns the ColorGroup this tail should use for the current frame based on renderer state. */
+    fun resolvedColors(renderer: PuckRenderer): ColorGroup = renderer.resolveColorGroup(theme)
+
     fun render(canvas: Canvas, renderer: PuckRenderer)
     fun clear()
 

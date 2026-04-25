@@ -51,7 +51,7 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.drawPath(path, shardFill)
 
         if (fill > 0f) {
-            shardFill.color = theme.accent.primary
+            shardFill.color = theme.effect.primary
             shardFill.alpha = (180 * fill).toInt().coerceIn(0, 255)
             canvas.drawPath(path, shardFill)
             shardFill.alpha = 255

@@ -301,18 +301,22 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         val perpY = aX
         val thickness = paddleThickness()
 
-        val isInert = currentRenderer.inertLocked || ph == ChargePhase.Inert
+        val isInert = currentRenderer.isInert || ph == ChargePhase.Inert
+        val stateColors = when {
+            isInert -> theme.inert
+            currentRenderer.shielded -> theme.effect
+            else -> theme.main
+        }
         val hitStunBlend = currentRenderer.hitStunned && !isInert
         val hitStunR = if (hitStunBlend) currentRenderer.hitStunRatio else 0f
         val baseColor = when {
-            isInert -> theme.inert.secondary
-            hitStunBlend -> blendColor(theme.main.secondary, theme.inert.secondary, hitStunR)
-            else -> theme.main.secondary
+            hitStunBlend -> blendColor(stateColors.secondary, theme.inert.secondary, hitStunR)
+            else -> stateColors.secondary
         }
         val chargeColor = if (hitStunBlend)
-            blendColor(theme.accent.primary, theme.inert.primary, hitStunR)
+            blendColor(theme.effect.primary, theme.inert.primary, hitStunR)
         else
-            theme.accent.primary
+            theme.effect.primary
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
 
         paddlePaint.strokeWidth = thickness

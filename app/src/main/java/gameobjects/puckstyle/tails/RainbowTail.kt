@@ -7,7 +7,6 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import shapes.DrawablePoint
-import utility.PaintBucket
 
 class RainbowTail(override val theme: ColorTheme) : TailRenderer {
     private var points: MutableList<DrawablePoint>? = null
@@ -20,13 +19,14 @@ class RainbowTail(override val theme: ColorTheme) : TailRenderer {
         val rainbowLen = (20 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != rainbowLen) points = MutableList(rainbowLen) { DrawablePoint(renderer.x, renderer.y) }
         val points = points!!
+        val colors = resolvedColors(renderer)
         for (i in points.size - 1 downTo 0) {
             if (i - 1 >= 0) points[i] = points[i - 1]
             else points[i] = DrawablePoint(renderer.x, renderer.y, renderer.strokeColor)
             val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
             val color = when {
-                renderer.shielded -> PaintBucket.effectColor
-                renderer.currentCharge >= Settings.sweetSpotMin -> theme.accent.primary
+                renderer.isInert -> colors.primary
+                renderer.shielded || renderer.currentCharge >= Settings.sweetSpotMin -> theme.effect.primary
                 else -> Palette.hsvThemed(renderer.frame * 4f + hueOffset - i * 15f)
             }
             points[i].setColor(color)

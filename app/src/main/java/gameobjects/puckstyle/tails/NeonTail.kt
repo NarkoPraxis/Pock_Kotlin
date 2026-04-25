@@ -7,7 +7,6 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
-import utility.PaintBucket
 
 class NeonTail(override val theme: ColorTheme) : TailRenderer {
     private data class Ring(var x: Float = 0f, var y: Float = 0f)
@@ -53,13 +52,13 @@ class NeonTail(override val theme: ColorTheme) : TailRenderer {
         val len = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (rings == null || rings!!.size != len) rings = MutableList(len) { Ring(renderer.x, renderer.y) }
         val rings = rings!!
+        val color = resolvedColors(renderer).primary
 
         for (i in rings.size - 1 downTo 0) {
             if (i - 1 >= 0) { rings[i].x = rings[i - 1].x; rings[i].y = rings[i - 1].y }
             else             { rings[i].x = renderer.x;     rings[i].y = renderer.y     }
 
             val ratio = i.toFloat() / (rings.size - 1).coerceAtLeast(1)
-            val color = if (renderer.shielded) PaintBucket.effectColor else theme.main.primary
             paint.color = Palette.withAlpha(color, neonAlpha(ratio))
             paint.strokeWidth = renderer.strokePaint.strokeWidth
             canvas.drawCircle(rings[i].x, rings[i].y, renderer.radius, paint)

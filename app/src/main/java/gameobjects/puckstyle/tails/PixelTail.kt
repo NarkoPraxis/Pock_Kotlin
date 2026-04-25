@@ -1,14 +1,12 @@
 package gameobjects.puckstyle.tails
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
-import utility.PaintBucket
 import kotlin.math.exp
 
 class PixelTail(override val theme: ColorTheme) : TailRenderer {
@@ -56,11 +54,11 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
             rippleIndex = 0
         }
 
-        // single purple front ring on shield earned — identical to the collision front ring except color
+        // single effect-color front ring on shield earned
         if (justShielded) {
             val b = blocks[0]
             rings += Ring(b.x, b.y, computeSize(0, renderer.radius), 200,
-                isFront = true, growRate = renderer.radius * 0.09f, color = PaintBucket.effectColor)
+                isFront = true, growRate = renderer.radius * 0.09f, color = theme.effect.primary)
         }
 
         // collision ripple — one ring per frame, propagating down the tail
@@ -85,16 +83,15 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
             canvas.drawRect(r.x - half, r.y - half, r.x + half, r.y + half, ringPaint)
         }
 
+        val colors = resolvedColors(renderer)
+
         // main blocks drawn on top of rings
         for (i in blocks.indices) {
             val baseSize = computeSize(i, renderer.radius)
             val side     = baseSize + pulseFade * 0.25f * baseSize
             val half     = side / 2f
             val alpha    = computeAlpha(i, blocks.size)
-            val color    = if (renderer.shielded) PaintBucket.effectColor
-                           else if (renderer.launched) renderer.fillColor
-                           else renderer.baseFillColor
-            paint.color = Palette.withAlpha(color, alpha)
+            paint.color = Palette.withAlpha(colors.primary, alpha)
             canvas.drawRect(blocks[i].x - half, blocks[i].y - half, blocks[i].x + half, blocks[i].y + half, paint)
         }
     }

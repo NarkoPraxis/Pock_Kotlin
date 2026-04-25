@@ -50,7 +50,7 @@ class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.drawCircle(cx, cy - r * 0.55f, r * 0.85f, cloud)
 
         if (fill > 0f) {
-            cloud.color = theme.accent.primary
+            cloud.color = theme.effect.primary
             cloud.alpha = (200 * fill).toInt().coerceIn(0, 255)
             canvas.drawCircle(cx, cy, r * 0.8f * fill, cloud)
             cloud.alpha = 255

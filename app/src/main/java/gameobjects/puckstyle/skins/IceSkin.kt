@@ -12,9 +12,7 @@ import gameobjects.puckstyle.PuckRenderer
 
 class IceSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
 
-    private val centerColor = theme.main.primary
-    private val midColor = Palette.lerpColor(theme.main.primary, Color.WHITE, 0.55f)
-    private val edgeColor = Color.WHITE
+    private var lastColors = theme.main
 
     private val rimStroke = Paint().apply {
         color = Color.WHITE
@@ -22,13 +20,20 @@ class IceSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
         style = Paint.Style.STROKE
     }
 
-    override fun createShader(radius: Float): Shader =
-        RadialGradient(0f, 0f, radius,
-            intArrayOf(centerColor, midColor, edgeColor),
+    override fun createShader(radius: Float): Shader {
+        val midColor = Palette.lerpColor(lastColors.primary, Color.WHITE, 0.55f)
+        return RadialGradient(0f, 0f, radius,
+            intArrayOf(lastColors.primary, midColor, Color.WHITE),
             floatArrayOf(0f, 0.5f, 1f),
             Shader.TileMode.CLAMP)
+    }
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
+        val colors = resolvedColors(renderer)
+        if (colors != lastColors) {
+            lastColors = colors
+            invalidateShader()
+        }
         ensureShader(renderer.radius)
         canvas.save()
         canvas.translate(renderer.x, renderer.y)
