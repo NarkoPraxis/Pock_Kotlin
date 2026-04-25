@@ -25,7 +25,7 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawPixelBar(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
     }
 
@@ -52,7 +52,7 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             rect.set(startX + i * cellW + 1f, cy - thick, startX + (i + 1) * cellW - 1f, cy + thick)
             val dist = kotlin.math.abs(i - (center - 0.5f)).toInt()
             val isFilled = ph == ChargePhase.SweetSpot || dist < filledCells
-            block.color = if (isFilled && ph != ChargePhase.Overcharged) fillColor else base
+            block.color = if (isFilled && ph != ChargePhase.Inert) fillColor else base
             canvas.drawRect(rect, block)
         }
         canvas.restore()

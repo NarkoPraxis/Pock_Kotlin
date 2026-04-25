@@ -26,13 +26,13 @@ class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawGhost(canvas, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
     }
 
     private fun drawGhost(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         val r = currentRenderer.radius * (0.75f + 0.05f * sin(frame * 0.2f))
-        val base = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.main.primary
+        val base = if (ph == ChargePhase.Inert) theme.main.secondary else theme.main.primary
         body.color = base
         body.alpha = 90
         canvas.drawCircle(cx, cy, r, body)

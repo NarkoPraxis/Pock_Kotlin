@@ -119,27 +119,23 @@ object Drawing {
     private fun drawPlayerChargeFill(canvas: Canvas, player: Player, isHigh: Boolean) {
         val effect = player.puck.renderer.effect ?: return
         val ph = effect.phase
-        if (ph == ChargePhase.Idle) return
+        if (ph == ChargePhase.Idle || ph == ChargePhase.Inert) return
         val ratio = effect.chargeFillRatio
+        if (ratio <= 0f) return
         val theme = effect.theme
         val paint = if (isHigh) PaintBucket.chargeFillHighPaint else PaintBucket.chargeFillLowPaint
         val color = when (ph) {
-            ChargePhase.Building -> theme.main.primary
+            ChargePhase.Building, ChargePhase.Draining -> theme.main.primary
             ChargePhase.SweetSpot -> theme.accent.primary
-            ChargePhase.Overcharged -> theme.main.secondary
-            ChargePhase.Idle -> return
+            else -> return
         }
         val alpha = when (ph) {
-            ChargePhase.Building -> 128
+            ChargePhase.Building, ChargePhase.Draining -> 128
             ChargePhase.SweetSpot -> {
                 val pulse = 0.7f + 0.3f * sin(chargeFillFrame * 0.35f)
                 (pulse * 255).toInt().coerceIn(0, 255)
             }
-            ChargePhase.Overcharged -> {
-                val pulse = 0.5f + 0.5f * sin(chargeFillFrame * 0.6f)
-                (pulse * 200).toInt().coerceIn(0, 255)
-            }
-            ChargePhase.Idle -> return
+            else -> return
         }
         paint.color = color
         paint.alpha = alpha

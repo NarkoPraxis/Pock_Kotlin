@@ -31,7 +31,7 @@ class ClassicTail(override val theme: ColorTheme) : TailRenderer {
                 points[i] = DrawablePoint(renderer.x, renderer.y, renderer.strokeColor)
             }
 
-            if (renderer.shielded) points[i].setColor(PaintBucket.effectColor)
+            if (renderer.shielded) points[i].setColor(theme.accent.primary)
             else if (renderer.launched) points[i].setColor(renderer.fillColor)
             else points[i].setColor(renderer.baseFillColor)
 

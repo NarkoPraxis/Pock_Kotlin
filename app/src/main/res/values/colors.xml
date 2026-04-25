@@ -16,4 +16,6 @@
     <color name="menuBackground">#12102a</color>
     <color name="menuButtonSecondary">#2e2c50</color>
     <color name="menuButtonLight">#d4c8ff</color>
+    <color name="inertPrimary">#D9D9D9</color>
+    <color name="inertSecondary">#999999</color>
 </resources>

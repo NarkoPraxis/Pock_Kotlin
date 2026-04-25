@@ -36,7 +36,7 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         if (sweet) {
             drawExplosion(canvas, progress)
         } else {
-            val ph = if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+            val ph = if (overcharged) ChargePhase.Inert else ChargePhase.Building
             drawStick(canvas, cx, cy, aX, aY, ph, if (overcharged) 0f else 1f)
         }
     }
@@ -52,7 +52,7 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val halfLen = paddleHalfLength() * 0.9f
         val halfThick = currentRenderer.radius * 0.28f
 
-        stick.color = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.main.primary
+        stick.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.main.primary
         rect.set(cx - halfLen, cy - halfThick, cx + halfLen, cy + halfThick)
         canvas.drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
 

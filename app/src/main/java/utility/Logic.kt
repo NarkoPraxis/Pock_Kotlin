@@ -16,6 +16,7 @@ import gameobjects.Player
 import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
+import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import physics.Force
 import physics.Point
@@ -259,6 +260,8 @@ object Logic {
             effect.registerPhaseCallback { phase ->
                 skin?.onPhaseChanged(phase)
                 tail?.onPhaseChanged(phase)
+                if (phase == ChargePhase.Inert) player.fatigueInertLocked = true
+                if (phase == ChargePhase.Idle) player.fatigueInertLocked = false
             }
         }
     }
@@ -379,6 +382,8 @@ object Logic {
             highPlayer.shielded = false
             lowPlayer.inertLocked = false
             highPlayer.inertLocked = false
+            lowPlayer.fatigueInertLocked = false
+            highPlayer.fatigueInertLocked = false
             lowPlayer.clearCharge()
             highPlayer.clearCharge()
             Settings.pauseGame = false
@@ -523,11 +528,12 @@ object Logic {
 
     fun adjustPlayerPosition(player: Player) : Boolean {
         var gotBonus = player.shielded
-        if (player.shouldReleaseCharge) {
+        if (gotBonus) {
+            player.inertLocked = false
+        }
+        if ( player.shouldReleaseCharge) {
             gotBonus = player.releaseCharge()
             GameEvents.cantScore.emit(Unit)
-            highPlayer.inertLocked = false
-            lowPlayer.inertLocked = false
         }
         val hadLaunchPower = player.puck.launch.hasPower
         if(player.applyForces()) {
@@ -535,8 +541,8 @@ object Logic {
         }
         if (hadLaunchPower && !player.puck.launch.hasPower) {
             GameEvents.cantScore.emit(Unit)
-            highPlayer.inertLocked = false
-            lowPlayer.inertLocked = false
+            player.inertLocked = false
+            player.shielded = false
         }
         return gotBonus
     }
@@ -964,6 +970,8 @@ object Logic {
         lowPlayer.clearPower()
         highPlayer.inertLocked = false
         lowPlayer.inertLocked = false
+        highPlayer.fatigueInertLocked = false
+        lowPlayer.fatigueInertLocked = false
 
         highPlayer.setPuckStroke(PaintBucket.highBallStrokeColor)
         lowPlayer.setPuckStroke(PaintBucket.lowBallStrokeColor)

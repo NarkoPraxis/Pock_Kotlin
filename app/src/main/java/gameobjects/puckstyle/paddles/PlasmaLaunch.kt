@@ -31,19 +31,19 @@ class PlasmaLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawOrb(canvas, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
         drawArcs(canvas, cx, cy, ph)
     }
 
     private fun drawOrb(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         val r = currentRenderer.radius * (0.5f + 0.05f * sin(frame * 0.5f))
-        val outer = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.accent.primary
+        val outer = if (ph == ChargePhase.Inert) theme.main.secondary else theme.accent.primary
         core.color = outer
         core.alpha = 140
         canvas.drawCircle(cx, cy, r * 1.3f, core)
         core.alpha = 255
-        core.color = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.accent.primary
+        core.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.accent.primary
         canvas.drawCircle(cx, cy, r, core)
         if (fill > 0f) {
             core.color = android.graphics.Color.WHITE
@@ -62,7 +62,7 @@ class PlasmaLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             val len = currentRenderer.radius * (0.6f + rand.nextFloat() * 0.6f)
             val ex = cx + cos(angle) * len
             val ey = cy + sin(angle) * len
-            arc.color = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.accent.primary
+            arc.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.accent.primary
             arc.alpha = 200
             canvas.drawLine(cx, cy, ex, ey, arc)
         }

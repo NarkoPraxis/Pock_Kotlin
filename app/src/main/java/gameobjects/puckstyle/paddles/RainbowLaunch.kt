@@ -35,14 +35,14 @@ class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawCloud(canvas, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
         if (sweet) drawBolt(canvas, cx, cy, progress)
     }
 
     private fun drawCloud(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         val r = currentRenderer.radius * 0.4f
-        val color = if (ph == ChargePhase.Overcharged) theme.main.secondary else Color.rgb(230, 235, 245)
+        val color = if (ph == ChargePhase.Inert) theme.main.secondary else Color.rgb(230, 235, 245)
         cloud.color = color
         canvas.drawCircle(cx, cy, r * 1.1f, cloud)
         canvas.drawCircle(cx - r * 0.9f, cy + r * 0.2f, r * 0.8f, cloud)

@@ -65,7 +65,6 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
     private fun playGame() {
         Logic.adjustPlayerPositions()
         Logic.checkCharge()
-        Logic.checkShield()
         Logic.calculateCollision()
         Logic.checkScored()
     }
@@ -79,37 +78,22 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
 
         Drawing.drawArenaBackground(canvas)
         Drawing.drawChargeFill(canvas)
+        Effects.drawEffects(canvas)
+        Drawing.drawPlayers(canvas)
+        Drawing.drawWalls(canvas)
+        Drawing.drawAimArrows(canvas)
 
         if (Settings.gameState != GameState.BallSelection) {
-            Effects.drawEffects(canvas)
-            Drawing.drawPlayers(canvas)
-            Drawing.drawAimArrows(canvas)
             Drawing.drawScoreFlash(canvas)
             Drawing.drawScores(canvas, Logic.highPlayer, Logic.lowPlayer)
-            Drawing.drawCanScoreWalls(canvas)
-            Drawing.drawWalls(canvas)
-            Drawing.drawArenaForeground(canvas)
-            if (Settings.pauseGame) {
-                canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
-                Logic.pauseMenu.drawTo(canvas)
-            }
         } else {
-            if (Settings.pauseGame) {
-                canvas.drawText("Paused", Settings.middleX, Settings.middleY, PaintBucket.debugTextPaint)
-                Logic.pauseMenu.drawTo(canvas)
-            } else {
-                Effects.drawEffects(canvas)
-                Drawing.drawPlayers(canvas)
-                Drawing.drawAimArrows(canvas)
-                Drawing.drawCanScoreWalls(canvas)
-                Drawing.drawRules(canvas)
-                Drawing.drawWalls(canvas)
-                Logic.highBallPopup.drawTo(canvas)
-                Logic.lowBallPopup.drawTo(canvas)
-                Drawing.drawArenaForeground(canvas)
-            }
+            Drawing.drawRules(canvas)
+            Logic.highBallPopup.drawTo(canvas)
+            Logic.lowBallPopup.drawTo(canvas)
         }
 
+        Drawing.drawCanScoreWalls(canvas)
+        Drawing.drawArenaForeground(canvas)
     }
 
     fun pauseGameLoop() {

@@ -32,7 +32,7 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawPrism(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
         if (sweet) drawRefraction(canvas, cx, cy, aX, aY, progress)
     }
@@ -51,7 +51,7 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         path.lineTo(cx - aX * depth, cy - aY * depth)
         path.close()
 
-        fill.color = if (ph == ChargePhase.Overcharged) theme.main.secondary else Color.WHITE
+        fill.color = if (ph == ChargePhase.Inert) theme.main.secondary else Color.WHITE
         fill.alpha = 200
         canvas.drawPath(path, fill)
         if (ratio > 0f) {

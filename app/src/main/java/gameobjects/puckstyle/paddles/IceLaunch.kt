@@ -28,7 +28,7 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawShard(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
     }
 
@@ -46,7 +46,7 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         path.lineTo(cx - aX * shortR, cy - aY * shortR)
         path.close()
 
-        val base = if (ph == ChargePhase.Overcharged) theme.main.secondary else Color.rgb(180, 220, 255)
+        val base = if (ph == ChargePhase.Inert) theme.main.secondary else Color.rgb(180, 220, 255)
         shardFill.color = base
         canvas.drawPath(path, shardFill)
 

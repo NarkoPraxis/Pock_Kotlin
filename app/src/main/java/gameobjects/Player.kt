@@ -6,6 +6,7 @@ import android.graphics.Paint
 import enums.Direction
 import enums.MotionStates
 import enums.TouchState
+import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import physics.Force
 import physics.Point
@@ -58,6 +59,7 @@ class Player(
     var flingReleaseBasePower: Float = 0f
 
     var inertLocked: Boolean = false
+    var fatigueInertLocked: Boolean = false
 
     private var pendingLaunchDir: Point? = null
     private var pendingLaunchPower: Float = 0f
@@ -151,13 +153,20 @@ class Player(
         renderer.flingCurrentX = flingCurrent.x
         renderer.flingCurrentY = flingCurrent.y
         renderer.effectEnabled = !disableEffects
-        renderer.inertLocked = inertLocked
-        if (inertLocked) {
+        renderer.inertLocked = inertLocked || fatigueInertLocked
+        if (inertLocked || fatigueInertLocked) {
             val theme = puck.renderer.effect?.theme ?: puck.renderer.skin?.theme
             if (theme != null) {
                 renderer.fillColor = theme.inert.primary
                 renderer.strokeColor = theme.inert.secondary
                 renderer.baseFillColor = theme.inert.primary
+            }
+        } else {
+            val theme = puck.renderer.effect?.theme ?: puck.renderer.skin?.theme
+            if (theme != null) {
+                renderer.fillColor = theme.main.primary
+                renderer.strokeColor = theme.main.secondary
+                renderer.baseFillColor = theme.main.primary
             }
         }
 
@@ -324,27 +333,39 @@ class Player(
     fun releaseCharge(): Boolean {
         shouldReleaseCharge = false
         shielded = false
-        val wasOvercharged = chargePowerLocked
-        if (charge >= Settings.sweetSpotMin && charge <= Settings.sweetSpotMax) {
+        val effect = puck.renderer.effect
+        val phaseAtRelease = effect?.phase ?: ChargePhase.Idle
+
+        if (phaseAtRelease == ChargePhase.SweetSpot) {
             shielded = true
-            inertLocked = false
             Sounds.playChargeBlastOff(puck.x)
         }
+
         val direction = flingReleaseDir ?: Point(0f, 0f)
         val basePower = flingReleaseBasePower
-        val power = if (wasOvercharged) minOf(basePower, Settings.sweetSpotMax * 0.5f) else basePower
+        val power = when (phaseAtRelease) {
+            ChargePhase.Draining -> effect?.currentCharge ?: basePower
+            else -> basePower
+        }
+
         pendingLaunchDir = direction
         pendingLaunchPower = power
         puck.shrinkTicker.reset()
-        puck.renderer.effect?.registerStrikeCallback { applyPendingLaunch() }
-        puck.renderer.effect?.onRelease(puck.x, puck.y, puck.radius, shielded)
-        puck.renderer.effect?.clearCharge()
+        effect?.registerStrikeCallback { applyPendingLaunch() }
+        effect?.onRelease(puck.x, puck.y, puck.radius, shielded)
+        effect?.clearCharge()
+
+        if (phaseAtRelease == ChargePhase.Inert) {
+            pendingLaunchDir = null
+        }
+
         flingReleaseDir = null
         flingReleaseBasePower = 0f
         return shielded
     }
 
     private fun applyPendingLaunch() {
+        fatigueInertLocked = false
         if (inertLocked) {
             pendingLaunchDir = null
             return

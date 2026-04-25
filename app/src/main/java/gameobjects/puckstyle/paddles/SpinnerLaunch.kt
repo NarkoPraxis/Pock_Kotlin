@@ -28,7 +28,7 @@ class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawCross(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f, frame * 0.35f + progress * 3f)
     }
 

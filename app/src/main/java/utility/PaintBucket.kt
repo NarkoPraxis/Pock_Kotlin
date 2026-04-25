@@ -67,6 +67,8 @@ object PaintBucket {
         goalColor = ResourcesCompat.getColor(resources, R.color.goalColor, null)
         backgroundColor = ResourcesCompat.getColor(resources, R.color.background, null)
         effectColor = ResourcesCompat.getColor(resources, R.color.effectColor, null)
+        inertPrimaryColor = ResourcesCompat.getColor(resources, R.color.inertPrimary, null)
+        inertSecondaryColor = ResourcesCompat.getColor(resources, R.color.inertSecondary, null)
 
         val goalHsv = FloatArray(3)
         Color.colorToHSV(goalColor, goalHsv)
@@ -77,17 +79,12 @@ object PaintBucket {
         Color.colorToHSV(highBallColor, highHsv)
         val lowHsv = FloatArray(3)
         Color.colorToHSV(lowBallColor, lowHsv)
-        val avgS = (highHsv[1] + lowHsv[1]) / 2f
-        val avgV = (highHsv[2] + lowHsv[2]) / 2f
-        inertPrimaryColor = Color.HSVToColor(floatArrayOf(0f, avgS, avgV))
-        inertSecondaryColor = Color.HSVToColor(floatArrayOf(0f, (avgS * 2f).coerceAtMost(1f), avgV))
 
         val effectHsv = FloatArray(3)
         Color.colorToHSV(effectColor, effectHsv)
         effectSecondaryColor = Color.HSVToColor(floatArrayOf(effectHsv[0], (effectHsv[1] * 2f).coerceAtMost(1f), effectHsv[2]))
 
         STROKE_WIDTH = Settings.screenRatio / 12f
-
 
         tutorialTextPaint = Paint().apply{
             color = if (Storage.darkMode) backgroundColor else Color.BLACK

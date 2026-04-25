@@ -16,6 +16,7 @@ import utility.Drawing
 import utility.Logic
 import utility.PaintBucket
 import utility.Storage
+import androidx.core.graphics.toColorInt
 
 class ScoreCalibrationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +57,7 @@ class ScoreCalibrationView(context: Context) : View(context) {
         color = Color.argb(140, 0, 0, 0)
     }
     private val btnFillPaint = Paint().apply {
-        color = Color.parseColor("#2e2c50")
+        color = "#2E2C50".toColorInt()
         isAntiAlias = true
         style = Paint.Style.FILL
     }

@@ -27,7 +27,7 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawFireball(canvas, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
     }
 
@@ -37,7 +37,7 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val outerR = base * jitter
 
         val outerColor = when (ph) {
-            ChargePhase.Overcharged -> theme.main.secondary
+            ChargePhase.Inert -> theme.main.secondary
             else -> theme.main.primary
         }
         flamePaint.color = outerColor

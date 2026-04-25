@@ -25,7 +25,7 @@ class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     ) {
         val ph = when {
             sweet       -> ChargePhase.SweetSpot
-            overcharged -> ChargePhase.Overcharged
+            overcharged -> ChargePhase.Inert
             else        -> ChargePhase.Building
         }
         drawEgg(canvas, cx, cy, if (sweet || !overcharged) 1f else 0f, ph)
@@ -45,7 +45,7 @@ class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         eggPaint.color = android.graphics.Color.WHITE
         canvas.drawOval(cx - eggW, cy - eggH, cx + eggW, cy + eggH, eggPaint)
 
-        if (fillRatio > 0f && ph != ChargePhase.Overcharged) {
+        if (fillRatio > 0f && ph != ChargePhase.Inert) {
             eggPaint.color = Palette.withAlpha(theme.accent.primary, (220 * pulse).toInt())
             canvas.drawOval(cx - eggW * fillRatio, cy - eggH * fillRatio,
                             cx + eggW * fillRatio, cy + eggH * fillRatio, eggPaint)

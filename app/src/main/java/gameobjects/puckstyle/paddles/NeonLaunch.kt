@@ -28,7 +28,7 @@ class NeonLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawHalo(canvas, cx, cy, aX, aY, ph)
         super.drawStrikingPaddle(canvas, cx, cy, aX, aY, sweet, overcharged, progress)
     }
@@ -37,7 +37,7 @@ class NeonLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val half = paddleHalfLength()
         val perpX = -aY
         val perpY = aX
-        val glowColor = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.accent.primary
+        val glowColor = if (ph == ChargePhase.Inert) theme.main.secondary else theme.accent.primary
 
         val outerAlpha: Int
         val innerAlpha: Int

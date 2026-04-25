@@ -22,7 +22,7 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, overcharged: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Overcharged else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
         drawPlanet(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
     }
 
@@ -31,7 +31,7 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val pX = -aY
         val pY = aX
 
-        val core = if (ph == ChargePhase.Overcharged) theme.main.secondary else Color.rgb(80, 40, 140)
+        val core = if (ph == ChargePhase.Inert) theme.main.secondary else Color.rgb(80, 40, 140)
         body.color = core
         canvas.drawCircle(cx, cy, r, body)
 
@@ -42,7 +42,7 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             body.alpha = 255
         }
 
-        ring.color = if (ph == ChargePhase.Overcharged) theme.main.secondary else theme.main.primary
+        ring.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.main.primary
         ring.strokeWidth = Settings.strokeWidth * 0.6f
         val len = paddleHalfLength()
         canvas.drawLine(cx - pX * len, cy - pY * len, cx + pX * len, cy + pY * len, ring)

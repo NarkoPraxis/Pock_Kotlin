@@ -4,5 +4,6 @@ enum class ChargePhase {
     Idle,
     Building,
     SweetSpot,
-    Overcharged
+    Draining,
+    Inert
 }

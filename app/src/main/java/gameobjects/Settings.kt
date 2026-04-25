@@ -73,6 +73,10 @@ object Settings {
     var maxPuckLaunchSpeed: Float = 23f// TODO: set by screen ratio
     var maxBonusTickerTime: Int = 200
     var chargeIncreaseRate: Float = 1f
+    var sweetSpotWindowFrames: Int = 60
+    var inertHoldFrames: Int = 60
+    val chargeDrainRate: Float get() = chargeIncreaseRate
+    val drainFloor: Float get() = sweetSpotMax * 0.5f
     var maxPower: Float = 30f
     var tailLength: Int = 20
     val tailLengthMultiplier: Float get() = when (tailLength) {

@@ -54,7 +54,7 @@ class PuckRenderer {
         strokeJoin = Paint.Join.ROUND; strokeCap = Paint.Cap.ROUND
         strokeWidth = Settings.strokeWidth
     }
-    // Mutable by skins to theme the charge ring (Neon, Ghost, Galaxy, Metal, Rainbow)
+    // Mutable by skins to theme charging (Neon, Ghost, Galaxy, Metal, Rainbow)
     val chargePaint: Paint = Paint().apply {
         color = Color.WHITE
         isAntiAlias = true; isDither = true; style = Paint.Style.STROKE

@@ -4,7 +4,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import gameobjects.Settings
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -14,20 +13,14 @@ import kotlin.math.sqrt
  *
  * Kinematics (identical for every ball type):
  *  - Paddle sits behind the puck along the aim vector.
- *  - Distance from puck center ranges from `radius` (touching outside) to
- *    `radius + maxPullback` (roughly 1.5 puck radii).
- *  - Distance is driven by the finger-drag magnitude (base power), NOT by charge.
- *  - Charge fills the paddle center-out with the shared effect color (purple).
- *  - SweetSpot phase = paddle fully filled + gentle alpha pulse.
- *  - Overcharged phase = paddle drops to its 50%-distance position and renders in
- *    the player's theme color (no purple).
- *  - On release, paddle slides to puck center along the aim vector in a fixed
- *    number of frames (travel time constant regardless of distance).
- *  - On a sweet-spot release only, onSpawnResidual() is called once the strike lands,
- *    allowing subclasses to add persistent effects to Effects.
+ *  - Distance from puck center = drag contribution (0..50%) + charge fill contribution (0..50%).
+ *  - Charge state machine: Idle → Building → SweetSpot (timed window) → Draining → Inert.
+ *  - Releasing during SweetSpot grants shield + full launch power.
+ *  - Releasing during Draining launches at current reduced charge, no shield.
+ *  - Releasing during Inert plays an impotent strike animation with no launch.
+ *  - On a sweet-spot release only, onSpawnResidual() is called once the strike lands.
  *
  * Subclasses override only the visual primitives; the kinematics stay fixed.
- * Subclasses access per-frame puck state via [currentRenderer].
  */
 abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect {
 
@@ -42,27 +35,43 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
 
     // --- charge state (SSoT owned here) ---
     private var _currentCharge = 0f
+    @Deprecated("Superseded by Draining/Inert phases — retained for interface compat")
     private var _chargePowerLocked = false
 
+    private var _sweetSpotFramesRemaining: Int = 0
+    private var _drainHoldFrames: Int = 0
+
+    /** When set, the phase transition to Idle is deferred until the strike animation ends. */
+    private var _phaseAfterClear: ChargePhase? = null
+
     override val currentCharge: Float get() = _currentCharge
+    @Suppress("DEPRECATION")
     override val chargePowerLocked: Boolean get() = _chargePowerLocked
 
+    val isInSweetSpotWindow: Boolean get() = _phase == ChargePhase.SweetSpot
+
     override fun increaseCharge() {
-        if (!_chargePowerLocked) {
-            if (_currentCharge < Settings.chargeStart) {
-                _currentCharge = Settings.chargeStart
-            } else if (_currentCharge >= Settings.sweetSpotMax) {
-                _currentCharge = Settings.sweetSpotMax * .5f
-                _chargePowerLocked = true
-            } else {
-                _currentCharge += Settings.chargeIncreaseRate
-            }
+        if (_phase != ChargePhase.Idle && _phase != ChargePhase.Building) return
+        if (_currentCharge < Settings.chargeStart) {
+            _currentCharge = Settings.chargeStart
+        } else {
+            _currentCharge = (_currentCharge + Settings.chargeIncreaseRate)
+                .coerceAtMost(Settings.sweetSpotMax.toFloat())
         }
+        if (_phase == ChargePhase.Idle) _phase = ChargePhase.Building
     }
 
     override fun clearCharge() {
         _currentCharge = 0f
+        @Suppress("DEPRECATION")
         _chargePowerLocked = false
+        _sweetSpotFramesRemaining = 0
+        _drainHoldFrames = 0
+        if (releaseFrames > 0) {
+            _phaseAfterClear = ChargePhase.Idle
+        } else {
+            _phase = ChargePhase.Idle
+        }
     }
 
     // --- phase with listener dispatch ---
@@ -101,7 +110,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     protected var paddleY = 0f
         private set
 
-    /** 0..1 — how far the center-out charge fill has travelled. 1 in SweetSpot. */
+    /** 0..1 — how far the center-out charge fill has travelled. 1.0 in SweetSpot. */
     private var _chargeFillRatio = 0f
     override val chargeFillRatio: Float get() = _chargeFillRatio
 
@@ -112,7 +121,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     private var releaseAimX = 0f
     private var releaseAimY = 0f
     private var releaseSweet = false
-    private var releaseOvercharged = false
+    private var releaseFatigued = false
 
     private var maxDist = 0f
 
@@ -140,7 +149,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
             val t = 1f - (releaseFrames.toFloat() / RELEASE_DURATION)
             val cx = lerp(releaseFromX, renderer.x, t)
             val cy = lerp(releaseFromY, renderer.y, t)
-            drawStrikingPaddle(canvas, cx, cy, releaseAimX, releaseAimY, releaseSweet, releaseOvercharged, t)
+            drawStrikingPaddle(canvas, cx, cy, releaseAimX, releaseAimY, releaseSweet, releaseFatigued, t)
             releaseFrames--
             if (releaseFrames == 0) {
                 strikeCallback?.invoke()
@@ -148,6 +157,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
                 if (releaseSweet) {
                     onSpawnResidual(renderer.x, renderer.y, releaseAimX, releaseAimY)
                 }
+                _phaseAfterClear?.let { _phase = it; _phaseAfterClear = null }
             }
         } else if (_phase != ChargePhase.Idle) {
             drawChargingPaddle(canvas)
@@ -165,16 +175,20 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         releaseAimX = aimX
         releaseAimY = aimY
         releaseSweet = sweetSpotHit
-        releaseOvercharged = _phase == ChargePhase.Overcharged
+        releaseFatigued = _phase == ChargePhase.Inert
         releaseFrames = RELEASE_DURATION
-        onReleaseSpawn(x, y, radius, releaseSweet, releaseOvercharged)
+        onReleaseSpawn(x, y, radius, releaseSweet, releaseFatigued)
     }
 
     override fun reset() {
         releaseFrames = 0
         _phase = ChargePhase.Idle
         _currentCharge = 0f
+        @Suppress("DEPRECATION")
         _chargePowerLocked = false
+        _sweetSpotFramesRemaining = 0
+        _drainHoldFrames = 0
+        _phaseAfterClear = null
         strikeCallback = null
     }
 
@@ -192,42 +206,67 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         if (renderer.isFlingHeld && dist > 1f) {
             aimX = dx / dist
             aimY = dy / dist
-            val t = min(dist, maxDrag) / maxDrag
-            paddleDistance = minDist + (maxDist - minDist) * t
         } else {
             if (aimX == 0f && aimY == 0f) {
                 aimY = if (renderer.isHigh) 1f else -1f
             }
-            paddleDistance = minDist
         }
 
-        _phase = when {
-            _chargePowerLocked -> ChargePhase.Overcharged
-            _currentCharge >= Settings.sweetSpotMin && _currentCharge <= Settings.sweetSpotMax -> ChargePhase.SweetSpot
-            renderer.isFlingHeld || _currentCharge > 0f -> ChargePhase.Building
-            else -> ChargePhase.Idle
+        // Only tick the state machine while not frozen mid-strike
+        if (_phaseAfterClear == null) {
+            when (_phase) {
+                ChargePhase.Building -> {
+                    if (_currentCharge >= Settings.sweetSpotMax) {
+                        _currentCharge = Settings.sweetSpotMax.toFloat()
+                        _sweetSpotFramesRemaining = Settings.sweetSpotWindowFrames
+                        _phase = ChargePhase.SweetSpot
+                    }
+                }
+                ChargePhase.SweetSpot -> {
+                    _sweetSpotFramesRemaining--
+                    if (_sweetSpotFramesRemaining <= 0) {
+                        _drainHoldFrames = 0
+                        _phase = ChargePhase.Draining
+                    }
+                }
+                ChargePhase.Draining -> {
+                    _currentCharge = (_currentCharge - Settings.chargeDrainRate)
+                        .coerceAtLeast(Settings.drainFloor)
+                    if (_currentCharge <= Settings.drainFloor) {
+                        _drainHoldFrames++
+                        if (_drainHoldFrames >= Settings.inertHoldFrames) {
+                            _phase = ChargePhase.Inert
+                        }
+                    }
+                }
+                ChargePhase.Inert -> { /* paddle is dead */ }
+                ChargePhase.Idle -> { /* awaiting increaseCharge() */ }
+            }
         }
 
-        if (_phase == ChargePhase.Overcharged) {
-            val capped = minDist + (maxDist - minDist) * 0.5f
-            paddleDistance = min(paddleDistance, capped)
+        _chargeFillRatio = when (_phase) {
+            ChargePhase.SweetSpot -> 1f
+            ChargePhase.Draining  -> ((_currentCharge - Settings.drainFloor) /
+                                       (Settings.sweetSpotMax - Settings.drainFloor)).coerceIn(0f, 1f)
+            ChargePhase.Inert     -> 0f
+            ChargePhase.Building  -> ((_currentCharge - Settings.chargeStart) /
+                                       (Settings.sweetSpotMax - Settings.chargeStart)).coerceIn(0f, 1f)
+            ChargePhase.Idle      -> 0f
         }
+
+        // Drag informs first 50% of paddle extension; charge fill informs the second 50%.
+        // Both reach their respective maxes simultaneously at max drag + full charge.
+        val dragT = if (dist > 1f) min(dist, maxDrag) / maxDrag else 0f
+        val blendedT = (dragT * 0.5f + _chargeFillRatio * 0.5f).coerceIn(0f, 1f)
+        paddleDistance = minDist + (maxDist - minDist) * blendedT
 
         paddleX = renderer.x - aimX * paddleDistance
         paddleY = renderer.y - aimY * paddleDistance
-
-        val range = max(1f, (Settings.sweetSpotMin - Settings.chargeStart))
-        _chargeFillRatio = when (_phase) {
-            ChargePhase.SweetSpot -> 1f
-            ChargePhase.Overcharged -> 0f
-            ChargePhase.Building -> ((_currentCharge - Settings.chargeStart) / range).coerceIn(0f, 1f)
-            ChargePhase.Idle -> 0f
-        }
     }
 
     // ---------- drawing primitives (overridable) ----------
 
-    /** Called each frame during Building / SweetSpot / Overcharged. */
+    /** Called each frame during Building / SweetSpot / Draining / Inert. */
     protected open fun drawChargingPaddle(canvas: Canvas) {
         drawPaddleBar(canvas, paddleX, paddleY, aimX, aimY, _chargeFillRatio, _phase, false)
     }
@@ -236,13 +275,13 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     protected open fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val fill = if (overcharged) 0f else 1f
+        val fill = if (fatigued) 0f else 1f
         val fakePhase = when {
-            sweet -> ChargePhase.SweetSpot
-            overcharged -> ChargePhase.Overcharged
-            else -> ChargePhase.Building
+            sweet    -> ChargePhase.SweetSpot
+            fatigued -> ChargePhase.Inert
+            else     -> ChargePhase.Building
         }
         drawPaddleBar(canvas, cx, cy, aX, aY, fill, fakePhase, true)
     }
@@ -262,13 +301,13 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         val perpY = aX
         val thickness = paddleThickness()
 
-        val baseColor = if (currentRenderer.inertLocked) theme.inert.secondary else theme.main.secondary
+        val isInert = currentRenderer.inertLocked || ph == ChargePhase.Inert
+        val baseColor = if (isInert) theme.inert.secondary else theme.main.secondary
         val chargeColor = theme.accent.primary
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
 
         paddlePaint.strokeWidth = thickness
 
-        // Base (player color) — full paddle.
         paddlePaint.color = baseColor
         paddlePaint.alpha = 255
         canvas.drawLine(
@@ -277,7 +316,6 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
             paddlePaint
         )
 
-        // Center-out charge fill (purple).
         if (fillRatio > 0f) {
             val fillHalf = half * fillRatio
             paddlePaint.color = chargeColor
@@ -291,7 +329,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     }
 
     /** Hook: allows a subclass to spawn extra one-shot effects at release. */
-    protected open fun onReleaseSpawn(x: Float, y: Float, radius: Float, sweet: Boolean, overcharged: Boolean) {}
+    protected open fun onReleaseSpawn(x: Float, y: Float, radius: Float, sweet: Boolean, fatigued: Boolean) {}
 
     /** Hook: called once when the strike animation finishes on a sweet-spot release. Add to Effects.persistentEffects here. */
     protected open fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {}
