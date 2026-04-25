@@ -536,12 +536,16 @@ object Logic {
             GameEvents.cantScore.emit(Unit)
         }
         val hadLaunchPower = player.puck.launch.hasPower
+        val hadMovementPower = player.puck.movement.hasPower
         if(player.applyForces()) {
             Effects.addWallCollisionEffect(player.bounceDirection, player.puckFillColor, player.puck)
         }
         if (hadLaunchPower && !player.puck.launch.hasPower) {
             GameEvents.cantScore.emit(Unit)
             player.inertLocked = false
+            player.shielded = false
+        }
+        if (hadMovementPower && !player.puck.movement.hasPower && !player.puck.launch.hasPower) {
             player.shielded = false
         }
         return gotBonus

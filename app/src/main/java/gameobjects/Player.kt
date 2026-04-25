@@ -35,7 +35,9 @@ class Player(
     var movementSpeed = Settings.minPuckSpeed
     val charge: Float get() = puck.renderer.effect?.currentCharge ?: 0f
     var bonusCountdown = 0f
-    var shielded = false
+    var shielded: Boolean
+        get() = puck.renderer.shielded
+        set(value) { puck.renderer.shielded = value }
     var shouldReleaseCharge = false
     val chargePowerLocked: Boolean get() = puck.renderer.effect?.chargePowerLocked ?: false
     var touchLocked = false
@@ -142,7 +144,6 @@ class Player(
         val renderer = puck.renderer
         renderer.frame++
         renderer.currentCharge = charge
-        renderer.shielded = shielded
         renderer.launched = isLaunched
         renderer.baseFillColor = puckFillColor
         renderer.chargePowerLocked = chargePowerLocked

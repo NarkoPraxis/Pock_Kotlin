@@ -34,6 +34,10 @@ class Puck(radius: Float, x: Float, y: Float, theme: ColorTheme) : Circle(radius
     var movement: Force = Force()
     var launch: Force = Force()
 
+    var impactPower: Float = 0.0f
+        get() = (movement + launch).power
+
+
     override fun setStroke(stroke: Int) {
         super.setStroke(stroke)
         renderer.strokeColor = stroke
@@ -89,6 +93,8 @@ class Puck(radius: Float, x: Float, y: Float, theme: ColorTheme) : Circle(radius
         launch.applyFriction()
         return nextDirection
     }
+
+
 
     fun clearForces() {
         movement = Force()
