@@ -377,6 +377,8 @@ object Logic {
             highPlayer.lockedPointerId = -1
             lowPlayer.shielded = false
             highPlayer.shielded = false
+            lowPlayer.inertLocked = false
+            highPlayer.inertLocked = false
             lowPlayer.clearCharge()
             highPlayer.clearCharge()
             Settings.pauseGame = false
@@ -435,12 +437,14 @@ object Logic {
                     highPlayer.shielded = false
                     lowPlayer.launch(Force(direction, Settings.launchBonus + highPlayer.power))
                     highPlayer.launch(Force(-direction, Settings.minLaunchPower))
+                    lowPlayer.inertLocked = true
                     highPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else if (lowPlayer.shielded && !highPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
                     lowPlayer.shielded = false
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPlayer.power))
                     lowPlayer.launch(Force(direction, Settings.minLaunchPower))
+                    highPlayer.inertLocked = true
                     lowPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else if (lowPlayer.shielded && highPlayer.shielded) {
                     Sounds.playDoubleChargeCollision(collisionPoint.x)
@@ -522,6 +526,8 @@ object Logic {
         if (player.shouldReleaseCharge) {
             gotBonus = player.releaseCharge()
             GameEvents.cantScore.emit(Unit)
+            highPlayer.inertLocked = false
+            lowPlayer.inertLocked = false
         }
         val hadLaunchPower = player.puck.launch.hasPower
         if(player.applyForces()) {
@@ -529,6 +535,8 @@ object Logic {
         }
         if (hadLaunchPower && !player.puck.launch.hasPower) {
             GameEvents.cantScore.emit(Unit)
+            highPlayer.inertLocked = false
+            lowPlayer.inertLocked = false
         }
         return gotBonus
     }
@@ -954,6 +962,8 @@ object Logic {
         lowPlayer.touch = TouchState.Ready
         highPlayer.clearPower()
         lowPlayer.clearPower()
+        highPlayer.inertLocked = false
+        lowPlayer.inertLocked = false
 
         highPlayer.setPuckStroke(PaintBucket.highBallStrokeColor)
         lowPlayer.setPuckStroke(PaintBucket.lowBallStrokeColor)

@@ -57,6 +57,8 @@ class Player(
     var flingReleaseDir: Point? = null
     var flingReleaseBasePower: Float = 0f
 
+    var inertLocked: Boolean = false
+
     private var pendingLaunchDir: Point? = null
     private var pendingLaunchPower: Float = 0f
 
@@ -149,6 +151,15 @@ class Player(
         renderer.flingCurrentX = flingCurrent.x
         renderer.flingCurrentY = flingCurrent.y
         renderer.effectEnabled = !disableEffects
+        renderer.inertLocked = inertLocked
+        if (inertLocked) {
+            val theme = puck.renderer.effect?.theme ?: puck.renderer.skin?.theme
+            if (theme != null) {
+                renderer.fillColor = theme.inert.primary
+                renderer.strokeColor = theme.inert.secondary
+                renderer.baseFillColor = theme.inert.primary
+            }
+        }
 
         if (chargePowerLocked) overchargeFrames++ else overchargeFrames = 0
         if (preparingToTeleport || isTeleporting) {
@@ -316,6 +327,7 @@ class Player(
         val wasOvercharged = chargePowerLocked
         if (charge >= Settings.sweetSpotMin && charge <= Settings.sweetSpotMax) {
             shielded = true
+            inertLocked = false
             Sounds.playChargeBlastOff(puck.x)
         }
         val direction = flingReleaseDir ?: Point(0f, 0f)
@@ -333,6 +345,10 @@ class Player(
     }
 
     private fun applyPendingLaunch() {
+        if (inertLocked) {
+            pendingLaunchDir = null
+            return
+        }
         val dir = pendingLaunchDir ?: return
         puck.movement = Force(dir, pendingLaunchPower)
         pendingLaunchDir = null

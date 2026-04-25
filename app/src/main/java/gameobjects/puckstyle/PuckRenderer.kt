@@ -75,6 +75,7 @@ class PuckRenderer {
     var launched: Boolean = false
     var baseFillColor: Int = Color.WHITE  // canonical fill color for tail trails
     var effectEnabled: Boolean = true
+    var inertLocked: Boolean = false
 
     // Launch effect state forwarded from Player so effect.draw needs no Player reference
     var chargePowerLocked: Boolean = false
