@@ -779,46 +779,36 @@ object Logic {
         if (interceptBallMenu(event, motionEvent)) return
 
         if (Settings.gameState == GameState.BallSelection) {
-            if (pointerCount > 1) checkPauseGame(pointerCount, event!!.getY(0), event.getY(1))
-            if (!Settings.pauseGame) {
-                routeBallSelectionFling(event, motionEvent)
-            }
+            routeBallSelectionFling(event, motionEvent)
             return
         }
 
         if (pointerCount > 1) {
-            checkPauseGame(pointerCount, event!!.getY(0), event.getY(1))
+            val maskedAction = motionEvent?.and(MotionEvent.ACTION_MASK)
+            val actionIndex = event!!.actionIndex
+            val actionPointerId = event.getPointerId(actionIndex)
+            val actionY = event.getY(actionIndex)
+            val actionX = event.getX(actionIndex)
 
-            if (Settings.pauseGame) {
-                checkUnpauseGame(event.getY(0), event.getY(1))
-            }
-            else {
-                val maskedAction = motionEvent?.and(MotionEvent.ACTION_MASK)
-                val actionIndex = event.actionIndex
-                val actionPointerId = event.getPointerId(actionIndex)
-                val actionY = event.getY(actionIndex)
-                val actionX = event.getX(actionIndex)
-
-                if (maskedAction == MotionEvent.ACTION_POINTER_DOWN) {
-                    if (actionY < Settings.middleY && highPlayer.lockedPointerId == -1) {
-                        highPlayer.lockedPointerId = actionPointerId
-                        startFling(highPlayer, actionX, actionY)
-                    } else if (actionY > Settings.middleY && lowPlayer.lockedPointerId == -1) {
-                        lowPlayer.lockedPointerId = actionPointerId
-                        startFling(lowPlayer, actionX, actionY)
-                    }
-                } else if (maskedAction == MotionEvent.ACTION_POINTER_UP) {
-                    if (actionPointerId == highPlayer.lockedPointerId) {
-                        endFling(highPlayer, actionX, actionY)
-                        highPlayer.lockedPointerId = -1
-                    } else if (actionPointerId == lowPlayer.lockedPointerId) {
-                        endFling(lowPlayer, actionX, actionY)
-                        lowPlayer.lockedPointerId = -1
-                    }
+            if (maskedAction == MotionEvent.ACTION_POINTER_DOWN) {
+                if (actionY < Settings.middleY && highPlayer.lockedPointerId == -1) {
+                    highPlayer.lockedPointerId = actionPointerId
+                    startFling(highPlayer, actionX, actionY)
+                } else if (actionY > Settings.middleY && lowPlayer.lockedPointerId == -1) {
+                    lowPlayer.lockedPointerId = actionPointerId
+                    startFling(lowPlayer, actionX, actionY)
                 }
-
-                assignTouchState(highTouchedFirst, motionEvent)
+            } else if (maskedAction == MotionEvent.ACTION_POINTER_UP) {
+                if (actionPointerId == highPlayer.lockedPointerId) {
+                    endFling(highPlayer, actionX, actionY)
+                    highPlayer.lockedPointerId = -1
+                } else if (actionPointerId == lowPlayer.lockedPointerId) {
+                    endFling(lowPlayer, actionX, actionY)
+                    lowPlayer.lockedPointerId = -1
+                }
             }
+
+            assignTouchState(highTouchedFirst, motionEvent)
 
             val highLockedIdx = if (highPlayer.lockedPointerId != -1)
                 event!!.findPointerIndex(highPlayer.lockedPointerId).let { if (it >= 0) it else -1 }

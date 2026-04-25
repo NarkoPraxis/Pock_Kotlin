@@ -11,6 +11,7 @@ interface LaunchEffect {
     /** Returns the ColorGroup this effect should use for the current frame based on renderer state. */
     fun resolvedColors(renderer: PuckRenderer): ColorGroup = renderer.resolveColorGroup(theme)
 
+
     fun draw(canvas: Canvas, renderer: PuckRenderer)
     fun onRelease(x: Float, y: Float, radius: Float, sweetSpotHit: Boolean)
     fun reset()

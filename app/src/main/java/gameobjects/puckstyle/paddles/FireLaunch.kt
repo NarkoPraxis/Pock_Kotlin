@@ -25,10 +25,10 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
-        drawFireball(canvas, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
+        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
+        drawFireball(canvas, cx, cy, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
 
     private fun drawFireball(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
@@ -37,20 +37,21 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val outerR = base * jitter
 
         val outerColor = when (ph) {
-            ChargePhase.Inert -> theme.main.secondary
-            else -> theme.main.primary
+            ChargePhase.Inert -> theme.inert.primary
+            else -> responsiveSecondary
         }
         flamePaint.color = outerColor
         flamePaint.alpha = 255
         canvas.drawCircle(cx, cy, outerR, flamePaint)
 
         if (fill > 0f) {
-            val coreColor = if (ph == ChargePhase.SweetSpot) theme.effect.primary else theme.main.secondary
+            val coreColor = if (ph == ChargePhase.SweetSpot) theme.effect.primary else responsivePrimary
             flamePaint.color = coreColor
             val pulse = if (ph == ChargePhase.SweetSpot) 0.8f + 0.2f * sin(frame * 0.4f) else 1f
             flamePaint.alpha = (255 * pulse).toInt().coerceIn(0, 255)
             canvas.drawCircle(cx, cy, outerR * 0.6f * fill, flamePaint)
         }
+
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {

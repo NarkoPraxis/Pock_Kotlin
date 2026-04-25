@@ -10,6 +10,7 @@ import gameobjects.puckstyle.Palette
 import utility.Effects
 import kotlin.math.atan2
 import kotlin.math.sin
+import androidx.core.graphics.withRotation
 
 class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
 
@@ -21,14 +22,14 @@ class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
 
     override fun drawStrikingPaddle(
         canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
         val ph = when {
             sweet       -> ChargePhase.SweetSpot
-            overcharged -> ChargePhase.Inert
+            fatigued -> ChargePhase.Inert
             else        -> ChargePhase.Building
         }
-        drawEgg(canvas, cx, cy, if (sweet || !overcharged) 1f else 0f, ph)
+        drawEgg(canvas, cx, cy, if (sweet || !fatigued) 1f else 0f, ph)
     }
 
     private fun drawEgg(canvas: Canvas, cx: Float, cy: Float, fillRatio: Float, ph: ChargePhase) {
@@ -36,22 +37,23 @@ class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val eggW = r * 0.5f
         val eggH = r * 0.7f
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
+        val colors = resolvedColors(currentRenderer)
 
         val angle = Math.toDegrees(atan2(aimY.toDouble(), aimX.toDouble())).toFloat()
-        canvas.save()
-        canvas.rotate(angle + 90f, cx, cy)
+        canvas.withRotation(angle + 90f, cx, cy) {
+            eggPaint.style = Paint.Style.FILL
+            eggPaint.color = if (currentRenderer.isInert) colors.primary else android.graphics.Color.WHITE
+            drawOval(cx - eggW, cy - eggH, cx + eggW, cy + eggH, eggPaint)
 
-        eggPaint.style = Paint.Style.FILL
-        eggPaint.color = android.graphics.Color.WHITE
-        canvas.drawOval(cx - eggW, cy - eggH, cx + eggW, cy + eggH, eggPaint)
+            if (fillRatio > 0f && ph != ChargePhase.Inert) {
+                eggPaint.color = Palette.withAlpha(theme.effect.primary, (220 * pulse).toInt())
+                drawOval(
+                    cx - eggW * fillRatio, cy - eggH * fillRatio,
+                    cx + eggW * fillRatio, cy + eggH * fillRatio, eggPaint
+                )
+            }
 
-        if (fillRatio > 0f && ph != ChargePhase.Inert) {
-            eggPaint.color = Palette.withAlpha(theme.effect.primary, (220 * pulse).toInt())
-            canvas.drawOval(cx - eggW * fillRatio, cy - eggH * fillRatio,
-                            cx + eggW * fillRatio, cy + eggH * fillRatio, eggPaint)
         }
-
-        canvas.restore()
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {

@@ -33,6 +33,12 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     protected var frame = 0
         private set
 
+    val responsivePrimary: Int
+        get() = resolvedColors(currentRenderer).primary
+
+    val responsiveSecondary: Int
+        get() = resolvedColors(currentRenderer).secondary
+
     // --- charge state (SSoT owned here) ---
     private var _currentCharge = 0f
     @Deprecated("Superseded by Draining/Inert phases — retained for interface compat")
@@ -49,6 +55,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
     override val chargePowerLocked: Boolean get() = _chargePowerLocked
 
     val isInSweetSpotWindow: Boolean get() = _phase == ChargePhase.SweetSpot
+
 
     override fun increaseCharge() {
         if (_phase != ChargePhase.Idle && _phase != ChargePhase.Building) return
