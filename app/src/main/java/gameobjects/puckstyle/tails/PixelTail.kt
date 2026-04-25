@@ -36,7 +36,7 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
         pulseFade *= 0.82f
 
         // shift every 3rd frame → wide gaps between squares; 15 blocks gives locked tail after index ~10
-        val len = ((if (renderer.shielded) 60 else 15) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        val len = (15 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (blocks == null || blocks!!.size != len) {
             blocks = MutableList(len) { Block(renderer.x, renderer.y) }
             rippleIndex = -1

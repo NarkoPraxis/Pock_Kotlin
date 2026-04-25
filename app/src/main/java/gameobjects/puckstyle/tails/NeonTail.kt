@@ -50,7 +50,7 @@ class NeonTail(override val theme: ColorTheme) : TailRenderer {
     }
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        val len = ((if (renderer.shielded) 50 else 30) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        val len = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (rings == null || rings!!.size != len) rings = MutableList(len) { Ring(renderer.x, renderer.y) }
         val rings = rings!!
 

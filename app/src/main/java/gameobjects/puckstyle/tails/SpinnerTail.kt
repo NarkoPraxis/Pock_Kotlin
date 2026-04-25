@@ -23,7 +23,7 @@ class SpinnerTail(override val theme: ColorTheme) : TailRenderer {
     private val tipPaint    = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        val len = ((if (renderer.shielded) 80 else 20) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        val len = (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (history == null || history!!.size != len) history = MutableList(len) { Pos(renderer.x, renderer.y) }
         val history = history!!
 

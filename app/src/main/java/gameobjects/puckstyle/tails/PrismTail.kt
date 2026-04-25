@@ -40,7 +40,7 @@ class PrismTail(override val theme: ColorTheme) : TailRenderer {
     private val sinA = FloatArray(7)
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        val historySize = ((if (renderer.shielded) 80 else 40) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        val historySize = (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (history == null || history!!.size != historySize) {
             history = MutableList(historySize) { Frame().apply {
                 x = renderer.x; y = renderer.y

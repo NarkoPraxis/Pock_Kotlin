@@ -17,7 +17,7 @@ class RainbowTail(override val theme: ColorTheme) : TailRenderer {
         get() = 1
 
     override fun render(canvas: Canvas, renderer: PuckRenderer) {
-        val rainbowLen = ((if (renderer.shielded) 80 else 20) * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        val rainbowLen = (20 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != rainbowLen) points = MutableList(rainbowLen) { DrawablePoint(renderer.x, renderer.y) }
         val points = points!!
         for (i in points.size - 1 downTo 0) {
