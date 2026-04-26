@@ -38,12 +38,11 @@ class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         val eggW = r * 0.5f
         val eggH = r * 0.7f
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
-        val colors = resolvedColors()
 
         val angle = Math.toDegrees(atan2(aimY.toDouble(), aimX.toDouble())).toFloat()
         canvas.withRotation(angle + 90f, cx, cy) {
             eggPaint.style = Paint.Style.FILL
-            eggPaint.color = if (renderer.isInert) colors.primary else android.graphics.Color.WHITE
+            eggPaint.color = if (renderer.isInert) responsivePrimary else android.graphics.Color.WHITE
             drawOval(cx - eggW, cy - eggH, cx + eggW, cy + eggH, eggPaint)
 
             if (fillRatio > 0f && ph != ChargePhase.Inert) {

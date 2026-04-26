@@ -27,10 +27,10 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
-        drawCross(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f, frame * 0.35f + progress * 3f)
+        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
+        drawCross(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f, frame * 0.35f + progress * 3f)
     }
 
     private fun drawCross(
@@ -55,7 +55,7 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, theme.main.primary))
     }
 
     private class SpinnerMark(

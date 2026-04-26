@@ -34,16 +34,16 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
-        drawCloud(canvas, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
+        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
+        drawCloud(canvas, cx, cy, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
         if (sweet) drawBolt(canvas, cx, cy, progress)
     }
 
     private fun drawCloud(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val r = renderer.radius * 0.4f
-        val color = if (ph == ChargePhase.Inert) theme.main.secondary else Color.rgb(230, 235, 245)
+        val r = renderer.radius * 0.6f
+        val color = if (ph == ChargePhase.Inert) theme.inert.secondary else Color.WHITE
         cloud.color = color
         canvas.drawCircle(cx, cy, r * 1.1f, cloud)
         canvas.drawCircle(cx - r * 0.9f, cy + r * 0.2f, r * 0.8f, cloud)
@@ -59,7 +59,7 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     }
 
     private fun drawCrackle(canvas: Canvas, cx: Float, cy: Float) {
-        val len = renderer.radius * (0.3f + 0.15f * sin(frame * 1.3f))
+        val len = renderer.radius * (0.5f + 0.15f * sin(frame * 1.3f))
         bolt.color = Palette.cyclingHue(frame, 6f)
         bolt.strokeWidth = Settings.strokeWidth * 0.4f
         canvas.drawLine(cx - len, cy, cx + len * 0.4f, cy + len * 0.4f, bolt)

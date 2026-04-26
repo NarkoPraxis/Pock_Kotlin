@@ -12,6 +12,7 @@ import utility.Effects
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import androidx.core.graphics.withSave
 
 /** Chunky 8-bit brick paddle. Charge fills as discrete pixel segments. */
 class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
@@ -34,29 +35,34 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
         canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
         ph: ChargePhase, fill: Float
     ) {
-        canvas.save()
-        val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
-        canvas.rotate(angle + 90f, cx, cy)
+        canvas.withSave {
+            val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
+            rotate(angle + 90f, cx, cy)
 
-        val totalLen = paddleHalfLength() * 2f
-        val thick = renderer.radius * 0.45f
-        val cells = 6
-        val cellW = totalLen / cells
-        val startX = cx - totalLen / 2f
+            val totalLen = paddleHalfLength() * 2f
+            val thick = renderer.radius * 0.45f
+            val cells = 6
+            val cellW = totalLen / cells
+            val startX = cx - totalLen / 2f
 
-        val base = responsiveSecondary
-        val fillColor = theme.effect.primary
-        val filledCells = (cells * fill).toInt()
-        val center = cells / 2
+            val base = responsiveSecondary
+            val fillColor = theme.effect.primary
+            val filledCells = (cells * fill).toInt()
+            val center = cells / 2
 
-        for (i in 0 until cells) {
-            rect.set(startX + i * cellW + 1f, cy - thick, startX + (i + 1) * cellW - 1f, cy + thick)
-            val dist = kotlin.math.abs(i - (center - 0.5f)).toInt()
-            val isFilled = ph == ChargePhase.SweetSpot || dist < filledCells
-            block.color = if (isFilled && ph != ChargePhase.Inert) fillColor else base
-            canvas.drawRect(rect, block)
+            for (i in 0 until cells) {
+                rect.set(
+                    startX + i * cellW + 1f,
+                    cy - thick,
+                    startX + (i + 1) * cellW - 1f,
+                    cy + thick
+                )
+                val dist = kotlin.math.abs(i - (center - 0.5f)).toInt()
+                val isFilled = ph == ChargePhase.SweetSpot || dist < filledCells
+                block.color = if (isFilled && ph != ChargePhase.Inert) fillColor else base
+                drawRect(rect, block)
+            }
         }
-        canvas.restore()
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {

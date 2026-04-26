@@ -38,7 +38,7 @@ class NeonLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         val half = paddleHalfLength()
         val perpX = -aY
         val perpY = aX
-        val glowColor = if (ph == ChargePhase.Inert) theme.main.secondary else theme.effect.primary
+        val glowColor = if (ph == ChargePhase.Inert) theme.inert.secondary else responsiveSecondary
 
         val outerAlpha: Int
         val innerAlpha: Int

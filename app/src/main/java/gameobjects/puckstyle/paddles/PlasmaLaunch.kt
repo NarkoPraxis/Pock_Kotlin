@@ -30,21 +30,21 @@ class PlasmaLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
-        drawOrb(canvas, cx, cy, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
+        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
+        drawOrb(canvas, cx, cy, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
         drawArcs(canvas, cx, cy, ph)
     }
 
     private fun drawOrb(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         val r = renderer.radius * (0.5f + 0.05f * sin(frame * 0.5f))
-        val outer = if (ph == ChargePhase.Inert) theme.main.secondary else theme.effect.primary
+        val outer = if (ph == ChargePhase.Inert) theme.inert.secondary else responsivePrimary
         core.color = outer
         core.alpha = 140
         canvas.drawCircle(cx, cy, r * 1.3f, core)
         core.alpha = 255
-        core.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.effect.primary
+        core.color = if (ph == ChargePhase.Inert) theme.inert.secondary else responsivePrimary
         canvas.drawCircle(cx, cy, r, core)
         if (fill > 0f) {
             core.color = android.graphics.Color.WHITE
@@ -63,7 +63,7 @@ class PlasmaLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
             val len = renderer.radius * (0.6f + rand.nextFloat() * 0.6f)
             val ex = cx + cos(angle) * len
             val ey = cy + sin(angle) * len
-            arc.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.effect.primary
+            arc.color = if (ph == ChargePhase.Inert) theme.inert.secondary else responsivePrimary
             arc.alpha = 200
             canvas.drawLine(cx, cy, ex, ey, arc)
         }
@@ -71,7 +71,7 @@ class PlasmaLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(PlasmaBurn(rx, ry, renderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(PlasmaBurn(rx, ry, renderer.radius, theme.main.primary))
     }
 
     private class PlasmaBurn(

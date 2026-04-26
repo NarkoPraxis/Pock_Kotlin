@@ -13,6 +13,7 @@ import utility.Effects
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import androidx.core.graphics.withSave
 
 /**
  * Dynamite stick. Fuse lights up when the sweet spot starts. On a sweet-spot release the strike
@@ -32,13 +33,13 @@ class MetalLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
         if (sweet) {
             drawExplosion(canvas, progress)
         } else {
-            val ph = if (overcharged) ChargePhase.Inert else ChargePhase.Building
-            drawStick(canvas, cx, cy, aX, aY, ph, if (overcharged) 0f else 1f)
+            val ph = if (fatigued) ChargePhase.Inert else ChargePhase.Building
+            drawStick(canvas, cx, cy, aX, aY, ph, if (fatigued) 0f else 1f)
         }
     }
 
@@ -46,42 +47,42 @@ class MetalLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
         canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
         ph: ChargePhase, fill: Float
     ) {
-        canvas.save()
-        val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
-        canvas.rotate(angle + 90f, cx, cy)
+        canvas.withSave {
+            val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
+            rotate(angle + 90f, cx, cy)
 
-        val halfLen = paddleHalfLength() * 0.9f
-        val halfThick = renderer.radius * 0.28f
+            val halfLen = paddleHalfLength() * 0.9f
+            val halfThick = renderer.radius * 0.28f
 
-        stick.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.main.primary
-        rect.set(cx - halfLen, cy - halfThick, cx + halfLen, cy + halfThick)
-        canvas.drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
+            stick.color = if (ph == ChargePhase.Inert) theme.main.secondary else responsiveSecondary
+            rect.set(cx - halfLen, cy - halfThick, cx + halfLen, cy + halfThick)
+            drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
 
-        if (fill > 0f) {
-            stick.color = theme.effect.primary
-            stick.alpha = (220 * fill).toInt().coerceIn(0, 255)
-            val bandHalf = halfLen * fill
-            rect.set(cx - bandHalf, cy - halfThick * 0.6f, cx + bandHalf, cy + halfThick * 0.6f)
-            canvas.drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
-            stick.alpha = 255
+            if (fill > 0f) {
+                stick.color = theme.effect.primary
+                stick.alpha = (220 * fill).toInt().coerceIn(0, 255)
+                val bandHalf = halfLen * fill
+                rect.set(cx - bandHalf, cy - halfThick * 0.6f, cx + bandHalf, cy + halfThick * 0.6f)
+                drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.5f, stick)
+                stick.alpha = 255
+            }
+
+            val fuseBaseX = cx + halfLen
+            val fuseBaseY = cy
+            val fuseTipX = fuseBaseX + halfThick * 1.4f
+            val fuseTipY = cy - halfThick * 1.2f
+            fuse.color = Color.rgb(70, 50, 30)
+            fuse.strokeWidth = Settings.strokeWidth * 0.4f
+            drawLine(fuseBaseX, fuseBaseY, fuseTipX, fuseTipY, fuse)
+
+            if (ph == ChargePhase.SweetSpot) {
+                val flicker = 0.6f + 0.4f * sin(frame * 0.9f)
+                spark.color = responsivePrimary
+                spark.alpha = (255 * flicker).toInt().coerceIn(0, 255)
+                drawCircle(fuseTipX, fuseTipY, halfThick , spark)
+                spark.alpha = 255
+            }
         }
-
-        val fuseBaseX = cx + halfLen
-        val fuseBaseY = cy
-        val fuseTipX = fuseBaseX + halfThick * 1.4f
-        val fuseTipY = cy - halfThick * 1.2f
-        fuse.color = Color.rgb(70, 50, 30)
-        fuse.strokeWidth = Settings.strokeWidth * 0.4f
-        canvas.drawLine(fuseBaseX, fuseBaseY, fuseTipX, fuseTipY, fuse)
-
-        if (ph == ChargePhase.SweetSpot) {
-            val flicker = 0.6f + 0.4f * sin(frame * 0.9f)
-            spark.color = Color.rgb(255, 220, 100)
-            spark.alpha = (255 * flicker).toInt().coerceIn(0, 255)
-            canvas.drawCircle(fuseTipX, fuseTipY, halfThick * 0.85f, spark)
-            spark.alpha = 255
-        }
-        canvas.restore()
     }
 
     private fun drawExplosion(canvas: Canvas, progress: Float) {
