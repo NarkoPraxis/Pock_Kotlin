@@ -7,13 +7,13 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 
-class RainbowSkin(override val theme: ColorTheme) : PuckSkin {
+class RainbowSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val stroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
     private val hueOffset = Palette.themeHue(theme)
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        val colors = resolvedColors(renderer)
+    override fun drawBody(canvas: Canvas) {
+        val colors = resolvedColors()
         val baseHue = renderer.frame * 4f + hueOffset
         val cyclicFill = Palette.hsvThemed(baseHue)
         fill.color = if (renderer.isInert || renderer.shielded) colors.primary else cyclicFill

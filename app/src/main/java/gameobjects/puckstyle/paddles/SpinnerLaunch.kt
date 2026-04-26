@@ -7,11 +7,12 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import androidx.core.graphics.withRotation
 
 /** Spinning shuriken cross — two bars crossed, rotating while charging. */
-class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val bar = Paint().apply {
         isAntiAlias = true
@@ -40,7 +41,7 @@ class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             val half = paddleHalfLength() * 0.9f
             val pX = -aY
             val pY = aX
-            bar.color = theme.main.secondary
+            bar.color = responsiveSecondary
             bar.strokeWidth = paddleThickness()
             drawLine(cx - pX * half, cy - pY * half, cx + pX * half, cy + pY * half, bar)
             drawLine(cx - aX * half, cy - aY * half, cx + aX * half, cy + aY * half, bar)
@@ -54,7 +55,7 @@ class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(SpinnerMark(rx, ry, currentRenderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, theme.effect.primary))
     }
 
     private class SpinnerMark(

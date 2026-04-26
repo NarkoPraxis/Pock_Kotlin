@@ -6,13 +6,14 @@ import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.EggSplat
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.Palette
 import utility.Effects
 import kotlin.math.atan2
 import kotlin.math.sin
 import androidx.core.graphics.withRotation
 
-class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val eggPaint = Paint().apply { isAntiAlias = true }
 
@@ -33,16 +34,16 @@ class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     private fun drawEgg(canvas: Canvas, cx: Float, cy: Float, fillRatio: Float, ph: ChargePhase) {
-        val r = currentRenderer.radius
+        val r = renderer.radius
         val eggW = r * 0.5f
         val eggH = r * 0.7f
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
-        val colors = resolvedColors(currentRenderer)
+        val colors = resolvedColors()
 
         val angle = Math.toDegrees(atan2(aimY.toDouble(), aimX.toDouble())).toFloat()
         canvas.withRotation(angle + 90f, cx, cy) {
             eggPaint.style = Paint.Style.FILL
-            eggPaint.color = if (currentRenderer.isInert) colors.primary else android.graphics.Color.WHITE
+            eggPaint.color = if (renderer.isInert) colors.primary else android.graphics.Color.WHITE
             drawOval(cx - eggW, cy - eggH, cx + eggW, cy + eggH, eggPaint)
 
             if (fillRatio > 0f && ph != ChargePhase.Inert) {
@@ -57,7 +58,7 @@ class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(ChickenPersistentEffect(EggSplat(rx, ry, currentRenderer.radius, theme)))
+        Effects.addPersistentEffect(ChickenPersistentEffect(EggSplat(rx, ry, renderer.radius, theme)))
     }
 
     private class ChickenPersistentEffect(private val splat: EggSplat) : Effects.PersistentEffect {

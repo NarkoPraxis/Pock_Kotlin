@@ -14,9 +14,9 @@ import utility.PaintBucket
 import kotlin.math.cos
 import kotlin.math.sin
 
-class ClassicSkin(override val theme: ColorTheme) : PuckSkin {
+class ClassicSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
+    override fun drawBody(canvas: Canvas) {
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, renderer.fillPaint)
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, renderer.strokePaint)
     }
@@ -78,11 +78,11 @@ class ClassicSkin(override val theme: ColorTheme) : PuckSkin {
             }
             if (drawScored) {
                 currentDistance += step
-                scoredPaint.alpha = scoredPaint.alpha - step.toInt()
+                scoredPaint.alpha -= step.toInt()
                 if (scoredPaint.alpha < step) drawScored = false
             } else {
                 currentDistance += step / 2
-                scoringPaint.alpha = scoringPaint.alpha - step.toInt()
+                scoringPaint.alpha -= step.toInt()
                 if (scoringPaint.alpha < step) done = true
             }
         }

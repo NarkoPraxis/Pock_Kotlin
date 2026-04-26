@@ -11,7 +11,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-class SpinnerTail(override val theme: ColorTheme) : TailRenderer {
+class SpinnerTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
     private data class Pos(var x: Float = 0f, var y: Float = 0f)
 
@@ -21,7 +21,7 @@ class SpinnerTail(override val theme: ColorTheme) : TailRenderer {
     private val centerPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
     private val tipPaint    = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
 
-    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+    override fun render(canvas: Canvas) {
         val len = (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (history == null || history!!.size != len) history = MutableList(len) { Pos(renderer.x, renderer.y) }
         val history = history!!
@@ -44,7 +44,7 @@ class SpinnerTail(override val theme: ColorTheme) : TailRenderer {
         val angleStep = 18f * Math.PI.toFloat() / 180f
         val strokeWidth = sw
 
-        val colors = resolvedColors(renderer)
+        val colors = resolvedColors()
         val color  = colors.primary
         val hilite = colors.secondary
 

@@ -22,22 +22,18 @@ import kotlin.math.sqrt
  *
  * Subclasses override only the visual primitives; the kinematics stay fixed.
  */
-abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect {
+abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val renderer: PuckRenderer) : LaunchEffect {
 
     override val zIndex: Int get() = 1
-
-    /** Populated at the start of every [draw] call; valid for the entire frame. */
-    protected lateinit var currentRenderer: PuckRenderer
-        private set
 
     protected var frame = 0
         private set
 
     val responsivePrimary: Int
-        get() = resolvedColors(currentRenderer).primary
+        get() = resolvedColors().primary
 
     val responsiveSecondary: Int
-        get() = resolvedColors(currentRenderer).secondary
+        get() = resolvedColors().secondary
 
     // --- charge state (SSoT owned here) ---
     private var _currentCharge = 0f
@@ -147,8 +143,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         strikeCallback = onStrike
     }
 
-    override fun draw(canvas: Canvas, renderer: PuckRenderer) {
-        currentRenderer = renderer
+    override fun draw(canvas: Canvas) {
         frame++
         updateState(renderer)
 
@@ -308,14 +303,14 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme) : LaunchEffect
         val perpY = aX
         val thickness = paddleThickness()
 
-        val isInert = currentRenderer.isInert || ph == ChargePhase.Inert
+        val isInert = renderer.isInert || ph == ChargePhase.Inert
         val stateColors = when {
             isInert -> theme.inert
-            currentRenderer.shielded -> theme.effect
+            renderer.shielded -> theme.effect
             else -> theme.main
         }
-        val hitStunBlend = currentRenderer.hitStunned && !isInert
-        val hitStunR = if (hitStunBlend) currentRenderer.hitStunRatio else 0f
+        val hitStunBlend = renderer.hitStunned && !isInert
+        val hitStunR = if (hitStunBlend) renderer.hitStunRatio else 0f
         val baseColor = when {
             hitStunBlend -> blendColor(stateColors.secondary, theme.inert.secondary, hitStunR)
             else -> stateColors.secondary

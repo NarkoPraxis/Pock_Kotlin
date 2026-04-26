@@ -7,6 +7,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.Palette
 import utility.Effects
 import kotlin.math.atan2
@@ -17,7 +18,7 @@ import kotlin.math.sin
  * A small cartoon cloud. Sweet spot makes it crackle; sweet-spot release fires a lightning bolt
  * into the puck and leaves a rainbow smear.
  */
-class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val cloud = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val bolt = Paint().apply {
@@ -41,7 +42,7 @@ class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     private fun drawCloud(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val r = currentRenderer.radius * 0.4f
+        val r = renderer.radius * 0.4f
         val color = if (ph == ChargePhase.Inert) theme.main.secondary else Color.rgb(230, 235, 245)
         cloud.color = color
         canvas.drawCircle(cx, cy, r * 1.1f, cloud)
@@ -58,7 +59,7 @@ class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     private fun drawCrackle(canvas: Canvas, cx: Float, cy: Float) {
-        val len = currentRenderer.radius * (0.3f + 0.15f * sin(frame * 1.3f))
+        val len = renderer.radius * (0.3f + 0.15f * sin(frame * 1.3f))
         bolt.color = Palette.cyclingHue(frame, 6f)
         bolt.strokeWidth = Settings.strokeWidth * 0.4f
         canvas.drawLine(cx - len, cy, cx + len * 0.4f, cy + len * 0.4f, bolt)
@@ -66,18 +67,18 @@ class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     private fun drawBolt(canvas: Canvas, cx: Float, cy: Float, progress: Float) {
-        val px = currentRenderer.x
-        val py = currentRenderer.y
+        val px = renderer.x
+        val py = renderer.y
         bolt.color = Palette.cyclingHue(frame, 12f)
         bolt.strokeWidth = Settings.strokeWidth * (1.2f - progress)
-        val midX = (cx + px) / 2f + (currentRenderer.radius * 0.4f) * if ((frame / 2) % 2 == 0) 1f else -1f
+        val midX = (cx + px) / 2f + (renderer.radius * 0.4f) * if ((frame / 2) % 2 == 0) 1f else -1f
         val midY = (cy + py) / 2f
         canvas.drawLine(cx, cy, midX, midY, bolt)
         canvas.drawLine(midX, midY, px, py, bolt)
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(RainbowSmear(rx, ry, aX, aY, currentRenderer.radius))
+        Effects.addPersistentEffect(RainbowSmear(rx, ry, aX, aY, renderer.radius))
     }
 
     private class RainbowSmear(

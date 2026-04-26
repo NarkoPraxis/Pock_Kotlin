@@ -21,6 +21,7 @@ import utility.Storage
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sin
+import androidx.core.graphics.withClip
 
 class BallUnlockView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -102,8 +103,8 @@ class BallUnlockView @JvmOverloads constructor(
         val progress = Settings.unlockProgress
         if (tails == null || tailsBuiltForProgress != progress) {
             tails?.forEach { it.clear() }
-            val types = BallType.values()
-            val styles = Array(types.size) { i -> BallStyleFactory.buildStyle(types[i], themeForCell(i)) }
+            val types = BallType.entries.toTypedArray()
+            val styles = Array(types.size) { i -> BallStyleFactory.buildStyle(types[i], themeForCell(i), previewRenderer) }
             tails = Array(types.size) { i -> styles[i].tail }
             skins = Array(types.size) { i -> styles[i].skin }
             tailsBuiltForProgress = progress
@@ -128,7 +129,7 @@ class BallUnlockView @JvmOverloads constructor(
 
         bounceFrame++
 
-        val types = BallType.values()
+        val types = BallType.entries.toTypedArray()
         val pr = ratio() * 1.2f
 
         previewRenderer.effectEnabled = false
@@ -171,10 +172,9 @@ class BallUnlockView @JvmOverloads constructor(
             previewRenderer.preview = !unlocked
 
             // 2. Draw puck clipped to card bounds so tail can't escape into adjacent cells
-            canvas.save()
-            canvas.clipRect(b[0], b[1], b[2], b[3])
-            previewRenderer.draw(canvas)
-            canvas.restore()
+            canvas.withClip(b[0], b[1], b[2], b[3]) {
+                previewRenderer.draw(this)
+            }
 
             // 3. Lock overlay
             if (!unlocked) drawLock(canvas, cx, puckY, pr)
@@ -247,13 +247,13 @@ class BallUnlockView @JvmOverloads constructor(
                 dragging = false
                 // Plan 02: detect tap (minimal movement) and set the tapped cell as the bouncing one
                 if (wasDragging && dragDistance < ratio() * 0.5f) {
-                    val types = BallType.values()
+                    val types = BallType.entries.toTypedArray()
                     for (i in types.indices) {
                         val b = cellBounds(i)
                         if (downX >= b[0] && downX <= b[2] && downY >= b[1] && downY <= b[3]) {
                             warmFlags[i] = !warmFlags[i]
                             tails?.getOrNull(i)?.clear()
-                            val toggledStyle = BallStyleFactory.buildStyle(types[i], themeForCell(i))
+                            val toggledStyle = BallStyleFactory.buildStyle(types[i], themeForCell(i), previewRenderer)
                             tails?.set(i, toggledStyle.tail)
                             skins?.set(i, toggledStyle.skin)
                             bouncingIndex = i

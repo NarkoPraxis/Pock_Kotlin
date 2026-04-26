@@ -6,12 +6,13 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.sin
 import kotlin.random.Random
 
 /** Translucent ghost-puck double trailing behind the real one. */
-class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class GhostLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val body = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val outline = Paint().apply {
@@ -31,12 +32,11 @@ class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     private fun drawGhost(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val r = currentRenderer.radius * (0.75f + 0.05f * sin(frame * 0.2f))
-        val base = if (ph == ChargePhase.Inert) theme.main.secondary else theme.main.primary
-        body.color = base
+        val r = renderer.radius * (0.75f + 0.05f * sin(frame * 0.2f))
+        body.color = responsivePrimary
         body.alpha = 90
         canvas.drawCircle(cx, cy, r, body)
-        outline.color = base
+        outline.color = responsiveSecondary
         outline.alpha = 160
         canvas.drawCircle(cx, cy, r, outline)
 
@@ -50,7 +50,7 @@ class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(EctoplasmMark(rx, ry, currentRenderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(EctoplasmMark(rx, ry, renderer.radius, theme.effect.primary))
     }
 
     private class EctoplasmMark(

@@ -6,15 +6,15 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 
-class FireSkin(override val theme: ColorTheme) : PuckSkin {
+class FireSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     override val zIndex = 0
 
     private val fillPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val borderPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        val colors = resolvedColors(renderer)
+    override fun drawBody(canvas: Canvas) {
+        val colors = resolvedColors()
         val orbRadius = renderer.radius * 0.6f
 
         fillPaint.color = colors.secondary

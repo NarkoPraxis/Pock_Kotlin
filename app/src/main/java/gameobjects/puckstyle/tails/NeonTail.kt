@@ -8,7 +8,7 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
-class NeonTail(override val theme: ColorTheme) : TailRenderer {
+class NeonTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
     private data class Ring(var x: Float = 0f, var y: Float = 0f)
     private var rings: MutableList<Ring>? = null
 
@@ -48,11 +48,11 @@ class NeonTail(override val theme: ColorTheme) : TailRenderer {
         return blended.toInt().coerceIn(0, 255)
     }
 
-    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+    override fun render(canvas: Canvas) {
         val len = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (rings == null || rings!!.size != len) rings = MutableList(len) { Ring(renderer.x, renderer.y) }
         val rings = rings!!
-        val color = resolvedColors(renderer).primary
+        val color = resolvedColors().primary
 
         for (i in rings.size - 1 downTo 0) {
             if (i - 1 >= 0) { rings[i].x = rings[i - 1].x; rings[i].y = rings[i - 1].y }

@@ -7,13 +7,14 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
 /** Chunky 8-bit brick paddle. Charge fills as discrete pixel segments. */
-class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
     private val block = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
     private val rect = RectF()
 
@@ -38,12 +39,12 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.rotate(angle + 90f, cx, cy)
 
         val totalLen = paddleHalfLength() * 2f
-        val thick = currentRenderer.radius * 0.45f
+        val thick = renderer.radius * 0.45f
         val cells = 6
         val cellW = totalLen / cells
         val startX = cx - totalLen / 2f
 
-        val base = theme.main.secondary
+        val base = responsiveSecondary
         val fillColor = theme.effect.primary
         val filledCells = (cells * fill).toInt()
         val center = cells / 2
@@ -59,7 +60,7 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(PixelDebris(rx, ry, currentRenderer.radius, theme.effect.primary, theme.main.secondary))
+        Effects.addPersistentEffect(PixelDebris(rx, ry, renderer.radius, theme.effect.primary, theme.main.secondary))
     }
 
     override fun paddleThickness(): Float = Settings.strokeWidth * 1.6f

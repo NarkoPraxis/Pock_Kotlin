@@ -8,7 +8,7 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 
-class NeonSkin(override val theme: ColorTheme) : PuckSkin {
+class NeonSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     // Subtle dark fill so the hollow center reads as a translucent tube, not empty space
     private val subtleFill = Paint().apply {
@@ -20,9 +20,9 @@ class NeonSkin(override val theme: ColorTheme) : PuckSkin {
         isAntiAlias = true; isDither = true; style = Paint.Style.STROKE
     }
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
+    override fun drawBody(canvas: Canvas) {
         val sw = renderer.strokePaint.strokeWidth
-        val primary = resolvedColors(renderer).primary
+        val primary = resolvedColors().primary
 
         // 4 glow rings, outermost first — body always stays theme color, charging shown via chargePaint
         glowPaint.color = Palette.withAlpha(primary, 25);  glowPaint.strokeWidth = sw * 5.0f

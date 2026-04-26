@@ -15,7 +15,7 @@ import kotlin.math.sin
 import kotlin.random.Random
 import androidx.core.graphics.withTranslation
 
-class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
+class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val rim = Paint().apply { color = theme.main.primary; isAntiAlias = true; style = Paint.Style.FILL }
@@ -73,8 +73,8 @@ class GalaxySkin(override val theme: ColorTheme) : PuckSkin {
         canvas.drawPath(starPath, paint)
     }
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        val colors = resolvedColors(renderer)
+    override fun drawBody(canvas: Canvas) {
+        val colors = resolvedColors()
         if (colors != lastColors) {
             lastColors = colors
             lastRadius = -1f

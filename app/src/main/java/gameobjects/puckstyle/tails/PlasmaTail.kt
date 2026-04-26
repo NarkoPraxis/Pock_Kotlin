@@ -10,7 +10,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.random.Random
 
-class PlasmaTail(override val theme: ColorTheme) : TailRenderer {
+class PlasmaTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
     private class Pos(var x: Float = 0f, var y: Float = 0f)
     private var points: MutableList<Pos>? = null
@@ -23,7 +23,7 @@ class PlasmaTail(override val theme: ColorTheme) : TailRenderer {
     override val zIndex: Int
         get() = 1
 
-    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+    override fun render(canvas: Canvas) {
         val plasmaLen = (18 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != plasmaLen) points = MutableList(plasmaLen) { Pos(renderer.x, renderer.y) }
         val points = points!!
@@ -32,7 +32,7 @@ class PlasmaTail(override val theme: ColorTheme) : TailRenderer {
             else { points[i].x = renderer.x; points[i].y = renderer.y }
         }
 
-        val stateColors = resolvedColors(renderer)
+        val stateColors = resolvedColors()
         val mid = stateColors.primary
         val edge = stateColors.secondary
         val n = points.size

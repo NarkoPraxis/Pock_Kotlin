@@ -7,7 +7,6 @@ import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.puck.GameView
-import com.example.puck.PlayView
 import com.example.puck.MainActivity
 import com.example.puck.SettingsActivity
 import enums.*
@@ -229,16 +228,8 @@ object Logic {
     }
 
     fun applyBallStyles() {
-        val highStyle = Settings.highResolvedStyle
-            ?: BallStyleFactory.buildStyle(Settings.highBallType, ColorTheme.Warm)
-        highPlayer.puck.renderer.skin = highStyle.skin
-        highPlayer.puck.renderer.tail = highStyle.tail
-        highPlayer.puck.renderer.effect = highStyle.effect
-        val lowStyle = Settings.lowResolvedStyle
-            ?: BallStyleFactory.buildStyle(Settings.lowBallType, ColorTheme.Cold)
-        lowPlayer.puck.renderer.skin = lowStyle.skin
-        lowPlayer.puck.renderer.tail = lowStyle.tail
-        lowPlayer.puck.renderer.effect = lowStyle.effect
+        Settings.highResolvedStyle ?: BallStyleFactory.buildStyle(Settings.highBallType, ColorTheme.Warm, highPlayer.puck.renderer)
+        Settings.lowResolvedStyle ?: BallStyleFactory.buildStyle(Settings.lowBallType, ColorTheme.Cold, lowPlayer.puck.renderer)
     }
 
     fun checkBallSelectionEnd() {
@@ -444,7 +435,6 @@ object Logic {
                     applyHitStun(highPlayer, highPlayer.puck.impactPower)
                 } else if (highPlayer.shielded && !lowPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
-                    highPlayer.shielded = false
                     lowPlayer.launch(Force(direction, Settings.launchBonus + highPlayer.power))
                     highPlayer.launch(Force(-direction, Settings.minLaunchPower))
                     lowPlayer.inertLocked = true
@@ -452,7 +442,6 @@ object Logic {
                     highPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else if (lowPlayer.shielded && !highPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
-                    lowPlayer.shielded = false
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPlayer.power))
                     lowPlayer.launch(Force(direction, Settings.minLaunchPower))
                     highPlayer.inertLocked = true
@@ -460,8 +449,6 @@ object Logic {
                     lowPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
                 } else if (lowPlayer.shielded && highPlayer.shielded) {
                     Sounds.playDoubleChargeCollision(collisionPoint.x)
-                    highPlayer.shielded = false
-                    lowPlayer.shielded = false
                     val lowPower = lowPlayer.power
                     val highPower = highPlayer.power
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPower))
@@ -682,35 +669,36 @@ object Logic {
         }
     }
 
-    private fun checkScored(scoring: Player, other: Player) : Boolean {
-        if (Settings.canScore && (other.py < Settings.topGoalBottom + other.pRadius || other.py > Settings.bottomGoalTop - other.pRadius)) {
-            val highGoal = other.py < Settings.topGoalBottom  + other.pRadius
-            scoring.score()
-            other.clearPower()
-            scoring.clearPower()
+    private fun checkScored(winner: Player, loser: Player) : Boolean {
+        if (loser.shielded) return false
+        if (Settings.canScore && (loser.py < Settings.topGoalBottom + loser.pRadius || loser.py > Settings.bottomGoalTop - loser.pRadius)) {
+            val highGoal = loser.py < Settings.topGoalBottom  + loser.pRadius
+            winner.score()
+            loser.clearPower()
+            winner.clearPower()
             if (Settings.scoreFlashEnabled) {
                 Settings.scoreFlashAlpha = 200f
-                Settings.scoreFlashColor = scoring.puckFillColor
+                Settings.scoreFlashColor = winner.puckFillColor
             }
             if (Settings.scorePopEnabled) {
-                if (scoring.isHigh) {
+                if (winner.isHigh) {
                     Settings.highScorePopTicker.reset()
                 } else {
                     Settings.lowScorePopTicker.reset()
                 }
             }
-            setPuckColor(other, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor)
-            setPuckColor(scoring, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor)
+            setPuckColor(loser, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor)
+            setPuckColor(winner, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor)
             Settings.gameState = GameState.Scored
             Settings.canScore = false
             Settings.canScoreWallProgress = 0f
-            Sounds.playScoreSound(other.py)
+            Sounds.playScoreSound(loser.py)
             Effects.clearCollisionEffects()
             Effects.clearPersistentEffects()
             // Todo: refactor this so it's not "other" the effect spawned should match the puck entering the goal, not the other way around
-            other.puck.renderer.skin?.onScore(
-                other.puckFillColor,
-                Point(other.px,if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop),
+            loser.puck.renderer.skin?.onScore(
+                loser.puckFillColor,
+                Point(loser.px,if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop),
                 highGoal
             )
             return true
