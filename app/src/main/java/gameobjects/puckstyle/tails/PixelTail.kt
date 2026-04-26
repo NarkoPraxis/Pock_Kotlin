@@ -58,7 +58,7 @@ class PixelTail(override val theme: ColorTheme, override val renderer: PuckRende
         if (justShielded) {
             val b = blocks[0]
             rings += Ring(b.x, b.y, computeSize(0, renderer.radius), 200,
-                isFront = true, growRate = renderer.radius * 0.09f, color = theme.effect.primary)
+                isFront = true, growRate = renderer.radius * 0.09f, color = theme.shield.primary)
         }
 
         // collision ripple — one ring per frame, propagating down the tail

@@ -7,9 +7,12 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.sin
+import kotlin.math.sqrt
+import kotlin.random.Random
 
 /** Tethered fireball: a mini flame instead of a paddle bar. Sweet-spot leaves a persistent scorch. */
 class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
@@ -18,8 +21,21 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         isAntiAlias = true
         style = Paint.Style.FILL
     }
+    private val tailPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+    }
+
+    private class Spark(
+        var x: Float, var y: Float,
+        var vx: Float, var vy: Float,
+        var life: Float
+    )
+
+    private val tailSparks = ArrayDeque<Spark>()
 
     override fun drawChargingPaddle(canvas: Canvas) {
+        updateAndDrawTail(canvas, paddleX, paddleY)
         drawFireball(canvas, paddleX, paddleY, phase, chargeFillRatio)
     }
 
@@ -32,27 +48,55 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         drawFireball(canvas, cx, cy, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
 
+    private fun updateAndDrawTail(canvas: Canvas, cx: Float, cy: Float) {
+        val dx = cx - renderer.x
+        val dy = cy - renderer.y
+        val dist = sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
+        val nx = dx / dist
+        val ny = dy / dist
+
+        repeat(2) {
+            val speed = Random.nextFloat() * 1.2f + 0.4f
+            val perpAmount = (Random.nextFloat() - 0.5f) * speed * 0.7f
+            tailSparks.addLast(Spark(
+                cx + (Random.nextFloat() - 0.5f) * renderer.radius * 0.7f,
+                cy + (Random.nextFloat() - 0.5f) * renderer.radius * 0.7f,
+                nx * speed + (-ny) * perpAmount,
+                ny * speed + nx * perpAmount,
+                1f
+            ))
+        }
+        while (tailSparks.size > 24) tailSparks.removeFirst()
+
+        val it = tailSparks.iterator()
+        while (it.hasNext()) {
+            val s = it.next()
+            s.x += s.vx
+            s.y += s.vy
+            s.life -= 0.065f
+            if (s.life <= 0f) { it.remove(); continue }
+            val c = Palette.lerpColor(responsiveSecondary, responsivePrimary, 1f - s.life)
+            tailPaint.color = Palette.withAlpha(c, (220f * s.life).toInt().coerceIn(0, 255))
+            canvas.drawCircle(s.x, s.y, (renderer.radius * 0.32f * s.life).coerceAtLeast(1f), tailPaint)
+        }
+    }
+
     private fun drawFireball(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         val base = renderer.radius * 0.6f
         val jitter = 1f + 0.08f * sin(frame * 0.9f)
         val outerR = base * jitter
 
-        val outerColor = when (ph) {
-            ChargePhase.Inert -> theme.inert.primary
-            else -> responsiveSecondary
-        }
-        flamePaint.color = outerColor
+        flamePaint.color = responsiveSecondary
         flamePaint.alpha = 255
         canvas.drawCircle(cx, cy, outerR, flamePaint)
 
         if (fill > 0f) {
-            val coreColor = if (ph == ChargePhase.SweetSpot) theme.effect.primary else responsivePrimary
+            val coreColor = if (ph == ChargePhase.SweetSpot) theme.shield.primary else responsivePrimary
             flamePaint.color = coreColor
             val pulse = if (ph == ChargePhase.SweetSpot) 0.8f + 0.2f * sin(frame * 0.4f) else 1f
             flamePaint.alpha = (255 * pulse).toInt().coerceIn(0, 255)
             canvas.drawCircle(cx, cy, outerR * 0.6f * fill, flamePaint)
         }
-
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
@@ -74,7 +118,6 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         override fun step() { frame++ }
 
         override fun draw(canvas: Canvas) {
-            // Ember glow fades over ~3 seconds (180 frames)
             if (frame < 180) {
                 val glowAlpha = (100 * (1f - frame / 180f)).toInt().coerceIn(0, 255)
                 glow.color = emberColor
@@ -82,7 +125,6 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
                 glow.strokeWidth = radius * 0.4f
                 canvas.drawCircle(cx, cy, radius * 1.2f, glow)
             }
-            // Dark char mark persists
             fill.color = Color.rgb(40, 20, 10)
             fill.alpha = 160
             canvas.drawCircle(cx, cy, radius * 0.9f, fill)

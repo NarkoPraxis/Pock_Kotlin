@@ -83,7 +83,7 @@ class PuckRenderer {
     /** Resolves the theme ColorGroup that all style components should use for this frame. Priority: inert > shielded > main. */
     fun resolveColorGroup(theme: ColorTheme): ColorGroup = when {
         isInert -> theme.inert
-        shielded -> theme.effect
+        shielded -> theme.shield
         else -> theme.main
     }
 

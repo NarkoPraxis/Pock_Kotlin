@@ -46,7 +46,7 @@ class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
             drawOval(cx - eggW, cy - eggH, cx + eggW, cy + eggH, eggPaint)
 
             if (fillRatio > 0f && ph != ChargePhase.Inert) {
-                eggPaint.color = Palette.withAlpha(theme.effect.primary, (220 * pulse).toInt())
+                eggPaint.color = Palette.withAlpha(theme.shield.primary, (220 * pulse).toInt())
                 drawOval(
                     cx - eggW * fillRatio, cy - eggH * fillRatio,
                     cx + eggW * fillRatio, cy + eggH * fillRatio, eggPaint

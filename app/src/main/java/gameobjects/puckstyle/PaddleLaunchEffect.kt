@@ -30,10 +30,10 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
         private set
 
     val responsivePrimary: Int
-        get() = resolvedColors().primary
+        get() = if(phase == ChargePhase.Inert) theme.inert.primary else resolvedColors().primary
 
     val responsiveSecondary: Int
-        get() = resolvedColors().secondary
+        get() = if (phase == ChargePhase.Inert) theme.inert.secondary else resolvedColors().secondary
 
     // --- charge state (SSoT owned here) ---
     private var _currentCharge = 0f
@@ -306,7 +306,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
         val isInert = renderer.isInert || ph == ChargePhase.Inert
         val stateColors = when {
             isInert -> theme.inert
-            renderer.shielded -> theme.effect
+            renderer.shielded -> theme.shield
             else -> theme.main
         }
         val hitStunBlend = renderer.hitStunned && !isInert
@@ -316,9 +316,9 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
             else -> stateColors.secondary
         }
         val chargeColor = if (hitStunBlend)
-            blendColor(theme.effect.primary, theme.inert.primary, hitStunR)
+            blendColor(theme.shield.primary, theme.inert.primary, hitStunR)
         else
-            theme.effect.primary
+            theme.shield.primary
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
 
         paddlePaint.strokeWidth = thickness

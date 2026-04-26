@@ -37,7 +37,7 @@ class GhostSkin(override val theme: ColorTheme, override val renderer: PuckRende
         val stateColors = resolvedColors()
         val glowColor = when {
             renderer.isInert -> stateColors.primary
-            renderer.currentCharge >= Settings.chargeStart || renderer.shielded -> theme.effect.primary
+            renderer.currentCharge >= Settings.chargeStart || renderer.shielded -> theme.shield.primary
             else -> stateColors.primary
         }
         val sw = renderer.strokePaint.strokeWidth

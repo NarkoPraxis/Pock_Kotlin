@@ -59,7 +59,7 @@ class MetalLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
 
             if (fill > 0f) {
-                stick.color = theme.effect.primary
+                stick.color = theme.shield.primary
                 stick.alpha = (220 * fill).toInt().coerceIn(0, 255)
                 val bandHalf = halfLen * fill
                 rect.set(cx - bandHalf, cy - halfThick * 0.6f, cx + bandHalf, cy + halfThick * 0.6f)

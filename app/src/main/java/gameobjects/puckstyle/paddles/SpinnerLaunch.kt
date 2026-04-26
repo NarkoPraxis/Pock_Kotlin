@@ -46,7 +46,7 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
             drawLine(cx - pX * half, cy - pY * half, cx + pX * half, cy + pY * half, bar)
             drawLine(cx - aX * half, cy - aY * half, cx + aX * half, cy + aY * half, bar)
             if (fill > 0f) {
-                bar.color = theme.effect.primary
+                bar.color = theme.shield.primary
                 val fh = half * fill
                 drawLine(cx - pX * fh, cy - pY * fh, cx + pX * fh, cy + pY * fh, bar)
                 drawLine(cx - aX * fh, cy - aY * fh, cx + aX * fh, cy + aY * fh, bar)

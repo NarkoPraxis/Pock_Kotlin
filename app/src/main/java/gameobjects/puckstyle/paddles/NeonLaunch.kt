@@ -61,7 +61,7 @@ class NeonLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(NeonScar(rx, ry, -aY, aX, renderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(NeonScar(rx, ry, -aY, aX, renderer.radius, theme.shield.primary))
     }
 
     private class NeonScar(

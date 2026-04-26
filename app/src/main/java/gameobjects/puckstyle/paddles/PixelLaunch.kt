@@ -46,7 +46,7 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             val startX = cx - totalLen / 2f
 
             val base = responsiveSecondary
-            val fillColor = theme.effect.primary
+            val fillColor = theme.shield.primary
             val filledCells = (cells * fill).toInt()
             val center = cells / 2
 
@@ -66,7 +66,7 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(PixelDebris(rx, ry, renderer.radius, theme.effect.primary, theme.main.secondary))
+        Effects.addPersistentEffect(PixelDebris(rx, ry, renderer.radius, theme.shield.primary, theme.main.secondary))
     }
 
     override fun paddleThickness(): Float = Settings.strokeWidth * 1.6f

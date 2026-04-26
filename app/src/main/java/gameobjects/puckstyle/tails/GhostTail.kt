@@ -27,7 +27,7 @@ class GhostTail(override val theme: ColorTheme, override val renderer: PuckRende
         val colors = resolvedColors()
         val glowColor = when {
             renderer.isInert -> colors.primary
-            renderer.currentCharge >= Settings.chargeStart || renderer.shielded -> theme.effect.primary
+            renderer.currentCharge >= Settings.chargeStart || renderer.shielded -> theme.shield.primary
             else -> colors.primary
         }
 

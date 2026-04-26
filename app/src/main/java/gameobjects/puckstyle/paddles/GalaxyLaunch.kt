@@ -35,7 +35,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         canvas.drawCircle(cx, cy, r, body)
 
         if (fill > 0f) {
-            body.color = theme.effect.primary
+            body.color = theme.shield.primary
             body.alpha = (220 * fill).toInt().coerceIn(0, 255)
             canvas.drawCircle(cx, cy, r * fill, body)
             body.alpha = 255
@@ -50,7 +50,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(NebulaMark(rx, ry, renderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(NebulaMark(rx, ry, renderer.radius, theme.shield.primary))
     }
 
     private class NebulaMark(

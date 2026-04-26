@@ -34,6 +34,6 @@ class NeonSkin(override val theme: ColorTheme, override val renderer: PuckRender
         glowPaint.color = Palette.withAlpha(primary, 220); glowPaint.strokeWidth = sw
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
 
-        renderer.chargePaint.color = theme.effect.primary
+        renderer.chargePaint.color = theme.shield.primary
     }
 }

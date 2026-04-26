@@ -26,7 +26,7 @@ class RainbowTail(override val theme: ColorTheme, override val renderer: PuckRen
             val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
             val color = when {
                 renderer.isInert -> colors.primary
-                renderer.shielded || renderer.currentCharge >= Settings.sweetSpotMin -> theme.effect.primary
+                renderer.shielded || renderer.currentCharge >= Settings.sweetSpotMin -> theme.shield.primary
                 else -> Palette.hsvThemed(renderer.frame * 4f + hueOffset - i * 15f)
             }
             points[i].setColor(color)
