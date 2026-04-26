@@ -5,6 +5,8 @@ import android.graphics.Paint
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
+import gameobjects.puckstyle.paddles.FireLaunch
+import physics.Point
 
 class FireSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
@@ -23,5 +25,13 @@ class FireSkin(override val theme: ColorTheme, override val renderer: PuckRender
 
         fillPaint.color = colors.primary
         canvas.drawCircle(renderer.x, renderer.y, orbRadius, fillPaint)
+    }
+
+    override fun onCollisionWin(position: Point, speed: Float) {
+        FireLaunch.spawnFireImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, theme.inert.primary)
+    }
+
+    override fun onShieldedCollision(position: Point) {
+        FireLaunch.spawnFireImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, theme.inert.secondary)
     }
 }

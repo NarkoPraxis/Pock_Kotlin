@@ -15,6 +15,11 @@ interface PuckSkin {
     /** Returns the ColorGroup this skin should use for the current frame based on renderer state. */
     fun resolvedColors(): ColorGroup = renderer.resolveColorGroup(theme)
 
+    val responsivePrimary: Int
+        get() = resolvedColors().primary
+
+    val responsiveSecondary: Int
+        get() = resolvedColors().secondary
     fun drawBody(canvas: Canvas)
 
     fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {}

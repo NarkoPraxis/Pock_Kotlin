@@ -1,8 +1,12 @@
 package gameobjects.puckstyle.paddles
 
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -10,6 +14,8 @@ import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -100,34 +106,140 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(FireScorch(rx, ry, renderer.radius, theme.main.primary))
+        spawnFireImpact(rx, ry, renderer.radius, responsivePrimary, responsiveSecondary, theme.inert.secondary)
     }
 
     override fun paddleHalfLength(): Float = renderer.radius * 0.6f
     override fun paddleThickness(): Float = Settings.strokeWidth
 
+    companion object {
+        fun spawnFireImpact(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int, grey: Int) {
+            Effects.addPersistentEffect(FireScorch(cx, cy, radius, primary, grey))
+            Effects.addPersistentEffect(FireSparkBurst(cx, cy, radius, secondary))
+        }
+    }
+
+    private class FireSparkBurst(
+        private val cx: Float, private val cy: Float,
+        private val radius: Float,
+        private val color: Int
+    ) : Effects.PersistentEffect {
+        private class Spark(var x: Float, var y: Float, var vx: Float, var vy: Float, var life: Float)
+
+        private val sparks: List<Spark>
+        private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private var frame = 0
+        override var isDone = false
+            private set
+
+        init {
+            val count = 28
+            sparks = List(count) { i ->
+                val angle = (i.toFloat() / count) * 2f * PI.toFloat() + Random.nextFloat() * 0.4f
+                val speed = radius * (0.12f + Random.nextFloat() * 0.18f)
+                Spark(cx, cy, cos(angle) * speed, sin(angle) * speed, 1f)
+            }
+        }
+
+        override fun step() {
+            frame++
+            if (frame > 42) isDone = true
+        }
+
+        override fun draw(canvas: Canvas) {
+            for (s in sparks) {
+                s.x += s.vx
+                s.y += s.vy
+                s.vy += 0.04f * radius / Settings.screenRatio
+                s.life = (1f - frame / 42f).coerceAtLeast(0f)
+                paint.color = Palette.withAlpha(color, (230f * s.life * s.life).toInt().coerceIn(0, 255))
+                canvas.drawCircle(s.x, s.y, (radius * 0.8f * s.life).coerceAtLeast(1f), paint)
+            }
+        }
+    }
+
     private class FireScorch(
         private val cx: Float, private val cy: Float,
-        private val radius: Float, private val emberColor: Int
+        private val radius: Float,
+        private val primary: Int,
+        private val grey: Int,
     ) : Effects.PersistentEffect {
-        private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-        private val glow = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
+        private val spikePaths: List<Path>
+        private val emberPath: Path
+        private val fillPaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+            maskFilter = BlurMaskFilter(radius * 0.18f, BlurMaskFilter.Blur.NORMAL)
+        }
+        private val emberPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private var frame = 0
         override val isDone = false
+
+        init {
+            val rng = Random(cx.toInt() xor cy.toInt())
+
+            // Build starburst: 22 thin triangular spikes radiating from center.
+            // Each spike is a narrow triangle: two base points very close to center
+            // at ±halfWidth from the spike axis, tip at the outer radius.
+            val spikeCount = 22
+            // Pre-computed irregular length multipliers so the silhouette is organic.
+            // Lengths alternate between longer and shorter with added per-spike noise.
+            val lengthPattern = floatArrayOf(
+                1.10f, 0.72f, 1.30f, 0.60f, 1.05f, 0.85f, 1.40f, 0.55f,
+                1.20f, 0.68f, 1.35f, 0.78f, 1.15f, 0.62f, 1.25f, 0.90f,
+                1.00f, 0.70f, 1.45f, 0.58f, 1.18f, 0.80f
+            )
+            spikePaths = List(spikeCount) { i ->
+                val baseAngle = (i.toFloat() / spikeCount) * 2f * PI.toFloat() +
+                        (rng.nextFloat() - 0.5f) * (2f * PI.toFloat() / spikeCount) * 0.6f
+                val len = radius * lengthPattern[i] * (0.90f + rng.nextFloat() * 0.20f)
+                // Half-angle of the spike's triangular cross-section — very narrow
+                val halfWidth = radius * (0.055f + rng.nextFloat() * 0.035f)
+                val perpAngle = baseAngle + (PI / 2f).toFloat()
+
+                val baseX1 = cx + cos(perpAngle) * halfWidth
+                val baseY1 = cy + sin(perpAngle) * halfWidth
+                val baseX2 = cx - cos(perpAngle) * halfWidth
+                val baseY2 = cy - sin(perpAngle) * halfWidth
+                val tipX = cx + cos(baseAngle) * len
+                val tipY = cy + sin(baseAngle) * len
+
+                Path().apply {
+                    moveTo(baseX1, baseY1)
+                    lineTo(tipX, tipY)
+                    lineTo(baseX2, baseY2)
+                    close()
+                }
+            }
+
+            val spokeCount = 14
+            emberPath = Path().apply {
+                for (i in 0 until spokeCount) {
+                    val angle = (i.toFloat() / spokeCount) * 2f * PI.toFloat() + (PI / spokeCount).toFloat()
+                    val r = radius * (0.75f + rng.nextFloat() * 0.35f)
+                    val px = cx + cos(angle) * r
+                    val py = cy + sin(angle) * r
+                    if (i == 0) moveTo(px, py) else lineTo(px, py)
+                }
+                close()
+            }
+        }
 
         override fun step() { frame++ }
 
         override fun draw(canvas: Canvas) {
-            if (frame < 180) {
-                val glowAlpha = (100 * (1f - frame / 180f)).toInt().coerceIn(0, 255)
-                glow.color = emberColor
-                glow.alpha = glowAlpha
-                glow.strokeWidth = radius * 0.4f
-                canvas.drawCircle(cx, cy, radius * 1.2f, glow)
+            // Starburst char mark: radial gradient from opaque black center to transparent tip.
+            // The gradient + blur together ensure no hard edges anywhere on the spikes.
+            fillPaint.shader = RadialGradient(
+                cx, cy,
+                radius * 1.45f,
+                intArrayOf(Color.DKGRAY, primary, Color.TRANSPARENT),
+                floatArrayOf(0f, 0.4f, 1f),
+                Shader.TileMode.CLAMP
+            )
+            for (path in spikePaths) {
+                canvas.drawPath(path, fillPaint)
             }
-            fill.color = Color.rgb(40, 20, 10)
-            fill.alpha = 160
-            canvas.drawCircle(cx, cy, radius * 0.9f, fill)
         }
     }
 }
