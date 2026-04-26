@@ -2,77 +2,387 @@ package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 
-/** Mini-planet with a ring, perpendicular to aim. */
+/**
+ * Warp-star paddle: three five-pointed stars sit behind the puck along the aim vector.
+ * The smallest (index 2) mirrors the base paddle position exactly; the larger two follow
+ * the same motion but are capped at their respective orbitRadius from the puck center.
+ * All three are always visible, even in Idle.
+ */
 class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
-    private val body = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-    private val ring = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
 
-    override fun drawChargingPaddle(canvas: Canvas) =
-        drawPlanet(canvas, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
+    // ── Drawing ──────────────────────────────────────────────────────────────
+    private val starPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
+    private val starPaintFill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+    private val starPath  = Path()
+
+    override var minDist: Float = 0.0f
+        get() = 0f
+
+    override val zIndex: Int
+        get() = -1
+    // ── Star descriptors (index 0 = largest/closest, 2 = smallest/furthest) ─
+    //   orbitRadius: how far from the puck center the star sits while orbiting
+    //   starRadius:  the "radius" of the five-pointed star itself
+    private data class StarDesc(val orbitRadius: Float, val starRadius: Float)
+
+    private val starDescs: Array<StarDesc> get() {
+        val r = renderer.radius
+        return arrayOf(
+            StarDesc(r * 2f, r * 1.1f),   // index 0 – largest, closest to ball
+            StarDesc(r * 3f, r * 0.9f),   // index 1 – medium
+            StarDesc(r * 4f, r * 0.6f)    // index 2 – smallest, furthest
+        )
+    }
+
+    // ── Orbit ─────────────────────────────────────────────────────────────────
+    // Each star orbits at a slightly different angular phase so they look spread out
+    private val orbitPhaseOffset = floatArrayOf(0f, (PI / 5f).toFloat(), (2 * PI / 5f).toFloat())
+    private val ORBIT_SPEED = 0.022f  // radians per frame
+
+    // ── Strike launch state ───────────────────────────────────────────────────
+    // Tracks whether each star has been "fired" during the current strike animation.
+    // Stars fire in reverse order: index 2 (smallest) first, then 1, then 0.
+    // progress thresholds at which each star begins returning home:
+    //   star 2 fires at progress >= 0.0 (immediately)
+    //   star 1 fires when star 2 has returned to star 1's pull-back position (progress >= 0.33)
+    //   star 0 fires when star 1 has returned to star 0's pull-back position (progress >= 0.66)
+    // The puck launches only after all three are back (progress = 1.0 is handled by base class).
+    // We track per-star "return progress" in [0,1].
+    private val starReturnProgress = FloatArray(3) { 1f }  // 1 = fully home
+    private var lastStrikeProgress = 0f
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Build a five-pointed star Path centered at (cx, cy) with outer radius [outer].
+     * Uses cubic beziers so the tips are softly rounded rather than sharp points.
+     */
+    private fun buildStar(cx: Float, cy: Float, outer: Float, rotation: Float) {
+        val inner = outer * 0.40f               // inner (valley) radius
+        val roundness = outer * 0.01f           // control-point offset for rounded tips
+        val count = 5
+        val angleStep = (2f * PI / count).toFloat()
+        val halfStep  = angleStep / 2f
+
+        starPath.reset()
+        for (i in 0 until count) {
+            // Outer tip
+            val outerAngle = rotation + i * angleStep - (PI / 2f).toFloat()
+            val tipX = cx + cos(outerAngle) * outer
+            val tipY = cy + sin(outerAngle) * outer
+
+            // Tangent direction perpendicular to the tip radius (for rounding)
+            val perpX = -sin(outerAngle)
+            val perpY =  cos(outerAngle)
+
+            // Two inner valleys flanking this tip
+            val prevInnerAngle = outerAngle - halfStep
+            val nextInnerAngle = outerAngle + halfStep
+            val prevValX = cx + cos(prevInnerAngle) * inner
+            val prevValY = cy + sin(prevInnerAngle) * inner
+            val nextValX = cx + cos(nextInnerAngle) * inner
+            val nextValY = cy + sin(nextInnerAngle) * inner
+
+            if (i == 0) {
+                starPath.moveTo(prevValX, prevValY)
+            }
+            // Cubic bezier: valley → (control near tip) → (control near tip) → valley
+            val cp1X = tipX - perpX * roundness
+            val cp1Y = tipY - perpY * roundness
+            val cp2X = tipX + perpX * roundness
+            val cp2Y = tipY + perpY * roundness
+            starPath.cubicTo(cp1X, cp1Y, tipX, tipY, tipX, tipY)    // approach tip
+            starPath.cubicTo(tipX, tipY, cp2X, cp2Y, nextValX, nextValY) // leave tip
+        }
+        starPath.close()
+    }
+
+    /**
+     * Color for a single star given its index threshold and current phase.
+     * Star i becomes "charged" once chargeFillRatio exceeds its threshold.
+     * In SweetSpot all three strobe between shield colors regardless of threshold.
+     */
+    private fun starColor(starIndex: Int, ph: ChargePhase): Int {
+        if (renderer.shielded && phase == ChargePhase.Idle) return theme.shield.secondary
+        if (renderer.isInert) return theme.inert.secondary
+
+        if (ph == ChargePhase.SweetSpot) {
+            val t = sin(frame * 0.25f) * 0.5f + 0.5f
+            return Palette.lerpColor(theme.shield.primary, theme.shield.secondary, t)
+        }
+        if (ph == ChargePhase.Inert) return theme.inert.secondary
+        val threshold = when (starIndex) {
+            0    -> 0.33f
+            1    -> 0.66f
+            else -> 1f
+        }
+
+        return if (chargeFillRatio > threshold) theme.shield.secondary else theme.main.secondary
+    }
+
+    private fun starColorFill(starIndex: Int, ph: ChargePhase): Int {
+        if (renderer.shielded && phase == ChargePhase.Idle) return theme.shield.primary
+        if (renderer.isInert) return theme.inert.secondary
+
+        if (ph == ChargePhase.SweetSpot) {
+            val t = sin(frame * 0.25f) * 0.5f + 0.5f
+            return Palette.lerpColor(theme.shield.secondary, theme.shield.primary, t)
+        }
+        if (ph == ChargePhase.Inert) return theme.inert.primary
+        val threshold = when (starIndex) {
+            0    -> 0.33f
+            1    -> 0.66f
+            else -> 1f
+        }
+
+        return if (chargeFillRatio > threshold) theme.shield.primary else theme.main.primary
+    }
+
+    // ── drawChargingPaddle ────────────────────────────────────────────────────
+
+    override fun draw(canvas: Canvas) {
+        super.draw(canvas)
+        // Base class skips drawChargingPaddle in Idle. Since phase is only Idle when not
+        // striking (the base defers the Idle transition until after the strike completes),
+        // it is safe to draw here without double-drawing during a strike.
+        if (phase == ChargePhase.Idle) drawIdlePaddle(canvas)
+    }
+
+    fun drawIdlePaddle(canvas: Canvas) {
+        starPaint.strokeWidth = renderer.radius * 0.2f
+        for (i in 0 until 3) {
+            val desc = starDescs[i]
+            val sx = renderer.x
+            val sy = renderer.y
+
+            val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[i]
+            buildStar(sx, sy, desc.starRadius, rot)
+            starPaint.color = Palette.withAlpha(starColor(i, phase), 255)
+            starPaintFill.color = Palette.withAlpha(starColorFill(i, phase), 255)
+            canvas.drawPath(starPath, starPaintFill)
+            canvas.drawPath(starPath, starPaint)
+        }
+    }
+
+
+    override fun drawChargingPaddle(canvas: Canvas) {
+        starPaint.strokeWidth = renderer.radius * 0.2f
+
+        for (i in 0 until 3) {
+            val desc = starDescs[i]
+            // Star 2 (smallest) mirrors the paddle exactly; stars 0 and 1 follow the same
+            // motion but are capped so they never exceed their natural orbit distance.
+            var dist = if (i == 2) (paddleDistance).coerceIn(0f, renderer.radius * 5f) else paddleDistance.coerceAtMost(desc.orbitRadius)
+
+            val sx = renderer.x - aimX * dist
+            val sy = renderer.y - aimY * dist
+
+            val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[i]
+            buildStar(sx, sy, desc.starRadius, rot)
+            starPaint.color = Palette.withAlpha(starColor(i, phase), 255)
+            starPaintFill.color = Palette.withAlpha(starColorFill(i, phase), 255)
+            canvas.drawPath(starPath, starPaintFill)
+            canvas.drawPath(starPath, starPaint)
+        }
+    }
+
+    // ── drawStrikingPaddle ────────────────────────────────────────────────────
 
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
-        drawPlanet(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
-    }
+        starPaint.strokeWidth = renderer.radius * 0.2f
 
-    private fun drawPlanet(canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase, fill: Float) {
-        val r = renderer.radius * 0.55f
-        val pX = -aY
-        val pY = aX
-
-        body.color = responsivePrimary
-        canvas.drawCircle(cx, cy, r, body)
-
-        if (fill > 0f) {
-            body.color = theme.shield.primary
-            body.alpha = (220 * fill).toInt().coerceIn(0, 255)
-            canvas.drawCircle(cx, cy, r * fill, body)
-            body.alpha = 255
+        val ph = when {
+            sweet    -> ChargePhase.SweetSpot
+            fatigued -> ChargePhase.Inert
+            else     -> ChargePhase.Building
         }
 
-        ring.color = if (ph == ChargePhase.Inert) theme.inert.secondary else responsivePrimary
-        ring.strokeWidth = Settings.strokeWidth * 0.6f
-        val len = paddleHalfLength()
-        canvas.drawLine(cx - pX * len, cy - pY * len, cx + pX * len, cy + pY * len, ring)
-        canvas.drawCircle(cx, cy, r * 1.35f, ring.apply { alpha = 90 })
-        ring.alpha = 255
+        // Detect when progress resets (new strike started)
+        if (progress < lastStrikeProgress) {
+            starReturnProgress[0] = 0f
+            starReturnProgress[1] = 0f
+            starReturnProgress[2] = 0f
+        }
+        lastStrikeProgress = progress
+
+
+        val firedThresholds = floatArrayOf(1f, 0.66f, 0.33f)  // index matches star index
+
+        for (i in 0 until 3) {
+            val desc = starDescs[i]
+
+            // Advance this star's return progress if its fire threshold is met
+            if (progress >= firedThresholds[i]) {
+                starReturnProgress[i] = (starReturnProgress[i] + 0.06f).coerceAtMost(1f)
+            }
+            val ret = starReturnProgress[i]
+
+            val sx: Float
+            val sy: Float
+            if (ret < 1f) {
+                sx = cx + (renderer.x - cx) * ret
+                sy = cy + (renderer.y - cy) * ret
+            } else {
+                sx = renderer.x
+                sy = renderer.y
+            }
+
+            val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[i]
+            buildStar(sx, sy, desc.starRadius, rot)
+            starPaint.color = Palette.withAlpha(starColor(i, ph), 255)
+            starPaintFill.color = Palette.withAlpha(starColorFill(i, phase), 255)
+            canvas.drawPath(starPath, starPaintFill)
+            canvas.drawPath(starPath, starPaint)
+        }
     }
 
+    // ── Residual ──────────────────────────────────────────────────────────────
+
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(NebulaMark(rx, ry, renderer.radius, theme.shield.primary))
+        Effects.addPersistentEffect(NebulaMark(rx, ry, renderer.radius, theme.shield.primary, theme.shield.secondary))
+    }
+
+    companion object {
+        fun spawnStartImpact(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int) {
+            Effects.addPersistentEffect(NebulaMark(cx, cy, radius, primary, secondary))
+        }
     }
 
     private class NebulaMark(
         private val cx: Float, private val cy: Float,
-        private val radius: Float, private val color: Int
+        private val radius: Float,
+        private val colorA: Int,
+        private val colorB: Int
     ) : Effects.PersistentEffect {
         private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private val starPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
+        private val path = Path()
         private var frame = 0
         override val isDone = false
+
+        // ── Star burst ──────────────────────────────────────────────────────────
+        private class BurstStar(
+            var x: Float, var y: Float,
+            var vx: Float, var vy: Float,
+            var life: Float,
+            val twinkleSpeed: Float,
+            val twinkleSeed: Float
+        )
+
+        private val burstStars: List<BurstStar>
+        private val burstPath = Path()
+        private val burstPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private val BURST_DURATION = 48
+
+        init {
+            val count = 22
+            burstStars = List(count) { i ->
+                val angle = (i.toFloat() / count) * 2f * PI.toFloat() + Random.nextFloat() * 0.28f
+                val speed = radius * (0.09f + Random.nextFloat() * 0.13f)
+                BurstStar(
+                    cx, cy,
+                    cos(angle) * speed,
+                    sin(angle) * speed,
+                    1f,
+                    0.12f + Random.nextFloat() * 0.18f,
+                    Random.nextFloat()
+                )
+            }
+        }
+
+        private fun drawBurstStar(canvas: Canvas, bcx: Float, bcy: Float, outerR: Float) {
+            val innerR = outerR * 0.4f
+            burstPath.reset()
+            for (i in 0 until 8) {
+                val angle = (i * 45f - 90f) * PI.toFloat() / 180f
+                val r = if (i % 2 == 0) outerR else innerR
+                val px = bcx + cos(angle) * r
+                val py = bcy + sin(angle) * r
+                if (i == 0) burstPath.moveTo(px, py) else burstPath.lineTo(px, py)
+            }
+            burstPath.close()
+            canvas.drawPath(burstPath, burstPaint)
+        }
+
+        // ── Core ─────────────────────────────────────────────────────────────────
 
         override fun step() { frame++ }
 
         override fun draw(canvas: Canvas) {
-            val t = (frame.toFloat() / 120f).coerceIn(0f, 1f)
-            val r = radius * (0.8f + t * 1.2f)
-            val alpha = (75 * (1f - t * 0.7f)).toInt().coerceIn(0, 255)
-            paint.color = color
-            paint.alpha = alpha
-            canvas.drawCircle(cx, cy, r, paint)
-            paint.alpha = (alpha * 0.5f).toInt()
-            canvas.drawCircle(cx, cy, r * 0.45f, paint)
-            paint.alpha = 255
+            val t = (frame.toFloat() / 150f).coerceIn(0f, 1f)
+            val alpha = (255 * (1f - t)).toInt().coerceIn(135, 255)
+
+            // Star burst — active only for the first BURST_DURATION frames
+            if (frame <= BURST_DURATION) {
+                val burstT = frame.toFloat() / BURST_DURATION
+                for (s in burstStars) {
+                    s.x += s.vx
+                    s.y += s.vy
+                    s.vx *= 0.96f
+                    s.vy *= 0.96f
+                    s.life = (1f - burstT).coerceAtLeast(0f)
+                    val twinkle = 0.75f + 0.25f * sin(frame * s.twinkleSpeed + s.twinkleSeed * PI.toFloat() * 2f)
+                    val burstColor = Palette.lerpColor(colorA, colorB, burstT)
+                    burstPaint.color = Palette.withAlpha(burstColor, (255f * s.life * s.life).toInt().coerceIn(0, 255))
+                    val outerR = Settings.screenRatio * 0.5f * s.life * twinkle
+                    if (outerR > 0.5f) drawBurstStar(canvas, s.x, s.y, outerR)
+                }
+            }
+
+            // Fading mini-star at center
+            val c = Palette.lerpColor(colorB, colorA, t)
+            starPaint.color = Palette.withAlpha(c, alpha)
+            val starR = radius * (1f - t * 0.3f).coerceAtLeast(0.5f)
+            starPaint.strokeWidth = radius * 0.2f
+            buildStar(path, cx, cy, starR, frame * 0.03f)
+            canvas.drawPath(path, starPaint)
+        }
+
+        private fun buildStar(dst: Path, cx: Float, cy: Float, outer: Float, rotation: Float) {
+            val inner = outer * 0.42f
+            val roundness = outer * 0.14f
+            val count = 5
+            val angleStep = (2f * PI / count).toFloat()
+            val halfStep  = angleStep / 2f
+            dst.reset()
+            for (i in 0 until count) {
+                val outerAngle = rotation + i * angleStep - (PI / 2f).toFloat()
+                val tipX = cx + cos(outerAngle) * outer
+                val tipY = cy + sin(outerAngle) * outer
+                val perpX = -sin(outerAngle)
+                val perpY =  cos(outerAngle)
+                val prevInnerAngle = outerAngle - halfStep
+                val nextInnerAngle = outerAngle + halfStep
+                val prevValX = cx + cos(prevInnerAngle) * inner
+                val prevValY = cy + sin(prevInnerAngle) * inner
+                val nextValX = cx + cos(nextInnerAngle) * inner
+                val nextValY = cy + sin(nextInnerAngle) * inner
+                if (i == 0) dst.moveTo(prevValX, prevValY)
+                val cp1X = tipX - perpX * roundness
+                val cp1Y = tipY - perpY * roundness
+                val cp2X = tipX + perpX * roundness
+                val cp2Y = tipY + perpY * roundness
+                dst.cubicTo(cp1X, cp1Y, tipX, tipY, tipX, tipY)
+                dst.cubicTo(tipX, tipY, cp2X, cp2Y, nextValX, nextValY)
+            }
+            dst.close()
         }
     }
 }

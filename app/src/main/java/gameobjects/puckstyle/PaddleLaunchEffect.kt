@@ -126,7 +126,8 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
     private var releaseSweet = false
     private var releaseFatigued = false
 
-    private var maxDist = 0f
+    protected var maxDist = renderer.radius * 5f
+    protected open var minDist = renderer.radius
 
     // ----- strike callback -----
     private var strikeCallback: (() -> Unit)? = null
@@ -145,7 +146,7 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
 
     override fun draw(canvas: Canvas) {
         frame++
-        updateState(renderer)
+        updateState()
 
         if (releaseFrames > 0) {
             val t = 1f - (releaseFrames.toFloat() / RELEASE_DURATION)
@@ -196,9 +197,9 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
 
     // ---------- state update ----------
 
-    private fun updateState(renderer: PuckRenderer) {
-        val minDist = renderer.radius
-        maxDist = renderer.radius * 5f
+    private fun updateState() {
+        minDist = renderer.radius
+        maxDist = renderer.radius * 5
 
         val dx = renderer.flingStartX - renderer.flingCurrentX
         val dy = renderer.flingStartY - renderer.flingCurrentY

@@ -14,6 +14,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 import androidx.core.graphics.withTranslation
+import gameobjects.puckstyle.paddles.GalaxyLaunch
+import physics.Point
 
 class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
@@ -23,6 +25,14 @@ class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRend
     private val starPath = Path()
     private var lastRadius = -1f
     private var lastColors = theme.main
+
+    override fun onCollisionWin(position: Point, speed: Float) {
+        GalaxyLaunch.spawnStartImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary)
+    }
+
+    override fun onShieldedCollision(position: Point) {
+        GalaxyLaunch.spawnStartImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary)
+    }
 
     // FloatArray: [angle, radiusFraction, alphaFraction, sizeFraction] — pre-seeded edge noise blobs
     private val edgeDots: List<FloatArray> = List(28) {
