@@ -50,7 +50,7 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.rotate(angle + 90f, cx, cy)
 
         val halfLen = paddleHalfLength() * 0.9f
-        val halfThick = currentRenderer.radius * 0.28f
+        val halfThick = renderer.radius * 0.28f
 
         stick.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.main.primary
         rect.set(cx - halfLen, cy - halfThick, cx + halfLen, cy + halfThick)
@@ -84,9 +84,9 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     private fun drawExplosion(canvas: Canvas, progress: Float) {
-        val cx = currentRenderer.x
-        val cy = currentRenderer.y
-        val r = currentRenderer.radius * (1f + progress * 2.2f)
+        val cx = renderer.x
+        val cy = renderer.y
+        val r = renderer.radius * (1f + progress * 2.2f)
         spark.color = Color.rgb(255, 180, 40)
         spark.alpha = (255 * (1f - progress)).toInt().coerceIn(0, 255)
         canvas.drawCircle(cx, cy, r, spark)
@@ -97,7 +97,7 @@ class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(MetalScorch(rx, ry, currentRenderer.radius))
+        Effects.addPersistentEffect(MetalScorch(rx, ry, renderer.radius))
     }
 
     private class MetalScorch(

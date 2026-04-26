@@ -8,13 +8,14 @@ import android.graphics.Shader
 import gameobjects.puckstyle.CachedShaderSkin
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
+import androidx.core.graphics.withTranslation
 
 class MetalSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
 
     private val grey = Color.rgb(140, 140, 150)
     private val lightGrey = Color.rgb(220, 220, 230)
     private val darkGrey = Color.rgb(70, 70, 80)
-    private val accentTint = if (theme.isWarm) Color.rgb(200, 160, 160) else Color.rgb(160, 180, 210)
+    private val accentTint = responsive
 
     private val edgePaint = Paint().apply { color = darkGrey; isAntiAlias = false; style = Paint.Style.STROKE }
 
@@ -30,10 +31,9 @@ class MetalSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
 
     override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
         ensureShader(renderer.radius)
-        canvas.save()
-        canvas.translate(renderer.x, renderer.y)
-        canvas.drawCircle(0f, 0f, renderer.radius, fill)
-        canvas.restore()
+        canvas.withTranslation(renderer.x, renderer.y) {
+            drawCircle(0f, 0f, renderer.radius, fill)
+        }
         edgePaint.strokeWidth = renderer.strokePaint.strokeWidth * 0.9f
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, edgePaint)
         renderer.chargePaint.color = grey

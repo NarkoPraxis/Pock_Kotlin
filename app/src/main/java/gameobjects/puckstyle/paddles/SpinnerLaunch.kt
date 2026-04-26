@@ -54,7 +54,7 @@ class SpinnerLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(SpinnerMark(rx, ry, currentRenderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, theme.effect.primary))
     }
 
     private class SpinnerMark(

@@ -9,6 +9,7 @@ import gameobjects.puckstyle.CachedShaderSkin
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
+import androidx.core.graphics.withTranslation
 
 class IceSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
 
@@ -35,10 +36,9 @@ class IceSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
             invalidateShader()
         }
         ensureShader(renderer.radius)
-        canvas.save()
-        canvas.translate(renderer.x, renderer.y)
-        canvas.drawCircle(0f, 0f, renderer.radius, fill)
-        canvas.restore()
+        canvas.withTranslation(renderer.x, renderer.y) {
+            drawCircle(0f, 0f, renderer.radius, fill)
+        }
         rimStroke.strokeWidth = renderer.strokePaint.strokeWidth * 0.7f
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, rimStroke)
     }

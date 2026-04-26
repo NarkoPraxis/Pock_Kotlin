@@ -26,10 +26,10 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
-        drawShard(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
+        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
+        drawShard(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
 
     private fun drawShard(canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase, fill: Float) {
@@ -46,8 +46,7 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         path.lineTo(cx - aX * shortR, cy - aY * shortR)
         path.close()
 
-        val base = if (ph == ChargePhase.Inert) theme.main.secondary else Color.rgb(180, 220, 255)
-        shardFill.color = base
+        shardFill.color = responsivePrimary
         canvas.drawPath(path, shardFill)
 
         if (fill > 0f) {
@@ -63,7 +62,7 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(IcePuddle(rx, ry, currentRenderer.radius, theme))
+        Effects.addPersistentEffect(IcePuddle(rx, ry, renderer.radius, theme))
     }
 
     private class IcePuddle(
@@ -74,48 +73,44 @@ class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         private val stroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
         private val crystalPath = Path()
         private var frame = 0
+
+        private var puddleExists = true
         private val evaporateDuration = 120f
+
         override val isDone = false
 
         override fun step() { frame++ }
 
         override fun draw(canvas: Canvas) {
-            if (frame < evaporateDuration) {
-                val t = frame / evaporateDuration
-                val crystalR = radius * (1.2f - t * 0.7f)
-                val alpha = (160 * (1f - t * 0.5f)).toInt().coerceIn(0, 255)
-                drawCrystal(canvas, crystalR, alpha)
-                // Water puddle appears as crystal evaporates
-                fill.color = theme.main.primary
-                fill.alpha = (70 * t).toInt().coerceIn(0, 255)
-                canvas.drawCircle(cx, cy, radius * 0.5f * t, fill)
-            } else {
-                // Water puddle persists at low opacity until goal clears it
-                fill.color = theme.main.secondary
-                fill.alpha = 55
-                canvas.drawCircle(cx, cy, radius * 0.5f, fill)
-                fill.color = theme.main.primary
-                fill.alpha = 40
-                canvas.drawCircle(cx, cy, radius * 0.3f, fill)
+            val uncappedTime = (frame / evaporateDuration)
+            val cappedTime = uncappedTime.coerceIn(0f, 1f)
+            fill.color = theme.main.primary
+            fill.alpha = (120 - (60 * uncappedTime)).toInt().coerceIn(0, 255)
+
+            if (fill.alpha > 0) {
+                canvas.drawCircle(cx, cy, radius * uncappedTime * 1.5f, fill)
             }
+
+            drawCrystal(canvas, cappedTime)
         }
 
-        private fun drawCrystal(canvas: Canvas, r: Float, alpha: Int) {
+        private fun drawCrystal(canvas: Canvas, t: Float) {
+            val crystalR = radius * (1.4f - t * 1.1f)
             crystalPath.reset()
             val pts = 8
             for (i in 0 until pts) {
                 val angle = (i * 360.0 / pts * Math.PI / 180.0).toFloat()
-                val outerR = r * (if (i % 2 == 0) 1f else 0.55f)
+                val outerR = crystalR * (if (i % 2 == 0) 2.3f else 1f)
                 val x = cx + cos(angle) * outerR
                 val y = cy + sin(angle) * outerR
                 if (i == 0) crystalPath.moveTo(x, y) else crystalPath.lineTo(x, y)
             }
             crystalPath.close()
-            fill.color = Color.rgb(220, 240, 255)
-            fill.alpha = (alpha * 0.65f).toInt()
+            fill.color = Color.WHITE
+            fill.alpha = 255
             canvas.drawPath(crystalPath, fill)
-            stroke.color = Color.WHITE
-            stroke.alpha = alpha
+            stroke.color = theme.main.primary
+            stroke.alpha = 130
             stroke.strokeWidth = Settings.strokeWidth * 0.5f
             canvas.drawPath(crystalPath, stroke)
         }

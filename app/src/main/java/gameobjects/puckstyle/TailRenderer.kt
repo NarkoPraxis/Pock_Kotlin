@@ -8,13 +8,15 @@ import android.graphics.Paint
 interface TailRenderer {
     val theme: ColorTheme
 
+    val renderer: PuckRenderer
+
     /** Local z-index within a PuckRenderer composition. Default -1 (behind body). */
     val zIndex: Int get() = -1
 
     /** Returns the ColorGroup this tail should use for the current frame based on renderer state. */
-    fun resolvedColors(renderer: PuckRenderer): ColorGroup = renderer.resolveColorGroup(theme)
+    fun resolvedColors(): ColorGroup = renderer.resolveColorGroup(theme)
 
-    fun render(canvas: Canvas, renderer: PuckRenderer)
+    fun render(canvas: Canvas)
     fun clear()
 
     /**
@@ -30,9 +32,9 @@ interface TailRenderer {
      * for preview (placeholder) balls, wraps render() in a greyscale saveLayer so particle
      * fade effects remain intact while all colours map to near-black.
      */
-    fun renderWithPreview(canvas: Canvas, renderer: PuckRenderer) {
+    fun renderWithPreview(canvas: Canvas) {
         if (!renderer.preview) {
-            render(canvas, renderer)
+            render(canvas)
             return
         }
         val cm = ColorMatrix(floatArrayOf(
@@ -43,7 +45,7 @@ interface TailRenderer {
         ))
         @Suppress("DEPRECATION")
         canvas.saveLayer(null, Paint().apply { colorFilter = ColorMatrixColorFilter(cm) })
-        render(canvas, renderer)
+        render(canvas)
         canvas.restore()
     }
 }

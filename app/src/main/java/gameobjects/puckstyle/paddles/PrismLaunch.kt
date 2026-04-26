@@ -42,7 +42,7 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         ph: ChargePhase, ratio: Float
     ) {
         val half = paddleHalfLength() * 0.85f
-        val depth = currentRenderer.radius * 0.5f
+        val depth = renderer.radius * 0.5f
         val pX = -aY
         val pY = aX
         path.reset()
@@ -60,7 +60,7 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             canvas.drawPath(path, fill)
         }
         fill.alpha = 255
-        edge.color = resolvedColors(currentRenderer).secondary
+        edge.color = resolvedColors(renderer).secondary
         canvas.drawPath(path, edge)
     }
 
@@ -68,8 +68,8 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val pX = -aY
         val pY = aX
         val half = paddleHalfLength()
-        val px = currentRenderer.x
-        val py = currentRenderer.y
+        val px = renderer.x
+        val py = renderer.y
         for (i in 0 until 6) {
             val offset = (i - 2.5f) / 2.5f * half
             edge.color = Palette.hsv(i * 60f + frame * 3f, 1f, 1f)
@@ -84,7 +84,7 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(PrismScatter(rx, ry, currentRenderer.radius))
+        Effects.addPersistentEffect(PrismScatter(rx, ry, renderer.radius))
     }
 
     private class PrismScatter(

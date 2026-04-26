@@ -38,7 +38,7 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         canvas.rotate(angle + 90f, cx, cy)
 
         val totalLen = paddleHalfLength() * 2f
-        val thick = currentRenderer.radius * 0.45f
+        val thick = renderer.radius * 0.45f
         val cells = 6
         val cellW = totalLen / cells
         val startX = cx - totalLen / 2f
@@ -59,7 +59,7 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(PixelDebris(rx, ry, currentRenderer.radius, theme.effect.primary, theme.main.secondary))
+        Effects.addPersistentEffect(PixelDebris(rx, ry, renderer.radius, theme.effect.primary, theme.main.secondary))
     }
 
     override fun paddleThickness(): Float = Settings.strokeWidth * 1.6f

@@ -37,7 +37,7 @@ class PlasmaLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     private fun drawOrb(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val r = currentRenderer.radius * (0.5f + 0.05f * sin(frame * 0.5f))
+        val r = renderer.radius * (0.5f + 0.05f * sin(frame * 0.5f))
         val outer = if (ph == ChargePhase.Inert) theme.main.secondary else theme.effect.primary
         core.color = outer
         core.alpha = 140
@@ -59,7 +59,7 @@ class PlasmaLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         arc.strokeWidth = Settings.strokeWidth * 0.5f
         for (i in 0 until count) {
             val angle = rand.nextFloat() * 2f * Math.PI.toFloat()
-            val len = currentRenderer.radius * (0.6f + rand.nextFloat() * 0.6f)
+            val len = renderer.radius * (0.6f + rand.nextFloat() * 0.6f)
             val ex = cx + cos(angle) * len
             val ey = cy + sin(angle) * len
             arc.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.effect.primary
@@ -70,7 +70,7 @@ class PlasmaLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(PlasmaBurn(rx, ry, currentRenderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(PlasmaBurn(rx, ry, renderer.radius, theme.effect.primary))
     }
 
     private class PlasmaBurn(

@@ -93,17 +93,9 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
 
     fun playGame() {
         Logic.adjustPlayerPositions()
-
         Logic.checkCharge()
         Logic.checkShield()
         Logic.calculateCollision()
-        if (Logic.calculateCollision()) {
-            collisions++
-            if (!showedChargeExplaination && collisions > 5) {
-                showedChargeExplaination = true
-                Tutorial.assignBox(TutorialState.ChargeExplain)
-            }
-        }
         Logic.checkScored()
     }
 

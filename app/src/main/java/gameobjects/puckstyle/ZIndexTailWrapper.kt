@@ -7,7 +7,8 @@ class ZIndexTailWrapper(
     override val zIndex: Int
 ) : TailRenderer {
     override val theme: ColorTheme get() = inner.theme
-    override fun render(canvas: Canvas, renderer: PuckRenderer) = inner.render(canvas, renderer)
+    override val renderer: PuckRenderer get() = inner.renderer
+    override fun render(canvas: Canvas) = inner.render(canvas)
     override fun clear() = inner.clear()
     override fun fillTo(x: Float, y: Float) = inner.fillTo(x, y)
 }

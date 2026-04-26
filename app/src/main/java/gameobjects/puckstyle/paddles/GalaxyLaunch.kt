@@ -1,7 +1,6 @@
 package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
@@ -20,19 +19,18 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
-        drawPlanet(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
+        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
+        drawPlanet(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
 
     private fun drawPlanet(canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase, fill: Float) {
-        val r = currentRenderer.radius * 0.55f
+        val r = renderer.radius * 0.55f
         val pX = -aY
         val pY = aX
 
-        val core = if (ph == ChargePhase.Inert) theme.main.secondary else Color.rgb(80, 40, 140)
-        body.color = core
+        body.color = responsivePrimary
         canvas.drawCircle(cx, cy, r, body)
 
         if (fill > 0f) {
@@ -42,7 +40,7 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             body.alpha = 255
         }
 
-        ring.color = if (ph == ChargePhase.Inert) theme.main.secondary else theme.main.primary
+        ring.color = if (ph == ChargePhase.Inert) theme.inert.secondary else responsivePrimary
         ring.strokeWidth = Settings.strokeWidth * 0.6f
         val len = paddleHalfLength()
         canvas.drawLine(cx - pX * len, cy - pY * len, cx + pX * len, cy + pY * len, ring)
@@ -51,7 +49,7 @@ class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(NebulaMark(rx, ry, currentRenderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(NebulaMark(rx, ry, renderer.radius, theme.effect.primary))
     }
 
     private class NebulaMark(

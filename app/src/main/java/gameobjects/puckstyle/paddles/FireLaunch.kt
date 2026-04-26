@@ -32,7 +32,7 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     private fun drawFireball(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val base = currentRenderer.radius * 0.6f
+        val base = renderer.radius * 0.6f
         val jitter = 1f + 0.08f * sin(frame * 0.9f)
         val outerR = base * jitter
 
@@ -55,10 +55,10 @@ class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(FireScorch(rx, ry, currentRenderer.radius, theme.main.primary))
+        Effects.addPersistentEffect(FireScorch(rx, ry, renderer.radius, theme.main.primary))
     }
 
-    override fun paddleHalfLength(): Float = currentRenderer.radius * 0.6f
+    override fun paddleHalfLength(): Float = renderer.radius * 0.6f
     override fun paddleThickness(): Float = Settings.strokeWidth
 
     private class FireScorch(

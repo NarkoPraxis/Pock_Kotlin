@@ -7,11 +7,12 @@ import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.sin
 
 /** Glow-stick: paddle bar with an outer halo glow. Sweet spot flickers at a distinct frequency. */
-class NeonLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class NeonLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
     private val halo = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.STROKE
@@ -26,11 +27,11 @@ class NeonLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
+        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
         drawHalo(canvas, cx, cy, aX, aY, ph)
-        super.drawStrikingPaddle(canvas, cx, cy, aX, aY, sweet, overcharged, progress)
+        super.drawStrikingPaddle(canvas, cx, cy, aX, aY, sweet, fatigued, progress)
     }
 
     private fun drawHalo(canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase) {
@@ -60,7 +61,7 @@ class NeonLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(NeonScar(rx, ry, -aY, aX, currentRenderer.radius, theme.effect.primary))
+        Effects.addPersistentEffect(NeonScar(rx, ry, -aY, aX, renderer.radius, theme.effect.primary))
     }
 
     private class NeonScar(
