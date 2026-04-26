@@ -8,7 +8,7 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 
-class PrismSkin(override val theme: ColorTheme) : PuckSkin {
+class PrismSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     private val facet = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val edge = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
@@ -24,7 +24,7 @@ class PrismSkin(override val theme: ColorTheme) : PuckSkin {
         baseHue - 15f
     )
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
+    override fun drawBody(canvas: Canvas) {
         val sides = 6
         val angleOffset = renderer.frame * 0.8f
         val osc = kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f

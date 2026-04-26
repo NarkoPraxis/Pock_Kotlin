@@ -6,12 +6,13 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.sin
 import kotlin.random.Random
 
 /** Translucent ghost-puck double trailing behind the real one. */
-class GhostLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class GhostLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val body = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val outline = Paint().apply {

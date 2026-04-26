@@ -9,7 +9,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.math.exp
 
-class PixelTail(override val theme: ColorTheme) : TailRenderer {
+class PixelTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
     private class Block(var x: Float = 0f, var y: Float = 0f)
     private class Ring(val x: Float, val y: Float, var size: Float, var alpha: Int, val isFront: Boolean, val growRate: Float, val color: Int)
@@ -25,7 +25,7 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
     private var shiftCounter = 0
     private var rippleIndex  = -1   // collision ripple; -1 = idle
 
-    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+    override fun render(canvas: Canvas) {
         val justHit      = renderer.launched && !wasLaunched
         val justShielded = renderer.shielded && !wasShielded
         wasLaunched = renderer.launched
@@ -83,7 +83,7 @@ class PixelTail(override val theme: ColorTheme) : TailRenderer {
             canvas.drawRect(r.x - half, r.y - half, r.x + half, r.y + half, ringPaint)
         }
 
-        val colors = resolvedColors(renderer)
+        val colors = resolvedColors()
 
         // main blocks drawn on top of rings
         for (i in blocks.indices) {

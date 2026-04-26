@@ -188,11 +188,10 @@ object Drawing {
     }
 
     fun drawScores(canvas: Canvas, highPlayer: Player, lowPlayer: Player) {
-        canvas.save()
-        canvas.scale(-1f, -1f, Settings.screenWidth / 2f, Settings.screenHeight / 2f)
-        drawScore(canvas, highPlayer, Settings.highScorePopTicker, Settings.scoreOffsetHigh)
-        checkWinner(canvas, highPlayer, lowPlayer)
-        canvas.restore()
+        canvas.withScale(-1f, -1f, Settings.screenWidth / 2f, Settings.screenHeight / 2f) {
+            drawScore(this, highPlayer, Settings.highScorePopTicker, Settings.scoreOffsetHigh)
+            checkWinner(this, highPlayer, lowPlayer)
+        }
 
         drawScore(canvas, lowPlayer, Settings.lowScorePopTicker, Settings.scoreOffsetLow)
         checkWinner(canvas, lowPlayer, highPlayer)

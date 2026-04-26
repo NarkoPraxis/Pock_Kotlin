@@ -8,6 +8,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.Palette
 import utility.Effects
 import kotlin.math.cos
@@ -15,7 +16,7 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /** Triangular prism. Sweet spot refracts rainbow streaks across the paddle. */
-class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class PrismLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val edge = Paint().apply {
@@ -60,7 +61,7 @@ class PrismLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
             canvas.drawPath(path, fill)
         }
         fill.alpha = 255
-        edge.color = resolvedColors(renderer).secondary
+        edge.color = resolvedColors().secondary
         canvas.drawPath(path, edge)
     }
 

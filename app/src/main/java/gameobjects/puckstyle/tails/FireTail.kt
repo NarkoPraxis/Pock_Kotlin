@@ -9,7 +9,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.random.Random
 
-class FireTail(override val theme: ColorTheme) : TailRenderer {
+class FireTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
     private class Spark(
         var x: Float, var y: Float,
@@ -22,7 +22,7 @@ class FireTail(override val theme: ColorTheme) : TailRenderer {
     private val maxSparks = 80
     private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 
-    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+    override fun render(canvas: Canvas) {
         val spawn = if (renderer.launched) 5 else 3
         repeat(spawn) {
             val angle = Random.nextFloat() * Math.PI.toFloat() * 2
@@ -49,7 +49,7 @@ class FireTail(override val theme: ColorTheme) : TailRenderer {
             s.life -= 0.04f / Settings.tailLengthMultiplier
             if (s.life <= 0f) { it.remove(); continue }
             val t = 1f - s.life
-            val colors = resolvedColors(renderer)
+            val colors = resolvedColors()
             val c = Palette.lerpColor(colors.secondary, colors.primary, t)
 
 

@@ -9,7 +9,7 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
-class PrismTail(override val theme: ColorTheme) : TailRenderer {
+class PrismTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
     private class Frame {
         var x: Float = 0f
@@ -39,7 +39,7 @@ class PrismTail(override val theme: ColorTheme) : TailRenderer {
     private val cosA = FloatArray(7)
     private val sinA = FloatArray(7)
 
-    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+    override fun render(canvas: Canvas) {
         val historySize = (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (history == null || history!!.size != historySize) {
             history = MutableList(historySize) { Frame().apply {

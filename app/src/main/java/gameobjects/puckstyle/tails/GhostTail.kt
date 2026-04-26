@@ -9,7 +9,7 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
-class GhostTail(override val theme: ColorTheme) : TailRenderer {
+class GhostTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
     private data class Ghost(var x: Float = 0f, var y: Float = 0f)
     private var points: MutableList<Ghost>? = null
@@ -20,11 +20,11 @@ class GhostTail(override val theme: ColorTheme) : TailRenderer {
     override val zIndex: Int
         get() = 2
 
-    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+    override fun render(canvas: Canvas) {
         val ghostLen = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != ghostLen) points = MutableList(ghostLen) { Ghost(renderer.x, renderer.y) }
         val points = points!!
-        val colors = resolvedColors(renderer)
+        val colors = resolvedColors()
         val glowColor = when {
             renderer.isInert -> colors.primary
             renderer.currentCharge >= Settings.chargeStart || renderer.shielded -> theme.effect.primary

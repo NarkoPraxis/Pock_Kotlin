@@ -6,10 +6,11 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 
 /** Mini-planet with a ring, perpendicular to aim. */
-class GalaxyLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
     private val body = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val ring = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
 

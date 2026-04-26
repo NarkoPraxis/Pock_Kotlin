@@ -11,7 +11,7 @@ import android.graphics.Shader
  * Eliminates the copy-pasted lastRadius / ensureShader() pattern in
  * FireSkin, IceSkin, PlasmaSkin, and MetalSkin.
  */
-abstract class CachedShaderSkin(override val theme: ColorTheme) : PuckSkin {
+abstract class CachedShaderSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     protected val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private var lastRadius = -1f

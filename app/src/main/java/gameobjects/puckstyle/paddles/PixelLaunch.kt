@@ -7,13 +7,14 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
 /** Chunky 8-bit brick paddle. Charge fills as discrete pixel segments. */
-class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
     private val block = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
     private val rect = RectF()
 
@@ -43,7 +44,7 @@ class PixelLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val cellW = totalLen / cells
         val startX = cx - totalLen / 2f
 
-        val base = theme.main.secondary
+        val base = responsiveSecondary
         val fillColor = theme.effect.primary
         val filledCells = (cells * fill).toInt()
         val center = cells / 2

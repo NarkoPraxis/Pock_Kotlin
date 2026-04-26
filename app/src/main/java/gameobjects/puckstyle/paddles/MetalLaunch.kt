@@ -8,6 +8,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.cos
 import kotlin.math.sin
@@ -17,7 +18,7 @@ import kotlin.random.Random
  * Dynamite stick. Fuse lights up when the sweet spot starts. On a sweet-spot release the strike
  * animation shows an explosion at the puck; on a missed release the stick just shoves into the puck.
  */
-class MetalLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class MetalLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val stick = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val fuse = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }

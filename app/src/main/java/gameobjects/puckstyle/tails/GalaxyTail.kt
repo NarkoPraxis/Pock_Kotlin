@@ -12,7 +12,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-class GalaxyTail(override val theme: ColorTheme) : TailRenderer {
+class GalaxyTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
     private class Star(
         var x: Float, var y: Float,
@@ -39,7 +39,7 @@ class GalaxyTail(override val theme: ColorTheme) : TailRenderer {
         canvas.drawPath(starPath, paint)
     }
 
-    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+    override fun render(canvas: Canvas) {
         val spawn = if (renderer.launched) 4 else 2
         repeat(spawn) {
             val angle = Random.nextFloat() * Math.PI.toFloat() * 2
@@ -66,7 +66,7 @@ class GalaxyTail(override val theme: ColorTheme) : TailRenderer {
             s.life -= 0.01f / Settings.tailLengthMultiplier
             if (s.life <= 0f) { it.remove(); continue }
             val twinkle = 0.75f + 0.25f * sin(renderer.frame * s.twinkleSpeed + s.twinkleSeed * Math.PI.toFloat() * 2f)
-            paint.color = Palette.withAlpha(resolvedColors(renderer).primary, (255f * s.life).toInt())
+            paint.color = Palette.withAlpha(resolvedColors().primary, (255f * s.life).toInt())
             val outerR = Settings.screenRatio * 0.32f * s.life * twinkle
             drawStar(canvas, s.x, s.y, outerR, outerR * 0.38f)
         }

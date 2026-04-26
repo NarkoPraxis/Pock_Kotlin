@@ -8,12 +8,13 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.cos
 import kotlin.math.sin
 
 /** Ice shard: diamond-shape perpendicular to aim. Sweet-spot leaves a frost mark that evaporates to a water puddle. */
-class IceLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val shardFill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val shardStroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeJoin = Paint.Join.ROUND }

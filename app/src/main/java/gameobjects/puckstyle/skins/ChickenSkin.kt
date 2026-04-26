@@ -12,7 +12,7 @@ import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.random.Random
 
-class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
+class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     private val paint         = Paint().apply { isAntiAlias = true }
     private val beakPath      = Path()
@@ -30,8 +30,8 @@ class ChickenSkin(override val theme: ColorTheme) : PuckSkin {
     // Updated once per drawBody call; used by private sub-draw methods
     private var frameColors: ColorGroup = theme.main
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        frameColors = resolvedColors(renderer)
+    override fun drawBody(canvas: Canvas) {
+        frameColors = resolvedColors()
         val r  = renderer.radius
         val sw = renderer.strokePaint.strokeWidth
 

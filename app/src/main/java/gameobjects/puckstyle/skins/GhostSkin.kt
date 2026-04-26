@@ -10,7 +10,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import kotlin.math.sin
 
-class GhostSkin(override val theme: ColorTheme) : PuckSkin {
+class GhostSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     private data class AuraRing(val baseMult: Float, val amp: Float, val phase: Float, val alpha: Int, val strokeMult: Float)
 
@@ -33,8 +33,8 @@ class GhostSkin(override val theme: ColorTheme) : PuckSkin {
         isAntiAlias = true; isDither = true; style = Paint.Style.STROKE
     }
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        val stateColors = resolvedColors(renderer)
+    override fun drawBody(canvas: Canvas) {
+        val stateColors = resolvedColors()
         val glowColor = when {
             renderer.isInert -> stateColors.primary
             renderer.currentCharge >= Settings.chargeStart || renderer.shielded -> theme.effect.primary

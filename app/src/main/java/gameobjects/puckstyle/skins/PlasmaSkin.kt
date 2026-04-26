@@ -10,7 +10,7 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import kotlin.random.Random
 
-class PlasmaSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
+class PlasmaSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedShaderSkin(theme, renderer) {
 
     private var lastColors = theme.main
 
@@ -22,8 +22,8 @@ class PlasmaSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
             floatArrayOf(0f, 0.4f, 1f),
             Shader.TileMode.CLAMP)
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        val colors = resolvedColors(renderer)
+    override fun drawBody(canvas: Canvas) {
+        val colors = resolvedColors()
         if (colors != lastColors) {
             lastColors = colors
             invalidateShader()

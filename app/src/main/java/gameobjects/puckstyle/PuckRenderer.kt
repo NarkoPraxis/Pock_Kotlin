@@ -103,18 +103,18 @@ class PuckRenderer {
         skin?.let { s ->
             layers.add(Layer(s.zIndex) {
                 if (preview) canvas.drawCircle(x, y, radius, PaintBucket.placeholderPaint)
-                else s.drawBody(canvas, this)
+                else s.drawBody(canvas)
             })
         }
         tail?.let { t ->
             layers.add(Layer(t.zIndex) {
-                t.renderWithPreview(canvas, this)
+                t.renderWithPreview(canvas)
             })
         }
         if (effectEnabled) {
             effect?.let { e ->
                 layers.add(Layer(e.zIndex) {
-                    e.draw(canvas, this)
+                    e.draw(canvas)
                 })
             }
         }

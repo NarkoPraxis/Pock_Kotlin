@@ -17,6 +17,7 @@ import utility.Storage
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import androidx.core.graphics.withClip
 
 class BallSelectionPopup(val isHigh: Boolean) {
 
@@ -67,7 +68,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         val randomIdx = BallType.Random.ordinal
         val popupTheme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
         slotTails[randomIdx]?.clear()
-        val randomStyle = BallStyleFactory.buildStyle(BallType.Random, popupTheme)
+        val randomStyle = BallStyleFactory.buildStyle(BallType.Random, popupTheme, previewRenderer)
         slotTails[randomIdx]     = randomStyle.tail
         slotSkins[randomIdx]     = randomStyle.skin
         slotStyles[randomIdx]    = randomStyle
@@ -231,7 +232,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
             if (slotTailTypes[i] != type) {
                 slotTails[i]?.clear()
                 slotTailTypes[i] = type
-                val style = BallStyleFactory.buildStyle(type, theme)
+                val style = BallStyleFactory.buildStyle(type, theme, previewRenderer)
                 slotTails[i]  = style.tail
                 slotSkins[i]  = style.skin
                 slotStyles[i] = style
@@ -241,22 +242,21 @@ class BallSelectionPopup(val isHigh: Boolean) {
             val phase = i * 0.7f
             val puckY = cy + amplitude * sin(2 * Math.PI.toFloat() * previewRenderer.frame / 80f + phase)
 
-            canvas.save()
-            canvas.clipRect(
+            canvas.withClip(
                 slotCenterX - slotW / 2f, cy - halfH + Settings.screenRatio * 0.15f,
                 slotCenterX + slotW / 2f, cy + halfH - Settings.screenRatio * 0.15f
-            )
-            previewRenderer.x = slotCenterX
-            previewRenderer.y = puckY
-            previewRenderer.fillColor = theme.main.primary
-            previewRenderer.strokeColor = theme.main.secondary
-            previewRenderer.baseFillColor = theme.main.primary
-            previewRenderer.preview = !isUnlocked(type)
-            previewRenderer.skin = slotSkins[i]
-            previewRenderer.tail = slotTails[i]
-            previewRenderer.draw(canvas)
-            if (!isUnlocked(type)) drawLock(canvas, slotCenterX, puckY, pr)
-            canvas.restore()
+            ) {
+                previewRenderer.x = slotCenterX
+                previewRenderer.y = puckY
+                previewRenderer.fillColor = theme.main.primary
+                previewRenderer.strokeColor = theme.main.secondary
+                previewRenderer.baseFillColor = theme.main.primary
+                previewRenderer.preview = !isUnlocked(type)
+                previewRenderer.skin = slotSkins[i]
+                previewRenderer.tail = slotTails[i]
+                previewRenderer.draw(this)
+                if (!isUnlocked(type)) drawLock(this, slotCenterX, puckY, pr)
+            }
         }
 
         canvas.restore()  // end global clip

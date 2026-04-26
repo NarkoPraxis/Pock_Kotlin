@@ -8,18 +8,18 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import shapes.DrawablePoint
 
-class RainbowTail(override val theme: ColorTheme) : TailRenderer {
+class RainbowTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
     private var points: MutableList<DrawablePoint>? = null
     private val hueOffset = Palette.themeHue(theme)
 
     override val zIndex: Int
         get() = 1
 
-    override fun render(canvas: Canvas, renderer: PuckRenderer) {
+    override fun render(canvas: Canvas) {
         val rainbowLen = (20 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != rainbowLen) points = MutableList(rainbowLen) { DrawablePoint(renderer.x, renderer.y) }
         val points = points!!
-        val colors = resolvedColors(renderer)
+        val colors = resolvedColors()
         for (i in points.size - 1 downTo 0) {
             if (i - 1 >= 0) points[i] = points[i - 1]
             else points[i] = DrawablePoint(renderer.x, renderer.y, renderer.strokeColor)

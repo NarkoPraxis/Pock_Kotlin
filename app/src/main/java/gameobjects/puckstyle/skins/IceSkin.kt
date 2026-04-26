@@ -11,7 +11,7 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import androidx.core.graphics.withTranslation
 
-class IceSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
+class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedShaderSkin(theme, renderer) {
 
     private var lastColors = theme.main
 
@@ -29,8 +29,8 @@ class IceSkin(theme: ColorTheme) : CachedShaderSkin(theme) {
             Shader.TileMode.CLAMP)
     }
 
-    override fun drawBody(canvas: Canvas, renderer: PuckRenderer) {
-        val colors = resolvedColors(renderer)
+    override fun drawBody(canvas: Canvas) {
+        val colors = resolvedColors()
         if (colors != lastColors) {
             lastColors = colors
             invalidateShader()

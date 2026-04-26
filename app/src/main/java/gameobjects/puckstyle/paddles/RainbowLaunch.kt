@@ -7,6 +7,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.Palette
 import utility.Effects
 import kotlin.math.atan2
@@ -17,7 +18,7 @@ import kotlin.math.sin
  * A small cartoon cloud. Sweet spot makes it crackle; sweet-spot release fires a lightning bolt
  * into the puck and leaves a rainbow smear.
  */
-class RainbowLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val cloud = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val bolt = Paint().apply {

@@ -7,11 +7,12 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.sin
 
 /** Tethered fireball: a mini flame instead of a paddle bar. Sweet-spot leaves a persistent scorch. */
-class FireLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val flamePaint = Paint().apply {
         isAntiAlias = true

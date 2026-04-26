@@ -6,13 +6,14 @@ import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.EggSplat
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.Palette
 import utility.Effects
 import kotlin.math.atan2
 import kotlin.math.sin
 import androidx.core.graphics.withRotation
 
-class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val eggPaint = Paint().apply { isAntiAlias = true }
 
@@ -37,7 +38,7 @@ class ChickenLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
         val eggW = r * 0.5f
         val eggH = r * 0.7f
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
-        val colors = resolvedColors(renderer)
+        val colors = resolvedColors()
 
         val angle = Math.toDegrees(atan2(aimY.toDouble(), aimX.toDouble())).toFloat()
         canvas.withRotation(angle + 90f, cx, cy) {

@@ -7,13 +7,14 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
 /** Crackling energy orb with arcing tendrils back to the puck. */
-class PlasmaLaunch(theme: ColorTheme) : PaddleLaunchEffect(theme) {
+class PlasmaLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val core = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val arc = Paint().apply {

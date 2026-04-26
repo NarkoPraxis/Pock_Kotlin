@@ -15,13 +15,7 @@ import utility.PaintBucket
 
 class Puck(radius: Float, x: Float, y: Float, theme: ColorTheme) : Circle(radius, x, y, theme.main.primary, theme.main.secondary) {
 
-    val renderer: PuckRenderer = PuckRenderer().also { r ->
-        r.skin = ClassicSkin(theme)
-        r.tail = ClassicTail(theme)
-        r.effect = ClassicLaunch(theme)
-        r.fillColor = fillColor
-        r.strokeColor = strokeColor
-    }
+    val renderer: PuckRenderer = PuckRenderer()
 
     /** Preview mode — renders body as a dark silhouette and desaturates tail. Wraps renderer.preview. */
     var isPlaceholder: Boolean
@@ -65,7 +59,7 @@ class Puck(radius: Float, x: Float, y: Float, theme: ColorTheme) : Circle(radius
         val skin = renderer.skin
         if (skin != null) {
             if (renderer.preview) canvas.drawCircle(x, y, radius, PaintBucket.placeholderPaint)
-            else skin.drawBody(canvas, renderer)
+            else skin.drawBody(canvas)
         } else {
             canvas.drawCircle(x, y, radius, fillPaint)
             canvas.drawCircle(x, y, radius, strokePaint)

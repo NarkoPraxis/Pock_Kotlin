@@ -14,7 +14,7 @@ import utility.PaintBucket
 import kotlin.math.cos
 import kotlin.math.sin
 
-class ClassicSkin(override val theme: ColorTheme, protected val renderer: PuckRenderer) : PuckSkin {
+class ClassicSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     override fun drawBody(canvas: Canvas) {
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, renderer.fillPaint)
