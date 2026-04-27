@@ -45,26 +45,25 @@ class GhostLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
     override fun drawChargingPaddle(canvas: Canvas) {
         tailPositions.addLast(paddleX to paddleY)
         if (tailPositions.size > tailCapacity) tailPositions.removeFirst()
-        drawGhostOrb(canvas, paddleX, paddleY, phase, chargeFillRatio)
-        drawGhostTail(canvas, tailPositions,  orbRadius, responsivePrimary, tailGlowPaint, tailFillPaint)
+        drawGhostOrb(canvas, paddleX, paddleY)
+        drawGhostTail(canvas, tailPositions,  orbRadius, responsivePrimary, tailGlowPaint, tailFillPaint, chargeFillRatio, theme.shield.primary)
     }
 
     override fun drawStrikingPaddle(
         canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
-        drawGhostOrb(canvas, cx, cy, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
+        drawGhostOrb(canvas, cx, cy)
     }
 
     override fun drawIdlePaddle(canvas: Canvas) {
        if (tailPositions.size > 0) tailPositions.removeFirst()
     }
 
-    private fun drawGhostOrb(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
+    private fun drawGhostOrb(canvas: Canvas, cx: Float, cy: Float) {
         val pulse = 0.88f + 0.12f * sin(frame * 0.18f)
         val r = orbRadius * pulse
-        val glowColor = if (ph == ChargePhase.SweetSpot) theme.shield.primary else responsivePrimary
+        val glowColor = if (phase == ChargePhase.SweetSpot) theme.shield.primary else responsivePrimary
         val sw = Settings.strokeWidth * 0.7f
 
         for (ring in auraRings) {
@@ -86,19 +85,22 @@ class GhostLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
         glowPaint.color = Color.argb(160, 255, 255, 255)
         canvas.drawCircle(cx, cy, innerR, glowPaint)
 
-        if (fill > 0f) {
-            bodyPaint.color = theme.shield.primary
-            bodyPaint.alpha = (150 * fill).toInt().coerceIn(0, 255)
-            canvas.drawCircle(cx, cy, r * fill, bodyPaint)
+        if (chargeFillRatio > 0f) {
             bodyPaint.alpha = 255
+            bodyPaint.color = Palette.lerpColor(theme.shield.primary, theme.shield.secondary, sin(frame * 0.25f) * 0.5f + 0.5f)
+            canvas.drawCircle(cx, cy, r * chargeFillRatio, bodyPaint)
         }
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(GhostSpirit(rx, ry, renderer.radius * 0.75f, theme, renderer))
+        Effects.addPersistentEffect(GhostSpirit(rx, ry, renderer.radius * 0.5f, theme.shield.primary, renderer))
     }
 
     companion object {
+        fun spawnImpact(cx: Float, cy: Float, radius: Float, color: Int, renderer: PuckRenderer) {
+            Effects.addPersistentEffect(GhostSpirit(cx, cy, radius, color, renderer))
+        }
+
         /** Ghost tail: two-pass (glow rings then white fills) matching GhostTail's style.
          *  positions[0] = oldest (most faded), positions.last() = newest (closest to body). */
         fun drawGhostTail(
@@ -107,24 +109,31 @@ class GhostLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             baseR: Float,
             glowColor: Int,
             glowPaint: Paint,
-            fillPaint: Paint
+            fillPaint: Paint,
+            chargeFill: Float,
+            chargeColor: Int
         ) {
             if (positions.size < 2) return
             val sw = Settings.strokeWidth * 0.7f
+            val outlineR = baseR * 1.15f
             for (i in positions.indices) {
                 val ratio = (positions.size - 1 - i).toFloat() / positions.size
-                val r = baseR * (1f - ratio * 0.9f)
-                val alpha = (200f * (1f - ratio)).toInt()
+                val r = outlineR * (1f - ratio * 0.9f)
                 glowPaint.color = glowColor
                 glowPaint.strokeWidth = sw * 1.2f
-                canvas.drawCircle(positions[i].first, positions[i].second, r * 1.15f, glowPaint)
+                canvas.drawCircle(positions[i].first, positions[i].second, r, glowPaint)
             }
             for (i in positions.indices) {
                 val ratio = (positions.size - 1 - i).toFloat() / positions.size
                 val r = baseR * (1f - ratio * 0.9f)
-                val alpha = (200f * (1f - ratio)).toInt()
                 fillPaint.color = Color.WHITE
+                fillPaint.alpha = 255
                 canvas.drawCircle(positions[i].first, positions[i].second, r, fillPaint)
+                if (chargeFill > 0f) {
+                    fillPaint.alpha = 120
+                    fillPaint.color = chargeColor
+                    canvas.drawCircle(positions[i].first, positions[i].second, r * chargeFill, fillPaint)
+                }
             }
         }
     }
@@ -133,7 +142,7 @@ class GhostLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
         private var cx: Float,
         private var cy: Float,
         private val baseRadius: Float,
-        private val theme: ColorTheme,
+        private val color: Int,
         private val renderer: PuckRenderer
     ) : Effects.PersistentEffect {
 
@@ -176,23 +185,35 @@ class GhostLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             val dx = tx - cx
             val dy = ty - cy
             val dist = sqrt(dx * dx + dy * dy)
-            if (dist < baseRadius * 0.5f) { _isDone = true; return }
+            if (dist < baseRadius * 0.2f) {
+                if (tailPositions.isNotEmpty()) {
+                    cx = renderer.x
+                    cy = renderer.y
+                    tailPositions.removeFirst()
+                } else {
+                    _isDone = true;
+                    return
+                }
+            } else {
+                tailPositions.addLast(cx to cy)
+
+                if (tailPositions.size > tailCapacity) tailPositions.removeFirst()
+                // Proportional speed with floor/cap for smooth pursuit
+                val speed = (dist * 0.08f)
+                    .coerceAtLeast(Settings.screenRatio * 0.12f)
+                    .coerceAtMost(Settings.screenRatio * 0.5f)
+                cx += (dx / dist) * speed
+                cy += (dy / dist) * speed
+            }
             // Record current position in tail before moving so trail lags behind
-            tailPositions.addLast(cx to cy)
-            if (tailPositions.size > tailCapacity) tailPositions.removeFirst()
-            // Proportional speed with floor/cap for smooth pursuit
-            val speed = (dist * 0.08f)
-                .coerceAtLeast(Settings.screenRatio * 0.12f)
-                .coerceAtMost(Settings.screenRatio * 0.5f)
-            cx += (dx / dist) * speed
-            cy += (dy / dist) * speed
+
         }
 
         override fun draw(canvas: Canvas) {
             // Oscillate between 1.25x (peak) and 0.75x (trough) of the paddle radius
             val sizePulse = 1.0f + 0.25f * sin(frame * 0.052f)
             val r = baseRadius * sizePulse
-            val glowColor = theme.main.primary
+            val glowColor = color
             val sw = Settings.strokeWidth * 0.7f
 
             for (ring in auraRings) {
@@ -215,7 +236,7 @@ class GhostLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             canvas.drawCircle(cx, cy, innerR, glowPaint)
 
             if (returning && tailPositions.size > 1) {
-                drawGhostTail(canvas, tailPositions, r, glowColor, tailGlowPaint, tailFillPaint)
+                drawGhostTail(canvas, tailPositions, r, glowColor, tailGlowPaint, tailFillPaint, 0f, bodyPaint.color)
             }
         }
     }
