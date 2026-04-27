@@ -41,7 +41,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     private val starDescs: Array<StarDesc> get() {
         val r = renderer.radius
         return arrayOf(
-            StarDesc(r * 2f, r * 1.1f),   // index 0 – largest, closest to ball
+            StarDesc(r * 2f, r),   // index 0 – largest, closest to ball
             StarDesc(r * 3f, r * 0.9f),   // index 1 – medium
             StarDesc(r * 4f, r * 0.6f)    // index 2 – smallest, furthest
         )
@@ -72,7 +72,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
      */
     private fun buildStar(cx: Float, cy: Float, outer: Float, rotation: Float) {
         val inner = outer * 0.40f               // inner (valley) radius
-        val roundness = outer * 0.01f           // control-point offset for rounded tips
+        val roundness = outer * 0.04f           // control-point offset for rounded tips
         val count = 5
         val angleStep = (2f * PI / count).toFloat()
         val halfStep  = angleStep / 2f
@@ -163,40 +163,65 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
 
     fun drawIdlePaddle(canvas: Canvas) {
         starPaint.strokeWidth = renderer.radius * 0.2f
-        for (i in 0 until 3) {
-            val desc = starDescs[i]
-            val sx = renderer.x
-            val sy = renderer.y
+        var flip = 1
+        val largeDesc = starDescs[0]
+        val smallDesc = starDescs[1]
+        val sx = renderer.x
+        val sy = renderer.y
 
-            val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[i]
-            buildStar(sx, sy, desc.starRadius, rot)
-            starPaint.color = Palette.withAlpha(starColor(i, phase), 255)
-            starPaintFill.color = Palette.withAlpha(starColorFill(i, phase), 255)
-            canvas.drawPath(starPath, starPaintFill)
-            canvas.drawPath(starPath, starPaint)
-        }
+        val smallRot = (frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]) * -flip
+        buildStar(sx, sy, smallDesc.starRadius, smallRot)
+        starPaint.color = Palette.withAlpha(starColorFill(1, phase) , 255)
+        starPaintFill.color = Palette.withAlpha(starColor(1, phase), 255)
+        canvas.drawPath(starPath, starPaintFill)
+        canvas.drawPath(starPath, starPaint)
+
+        val largeRot = (frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]) * flip
+        buildStar(sx, sy, largeDesc.starRadius, largeRot)
+        starPaint.color = Palette.withAlpha(starColor(0, phase), 255)
+        starPaintFill.color = Palette.withAlpha(starColorFill(0, phase), 255)
+        canvas.drawPath(starPath, starPaintFill)
+        canvas.drawPath(starPath, starPaint)
+
+
+
     }
 
 
     override fun drawChargingPaddle(canvas: Canvas) {
         starPaint.strokeWidth = renderer.radius * 0.2f
 
-        for (i in 0 until 3) {
-            val desc = starDescs[i]
-            // Star 2 (smallest) mirrors the paddle exactly; stars 0 and 1 follow the same
-            // motion but are capped so they never exceed their natural orbit distance.
-            var dist = if (i == 2) (paddleDistance).coerceIn(0f, renderer.radius * 5f) else paddleDistance.coerceAtMost(desc.orbitRadius)
+        val desc = starDescs[0]
 
-            val sx = renderer.x - aimX * dist
-            val sy = renderer.y - aimY * dist
+        // Star 2 (smallest) mirrors the paddle exactly; stars 0 and 1 follow the same
+        // motion but are capped so they never exceed their natural orbit distance.
+        val dist = (paddleDistance).coerceIn(0f, renderer.radius * 5f)
 
-            val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[i]
-            buildStar(sx, sy, desc.starRadius, rot)
-            starPaint.color = Palette.withAlpha(starColor(i, phase), 255)
-            starPaintFill.color = Palette.withAlpha(starColorFill(i, phase), 255)
-            canvas.drawPath(starPath, starPaintFill)
-            canvas.drawPath(starPath, starPaint)
+        val sx = renderer.x - aimX * dist
+        val sy = renderer.y - aimY * dist
+
+        val rot = (frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0])
+
+        val dipStart = 0.2f
+        val dipEnd = 0.5f
+        val halfSize = renderer.radius * 0.5f
+        val halfRatio = halfSize / desc.starRadius
+        val starSizeRatio = when {
+            phase == ChargePhase.Inert       -> halfRatio
+            phase == ChargePhase.Draining -> halfRatio + ((chargeFillRatio - 0.5f) / 0.5f).coerceIn(0f, 1f) * (1f - halfRatio)
+            chargeFillRatio <= dipStart      -> 1f - (chargeFillRatio / dipStart) * (1f - halfRatio)
+            chargeFillRatio <= dipEnd        -> halfRatio
+            else                             -> halfRatio + ((chargeFillRatio - dipEnd) / (1f - dipEnd)) * (1f - halfRatio)
         }
+        buildStar(sx, sy, desc.starRadius * starSizeRatio, rot)
+        starPaint.color = Palette.withAlpha(starColor(2, phase), 255)
+        starPaintFill.color = Palette.withAlpha(starColorFill(2, phase), 255)
+        canvas.drawPath(starPath, starPaintFill)
+        canvas.drawPath(starPath, starPaint)
+
+        buildStar(sx, sy, desc.starRadius * chargeFillRatio * 0.8f, rot)
+        starPaintFill.color = Palette.withAlpha(theme.shield.primary, 255)
+        canvas.drawPath(starPath, starPaintFill)
     }
 
     // ── drawStrikingPaddle ────────────────────────────────────────────────────
@@ -208,12 +233,6 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     ) {
         starPaint.strokeWidth = renderer.radius * 0.2f
 
-        val ph = when {
-            sweet    -> ChargePhase.SweetSpot
-            fatigued -> ChargePhase.Inert
-            else     -> ChargePhase.Building
-        }
-
         // Detect when progress resets (new strike started)
         if (progress < lastStrikeProgress) {
             starReturnProgress[0] = 0f
@@ -222,35 +241,18 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         }
         lastStrikeProgress = progress
 
+        val desc = starDescs[0]
+        val ret = starReturnProgress[0]
 
-        val firedThresholds = floatArrayOf(1f, 0.66f, 0.33f)  // index matches star index
+        val sx = cx + (renderer.x - cx) * ret
+        val sy = cy + (renderer.y - cy) * ret
 
-        for (i in 0 until 3) {
-            val desc = starDescs[i]
-
-            // Advance this star's return progress if its fire threshold is met
-            if (progress >= firedThresholds[i]) {
-                starReturnProgress[i] = (starReturnProgress[i] + 0.06f).coerceAtMost(1f)
-            }
-            val ret = starReturnProgress[i]
-
-            val sx: Float
-            val sy: Float
-            if (ret < 1f) {
-                sx = cx + (renderer.x - cx) * ret
-                sy = cy + (renderer.y - cy) * ret
-            } else {
-                sx = renderer.x
-                sy = renderer.y
-            }
-
-            val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[i]
-            buildStar(sx, sy, desc.starRadius, rot)
-            starPaint.color = Palette.withAlpha(starColor(i, ph), 255)
-            starPaintFill.color = Palette.withAlpha(starColorFill(i, phase), 255)
-            canvas.drawPath(starPath, starPaintFill)
-            canvas.drawPath(starPath, starPaint)
-        }
+        val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
+        buildStar(sx, sy, desc.starRadius, rot)
+        starPaint.color = Palette.withAlpha(starColor(0, phase), 255)
+        starPaintFill.color = Palette.withAlpha(starColorFill(0, phase), 255)
+        canvas.drawPath(starPath, starPaintFill)
+        canvas.drawPath(starPath, starPaint)
     }
 
     // ── Residual ──────────────────────────────────────────────────────────────

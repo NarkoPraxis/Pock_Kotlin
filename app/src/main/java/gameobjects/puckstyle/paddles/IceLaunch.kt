@@ -66,6 +66,12 @@ class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(
         Effects.addPersistentEffect(IcePuddle(rx, ry, renderer.radius, theme))
     }
 
+    companion object {
+        fun spawnImpact(cx: Float, cy: Float, radius: Float, theme: ColorTheme) {
+            Effects.addPersistentEffect(IcePuddle(cx, cy, radius, theme))
+        }
+    }
+
     private class IcePuddle(
         private val cx: Float, private val cy: Float,
         private val radius: Float, private val theme: ColorTheme

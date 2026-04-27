@@ -10,6 +10,8 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import androidx.core.graphics.withTranslation
+import gameobjects.puckstyle.paddles.IceLaunch
+import physics.Point
 
 class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedShaderSkin(theme, renderer) {
 
@@ -19,6 +21,18 @@ class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedSh
         color = Color.WHITE
         isAntiAlias = true
         style = Paint.Style.STROKE
+    }
+
+    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+        //Todo: Ice Score Effect
+    }
+
+    override fun onCollisionWin(position: Point, speed: Float) {
+        IceLaunch.spawnImpact(position.x, position.y, renderer.radius, theme)
+    }
+
+    override fun onShieldedCollision(position: Point) {
+        IceLaunch.spawnImpact(position.x, position.y, renderer.radius, theme)
     }
 
     override fun createShader(radius: Float): Shader {
