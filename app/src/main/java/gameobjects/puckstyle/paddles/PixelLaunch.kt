@@ -23,10 +23,10 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
-        sweet: Boolean, overcharged: Boolean, progress: Float
+        sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (overcharged) ChargePhase.Inert else ChargePhase.Building
-        drawPixelBar(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (overcharged) 0f else 1f)
+        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
+        drawPixelBar(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
 
     private fun drawPixelBar(
