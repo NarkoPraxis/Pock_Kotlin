@@ -7,14 +7,12 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.random.Random
 import androidx.core.graphics.withSave
 
-/** Chunky 8-bit brick paddle. Charge fills as discrete pixel segments. */
+/** 8-bit paddle: solid secondary base line; charge overlays discrete centered cells in 20% steps. */
 class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
     private val block = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
     private val rect = RectF()
@@ -40,75 +38,90 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             rotate(angle + 90f, cx, cy)
 
             val totalLen = paddleHalfLength() * 2f
-            val thick = renderer.radius * 0.45f
-            val cells = 6
-            val cellW = totalLen / cells
-            val startX = cx - totalLen / 2f
+            val thick = renderer.radius * 0.2f
+            val half = totalLen / 2f
 
-            val base = responsiveSecondary
-            val fillColor = theme.shield.primary
-            val filledCells = (cells * fill).toInt()
-            val center = cells / 2
+            // Base line
+            block.color = responsiveSecondary
+            rect.set(cx - half, cy - thick, cx + half, cy + thick)
+            drawRect(rect, block)
 
-            for (i in 0 until cells) {
-                rect.set(
-                    startX + i * cellW + 1f,
-                    cy - thick,
-                    startX + (i + 1) * cellW - 1f,
-                    cy + thick
-                )
-                val dist = kotlin.math.abs(i - (center - 0.5f)).toInt()
-                val isFilled = ph == ChargePhase.SweetSpot || dist < filledCells
-                block.color = if (isFilled && ph != ChargePhase.Inert) fillColor else base
-                drawRect(rect, block)
+            // Charge overlay: cells growing outward from center in 20% steps
+            val steps = 5
+            val cellW = totalLen / steps
+            val filledCount = when {
+                ph == ChargePhase.Inert -> 0
+                ph == ChargePhase.SweetSpot -> steps
+                else -> (fill * steps).toInt()
+            }
+            if (filledCount > 0) {
+                block.color = theme.shield.primary
+                val startX = cx - filledCount * cellW / 2f
+                for (i in 0 until filledCount) {
+                    rect.set(
+                        startX + i * cellW,
+                        cy - thick,
+                        startX + (i + 1) * cellW,
+                        cy + thick
+                    )
+                    drawRect(rect, block)
+                }
             }
         }
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(PixelDebris(rx, ry, renderer.radius, theme.shield.primary, theme.main.secondary))
+        spawnSquare(rx, ry, renderer.radius, responsivePrimary, theme)
     }
 
     override fun paddleThickness(): Float = Settings.strokeWidth * 1.6f
 
-    private class PixelDebris(
-        cx: Float, cy: Float,
-        radius: Float,
-        private val accentColor: Int,
-        private val secondaryColor: Int
+    companion object {
+        fun spawnSquare(cx: Float, cy: Float, puckRadius: Float, color: Int, theme: ColorTheme) {
+            Effects.addPersistentEffect(PixelSquare(cx, cy, puckRadius, color, theme))
+        }
+    }
+
+    private class PixelSquare(
+        private val cx: Float,
+        private val cy: Float,
+        private val puckRadius: Float,
+        private val color: Int,
+        private val theme: ColorTheme
     ) : Effects.PersistentEffect {
-        private val paint = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
-        private var frame = 0
-        override val isDone = false
+        private val halfSize = puckRadius * 0.5f
+        private val fillPaint = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
+        private val ringPaint = Paint().apply { isAntiAlias = false; style = Paint.Style.STROKE }
 
-        private class Fragment(val x: Float, val y: Float, val size: Float, val color: Int, val winkFrame: Int)
-        private val frags: List<Fragment>
+        private var rippleSize = 0f
+        private var rippleAlpha = 0
+        private var rippling = false
+        private var _isDone = false
+        override val isDone: Boolean get() = _isDone
 
-        init {
-            val rand = Random(cx.toLong() xor cy.toLong())
-            frags = List(10) {
-                val angle = rand.nextFloat() * 2f * Math.PI.toFloat()
-                val dist = rand.nextFloat() * radius * 2.5f
-                val fx = cx + cos(angle) * dist
-                val fy = cy + sin(angle) * dist
-                val sz = radius * (0.1f + rand.nextFloat() * 0.14f)
-                val c = if (rand.nextBoolean()) accentColor else secondaryColor
-                val wink = 60 + rand.nextInt(180)
-                Fragment(fx, fy, sz, c, wink)
-            }
+        override fun onScoreSignal(): Boolean {
+            rippling = true
+            rippleSize = puckRadius * 1.8f
+            rippleAlpha = 200
+            return true
         }
 
-        override fun step() { frame++ }
+        override fun step() {
+            if (!rippling) return
+            rippleSize += puckRadius * 0.09f
+            rippleAlpha -= 12
+            if (rippleAlpha <= 0) _isDone = true
+        }
 
         override fun draw(canvas: Canvas) {
-            for (frag in frags) {
-                if (frame >= frag.winkFrame) continue
-                val alpha = if (frame > frag.winkFrame - 20) {
-                    (255 * (frag.winkFrame - frame) / 20).coerceIn(0, 255)
-                } else 200
-                paint.color = frag.color
-                paint.alpha = alpha
-                canvas.drawRect(frag.x - frag.size, frag.y - frag.size, frag.x + frag.size, frag.y + frag.size, paint)
+            if (!rippling) {
+                fillPaint.color = color
+                canvas.drawRect(cx - halfSize, cy - halfSize, cx + halfSize, cy + halfSize, fillPaint)
+            } else if (!_isDone) {
+                val half = rippleSize / 2f
+                ringPaint.color = Palette.withAlpha(theme.main.secondary, rippleAlpha.coerceIn(0, 255))
+                ringPaint.strokeWidth = puckRadius * 0.3f
+                canvas.drawRect(cx - half, cy - half, cx + half, cy + half, ringPaint)
             }
         }
     }
