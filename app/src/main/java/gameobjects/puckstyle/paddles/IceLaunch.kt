@@ -80,25 +80,61 @@ class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(
         private val stroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
         private val crystalPath = Path()
         private var frame = 0
-
-        private var puddleExists = true
         private val evaporateDuration = 120f
 
-        override val isDone = false
+        // Post-score animation state
+        private var postScoreFrame = -1
+        private var startCrystalT = 0f
+        private val meltDuration = 30       // frames for crystal to finish shrinking
+        private val postCrystalHold = 30    // frames after crystal vanishes before puddle fades (≈0.5s)
+        private val fadeDuration = 30       // frames for puddle to fade to 0
+        private val totalPostScore = meltDuration + postCrystalHold + fadeDuration
 
-        override fun step() { frame++ }
+        private var _isDone = false
+        override val isDone: Boolean get() = _isDone
+
+        override fun onScoreSignal(): Boolean {
+            postScoreFrame = 0
+            startCrystalT = (frame / evaporateDuration).coerceIn(0f, 1f)
+            return true
+        }
+
+        override fun step() {
+            if (postScoreFrame >= 0) {
+                postScoreFrame++
+                if (postScoreFrame >= totalPostScore) _isDone = true
+            } else {
+                frame++
+            }
+        }
 
         override fun draw(canvas: Canvas) {
-            val uncappedTime = (frame / evaporateDuration)
-            val cappedTime = uncappedTime.coerceIn(0f, 1f)
-            fill.color = theme.main.primary
-            fill.alpha = (120 - (60 * uncappedTime)).toInt().coerceIn(0, 255)
-
-            if (fill.alpha > 0) {
-                canvas.drawCircle(cx, cy, radius * uncappedTime * 1.5f, fill)
+            if (postScoreFrame >= 0) {
+                // Crystal: step from its current T to 1.0 over meltDuration
+                if (postScoreFrame < meltDuration) {
+                    val t = startCrystalT + (postScoreFrame.toFloat() / meltDuration) * (1f - startCrystalT)
+                    drawCrystal(canvas, t)
+                }
+                // Puddle: grow from 0 over (meltDuration + postCrystalHold) frames, then fade
+                val growFrames = (meltDuration + postCrystalHold).toFloat()
+                val growT = (postScoreFrame.toFloat() / growFrames).coerceIn(0f, 1f)
+                val fadeT = ((postScoreFrame - growFrames) / fadeDuration).coerceIn(0f, 1f)
+                val alpha = (120 * (1f - fadeT)).toInt().coerceIn(0, 255)
+                if (alpha > 0) {
+                    fill.color = theme.main.primary
+                    fill.alpha = alpha
+                    canvas.drawCircle(cx, cy, radius * growT * 1.5f, fill)
+                }
+            } else {
+                val uncappedTime = frame / evaporateDuration
+                val cappedTime = uncappedTime.coerceIn(0f, 1f)
+                fill.color = theme.main.primary
+                fill.alpha = (120 - (60 * uncappedTime)).toInt().coerceIn(0, 255)
+                if (fill.alpha > 0) {
+                    canvas.drawCircle(cx, cy, radius * uncappedTime * 1.5f, fill)
+                }
+                drawCrystal(canvas, cappedTime)
             }
-
-            drawCrystal(canvas, cappedTime)
         }
 
         private fun drawCrystal(canvas: Canvas, t: Float) {

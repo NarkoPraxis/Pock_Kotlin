@@ -28,11 +28,11 @@ class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedSh
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {
-        IceLaunch.spawnImpact(position.x, position.y, renderer.radius, theme)
+        IceLaunch.spawnImpact(position.x, position.y, renderer.radius * .4f, theme)
     }
 
     override fun onShieldedCollision(position: Point) {
-        IceLaunch.spawnImpact(position.x, position.y, renderer.radius, theme)
+        IceLaunch.spawnImpact(position.x, position.y, renderer.radius * .6f, theme)
     }
 
     override fun createShader(radius: Float): Shader {

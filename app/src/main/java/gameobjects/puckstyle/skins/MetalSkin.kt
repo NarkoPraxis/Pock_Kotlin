@@ -25,8 +25,8 @@ class MetalSkin(theme: ColorTheme, override val renderer: PuckRenderer) : Cached
 
     override fun createShader(radius: Float): Shader =
         LinearGradient(0f, -radius, 0f, radius,
-            intArrayOf(lightGrey, accentTint, grey, darkGrey),
-            floatArrayOf(0f, 0.3f, 0.65f, 1f),
+            intArrayOf(theme.inert.primary, responsivePrimary, grey, darkGrey),
+            floatArrayOf(0f, 0.25f, 0.75f, 1f),
             Shader.TileMode.CLAMP)
 
     override fun drawBody(canvas: Canvas) {
@@ -35,7 +35,7 @@ class MetalSkin(theme: ColorTheme, override val renderer: PuckRenderer) : Cached
             drawCircle(0f, 0f, renderer.radius, fill)
         }
         edgePaint.strokeWidth = renderer.strokePaint.strokeWidth * 0.9f
+        edgePaint.color = responsiveSecondary
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, edgePaint)
-        renderer.chargePaint.color = grey
     }
 }

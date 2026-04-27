@@ -1,9 +1,13 @@
 package gameobjects.puckstyle.paddles
 
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RadialGradient
 import android.graphics.RectF
+import android.graphics.Shader
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -14,6 +18,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 import androidx.core.graphics.withSave
+import gameobjects.puckstyle.paddles.MetalLaunch.MetalScorch.Spark
+import kotlin.math.PI
 
 /**
  * Dynamite stick. Fuse lights up when the sweet spot starts. On a sweet-spot release the strike
@@ -51,26 +57,24 @@ class MetalLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
             rotate(angle + 90f, cx, cy)
 
-            val halfLen = paddleHalfLength() * 0.9f
-            val halfThick = renderer.radius * 0.28f
+            val halfLen = paddleHalfLength() * 0.8f
+            val halfThick = renderer.radius * 0.25f
 
-            stick.color = if (ph == ChargePhase.Inert) theme.main.secondary else responsiveSecondary
+            stick.color = if (ph == ChargePhase.Inert) responsivePrimary else responsiveSecondary
             rect.set(cx - halfLen, cy - halfThick, cx + halfLen, cy + halfThick)
             drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
 
             if (fill > 0f) {
                 stick.color = theme.shield.primary
-                stick.alpha = (220 * fill).toInt().coerceIn(0, 255)
-                val bandHalf = halfLen * fill
+                val bandHalf = (halfLen * fill).coerceAtMost(halfLen - halfLen * .1f)
                 rect.set(cx - bandHalf, cy - halfThick * 0.6f, cx + bandHalf, cy + halfThick * 0.6f)
-                drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.5f, stick)
-                stick.alpha = 255
+                drawRoundRect(rect, halfThick, halfThick, stick)
             }
 
             val fuseBaseX = cx + halfLen
             val fuseBaseY = cy
             val fuseTipX = fuseBaseX + halfThick * 1.4f
-            val fuseTipY = cy - halfThick * 1.2f
+            val fuseTipY = cy - halfThick * -1.2f
             fuse.color = Color.rgb(70, 50, 30)
             fuse.strokeWidth = Settings.strokeWidth * 0.4f
             drawLine(fuseBaseX, fuseBaseY, fuseTipX, fuseTipY, fuse)
@@ -88,7 +92,7 @@ class MetalLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
     private fun drawExplosion(canvas: Canvas, progress: Float) {
         val cx = renderer.x
         val cy = renderer.y
-        val r = renderer.radius * (1f + progress * 2.2f)
+        val r = renderer.radius * (1f + progress * 5f)
         spark.color = Color.rgb(255, 180, 40)
         spark.alpha = (255 * (1f - progress)).toInt().coerceIn(0, 255)
         canvas.drawCircle(cx, cy, r, spark)
@@ -99,7 +103,100 @@ class MetalLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(MetalScorch(rx, ry, renderer.radius))
+        Effects.addPersistentEffect(BlastScorch(rx, ry, renderer.radius, theme.main.primary))
+    }
+
+    private class BlastScorch(
+        private val cx: Float, private val cy: Float,
+        private val radius: Float,
+        private val primary: Int,
+    ) : Effects.PersistentEffect {
+
+        private class Spark(val dx: Float, val dy: Float, var alpha: Float, val fadeRate: Float)
+        private val sparks: List<Spark>
+        private val spikePaths: List<Path>
+        private val fillPaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+            maskFilter = BlurMaskFilter(radius * 0.1f, BlurMaskFilter.Blur.NORMAL)
+        }
+        private val emberPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private var frame = 0
+        override val isDone = false
+
+        init {
+            val rng = Random(cx.toInt() xor cy.toInt())
+
+            // Build starburst: 12 thin triangular spikes radiating from center.
+            // Each spike is a narrow triangle: two base points very close to center
+            // at ±halfWidth from the spike axis, tip at the outer radius.
+            val spikeCount = 12
+            // Pre-computed irregular length multipliers so the silhouette is organic.
+            // Lengths alternate between longer and shorter with added per-spike noise.
+            val lengthPattern = floatArrayOf(
+                1.50f, 0.72f, 1.60f, 0.60f, 1.2f, 0.85f, 1.70f, 0.55f,
+                1.90f, 0.68f, 1.2f, 0.78f
+            )
+            spikePaths = List(spikeCount) { i ->
+                val baseAngle = (i.toFloat() / spikeCount) * 2f * PI.toFloat() +  (rng.nextFloat() - 0.5f) * (2f * PI.toFloat() / spikeCount) * 1f
+                val len = radius * lengthPattern[i] * (0.90f + rng.nextFloat() * 0.40f)
+                // Half-angle of the spike's triangular cross-section — very narrow
+                val halfWidth = radius * (0.1f + rng.nextFloat())
+                val perpAngle = baseAngle + (PI / 2f).toFloat()
+
+                val baseX1 = cx + cos(perpAngle) * halfWidth
+                val baseY1 = cy + sin(perpAngle) * halfWidth
+                val baseX2 = cx - cos(perpAngle) * halfWidth
+                val baseY2 = cy - sin(perpAngle) * halfWidth
+                val tipX = cx + cos(baseAngle) * len
+                val tipY = cy + sin(baseAngle) * len
+
+                Path().apply {
+                    moveTo(baseX1, baseY1)
+                    lineTo(tipX, tipY)
+                    lineTo(baseX2, baseY2)
+                    close()
+                }
+            }
+
+            val rand = Random(cx.toLong())
+            sparks = List((5..15).random()) {
+                val angle = rand.nextFloat() * 2f * Math.PI.toFloat()
+                val dist = radius * (2f + rand.nextFloat() * 2f)
+                Spark(
+                    cos(angle) * dist, sin(angle) * dist,
+                    200f, 0.25f + rand.nextFloat() * 0.6f
+                )
+            }
+        }
+
+        override fun step() { frame++ }
+
+        override fun draw(canvas: Canvas) {
+            for (s in sparks) {
+                if (s.alpha <= 0f) continue
+                fillPaint.shader = null
+                fillPaint.color = primary
+                fillPaint.alpha = s.alpha.toInt().coerceIn(0, 255)
+                canvas.drawCircle(cx + s.dx, cy + s.dy, radius * 0.09f, fillPaint)
+            }
+
+            // Starburst char mark: radial gradient from opaque black center to transparent tip.
+            // The gradient + blur together ensure no hard edges anywhere on the spikes.
+            fillPaint.shader = RadialGradient(
+                cx, cy,
+                radius * 2f,
+                intArrayOf(Color.BLACK, Color.DKGRAY, primary, Color.TRANSPARENT),
+                floatArrayOf(0f, 0.4f, .7f, .8f),
+                Shader.TileMode.MIRROR
+            )
+            fillPaint.alpha = 50
+            for (path in spikePaths) {
+                canvas.drawPath(path, fillPaint)
+            }
+
+
+        }
     }
 
     private class MetalScorch(
