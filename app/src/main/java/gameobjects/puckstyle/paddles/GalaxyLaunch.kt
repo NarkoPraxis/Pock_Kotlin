@@ -29,6 +29,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     private val starPath  = Path()
 
     override var minDist: Float = 0f
+        get() = 0f
 
     override val zIndex: Int
         get() = -1
@@ -132,7 +133,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
 
     private fun starColorFill(starIndex: Int, ph: ChargePhase): Int {
         if (renderer.shielded && phase == ChargePhase.Idle) return theme.shield.primary
-        if (renderer.isInert) return theme.inert.secondary
+        if (renderer.isInert) return theme.inert.primary
 
         if (ph == ChargePhase.SweetSpot) {
             val t = sin(frame * 0.25f) * 0.5f + 0.5f
