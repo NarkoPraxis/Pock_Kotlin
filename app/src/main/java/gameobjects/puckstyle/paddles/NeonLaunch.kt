@@ -64,6 +64,8 @@ class NeonLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         Effects.addPersistentEffect(NeonScar(rx, ry, -aY, aX, renderer.radius, theme.shield.primary))
     }
 
+
+
     private class NeonScar(
         private val cx: Float, private val cy: Float,
         private val perpX: Float, private val perpY: Float,
@@ -80,15 +82,15 @@ class NeonLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
 
         override fun draw(canvas: Canvas) {
             val t = (frame / 300f).coerceIn(0f, 1f)
-            val alpha = (150 * (1f - t * 0.8f)).toInt().coerceIn(0, 255)
+            val alpha = (150 * (1f - t * 0.8f)).toInt().coerceIn(100, 255)
             // Outer glow
             paint.color = color
-            paint.alpha = (alpha * 0.4f).toInt()
-            paint.strokeWidth = radius * 0.35f
+            paint.alpha = (alpha * 0.5f).toInt()
+            paint.strokeWidth = radius * 0.7f
             canvas.drawLine(cx - perpX * len, cy - perpY * len, cx + perpX * len, cy + perpY * len, paint)
             // Bright inner core
             paint.alpha = alpha
-            paint.strokeWidth = radius * 0.1f
+            paint.strokeWidth = radius * 0.35f
             canvas.drawLine(cx - perpX * len, cy - perpY * len, cx + perpX * len, cy + perpY * len, paint)
             paint.alpha = 255
         }
