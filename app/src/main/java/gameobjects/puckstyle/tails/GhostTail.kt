@@ -8,6 +8,7 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
+import gameobjects.puckstyle.skins.GhostSkin.Companion.radiusOffset
 
 class GhostTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
@@ -24,12 +25,10 @@ class GhostTail(override val theme: ColorTheme, override val renderer: PuckRende
         val ghostLen = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != ghostLen) points = MutableList(ghostLen) { Ghost(renderer.x, renderer.y) }
         val points = points!!
-        val colors = resolvedColors()
-        val glowColor = when {
-            renderer.isInert -> colors.primary
-            renderer.currentCharge >= Settings.chargeStart || renderer.shielded -> theme.shield.primary
-            else -> colors.primary
-        }
+
+        val glowColor = responsivePrimary
+        val radiusOffset = radiusOffset(renderer)
+
 
         for (i in points.size - 1 downTo 0) {
             if (i - 1 >= 0) points[i] = points[i - 1].copy()
@@ -40,7 +39,7 @@ class GhostTail(override val theme: ColorTheme, override val renderer: PuckRende
             // Outer aura ring drawn first so the white fill sits on top cleanly
             glowPaint.color = Palette.withAlpha(glowColor, (alpha * 0.45f).toInt())
             glowPaint.strokeWidth = renderer.strokePaint.strokeWidth * 1.2f
-            canvas.drawCircle(points[i].x, points[i].y, size * 1.15f, glowPaint)
+            canvas.drawCircle(points[i].x, points[i].y, size * 1.15f * radiusOffset, glowPaint)
         }
 
         for (i in points.size - 1 downTo 0) {
@@ -51,7 +50,7 @@ class GhostTail(override val theme: ColorTheme, override val renderer: PuckRende
             val alpha = (255f * (1 - ratio)).toInt()
             // White fill disc
             whitePaint.color = Color.argb((alpha * 0.75f).toInt(), 255, 255, 255)
-            canvas.drawCircle(points[i].x, points[i].y, size, whitePaint)
+            canvas.drawCircle(points[i].x, points[i].y, size * radiusOffset, whitePaint)
         }
     }
 

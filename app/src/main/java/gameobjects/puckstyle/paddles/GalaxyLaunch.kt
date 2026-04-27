@@ -144,17 +144,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         return if (chargeFillRatio > COLOR_THRESHOLDS[starIndex]) theme.shield.primary else theme.main.primary
     }
 
-    // ── drawChargingPaddle ────────────────────────────────────────────────────
-
-    override fun draw(canvas: Canvas) {
-        super.draw(canvas)
-        // Base class skips drawChargingPaddle in Idle. Since phase is only Idle when not
-        // striking (the base defers the Idle transition until after the strike completes),
-        // it is safe to draw here without double-drawing during a strike.
-        if (phase == ChargePhase.Idle) drawIdlePaddle(canvas)
-    }
-
-    fun drawIdlePaddle(canvas: Canvas) {
+    override fun drawIdlePaddle(canvas: Canvas) {
         ensureStarDescs()
         starPaint.strokeWidth = renderer.radius * 0.2f
         val descs = starDescs

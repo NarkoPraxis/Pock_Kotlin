@@ -164,6 +164,8 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
             }
         } else if (_phase != ChargePhase.Idle) {
             drawChargingPaddle(canvas)
+        } else if (phase == ChargePhase.Idle) {
+            drawIdlePaddle(canvas)
         }
     }
 
@@ -287,6 +289,10 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
             else     -> ChargePhase.Building
         }
         drawPaddleBar(canvas, cx, cy, aX, aY, fill, fakePhase, true)
+    }
+
+    protected open fun drawIdlePaddle(canvas: Canvas) {
+        // noop
     }
 
     /**

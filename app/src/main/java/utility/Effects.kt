@@ -12,6 +12,8 @@ object Effects {
         fun draw(canvas: Canvas)
         fun step()
         val isDone: Boolean
+        /** Return true to handle own removal; false to be cleared immediately. Default: false. */
+        fun onScoreSignal(): Boolean = false
     }
 
     val collisions = MutableList(0) { Explosion() }
@@ -23,6 +25,15 @@ object Effects {
 
     fun clearPersistentEffects() {
         persistentEffects.clear()
+    }
+
+    /** Signals a goal was scored. Effects that return true from onScoreSignal() animate out on their own;
+     *  all others are removed immediately. */
+    fun signalScored() {
+        val iter = persistentEffects.iterator()
+        while (iter.hasNext()) {
+            if (!iter.next().onScoreSignal()) iter.remove()
+        }
     }
 
     fun clearCollisionEffects() {

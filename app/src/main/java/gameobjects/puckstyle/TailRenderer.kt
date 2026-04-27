@@ -15,7 +15,11 @@ interface TailRenderer {
 
     /** Returns the ColorGroup this tail should use for the current frame based on renderer state. */
     fun resolvedColors(): ColorGroup = renderer.resolveColorGroup(theme)
+    val responsivePrimary: Int
+        get() = resolvedColors().primary
 
+    val responsiveSecondary: Int
+        get() = resolvedColors().secondary
     fun render(canvas: Canvas)
     fun clear()
 

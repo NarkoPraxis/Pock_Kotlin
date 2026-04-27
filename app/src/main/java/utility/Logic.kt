@@ -694,7 +694,7 @@ object Logic {
             Settings.canScoreWallProgress = 0f
             Sounds.playScoreSound(loser.py)
             Effects.clearCollisionEffects()
-            Effects.clearPersistentEffects()
+            Effects.signalScored()
             // Todo: refactor this so it's not "other" the effect spawned should match the puck entering the goal, not the other way around
             loser.puck.renderer.skin?.onScore(
                 loser.puckFillColor,

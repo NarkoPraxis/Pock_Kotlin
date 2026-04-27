@@ -33,14 +33,19 @@ class GhostSkin(override val theme: ColorTheme, override val renderer: PuckRende
         isAntiAlias = true; isDither = true; style = Paint.Style.STROKE
     }
 
-    override fun drawBody(canvas: Canvas) {
-        val stateColors = resolvedColors()
-        val glowColor = when {
-            renderer.isInert -> stateColors.primary
-            renderer.currentCharge >= Settings.chargeStart || renderer.shielded -> theme.shield.primary
-            else -> stateColors.primary
+    companion object {
+        fun radiusOffset(renderer: PuckRenderer): Float {
+            if (renderer.currentCharge > 0) return 0.8f else return 1f
         }
+
+    }
+
+    override fun drawBody(canvas: Canvas) {
+        val glowColor = responsivePrimary
+
         val sw = renderer.strokePaint.strokeWidth
+
+        val radiusOffset = radiusOffset(renderer)
 
         // Animated aura rings drawn behind the orb — each has its own oscillation phase
         for (ring in auraRings) {
@@ -48,17 +53,17 @@ class GhostSkin(override val theme: ColorTheme, override val renderer: PuckRende
                     renderer.radius * ring.amp * sin(renderer.frame * 0.04f + ring.phase)
             glow.color = Palette.withAlpha(glowColor, ring.alpha)
             glow.strokeWidth = sw * ring.strokeMult
-            canvas.drawCircle(renderer.x, renderer.y, r, glow)
+            canvas.drawCircle(renderer.x, renderer.y, r , glow)
         }
 
         // White orb at exact radius — not oversized
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, fill)
+        canvas.drawCircle(renderer.x, renderer.y, renderer.radius * radiusOffset, fill)
 
         // Inner ring pulses between 50% and 100% of radius, slowly
         val innerR = renderer.radius * 0.75f +
                 renderer.radius * 0.1f * sin(renderer.frame * 0.025f + 5.0f)
         stroke.strokeWidth = sw * 0.7f
-        canvas.drawCircle(renderer.x, renderer.y, innerR, stroke)
+        canvas.drawCircle(renderer.x, renderer.y, innerR * radiusOffset, stroke)
 
         renderer.chargePaint.color = glowColor
     }
