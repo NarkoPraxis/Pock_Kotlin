@@ -28,8 +28,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     private val starPaintFill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val starPath  = Path()
 
-    override var minDist: Float = 0.0f
-        get() = 0f
+    override var minDist: Float = 0f
 
     override val zIndex: Int
         get() = -1
@@ -38,13 +37,17 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     //   starRadius:  the "radius" of the five-pointed star itself
     private data class StarDesc(val orbitRadius: Float, val starRadius: Float)
 
-    private val starDescs: Array<StarDesc> get() {
+    // Cached by radius — rebuilt only when renderer.radius changes (rare)
+    private var cachedStarDescsRadius = -1f
+    private val starDescs = arrayOf(StarDesc(0f, 0f), StarDesc(0f, 0f), StarDesc(0f, 0f))
+
+    private fun ensureStarDescs() {
+        if (renderer.radius == cachedStarDescsRadius) return
+        cachedStarDescsRadius = renderer.radius
         val r = renderer.radius
-        return arrayOf(
-            StarDesc(r * 2f, r),   // index 0 – largest, closest to ball
-            StarDesc(r * 3f, r * 0.9f),   // index 1 – medium
-            StarDesc(r * 4f, r * 0.6f)    // index 2 – smallest, furthest
-        )
+        starDescs[0] = StarDesc(r * 2f, r)
+        starDescs[1] = StarDesc(r * 3f, r * 0.9f)
+        starDescs[2] = StarDesc(r * 4f, r * 0.6f)
     }
 
     // ── Orbit ─────────────────────────────────────────────────────────────────
@@ -61,7 +64,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     //   star 0 fires when star 1 has returned to star 0's pull-back position (progress >= 0.66)
     // The puck launches only after all three are back (progress = 1.0 is handled by base class).
     // We track per-star "return progress" in [0,1].
-    private val starReturnProgress = FloatArray(3) { 1f }  // 1 = fully home
+    private val starReturnProgress = FloatArray(1) { 1f }  // 1 = fully home
     private var lastStrikeProgress = 0f
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -124,13 +127,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
             return Palette.lerpColor(theme.shield.primary, theme.shield.secondary, t)
         }
         if (ph == ChargePhase.Inert) return theme.inert.secondary
-        val threshold = when (starIndex) {
-            0    -> 0.33f
-            1    -> 0.66f
-            else -> 1f
-        }
-
-        return if (chargeFillRatio > threshold) theme.shield.secondary else theme.main.secondary
+        return if (chargeFillRatio > COLOR_THRESHOLDS[starIndex]) theme.shield.secondary else theme.main.secondary
     }
 
     private fun starColorFill(starIndex: Int, ph: ChargePhase): Int {
@@ -142,13 +139,8 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
             return Palette.lerpColor(theme.shield.secondary, theme.shield.primary, t)
         }
         if (ph == ChargePhase.Inert) return theme.inert.primary
-        val threshold = when (starIndex) {
-            0    -> 0.33f
-            1    -> 0.66f
-            else -> 1f
-        }
 
-        return if (chargeFillRatio > threshold) theme.shield.primary else theme.main.primary
+        return if (chargeFillRatio > COLOR_THRESHOLDS[starIndex]) theme.shield.primary else theme.main.primary
     }
 
     // ── drawChargingPaddle ────────────────────────────────────────────────────
@@ -162,33 +154,29 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     }
 
     fun drawIdlePaddle(canvas: Canvas) {
+        ensureStarDescs()
         starPaint.strokeWidth = renderer.radius * 0.2f
-        var flip = 1
-        val largeDesc = starDescs[0]
-        val smallDesc = starDescs[1]
+        val descs = starDescs
         val sx = renderer.x
         val sy = renderer.y
+        val baseRot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
 
-        val smallRot = (frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]) * -flip
-        buildStar(sx, sy, smallDesc.starRadius, smallRot)
-        starPaint.color = Palette.withAlpha(starColorFill(1, phase) , 255)
+        buildStar(sx, sy, descs[1].starRadius, -baseRot)
+        starPaint.color = Palette.withAlpha(starColorFill(1, phase), 255)
         starPaintFill.color = Palette.withAlpha(starColor(1, phase), 255)
         canvas.drawPath(starPath, starPaintFill)
         canvas.drawPath(starPath, starPaint)
 
-        val largeRot = (frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]) * flip
-        buildStar(sx, sy, largeDesc.starRadius, largeRot)
+        buildStar(sx, sy, descs[0].starRadius, baseRot)
         starPaint.color = Palette.withAlpha(starColor(0, phase), 255)
         starPaintFill.color = Palette.withAlpha(starColorFill(0, phase), 255)
         canvas.drawPath(starPath, starPaintFill)
         canvas.drawPath(starPath, starPaint)
-
-
-
     }
 
 
     override fun drawChargingPaddle(canvas: Canvas) {
+        ensureStarDescs()
         starPaint.strokeWidth = renderer.radius * 0.2f
 
         val desc = starDescs[0]
@@ -233,11 +221,10 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     ) {
         starPaint.strokeWidth = renderer.radius * 0.2f
 
+        ensureStarDescs()
         // Detect when progress resets (new strike started)
         if (progress < lastStrikeProgress) {
             starReturnProgress[0] = 0f
-            starReturnProgress[1] = 0f
-            starReturnProgress[2] = 0f
         }
         lastStrikeProgress = progress
 
@@ -262,6 +249,11 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     }
 
     companion object {
+        // Thresholds at which each star (by index) lights up as charge fills
+        private val COLOR_THRESHOLDS = floatArrayOf(0.33f, 0.66f, 1f)
+        // Pre-computed 8-point star angles — saves 8 trig conversions per drawStar call
+        private val STAR_ANGLES = FloatArray(8) { i -> (i * 45f - 90f) * Math.PI.toFloat() / 180f }
+
         fun spawnStartImpact(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int) {
             Effects.addPersistentEffect(NebulaMark(cx, cy, radius, primary, secondary))
         }
@@ -313,10 +305,9 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
             val innerR = outerR * 0.4f
             burstPath.reset()
             for (i in 0 until 8) {
-                val angle = (i * 45f - 90f) * PI.toFloat() / 180f
                 val r = if (i % 2 == 0) outerR else innerR
-                val px = bcx + cos(angle) * r
-                val py = bcy + sin(angle) * r
+                val px = bcx + cos(STAR_ANGLES[i]) * r
+                val py = bcy + sin(STAR_ANGLES[i]) * r
                 if (i == 0) burstPath.moveTo(px, py) else burstPath.lineTo(px, py)
             }
             burstPath.close()
