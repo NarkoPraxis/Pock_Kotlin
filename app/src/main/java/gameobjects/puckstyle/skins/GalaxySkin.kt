@@ -26,11 +26,11 @@ class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRend
     private var lastColors = theme.main
 
     override fun onCollisionWin(position: Point, speed: Float) {
-        GalaxyLaunch.spawnStartImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary)
+        GalaxyLaunch.spawnStartImpact(renderer.x, renderer.y, renderer.radius, responsivePrimary, responsiveSecondary)
     }
 
     override fun onShieldedCollision(position: Point) {
-        GalaxyLaunch.spawnStartImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary)
+        GalaxyLaunch.spawnStartImpact(renderer.x, renderer.y, renderer.radius, responsivePrimary, responsiveSecondary)
     }
 
     // FloatArray: [angularPos, distSeed, twinklePhase, angularDrift, twinkleSpeed, distFactor]

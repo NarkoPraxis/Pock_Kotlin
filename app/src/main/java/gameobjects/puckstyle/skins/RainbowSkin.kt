@@ -7,6 +7,8 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.Palette.hsv
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
+import gameobjects.puckstyle.paddles.RainbowLaunch
+import physics.Point
 
 class RainbowSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
@@ -31,5 +33,13 @@ class RainbowSkin(override val theme: ColorTheme, override val renderer: PuckRen
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, fill)
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, stroke)
         renderer.chargePaint.color = fill.color
+    }
+
+    override fun onCollisionWin(position: Point, speed: Float) {
+        RainbowLaunch.spawnRainbow(renderer.x, renderer.y, renderer.radius)
+    }
+
+    override fun onShieldedCollision(position: Point) {
+        RainbowLaunch.spawnRainbow(renderer.x, renderer.y, renderer.radius)
     }
 }

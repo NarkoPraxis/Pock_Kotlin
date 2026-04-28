@@ -33,8 +33,23 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     private var tailInitialized = false
     private var lastChargingFrame = -999
 
+    // ── stale tail queue ──────────────────────────────────────────────────────
+    private inner class StaleTail(x: FloatArray, y: FloatArray, val captureFrame: Int) {
+        val histX = x.copyOf()
+        val histY = y.copyOf()
+        private var framesAlive = 0
+        val globalAlpha: Float get() = (1f - framesAlive.toFloat() / STALE_FADE_FRAMES).coerceAtLeast(0f)
+        val isDone: Boolean get() = framesAlive >= STALE_FADE_FRAMES
+        fun tick() { framesAlive++ }
+    }
+    private val staleTails = ArrayDeque<StaleTail>()
+
     companion object {
         private const val TAIL_COUNT = 40
+        private const val STALE_FADE_FRAMES = 25
+        fun spawnRainbow(rx: Float, ry: Float, radius: Float) {
+            Effects.addPersistentEffect(SpectralGleam(rx, ry, radius))
+        }
     }
 
     override val zIndex: Int
@@ -56,6 +71,15 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         tailHistoryY[0] = y
     }
 
+    /** Snapshot the working tail into the stale queue and reset working arrays. */
+    private fun captureStaleTail() {
+        if (!tailInitialized) return
+        staleTails.addLast(StaleTail(tailHistoryX, tailHistoryY, frame))
+        tailHistoryX = FloatArray(TAIL_COUNT)
+        tailHistoryY = FloatArray(TAIL_COUNT)
+        tailInitialized = false
+    }
+
     /** Draw line segments between consecutive history positions with hue cycling and alpha fade. */
     private fun drawTailLines(canvas: Canvas) {
         if (!tailInitialized) return
@@ -66,14 +90,36 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
             val cycleHue = frame * 4f + hueOffset - i * 15f
             val color = when {
                 renderer.isInert -> Palette.hsv(cycleHue, 0.10f, 0.90f)
-                renderer.shielded -> Palette.hsvThemed(shieldHue + kotlin.math.sin(frame * 0.04f) * 30f - i * 15f)
+                renderer.shielded -> Palette.hsvThemed(shieldHue + sin(frame * 0.04f) * 30f - i * 15f)
                 else -> Palette.hsvThemed(cycleHue)
             }
             val alpha = (255f * (1f - ratio)).toInt().coerceIn(0, 255)
-            tailLinePaint.color = Palette.withAlpha(color, alpha)
+            tailLinePaint.color = Palette.withAlpha(color, 255)
             canvas.drawLine(
                 tailHistoryX[i], tailHistoryY[i],
                 tailHistoryX[i + 1], tailHistoryY[i + 1],
+                tailLinePaint
+            )
+        }
+    }
+
+    /**
+     * Draw a captured stale tail with frozen hue (from captureFrame) and a global alpha
+     * multiplier so it fades independently of any active tail.
+     */
+    private fun drawStaleTailLines(canvas: Canvas, tail: StaleTail) {
+        tailLinePaint.strokeWidth = renderer.radius * 0.44f
+        val last = TAIL_COUNT - 1
+        for (i in 0 until last) {
+            val ratio = i.toFloat() / last.toFloat()
+            val frozenHue = tail.captureFrame * 4f + hueOffset - i * 15f
+            val color = Palette.hsvThemed(frozenHue)
+            val segAlpha = (255f * (1f - ratio)).toInt().coerceIn(0, 255)
+            val finalAlpha = (segAlpha * tail.globalAlpha).toInt().coerceIn(0, 255)
+            tailLinePaint.color = Palette.withAlpha(color, finalAlpha)
+            canvas.drawLine(
+                tail.histX[i], tail.histY[i],
+                tail.histX[i + 1], tail.histY[i + 1],
                 tailLinePaint
             )
         }
@@ -94,14 +140,13 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
 
     // ── draw helpers ─────────────────────────────────────────────────────────
 
-    /**
-     * Draw the pill bar at (cx, cy), oriented along the aim vector (aX, aY),
-     * then overlay the charge fill growing from center.
-     *
-     * All dimensions mirror drawPaddleBar from the base class:
-     *   half-length = paddleHalfLength()
-     *   half-thickness = paddleThickness() / 2
-     */
+    protected val fillPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+
     private fun drawBar(
         canvas: Canvas,
         cx: Float, cy: Float,
@@ -110,52 +155,43 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         fill: Float,
         f: Int
     ) {
-        val half = paddleHalfLength()
-        val perpX = -aY
-        val perpY = aX
-        val thickness = paddleThickness()
+        val radius = renderer.radius * .5f
 
-        val isInert = renderer.isInert || ph == ChargePhase.Inert
-        val stateColors = when {
-            isInert -> theme.inert
-            renderer.shielded -> theme.shield
-            else -> theme.main
+        if (renderer.isInert) {
+            fillPaint.color = responsivePrimary
+            canvas.drawCircle(cx, cy, radius, fillPaint)
+        } else {
+            fillPaint.color =  barColor(ph, f)
+            canvas.drawCircle(cx, cy, radius, fillPaint)
         }
-        val hitStunBlend = renderer.hitStunned && !isInert
-        val hitStunR = if (hitStunBlend) renderer.hitStunRatio else 0f
-        val baseColor = when {
-            hitStunBlend -> blendColor(stateColors.secondary, theme.inert.secondary, hitStunR)
-            else -> barColor(ph, f)
+
+        if (fill > 0f && !renderer.isInert) {
+            paddlePaint.color = theme.shield.primary
+            canvas.drawCircle(cx, cy, radius * chargeFillRatio, paddlePaint)
         }
-        val chargeColor = if (hitStunBlend)
-            blendColor(theme.shield.primary, theme.inert.primary, hitStunR)
-        else
-            theme.shield.primary
-        val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
 
-        paddlePaint.strokeWidth = thickness
-
-        paddlePaint.color = baseColor
+        paddlePaint.strokeWidth = Settings.strokeWidth
         paddlePaint.alpha = 255
-        canvas.drawCircle(cx, cy, renderer.radius * .25f, paddlePaint)
-
-        if (fill > 0f && !isInert) {
-            paddlePaint.color = chargeColor
-            paddlePaint.alpha = (255 * pulse).toInt().coerceIn(0, 255)
-            canvas.drawCircle(cx, cy, renderer.radius * .20f * chargeFillRatio, paddlePaint)
-        }
+        paddlePaint.color = if (phase == ChargePhase.Inert) theme.inert.secondary else responsiveSecondary
+        canvas.drawCircle(cx, cy, radius, paddlePaint)
     }
 
     // ── overrides ─────────────────────────────────────────────────────────────
 
-    override fun drawChargingPaddle(canvas: Canvas) {
-        if (frame - lastChargingFrame > 1) {
-            tailHistoryX = FloatArray(TAIL_COUNT)
-            tailHistoryY = FloatArray(TAIL_COUNT)
-            tailInitialized = false
+    override fun draw(canvas: Canvas) {
+        // Tick and draw all stale tails before the active paddle so they render beneath it.
+        val iter = staleTails.iterator()
+        while (iter.hasNext()) {
+            val stale = iter.next()
+            stale.tick()
+            if (stale.isDone) { iter.remove(); continue }
+            drawStaleTailLines(canvas, stale)
         }
+        super.draw(canvas)
+    }
+
+    override fun drawChargingPaddle(canvas: Canvas) {
         lastChargingFrame = frame
-        // Derive aim direction from the vector pointing from the paddle toward the puck.
         val dx = renderer.x - paddleX
         val dy = renderer.y - paddleY
         val dist = hypot(dx, dy).coerceAtLeast(0.001f)
@@ -169,6 +205,7 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
+        lastChargingFrame = frame
         val ph = when {
             sweet    -> ChargePhase.SweetSpot
             fatigued -> ChargePhase.Inert
@@ -184,18 +221,23 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         drawBar(canvas, cx, cy, aX, aY, ph, fill, frame)
     }
 
-    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(SpectralGleam(rx, ry, aX, aY, renderer.radius))
-    }
-
     override fun drawIdlePaddle(canvas: Canvas) {
         super.drawIdlePaddle(canvas)
-        drawTailLines(canvas)
+        // Detect the first idle frame after charging/striking and snapshot the tail.
+        // Draw the capture immediately this frame (at full alpha) to avoid a one-frame gap.
+        if (tailInitialized && frame - lastChargingFrame == 1) {
+            captureStaleTail()
+            staleTails.lastOrNull()?.let { drawStaleTailLines(canvas, it) }
+        }
     }
+
+    override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
+        Effects.addPersistentEffect(SpectralGleam(rx, ry, renderer.radius))
+    }
+
 
     private class SpectralGleam(
         private val cx: Float, private val cy: Float,
-        private val aX: Float, private val aY: Float,
         private val radius: Float
     ) : Effects.PersistentEffect {
         private val paint = Paint().apply {
