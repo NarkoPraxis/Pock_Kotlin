@@ -26,6 +26,14 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
 
     override val zIndex: Int get() = 1
 
+    /**
+     * When true, this paddle draws even when [PuckRenderer.effectEnabled] is false
+     * (e.g. during Scored / BallSelection states and in preview carousels).
+     * Set to true on paddles whose visual is integral to the ball's overall design
+     * and should always be visible.
+     */
+    open val alwaysVisible: Boolean = false
+
     protected var frame = 0
         private set
 

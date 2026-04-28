@@ -127,11 +127,9 @@ class PuckRenderer {
                 t.renderWithPreview(canvas)
             })
         }
-        if (effectEnabled) {
-            effect?.let { e ->
-                layers.add(Layer(e.zIndex) {
-                    e.draw(canvas)
-                })
+        effect?.let { e ->
+            if (effectEnabled || (e is PaddleLaunchEffect && e.alwaysVisible)) {
+                layers.add(Layer(e.zIndex) { e.draw(canvas) })
             }
         }
 

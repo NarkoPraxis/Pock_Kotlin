@@ -11,6 +11,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.skins.SpinnerSkin
 import utility.Effects
 import androidx.core.graphics.withRotation
+import androidx.core.graphics.withScale
 import androidx.core.graphics.withTranslation
 
 class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
@@ -24,6 +25,7 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     override var minDist: Float = 0f
         get() = 0f
 
+    override val alwaysVisible: Boolean = true
     override val zIndex: Int
         get() = 2
 
@@ -31,29 +33,44 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         arm.color = responsiveSecondary
         fillPaint.color = theme.shield.primary
         val r = renderer.radius
+        val midSize = r * .5f
         val speed = (renderer.movementPower * 0.5f).coerceIn(2f, 10f)
         spinAngle += speed * spinDir
         canvas.withTranslation(cx, cy) {
             rotate(spinAngle)
             val armCount = 4
+
             for (i in 0 until armCount) {
                 withRotation(360f / armCount * i) {
                     path.reset()
                     path.moveTo(0f, 0f)
-                    path.quadTo(r * 0.45f, r * 0.15f, r * 0.9f, 0f)
-                    path.quadTo(r * 0.45f, -r * 0.15f, 0f, 0f)
+                    path.quadTo(midSize, r * .5f, r * 0.9f, 0f)
+                    path.quadTo(midSize, -r * .5f, 0f, 0f)
                     path.close()
                     drawPath(path, arm)
                 }
             }
+            for (i in 0 until armCount) {
+                withRotation(360f / armCount * i) {
+                    arm.color = responsivePrimary
+                    path.reset()
+                    path.moveTo(0f, 0f)
+                    path.quadTo(midSize * .7f, r * .3f, r * 0.7f, 0f)
+                    path.quadTo(midSize * .7f, -r * .3f, 0f, 0f)
+                    path.close()
+                    drawPath(path, arm)
+                }
+            }
+
+
             if (chargeFillRatio > 0f) {
                 val fr = r * chargeFillRatio
                 for (i in 0 until armCount) {
                     withRotation(360f / armCount * i) {
                         path.reset()
                         path.moveTo(0f, 0f)
-                        path.quadTo(fr * 0.45f, fr * 0.15f, fr * 0.9f, 0f)
-                        path.quadTo(fr * 0.45f, -fr * 0.15f, 0f, 0f)
+                        path.quadTo(fr * 0.5f, fr * .5f, fr * 0.9f, 0f)
+                        path.quadTo(fr * 0.5f, -fr * .5f, 0f, 0f)
                         path.close()
                         drawPath(path, fillPaint)
                     }

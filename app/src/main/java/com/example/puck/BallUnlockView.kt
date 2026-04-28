@@ -13,6 +13,7 @@ import enums.BallType
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.LaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.TailRenderer
@@ -40,10 +41,11 @@ class BallUnlockView @JvmOverloads constructor(
     private var bouncingIndex: Int = -1
     private var bounceFrame: Int = 0
 
-    // Plan 01: per-slot skin+tail instances; rebuilt when unlockProgress changes.
+    // Plan 01: per-slot skin+tail+effect instances; rebuilt when unlockProgress changes.
     // Skins are cached so randomized seeds (e.g. GalaxySkin.starSeeds) don't re-roll each frame.
     private var tails: Array<TailRenderer>? = null
     private var skins: Array<PuckSkin>? = null
+    private var effects: Array<LaunchEffect>? = null
     private var tailsBuiltForProgress: Int = -1
 
     private val animHandler = Handler(Looper.getMainLooper())
@@ -107,6 +109,7 @@ class BallUnlockView @JvmOverloads constructor(
             val styles = Array(types.size) { i -> BallStyleFactory.buildStyle(types[i], themeForCell(i), previewRenderer) }
             tails = Array(types.size) { i -> styles[i].tail }
             skins = Array(types.size) { i -> styles[i].skin }
+            effects = Array(types.size) { i -> styles[i].effect }
             tailsBuiltForProgress = progress
         }
     }
@@ -133,7 +136,6 @@ class BallUnlockView @JvmOverloads constructor(
         val pr = ratio() * 1.2f
 
         previewRenderer.effectEnabled = false
-        previewRenderer.effect = null
         // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
         // is set by initializeSettings(), so the baked-in value is 0f.
         previewRenderer.strokePaint.strokeWidth = ratio() / 4f
@@ -169,6 +171,7 @@ class BallUnlockView @JvmOverloads constructor(
             previewRenderer.baseFillColor = theme.main.primary
             previewRenderer.skin = skins?.get(i)
             previewRenderer.tail = tails?.get(i)
+            previewRenderer.effect = effects?.get(i)
             previewRenderer.preview = !unlocked
 
             // 2. Draw puck clipped to card bounds so tail can't escape into adjacent cells

@@ -591,7 +591,9 @@ object Logic {
             }
         }
         if (state == TouchState.Up && player.touch == TouchState.Down ) {
-            player.shouldReleaseCharge = true
+            if (Settings.gameState == GameState.Play || Settings.gameState == GameState.BallSelection) {
+                player.shouldReleaseCharge = true
+            }
             player.touch = TouchState.Ready
             if (player.isHigh) {
                 Sounds.playHighPlayerSound(player.fx)
@@ -618,7 +620,9 @@ object Logic {
 
         if (player.touch == TouchState.Down && newState == TouchState.Up) {
             player.touch = TouchState.Ready
-            player.shouldReleaseCharge = true
+            if (Settings.gameState == GameState.Play || Settings.gameState == GameState.BallSelection) {
+                player.shouldReleaseCharge = true
+            }
         }
         else {
             player.touch = newState
@@ -738,6 +742,8 @@ object Logic {
         if (!player.isFlingHeld) return
         player.flingCurrent.setLocation(x, y)
         player.isFlingHeld = false
+        // Only store release data in states where a launch should actually fire
+        if (Settings.gameState != GameState.Play && Settings.gameState != GameState.BallSelection) return
         val dx = player.flingStart.x - x
         val dy = player.flingStart.y - y
         val dist = kotlin.math.sqrt(dx * dx + dy * dy)
@@ -798,14 +804,14 @@ object Logic {
             assignTouchState(highTouchedFirst, motionEvent)
 
             val highLockedIdx = if (highPlayer.lockedPointerId != -1)
-                event!!.findPointerIndex(highPlayer.lockedPointerId).let { if (it >= 0) it else -1 }
+                event.findPointerIndex(highPlayer.lockedPointerId).let { if (it >= 0) it else -1 }
             else -1
             val lowLockedIdx = if (lowPlayer.lockedPointerId != -1)
-                event!!.findPointerIndex(lowPlayer.lockedPointerId).let { if (it >= 0) it else -1 }
+                event.findPointerIndex(lowPlayer.lockedPointerId).let { if (it >= 0) it else -1 }
             else -1
 
-            if (highLockedIdx >= 0) updateFlingCurrent(highPlayer, event!!.getX(highLockedIdx), event.getY(highLockedIdx))
-            if (lowLockedIdx >= 0) updateFlingCurrent(lowPlayer, event!!.getX(lowLockedIdx), event.getY(lowLockedIdx))
+            if (highLockedIdx >= 0) updateFlingCurrent(highPlayer, event.getX(highLockedIdx), event.getY(highLockedIdx))
+            if (lowLockedIdx >= 0) updateFlingCurrent(lowPlayer, event.getX(lowLockedIdx), event.getY(lowLockedIdx))
         }
         else {
             val x = event!!.x

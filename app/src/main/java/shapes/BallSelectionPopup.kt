@@ -194,11 +194,10 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
         previewRenderer.frame++
 
-        // Shared renderer config: no effect in popup
+        // Shared renderer config: effects gated by effectEnabled=false; alwaysVisible paddles still draw.
         // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
         // is set by initializeSettings(), so the baked-in value is 0f.
         previewRenderer.effectEnabled = false
-        previewRenderer.effect = null
         previewRenderer.radius = pr
         previewRenderer.strokePaint.strokeWidth = Settings.strokeWidth
         previewRenderer.chargePaint.strokeWidth = Settings.strokeWidth
@@ -254,6 +253,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
                 previewRenderer.preview = !isUnlocked(type)
                 previewRenderer.skin = slotSkins[i]
                 previewRenderer.tail = slotTails[i]
+                previewRenderer.effect = slotStyles[i]?.effect
                 previewRenderer.draw(this)
                 if (!isUnlocked(type)) drawLock(this, slotCenterX, puckY, pr)
             }

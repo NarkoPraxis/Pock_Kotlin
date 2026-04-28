@@ -31,6 +31,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     override var minDist: Float = 0f
         get() = 0f
 
+    override val alwaysVisible: Boolean = true
     override val zIndex: Int
         get() = -1
     // ── Star descriptors (index 0 = largest/closest, 2 = smallest/furthest) ─
