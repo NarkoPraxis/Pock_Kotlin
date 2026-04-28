@@ -17,6 +17,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.RandomRoll
 import physics.Force
 import physics.Point
 import physics.Ticker
@@ -228,8 +229,20 @@ object Logic {
     }
 
     fun applyBallStyles() {
-        Settings.highResolvedStyle ?: BallStyleFactory.buildStyle(Settings.highBallType, ColorTheme.Warm, highPlayer.puck.renderer)
-        Settings.lowResolvedStyle ?: BallStyleFactory.buildStyle(Settings.lowBallType, ColorTheme.Cold, lowPlayer.puck.renderer)
+        if (Settings.highBallType == BallType.Random) {
+            val roll = highBallPopup.randomRoll
+            if (roll != null) BallStyleFactory.buildFromRoll(roll, ColorTheme.Warm, highPlayer.puck.renderer)
+            else BallStyleFactory.buildStyle(BallType.Random, ColorTheme.Warm, highPlayer.puck.renderer)
+        } else {
+            BallStyleFactory.buildStyle(Settings.highBallType, ColorTheme.Warm, highPlayer.puck.renderer)
+        }
+        if (Settings.lowBallType == BallType.Random) {
+            val roll = lowBallPopup.randomRoll
+            if (roll != null) BallStyleFactory.buildFromRoll(roll, ColorTheme.Cold, lowPlayer.puck.renderer)
+            else BallStyleFactory.buildStyle(BallType.Random, ColorTheme.Cold, lowPlayer.puck.renderer)
+        } else {
+            BallStyleFactory.buildStyle(Settings.lowBallType, ColorTheme.Cold, lowPlayer.puck.renderer)
+        }
     }
 
     fun checkBallSelectionEnd() {

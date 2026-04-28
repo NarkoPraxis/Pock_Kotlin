@@ -8,7 +8,25 @@ import utility.Logic.highPlayer
 
 data class BallStyle(val skin: PuckSkin, val tail: TailRenderer, val effect: LaunchEffect)
 
+data class RandomRoll(val skinType: BallType, val tailType: BallType, val effectType: BallType, val tailZIndex: Int)
+
 object BallStyleFactory {
+
+    fun rollRandom(): RandomRoll {
+        val pool = BallType.entries.filter { it != BallType.Random }
+        return RandomRoll(pool.random(), pool.random(), pool.random(), if (kotlin.random.Random.nextBoolean()) -1 else 1)
+    }
+
+    fun buildFromRoll(roll: RandomRoll, theme: ColorTheme, renderer: PuckRenderer): BallStyle {
+        val skin   = buildStyle(roll.skinType, theme, renderer).skin
+        val tail   = buildStyle(roll.tailType, theme, renderer).tail
+        val effect = buildStyle(roll.effectType, theme, renderer).effect
+        val wrappedTail = ZIndexTailWrapper(tail, roll.tailZIndex)
+        renderer.skin   = skin
+        renderer.tail   = wrappedTail
+        renderer.effect = effect
+        return BallStyle(skin, wrappedTail, effect)
+    }
 
     fun buildStyle(type: BallType, theme: ColorTheme, renderer: PuckRenderer): BallStyle {
         val ballStyle = when (type) {
@@ -34,12 +52,7 @@ object BallStyleFactory {
     }
 
     private fun buildRandomStyle(theme: ColorTheme, renderer: PuckRenderer): BallStyle {
-        val pool = BallType.entries.filter { it != BallType.Random }
-        val skin   = buildStyle(pool.random(), theme, renderer).skin
-        val tail   = buildStyle(pool.random(), theme, renderer).tail
-        val effect = buildStyle(pool.random(), theme, renderer).effect
-        val tailZ  = if (kotlin.random.Random.nextBoolean()) -1 else 1
-        return BallStyle(skin, ZIndexTailWrapper(tail, tailZ), effect)
+        return buildFromRoll(rollRandom(), theme, renderer)
     }
 
     fun displayName(type: BallType): String = type.name
