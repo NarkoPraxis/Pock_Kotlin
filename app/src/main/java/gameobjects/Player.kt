@@ -13,6 +13,7 @@ import physics.Point
 import physics.Ticker
 import shapes.Circle
 import shapes.DrawablePoint
+import utility.GameEvents
 import utility.PaintBucket
 import utility.Sounds
 
@@ -263,6 +264,10 @@ class Player(
 
     fun clearPower() {
         puck.clearForces()
+        inertLocked = false
+        fatigueInertLocked = false
+        hitStunFramesRemaining = 0
+        hitStunTotalFrames = 0
     }
 
     private fun shouldBounce(nextLocation: Point, nextDirection: Point): Boolean {
@@ -403,5 +408,6 @@ class Player(
         val dir = pendingLaunchDir ?: return
         puck.movement = Force(dir, pendingLaunchPower)
         pendingLaunchDir = null
+        GameEvents.cantScore.emit(Unit) // Marker <- maybe fixed
     }
 }

@@ -532,7 +532,6 @@ object Logic {
         }
         if ( player.shouldReleaseCharge) {
             gotBonus = player.releaseCharge()
-            GameEvents.cantScore.emit(Unit)
         }
         val hadLaunchPower = player.puck.launch.hasPower
         val hadMovementPower = player.puck.movement.hasPower
@@ -962,14 +961,6 @@ object Logic {
         lowPlayer.touch = TouchState.Ready
         highPlayer.clearPower()
         lowPlayer.clearPower()
-        highPlayer.inertLocked = false
-        lowPlayer.inertLocked = false
-        highPlayer.fatigueInertLocked = false
-        lowPlayer.fatigueInertLocked = false
-        highPlayer.hitStunFramesRemaining = 0
-        highPlayer.hitStunTotalFrames = 0
-        lowPlayer.hitStunFramesRemaining = 0
-        lowPlayer.hitStunTotalFrames = 0
 
         highPlayer.setPuckStroke(PaintBucket.highBallStrokeColor)
         lowPlayer.setPuckStroke(PaintBucket.lowBallStrokeColor)
