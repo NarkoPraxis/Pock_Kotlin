@@ -9,6 +9,8 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import androidx.core.graphics.withTranslation
 import gameobjects.puckstyle.Palette.hsv
+import gameobjects.puckstyle.paddles.PrismLaunch
+import physics.Point
 
 class PrismSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
@@ -77,5 +79,20 @@ class PrismSkin(override val theme: ColorTheme, override val renderer: PuckRende
             path.close()
             drawPath(path, edge)
         }
+    }
+
+    override fun onCollisionWin(position: Point, speed: Float) {
+        val spawnRotDeg = renderer.frame * 0.8f
+        val spawnOsc = kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f
+        val baseHue = Palette.themeHue(theme)
+        PrismLaunch.scatterTriangles(renderer.x, renderer.y, renderer.radius, spawnRotDeg, spawnOsc, baseHue)
+    }
+
+    override fun onShieldedCollision(position: Point) {
+        val spawnRotDeg = renderer.frame * 0.8f
+        val spawnOsc = kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f
+        val baseHue = Palette.themeHue(theme)
+        PrismLaunch.scatterTriangles(renderer.x, renderer.y, renderer.radius, spawnRotDeg, spawnOsc, baseHue)
+
     }
 }
