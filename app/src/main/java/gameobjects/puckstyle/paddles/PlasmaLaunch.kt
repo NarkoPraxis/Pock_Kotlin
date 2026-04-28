@@ -8,6 +8,7 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import androidx.core.graphics.withTranslation
 import gameobjects.Settings
+import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
@@ -43,15 +44,15 @@ class PlasmaLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     }
 
     protected fun ensureShader(radius: Float) {
-        if (chargeFillRatio != lastChargeRatio) {
+        if (chargeFillRatio != lastChargeRatio || renderer.isInert || phase == ChargePhase.Inert) {
             fill.shader = createShader(radius)
             lastChargeRatio = chargeFillRatio
         }
     }
 
     fun createShader(radius: Float): Shader  {
-        val primary = Palette.lerpColor(theme.main.primary, theme.shield.primary, chargeFillRatio)
-        val secondary = Palette.lerpColor(theme.main.secondary, theme.shield.secondary, chargeFillRatio)
+        val primary =  if (phase == ChargePhase.Inert || renderer.isInert) theme.inert.primary else Palette.lerpColor(theme.main.primary, theme.shield.primary, chargeFillRatio)
+        val secondary = if (phase == ChargePhase.Inert || renderer.isInert) theme.inert.secondary else Palette.lerpColor(theme.main.secondary, theme.shield.secondary, chargeFillRatio)
 
         return RadialGradient(0f, 0f, radius,
             intArrayOf(Color.WHITE, primary, secondary),

@@ -93,6 +93,7 @@ class Puck(radius: Float, x: Float, y: Float, theme: ColorTheme) : Circle(radius
     fun clearForces() {
         movement = Force()
         launch = Force()
+        renderer.resetState()
     }
 
     fun startBounce(bounceDirection: Point): Point {

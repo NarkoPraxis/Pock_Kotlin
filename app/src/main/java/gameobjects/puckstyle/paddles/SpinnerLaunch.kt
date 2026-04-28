@@ -19,6 +19,7 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     private val fillPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val path = Path()
     private val spinDir = if (theme.isWarm) -1f else 1f
+    private var spinAngle = 0f
 
     override var minDist: Float = 0f
         get() = 0f
@@ -30,8 +31,10 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         arm.color = responsiveSecondary
         fillPaint.color = theme.shield.primary
         val r = renderer.radius
+        val speed = (renderer.movementPower * 0.5f).coerceIn(2f, 10f)
+        spinAngle += speed * spinDir
         canvas.withTranslation(cx, cy) {
-            rotate(frame * 2f * spinDir)
+            rotate(spinAngle)
             val armCount = 4
             for (i in 0 until armCount) {
                 withRotation(360f / armCount * i) {

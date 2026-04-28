@@ -27,11 +27,7 @@ class SpinnerTail(override val theme: ColorTheme, override val renderer: PuckRen
         if (history == null || history!!.size != len) history = MutableList(len) { Pos(renderer.x, renderer.y) }
         val history = history!!
 
-        val mag = sqrt(
-            (renderer.movementDirX * renderer.movementPower).let { it * it } +
-            (renderer.movementDirY * renderer.movementPower).let { it * it }
-        )
-        tailRotation += (mag * 0.5f + 1.5f)
+        tailRotation += (10f)
 
         for (i in history.size - 1 downTo 0) {
             if (i - 1 >= 0) { history[i].x = history[i - 1].x; history[i].y = history[i - 1].y }

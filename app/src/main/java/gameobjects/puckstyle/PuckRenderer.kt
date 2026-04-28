@@ -80,6 +80,22 @@ class PuckRenderer {
     var hitStunned: Boolean = false
     var hitStunRatio: Float = 0f  // 1.0 = full inert, fades to 0.0 as stun expires
 
+    fun resetState() {
+        shielded = false
+        launched = false
+        inertLocked = false
+        hitStunned = false
+        hitStunRatio = 0f
+        currentCharge = 0f
+        isFlingHeld = false
+        flingStartX = 0f
+        flingStartY = 0f
+        flingCurrentX = 0f
+        flingCurrentY = 0f
+        effect?.clearCharge()
+        effect?.reset()
+    }
+
     /** Resolves the theme ColorGroup that all style components should use for this frame. Priority: inert > shielded > main. */
     fun resolveColorGroup(theme: ColorTheme): ColorGroup = when {
         isInert -> theme.inert
