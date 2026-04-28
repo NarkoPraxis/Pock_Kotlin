@@ -6,6 +6,8 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.SoundPool
+import android.os.Handler
+import android.os.Looper
 import com.example.puck.R
 import gameobjects.Settings
 
@@ -40,8 +42,6 @@ object Sounds {
     var teleportId = 0
     var scoreId = 0
     var trappedId = 0
-    lateinit var gameAmbiencePlayer: MediaPlayer
-    lateinit var menuAmbiencePlayer: MediaPlayer
     var menuAmbienceId: Int = 0
     var menuAmbienceStreamId: Int = 0
     var weHaveAWinnerId: Int = 0
@@ -53,10 +53,21 @@ object Sounds {
     private var ambienceMode: AmbienceMode? = null
     private var audioFocusRequest: AudioFocusRequest? = null
 
+    // Crossfade system — outgoing fades from 1→0, incoming fades from 0→1.
+    // Both use a smoothstep curve so they meet at exactly 50% at the midpoint.
+    private const val CROSSFADE_MS = 3000L
+    private const val STEP_MS = 16L
+    private var ambienceRes: Int = 0
+    private var primaryPlayer: MediaPlayer? = null   // currently audible track
+    private var secondaryPlayer: MediaPlayer? = null // fading-in track during crossfade
+    private val ambienceHandler = Handler(Looper.getMainLooper())
+    private var scheduleRunnable: Runnable? = null   // fires when it's time to start next crossfade
+    private var fadeRunnable: Runnable? = null       // drives the volume animation each frame
+    private var fadeStartTime: Long = 0L
+    private var fadePauseOffset: Long = 0L           // accumulated elapsed ms before last pause
+
     fun initialize(context: Context) {
         this.context = context.applicationContext
-        gameAmbiencePlayer = MediaPlayer.create(this.context, R.raw.game_ambient_sound)
-        menuAmbiencePlayer = MediaPlayer.create(this.context, R.raw.menu_ambient_sound)
         requestAudioFocus()
         weHaveAWinnerId = load(R.raw.we_have_a_winner)
         stingerTransitionId = load(R.raw.stinger_transition)
@@ -72,7 +83,6 @@ object Sounds {
     }
 
     fun initializeGame() {
-
         height = Settings.screenHeight
         width = Settings.screenWidth
         cellWidth = width / 6f
@@ -111,51 +121,122 @@ object Sounds {
         soundPool.play(teleportId, 1f,1f,1,0, rates[getXRate(x)])
     }
 
-
     fun playGameAmbiance() {
         if (ambienceMode == AmbienceMode.GAME) return
         ambienceMode = AmbienceMode.GAME
-        try { menuAmbiencePlayer.reset() } catch (e: Exception) { }
-        gameAmbiencePlayer.release()
-        gameAmbiencePlayer = MediaPlayer.create(context, R.raw.game_ambient_sound)
-        gameAmbiencePlayer.isLooping = true
-        gameAmbiencePlayer.start()
+        startAmbience(R.raw.game_ambient_sound)
     }
 
     fun playMenuAmbiance() {
         if (ambienceMode == AmbienceMode.MENU) {
-            // Already on menu music — just resume if it was paused (e.g. app was backgrounded)
-            try { menuAmbiencePlayer.start() } catch (e: Exception) { }
+            try { if (primaryPlayer?.isPlaying == false) primaryPlayer?.start() } catch (e: Exception) { }
             return
         }
         ambienceMode = AmbienceMode.MENU
-        try { gameAmbiencePlayer.reset() } catch (e: Exception) { }
-        menuAmbiencePlayer.release()
-        menuAmbiencePlayer = MediaPlayer.create(context, R.raw.menu_ambient_sound)
-        menuAmbiencePlayer.isLooping = true
-        menuAmbiencePlayer.start()
+        startAmbience(R.raw.menu_ambient_sound)
     }
 
     fun pauseAll() {
         soundPool.autoPause()
-        try {
-            when (ambienceMode) {
-                AmbienceMode.MENU -> if (menuAmbiencePlayer.isPlaying) menuAmbiencePlayer.pause()
-                AmbienceMode.GAME -> if (gameAmbiencePlayer.isPlaying) gameAmbiencePlayer.pause()
-                null -> { }
-            }
-        } catch (e: Exception) { }
+        // Accumulate elapsed fade time before canceling the animation runnable
+        if (fadeRunnable != null) {
+            fadePauseOffset += System.currentTimeMillis() - fadeStartTime
+        }
+        cancelAllCallbacks()
+        try { if (primaryPlayer?.isPlaying == true) primaryPlayer?.pause() } catch (e: Exception) { }
+        try { if (secondaryPlayer?.isPlaying == true) secondaryPlayer?.pause() } catch (e: Exception) { }
     }
 
     fun resumeAll() {
         soundPool.autoResume()
-        try {
-            when (ambienceMode) {
-                AmbienceMode.MENU -> menuAmbiencePlayer.start()
-                AmbienceMode.GAME -> gameAmbiencePlayer.start()
-                null -> { }
+        val pri = primaryPlayer ?: return
+        val sec = secondaryPlayer
+        try { if (!pri.isPlaying) pri.start() } catch (e: Exception) { }
+        try { if (sec != null && !sec.isPlaying) sec.start() } catch (e: Exception) { }
+        // Reset the wall-clock reference so fadePauseOffset carries the paused progress
+        fadeStartTime = System.currentTimeMillis()
+        if (sec != null) {
+            runFadeAnimation(pri, sec)
+        } else {
+            scheduleNextCrossfade()
+        }
+    }
+
+    // Starts a fresh track, releasing any previous players and canceling pending crossfades.
+    private fun startAmbience(resId: Int) {
+        cancelAllCallbacks()
+        primaryPlayer?.release()
+        secondaryPlayer?.release()
+        secondaryPlayer = null
+        fadePauseOffset = 0L
+        ambienceRes = resId
+        primaryPlayer = MediaPlayer.create(context, resId)?.also {
+            it.setVolume(1f, 1f)
+            it.isLooping = false
+            it.start()
+        }
+        scheduleNextCrossfade()
+    }
+
+    // Posts a delayed callback that fires when the crossfade should begin
+    // (i.e. CROSSFADE_MS before the track ends).
+    private fun scheduleNextCrossfade() {
+        val player = primaryPlayer ?: return
+        val remaining = player.duration.toLong() - player.currentPosition.toLong()
+        val delay = remaining - CROSSFADE_MS
+        val r = Runnable { beginCrossfade() }
+        scheduleRunnable = r
+        if (delay > 0) ambienceHandler.postDelayed(r, delay) else ambienceHandler.post(r)
+    }
+
+    // Creates the incoming player and kicks off the volume animation.
+    private fun beginCrossfade() {
+        scheduleRunnable = null
+        val res = ambienceRes
+        if (res == 0) return
+        val outgoing = primaryPlayer ?: return
+        val incoming = MediaPlayer.create(context, res) ?: return
+        incoming.setVolume(0f, 0f)
+        incoming.isLooping = false
+        incoming.start()
+        secondaryPlayer = incoming
+        fadePauseOffset = 0L
+        fadeStartTime = System.currentTimeMillis()
+        runFadeAnimation(outgoing, incoming)
+    }
+
+    // Drives the crossfade animation at STEP_MS intervals.
+    // Outgoing: ease-out from 1→0.  Incoming: ease-in from 0→1.
+    // Both curves use smoothstep so they meet at exactly 0.5 at t=0.5.
+    private fun runFadeAnimation(outgoing: MediaPlayer, incoming: MediaPlayer) {
+        fadeRunnable?.let { ambienceHandler.removeCallbacks(it) }
+        fadeRunnable = object : Runnable {
+            override fun run() {
+                val elapsed = fadePauseOffset + (System.currentTimeMillis() - fadeStartTime)
+                val t = (elapsed.toFloat() / CROSSFADE_MS).coerceIn(0f, 1f)
+                val smooth = t * t * (3f - 2f * t)   // smoothstep: ease-in on incoming, ease-out on outgoing
+                try { outgoing.setVolume(1f - smooth, 1f - smooth) } catch (e: Exception) { }
+                try { incoming.setVolume(smooth, smooth) } catch (e: Exception) { }
+                if (t < 1f) {
+                    ambienceHandler.postDelayed(this, STEP_MS)
+                } else {
+                    try { outgoing.release() } catch (e: Exception) { }
+                    primaryPlayer = incoming
+                    secondaryPlayer = null
+                    fadeRunnable = null
+                    fadePauseOffset = 0L
+                    scheduleNextCrossfade()
+                }
             }
-        } catch (e: Exception) { }
+        }
+        ambienceHandler.post(fadeRunnable!!)
+    }
+
+    private fun cancelAllCallbacks() {
+        scheduleRunnable?.let { ambienceHandler.removeCallbacks(it) }
+        fadeRunnable?.let { ambienceHandler.removeCallbacks(it) }
+        scheduleRunnable = null
+        fadeRunnable = null
     }
 
     private fun requestAudioFocus() {
