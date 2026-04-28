@@ -17,6 +17,7 @@ class SpinnerTail(override val theme: ColorTheme, override val renderer: PuckRen
 
     private var history: MutableList<Pos>? = null
     private var tailRotation = 0f
+    private val spinDir = if (theme.isWarm) -1f else 1f
 
     private val centerPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
     private val tipPaint    = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
@@ -63,7 +64,7 @@ class SpinnerTail(override val theme: ColorTheme, override val renderer: PuckRen
             if (alpha <= 0) continue
 
 
-            val ang = tailRotation * Math.PI.toFloat() / 180f - i * angleStep
+            val ang = (tailRotation * Math.PI.toFloat() / 180f - i * angleStep) * spinDir
             val cx  = history[i].x
             val cy  = history[i].y
             val ca  = cos(ang)

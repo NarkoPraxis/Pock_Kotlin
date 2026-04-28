@@ -2,26 +2,68 @@ package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import gameobjects.Settings
-import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 import androidx.core.graphics.withRotation
+import androidx.core.graphics.withTranslation
 
-/** Spinning shuriken cross — two bars crossed, rotating while charging. */
 class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
-    private val bar = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
+    private val arm = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+    private val fillPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+    private val path = Path()
+    private val spinDir = if (theme.isWarm) -1f else 1f
+
+    override var minDist: Float = 0f
+        get() = 0f
+
+    override val zIndex: Int
+        get() = 2
+
+    private fun drawSpinner(canvas: Canvas, cx: Float, cy: Float) {
+        arm.color = responsiveSecondary
+        fillPaint.color = theme.shield.primary
+        val r = renderer.radius
+        canvas.withTranslation(cx, cy) {
+            rotate(frame * 2f * spinDir)
+            val armCount = 4
+            for (i in 0 until armCount) {
+                withRotation(360f / armCount * i) {
+                    path.reset()
+                    path.moveTo(0f, 0f)
+                    path.quadTo(r * 0.45f, r * 0.15f, r * 0.9f, 0f)
+                    path.quadTo(r * 0.45f, -r * 0.15f, 0f, 0f)
+                    path.close()
+                    drawPath(path, arm)
+                }
+            }
+            if (chargeFillRatio > 0f) {
+                val fr = r * chargeFillRatio
+                for (i in 0 until armCount) {
+                    withRotation(360f / armCount * i) {
+                        path.reset()
+                        path.moveTo(0f, 0f)
+                        path.quadTo(fr * 0.45f, fr * 0.15f, fr * 0.9f, 0f)
+                        path.quadTo(fr * 0.45f, -fr * 0.15f, 0f, 0f)
+                        path.close()
+                        drawPath(path, fillPaint)
+                    }
+                }
+            }
+        }
+    }
+
+    override fun drawIdlePaddle(canvas: Canvas) {
+        drawSpinner(canvas, renderer.x, renderer.y)
     }
 
     override fun drawChargingPaddle(canvas: Canvas) {
-        drawCross(canvas, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio, frame * 0.35f)
+        drawSpinner(canvas, paddleX, paddleY)
     }
 
     override fun drawStrikingPaddle(
@@ -29,38 +71,17 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
-        drawCross(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f, frame * 0.35f + progress * 3f)
-    }
-
-    private fun drawCross(
-        canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
-        ph: ChargePhase, fill: Float, spin: Float
-    ) {
-        canvas.withRotation(Math.toDegrees(spin.toDouble()).toFloat(), cx, cy) {
-            val half = paddleHalfLength() * 0.9f
-            val pX = -aY
-            val pY = aX
-            bar.color = responsiveSecondary
-            bar.strokeWidth = paddleThickness()
-            drawLine(cx - pX * half, cy - pY * half, cx + pX * half, cy + pY * half, bar)
-            drawLine(cx - aX * half, cy - aY * half, cx + aX * half, cy + aY * half, bar)
-            if (fill > 0f) {
-                bar.color = theme.shield.primary
-                val fh = half * fill
-                drawLine(cx - pX * fh, cy - pY * fh, cx + pX * fh, cy + pY * fh, bar)
-                drawLine(cx - aX * fh, cy - aY * fh, cx + aX * fh, cy + aY * fh, bar)
-            }
-        }
+        drawSpinner(canvas, cx, cy)
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, theme.main.primary))
+        Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, theme.main.primary, spinDir))
     }
 
     private class SpinnerMark(
         private val cx: Float, private val cy: Float,
-        private val radius: Float, private val color: Int
+        private val radius: Float, private val color: Int,
+        private val spinDir: Float
     ) : Effects.PersistentEffect {
         private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
         private val oval = RectF()
@@ -71,16 +92,14 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
 
         override fun draw(canvas: Canvas) {
             val t = (frame / 200f).coerceIn(0f, 1f)
-            val alpha = (180 * (1f - t * 0.9f)).toInt().coerceIn(0, 255)
-            if (alpha <= 0) return
+            val alpha = (180 * (1f - t * 0.9f)).toInt().coerceIn(100, 255)
             paint.color = color
             paint.alpha = alpha
             paint.strokeWidth = Settings.strokeWidth * 0.6f
             val r = radius * 1.4f
             oval.set(cx - r, cy - r, cx + r, cy + r)
-            // 4 curved arc segments arranged radially, like residual smear of spinning blades
             for (i in 0 until 4) {
-                canvas.drawArc(oval, i * 90f + 20f, 50f, false, paint)
+                canvas.drawArc(oval, i * 90f + 20f + frame * 2f * spinDir, 50f, false, paint)
             }
             paint.alpha = 255
         }
