@@ -11,6 +11,8 @@ import gameobjects.puckstyle.PuckSkin
 import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.random.Random
+import androidx.core.graphics.withTranslation
+import androidx.core.graphics.withRotation
 
 class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
@@ -26,6 +28,29 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
     private var blinkCountdown = Random.nextInt(60, 181)
     private var blinkFrame = 0
     private val BLINK_DURATION = 4
+
+    private data class Keyframe(val trigger: Int, val animation: (canvas: Canvas) -> Unit)
+
+    private val celebrationKeyFrames = listOf<Keyframe>(
+        Keyframe(0, ::drawHappyEye),
+        Keyframe(3, ::drawBeakOpen),
+        Keyframe(10, ::drawWingsFlared),
+        Keyframe(10, ::drawHeadFeathersFlared)
+    )
+
+    private val almostHitKeyFrames = listOf<Keyframe>(
+        Keyframe(0, ::drawWideEye),
+        Keyframe(3, ::drawBeakOpen),
+        Keyframe(10, ::drawWingsTucked),
+        Keyframe(10, ::drawHeadFeathersDroopy)
+    )
+
+    private val justHitKeyFrames = listOf<Keyframe>(
+        Keyframe(0, ::drawWinceEye),
+        Keyframe(3, ::drawBeakGrimace),
+        Keyframe(10, ::drawWingsTucked),
+        Keyframe(10, ::drawHeadFeathersDroopy)
+    )
 
     // Updated once per drawBody call; used by private sub-draw methods
     private var frameColors: ColorGroup = theme.main
@@ -50,70 +75,75 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
         val eyeOpen = blinkFrame == 0
         if (blinkFrame > 0) blinkFrame--
 
-        canvas.save()
-        canvas.translate(renderer.x, renderer.y)
-        if (renderer.isHigh) canvas.rotate(180f)
+        canvas.withTranslation(renderer.x, renderer.y) {
+            if (renderer.isHigh) rotate(180f)
 
-        // 1. Body fill
-        paint.style = Paint.Style.FILL
-        paint.color = frameColors.primary
-        canvas.drawCircle(0f, 0f, r, paint)
+            // 1. Body fill
+            paint.style = Paint.Style.FILL
+            paint.color = frameColors.primary
+            drawCircle(0f, 0f, r, paint)
 
-        // 2. Secondary stroke highlight
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = sw
-        paint.color = frameColors.secondary
-        canvas.drawCircle(0f, 0f, r, paint)
+            // 2. Secondary stroke highlight
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = sw
+            paint.color = frameColors.secondary
+            drawCircle(0f, 0f, r, paint)
 
-        // 3. Wings
-        drawWing(canvas, r, wingAngle, left = true)
-        drawWing(canvas, r, wingAngle, left = false)
+            // 3. Wings
+            drawWing(this, r, wingAngle, left = true)
+            drawWing(this, r, wingAngle, left = false)
 
-        // 3b. Head feathers — drawn after wings so they sit on top of body highlight
-        drawHeadFeather(canvas, r,  0f,          -r * 0.88f,   0f, 1.5f)
-        drawHeadFeather(canvas, r, -r * 0.2f,   -r * 0.85f, -28f, 1.1f)
-        drawHeadFeather(canvas, r,  r * 0.2f,   -r * 0.85f,  28f, 1.1f)
+            // 3b. Head feathers — drawn after wings so they sit on top of body highlight
+            drawHeadFeather(this, r, 0f, -r * 0.88f, 0f, 1.5f)
+            drawHeadFeather(this, r, -r * 0.2f, -r * 0.85f, -28f, 1.1f)
+            drawHeadFeather(this, r, r * 0.2f, -r * 0.85f, 28f, 1.1f)
 
-        // 4. Eyes — ~1/3 larger than previous iteration
-        val eyeR = r * 0.25f
-        val eyeX = r * 0.30f
-        val eyeY = -r * 0.28f
+            // 4. Eyes — ~1/3 larger than previous iteration
+            val eyeR = r * 0.25f
+            val eyeX = r * 0.30f
+            val eyeY = -r * 0.28f
 
+            drawEye(canvas,eyeOpen, eyeX, eyeY, eyeR, r)
+
+            // 5. Beak
+            beakPath.reset()
+            beakPath.moveTo(-r * 0.24f, r * 0.14f)
+            beakPath.lineTo(r * 0.24f, r * 0.14f)
+            beakPath.lineTo(0f, r * 0.58f)
+            beakPath.close()
+            paint.style = Paint.Style.FILL
+            paint.strokeCap = Paint.Cap.BUTT
+            paint.color = frameColors.secondary
+            drawPath(beakPath, paint)
+
+        }
+    }
+
+    // draws normal eye. UPDATE: Should look like the eye is tracking the paddle
+    private fun drawEye(canvas: Canvas, eyeOpen: Boolean, eyeX: Float, eyeY: Float, eyeR: Float, r: Float
+    ) {
         if (eyeOpen) {
             paint.style = Paint.Style.FILL
             paint.color = Color.WHITE
             canvas.drawCircle(-eyeX, eyeY, eyeR, paint)
-            canvas.drawCircle( eyeX, eyeY, eyeR, paint)
+            canvas.drawCircle(eyeX, eyeY, eyeR, paint)
             paint.color = frameColors.secondary
             canvas.drawCircle(-eyeX, eyeY, eyeR * 0.72f, paint)
-            canvas.drawCircle( eyeX, eyeY, eyeR * 0.72f, paint)
+            canvas.drawCircle(eyeX, eyeY, eyeR * 0.72f, paint)
             paint.color = Color.BLACK
             canvas.drawCircle(-eyeX, eyeY, eyeR * 0.4f, paint)
-            canvas.drawCircle( eyeX, eyeY, eyeR * 0.4f, paint)
+            canvas.drawCircle(eyeX, eyeY, eyeR * 0.4f, paint)
             paint.color = Color.WHITE
             canvas.drawCircle(-eyeX - eyeR * 0.27f, eyeY - eyeR * 0.3f, eyeR * 0.21f, paint)
-            canvas.drawCircle( eyeX - eyeR * 0.27f, eyeY - eyeR * 0.3f, eyeR * 0.21f, paint)
+            canvas.drawCircle(eyeX - eyeR * 0.27f, eyeY - eyeR * 0.3f, eyeR * 0.21f, paint)
         } else {
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = r * 0.08f
             paint.strokeCap = Paint.Cap.ROUND
             paint.color = frameColors.secondary
             canvas.drawLine(-eyeX - eyeR * 0.65f, eyeY, -eyeX + eyeR * 0.65f, eyeY, paint)
-            canvas.drawLine( eyeX - eyeR * 0.65f, eyeY,  eyeX + eyeR * 0.65f, eyeY, paint)
+            canvas.drawLine(eyeX - eyeR * 0.65f, eyeY, eyeX + eyeR * 0.65f, eyeY, paint)
         }
-
-        // 5. Beak — ~1/3 larger than previous iteration
-        beakPath.reset()
-        beakPath.moveTo(-r * 0.24f, r * 0.14f)
-        beakPath.lineTo( r * 0.24f, r * 0.14f)
-        beakPath.lineTo( 0f,        r * 0.58f)
-        beakPath.close()
-        paint.style = Paint.Style.FILL
-        paint.strokeCap = Paint.Cap.BUTT
-        paint.color = frameColors.secondary
-        canvas.drawPath(beakPath, paint)
-
-        canvas.restore()
     }
 
     private fun drawHeadFeather(canvas: Canvas, r: Float, attachX: Float, attachY: Float, rotDeg: Float, scale: Float) {
@@ -145,31 +175,100 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
         val s     = if (left) -1f else 1f
         val pivot = s * r * 0.72f
 
-        canvas.save()
-        canvas.rotate(s * -wingAngle, pivot, 0f)
+        canvas.withRotation(s * -wingAngle, pivot, 0f) {
+            paint.style = Paint.Style.FILL
 
-        paint.style = Paint.Style.FILL
+            // Secondary — outer/larger shape, provides visible outline at tip and edges
+            wingSecondary.reset()
+            wingSecondary.moveTo(s * r * 0.72f, -r * 0.13f)
+            wingSecondary.quadTo(
+                s * r * 1.22f,
+                -r * 0.55f,
+                s * r * 1.65f,
+                -r * 0.27f
+            )  // upper → tip
+            wingSecondary.quadTo(s * r * 1.58f, r * 0.06f, s * r * 1.22f, r * 0.33f)  // tip → lower
+            wingSecondary.quadTo(
+                s * r * 0.92f,
+                r * 0.38f,
+                s * r * 0.72f,
+                r * 0.13f
+            )  // lower → attachment
+            wingSecondary.close()
+            paint.color = frameColors.secondary
+            drawPath(wingSecondary, paint)
 
-        // Secondary — outer/larger shape, provides visible outline at tip and edges
-        wingSecondary.reset()
-        wingSecondary.moveTo(s * r * 0.72f, -r * 0.13f)
-        wingSecondary.quadTo(s * r * 1.22f, -r * 0.55f, s * r * 1.65f, -r * 0.27f)  // upper → tip
-        wingSecondary.quadTo(s * r * 1.58f,  r * 0.06f, s * r * 1.22f,  r * 0.33f)  // tip → lower
-        wingSecondary.quadTo(s * r * 0.92f,  r * 0.38f, s * r * 0.72f,  r * 0.13f)  // lower → attachment
-        wingSecondary.close()
-        paint.color = frameColors.secondary
-        canvas.drawPath(wingSecondary, paint)
+            // Primary — smaller inner shape; attachment pulled into body to merge with body fill
+            wingPrimary.reset()
+            wingPrimary.moveTo(s * r * 0.50f, -r * 0.10f)
+            wingPrimary.quadTo(
+                s * r * 1.18f,
+                -r * 0.48f,
+                s * r * 1.57f,
+                -r * 0.27f
+            )   // upper → tip
+            wingPrimary.quadTo(s * r * 1.50f, r * 0.04f, s * r * 1.16f, r * 0.27f)   // tip → lower
+            wingPrimary.quadTo(
+                s * r * 0.90f,
+                r * 0.33f,
+                s * r * 0.50f,
+                r * 0.10f
+            )   // lower → inner attachment
+            wingPrimary.close()
+            paint.color = frameColors.primary
+            drawPath(wingPrimary, paint)
 
-        // Primary — smaller inner shape; attachment pulled into body to merge with body fill
-        wingPrimary.reset()
-        wingPrimary.moveTo(s * r * 0.50f, -r * 0.10f)
-        wingPrimary.quadTo(s * r * 1.18f, -r * 0.48f, s * r * 1.57f, -r * 0.27f)   // upper → tip
-        wingPrimary.quadTo(s * r * 1.50f,  r * 0.04f, s * r * 1.16f,  r * 0.27f)   // tip → lower
-        wingPrimary.quadTo(s * r * 0.90f,  r * 0.33f, s * r * 0.50f,  r * 0.10f)   // lower → inner attachment
-        wingPrimary.close()
-        paint.color = frameColors.primary
-        canvas.drawPath(wingPrimary, paint)
-
-        canvas.restore()
+        }
     }
+
+    // cheeky taunt
+    private fun drawWinkingEye(canvas: Canvas) {
+
+    }
+
+    // scared reaction to almost being hit
+    private fun drawWideEye(canvas: Canvas) {
+
+    }
+
+    // reaction to being hit
+    private fun drawWinceEye (canvas: Canvas) {
+
+    }
+
+    // celebration on score and victory
+    private fun drawHappyEye (canvas: Canvas) {
+
+    }
+
+    // to show anticipation or excitement
+    private fun drawBeakOpen( canvas: Canvas) {
+
+    }
+
+    // to show pain, like squeezing lips together
+    private fun drawBeakGrimace( canvas: Canvas) {
+
+    }
+
+    // to celebrate and show off
+    private fun drawWingsFlared(canvas: Canvas) {
+
+    }
+
+    // to show pain or reaction to pain
+    private fun drawWingsTucked(canvas: Canvas) {
+
+    }
+
+    // to celebrate
+    private fun drawHeadFeathersFlared(canvas: Canvas) {
+
+    }
+
+    // to show pain or anticipation to pain
+    private fun drawHeadFeathersDroopy(canvas: Canvas) {
+
+    }
+
 }
