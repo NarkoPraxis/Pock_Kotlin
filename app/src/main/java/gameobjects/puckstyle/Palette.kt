@@ -9,7 +9,7 @@ object Palette {
         Color.HSVToColor(floatArrayOf(((h % 360f) + 360f) % 360f, s, v))
 
     fun cyclingHue(frame: Int, speed: Float = 4f): Int =
-        hsv(frame * speed, 1f, 1f)
+        hsv(frame * speed, THEME_SATURATION, THEME_VALUE)
 
     fun lerpColor(a: Int, b: Int, t: Float): Int {
         val tt = t.coerceIn(0f, 1f)
@@ -44,6 +44,12 @@ object Palette {
     fun themeHue(theme: ColorTheme): Float {
         val hsv = FloatArray(3)
         Color.colorToHSV(theme.main.primary, hsv)
+        return hsv[0]
+    }
+
+    fun colorHue(color: Int): Float {
+        val hsv = FloatArray(3)
+        Color.colorToHSV(color, hsv)
         return hsv[0]
     }
 

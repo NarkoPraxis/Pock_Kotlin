@@ -10,6 +10,9 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.Palette
+import gameobjects.puckstyle.Palette.HIGHLIGHT_SATURATION
+import gameobjects.puckstyle.Palette.THEME_SATURATION
+import gameobjects.puckstyle.Palette.THEME_VALUE
 import utility.Effects
 import kotlin.math.cos
 import kotlin.math.sin
@@ -19,9 +22,12 @@ import kotlin.random.Random
 class PrismLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+
+    val defaultStrokeWidth = Settings.strokeWidth * .5f
     private val edge = Paint().apply {
         isAntiAlias = true; style = Paint.Style.STROKE
-        strokeWidth = Settings.strokeWidth * 0.6f; strokeJoin = Paint.Join.ROUND
+        strokeWidth = defaultStrokeWidth;
+        strokeJoin = Paint.Join.ROUND
     }
     private val path = Path()
 
@@ -53,6 +59,7 @@ class PrismLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
         path.close()
 
         fill.color = if (ph == ChargePhase.Inert) theme.inert.primary else Color.WHITE
+
         fill.alpha = 200
         canvas.drawPath(path, fill)
         if (ratio > 0f) {
@@ -61,7 +68,7 @@ class PrismLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             canvas.drawPath(path, fill)
         }
         fill.alpha = 255
-        edge.color = responsivePrimary
+        edge.color = if (renderer.isInert || ph == ChargePhase.Inert) theme.inert.secondary else responsivePrimary
         canvas.drawPath(path, edge)
     }
 
@@ -73,13 +80,15 @@ class PrismLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
         val py = renderer.y
         for (i in 0 until 6) {
             val offset = (i - 2.5f) / 2.5f * half
-            edge.color = Palette.hsv(i * 60f + frame * 3f, 1f, 1f)
+            edge.color = Palette.hsv(i * 60f + frame * 3f, THEME_SATURATION, THEME_VALUE)
             edge.alpha = (200 * (1f - progress)).toInt().coerceIn(0, 255)
+            edge.strokeWidth = renderer.radius
             canvas.drawLine(
                 cx + pX * offset, cy + pY * offset,
                 px + pX * offset * 0.6f, py + pY * offset * 0.6f,
                 edge
             )
+            edge.strokeWidth = defaultStrokeWidth
         }
         edge.alpha = 255
     }
@@ -121,7 +130,7 @@ class PrismLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
                     else -> 0
                 }
                 if (alpha <= 0) continue
-                paint.color = Palette.hsv(g.hue, 0.7f, 1f)
+            paint.color = Palette.hsv(g.hue, THEME_SATURATION, THEME_VALUE)
                 paint.alpha = alpha
                 canvas.drawCircle(g.x, g.y, radius * 0.2f, paint)
             }

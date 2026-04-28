@@ -6,6 +6,7 @@ import android.graphics.Path
 import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
+import gameobjects.puckstyle.Palette.hsv
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
@@ -26,6 +27,8 @@ class PrismTail(override val theme: ColorTheme, override val renderer: PuckRende
     override val zIndex: Int
         get() = 1
     private val baseHue = Palette.themeHue(theme)
+    private val shieldHue = Palette.colorHue(theme.shield.primary)
+    private val inertHue = Palette.colorHue(theme.inert.primary)
     private val hues = floatArrayOf(
         baseHue,
         baseHue + 40f,
@@ -33,6 +36,24 @@ class PrismTail(override val theme: ColorTheme, override val renderer: PuckRende
         baseHue + 20f,
         baseHue + 60f,
         baseHue - 15f
+    )
+
+    private val baseShieldHues = floatArrayOf(
+        shieldHue,
+        shieldHue + 40f,
+        shieldHue - 30f,
+        shieldHue + 20f,
+        shieldHue + 60f,
+        shieldHue - 15f
+    )
+
+    private val baseInertHues = floatArrayOf(
+        inertHue,
+        inertHue + 40f,
+        inertHue - 30f,
+        inertHue + 20f,
+        inertHue + 60f,
+        inertHue - 15f
     )
 
     // Reusable trig buffers — 7 boundary angles per hexagon (0°, 60°, ..., 360°)
@@ -45,7 +66,7 @@ class PrismTail(override val theme: ColorTheme, override val renderer: PuckRende
             history = MutableList(historySize) { Frame().apply {
                 x = renderer.x; y = renderer.y
                 angle = renderer.frame * 0.8f
-                radius = renderer.radius
+                radius = renderer.radius * .8f
                 osc = 0f
             }}
         }
@@ -105,6 +126,13 @@ class PrismTail(override val theme: ColorTheme, override val renderer: PuckRende
                 // Charge inverts the osc shift: at full charge, storedOsc is negated
                 val finalHue = hues[j] + entry.osc * (1f - 2f * chargeRatio)
                 paint.color = Palette.withAlpha(Palette.hsvThemed(finalHue), alpha)
+                if (renderer.shielded) {
+                    val purpleCenter = if (baseHue > 180f) 290f else 270f
+                    val purpleHue = purpleCenter + entry.osc * 0.5f * (1f - 2f * chargeRatio) + (j - 2.5f) * 6f
+                    paint.color = Palette.withAlpha(Palette.hsvThemed(purpleHue), alpha)
+                } else if (renderer.isInert) {
+                    paint.color = Palette.withAlpha(hsv( hues[j], .10f, .90f), alpha)
+                }
                 canvas.drawPath(path, paint)
             }
         }

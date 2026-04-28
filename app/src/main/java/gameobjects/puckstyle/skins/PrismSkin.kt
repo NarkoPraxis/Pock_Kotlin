@@ -7,6 +7,8 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
+import androidx.core.graphics.withTranslation
+import gameobjects.puckstyle.Palette.hsv
 
 class PrismSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
@@ -28,33 +30,52 @@ class PrismSkin(override val theme: ColorTheme, override val renderer: PuckRende
         val sides = 6
         val angleOffset = renderer.frame * 0.8f
         val osc = kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f
-        canvas.save()
-        canvas.translate(renderer.x, renderer.y)
-        canvas.rotate(angleOffset)
+        canvas.withTranslation(renderer.x, renderer.y) {
+            rotate(angleOffset)
 
-        for (i in 0 until sides) {
-            val a1 = (i * 360f / sides) * Math.PI.toFloat() / 180f
-            val a2 = ((i + 1) * 360f / sides) * Math.PI.toFloat() / 180f
+            for (i in 0 until sides) {
+                val a1 = (i * 360f / sides) * Math.PI.toFloat() / 180f
+                val a2 = ((i + 1) * 360f / sides) * Math.PI.toFloat() / 180f
+                path.reset()
+                path.moveTo(0f, 0f)
+                path.lineTo(
+                    kotlin.math.cos(a1) * renderer.radius,
+                    kotlin.math.sin(a1) * renderer.radius
+                )
+                path.lineTo(
+                    kotlin.math.cos(a2) * renderer.radius,
+                    kotlin.math.sin(a2) * renderer.radius
+                )
+                path.close()
+                facet.color = Palette.hsvThemed(hues[i % hues.size] + osc)
+
+                if (renderer.shielded) {
+                    val purpleCenter = if (baseHue > 180f) 290f else 270f
+                    val purpleHue = purpleCenter + osc * 0.5f + (i - 2.5f) * 6f
+                    facet.color = Palette.hsvThemed(purpleHue)
+                } else if (renderer.isInert) {
+                    facet.color = Palette.withAlpha(hsv( hues[i % hues.size], .10f, .90f), 255)
+                }
+                drawPath(path, facet)
+            }
+            edge.strokeWidth = renderer.strokePaint.strokeWidth
+            edge.color = Palette.hsvHighlight(baseHue - osc)
+
+            if (renderer.isInert) {
+                edge.color = theme.inert.secondary
+            }
+            if (renderer.shielded) {
+                edge.color = theme.shield.secondary
+            }
             path.reset()
-            path.moveTo(0f, 0f)
-            path.lineTo(kotlin.math.cos(a1) * renderer.radius, kotlin.math.sin(a1) * renderer.radius)
-            path.lineTo(kotlin.math.cos(a2) * renderer.radius, kotlin.math.sin(a2) * renderer.radius)
+            for (i in 0 until sides) {
+                val a = (i * 360f / sides) * Math.PI.toFloat() / 180f
+                val px = kotlin.math.cos(a) * renderer.radius
+                val py = kotlin.math.sin(a) * renderer.radius
+                if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+            }
             path.close()
-            facet.color = Palette.hsvThemed(hues[i % hues.size] + osc)
-            canvas.drawPath(path, facet)
+            drawPath(path, edge)
         }
-        edge.strokeWidth = renderer.strokePaint.strokeWidth * 0.6f
-        edge.color = Palette.hsvHighlight(baseHue - osc)
-
-        path.reset()
-        for (i in 0 until sides) {
-            val a = (i * 360f / sides) * Math.PI.toFloat() / 180f
-            val px = kotlin.math.cos(a) * renderer.radius
-            val py = kotlin.math.sin(a) * renderer.radius
-            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
-        }
-        path.close()
-        canvas.drawPath(path, edge)
-        canvas.restore()
     }
 }
