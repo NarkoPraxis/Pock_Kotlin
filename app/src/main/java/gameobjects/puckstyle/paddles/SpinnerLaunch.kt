@@ -8,6 +8,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
+import gameobjects.puckstyle.skins.SpinnerSkin
 import utility.Effects
 import androidx.core.graphics.withRotation
 import androidx.core.graphics.withTranslation
@@ -76,6 +77,7 @@ class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
         Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, theme.main.primary, spinDir))
+        Effects.addPersistentEffect(SpinnerSkin.SpinnerResidual(rx, ry, renderer.radius, theme.shield.primary, spinDir))
     }
 
     private class SpinnerMark(
