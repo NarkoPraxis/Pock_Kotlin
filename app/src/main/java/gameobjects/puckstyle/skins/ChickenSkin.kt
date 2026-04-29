@@ -29,6 +29,7 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
 
     // --- wing flap ---
     private var wingPhase = 0f
+    private var displayedWingAngle = 0f
     private var lastX = Float.NaN
     private var lastY = Float.NaN
 
@@ -85,6 +86,12 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
         lastX = renderer.x; lastY = renderer.y
         wingPhase += speed * 0.012f
         wingAngle = sin(wingPhase) * 22f
+        val targetWingAngle = when (currentAnim) {
+            ChickenAnim.AlmostHit, ChickenAnim.JustHit -> 0f
+            ChickenAnim.Celebration -> 22f
+            else -> wingAngle
+        }
+        displayedWingAngle = lerp(displayedWingAngle, targetWingAngle, 0.18f)
 
         // Blink
         blinkCountdown--
@@ -179,17 +186,17 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
         when (currentAnim) {
             ChickenAnim.AlmostHit, ChickenAnim.JustHit -> {
                 val t = if (animFrame >= DELAY_WINGS) easeIn((animFrame - DELAY_WINGS).toFloat(), 3f) else 0f
-                drawWing(canvas, left = true,  angle = 0f, scale = lerp(1f, 0.82f, t))
-                drawWing(canvas, left = false, angle = 0f, scale = lerp(1f, 0.82f, t))
+                drawWing(canvas, left = true,  angle = displayedWingAngle, scale = lerp(1f, 0.82f, t))
+                drawWing(canvas, left = false, angle = displayedWingAngle, scale = lerp(1f, 0.82f, t))
             }
             ChickenAnim.Celebration -> {
                 val t = if (animFrame >= DELAY_WINGS) easeIn((animFrame - DELAY_WINGS).toFloat(), 8f) else 0f
-                drawWing(canvas, left = true,  angle = 22f, scale = lerp(1f, 1.1f, t))
-                drawWing(canvas, left = false, angle = 22f, scale = lerp(1f, 1.1f, t))
+                drawWing(canvas, left = true,  angle = displayedWingAngle, scale = lerp(1f, 1.1f, t))
+                drawWing(canvas, left = false, angle = displayedWingAngle, scale = lerp(1f, 1.1f, t))
             }
             else -> {
-                drawWing(canvas, left = true,  angle = wingAngle)
-                drawWing(canvas, left = false, angle = wingAngle)
+                drawWing(canvas, left = true,  angle = displayedWingAngle)
+                drawWing(canvas, left = false, angle = displayedWingAngle)
             }
         }
     }

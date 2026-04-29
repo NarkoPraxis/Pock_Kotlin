@@ -1022,7 +1022,7 @@ object Logic {
     }
 
     private fun updateDanger(player: Player, opponent: Player, isHigh: Boolean) {
-        val threshold = player.puck.renderer.radius * 2f
+        val threshold = player.puck.renderer.radius * 5f
         val px = player.px
         val py = player.py
 
