@@ -26,4 +26,13 @@ interface PuckSkin {
     fun onCollisionWin(position: Point, speed: Float) {}
     fun onShieldedCollision(position: Point) {}
     fun onPhaseChanged(phase: ChargePhase) {}
+
+    /** Called by Logic when this puck is within radius*2 of a wall or the opponent. threatX/Y are world coords of the nearest threat point. */
+    fun onDangerNear(threatX: Float, threatY: Float) {}
+
+    /** Called by Logic when the danger condition from onDangerNear is no longer active. */
+    fun onDangerClear() {}
+
+    /** Called by Logic when this puck hits a wall or loses a puck collision (unshielded only). */
+    fun onHit() {}
 }
