@@ -9,9 +9,12 @@ import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.Palette
 import utility.Effects
+import kotlin.math.PI
 import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.sin
 import androidx.core.graphics.withRotation
+import kotlin.random.Random
 
 class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
@@ -70,5 +73,79 @@ class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         override val isDone get() = splat.isDone
         override fun step() { splat.step() }
         override fun draw(canvas: Canvas) { splat.draw(canvas, paint) }
+    }
+
+    companion object {
+        fun spawnFeatherExplosion(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int) {
+            Effects.addPersistentEffect(FeatherBurst(cx, cy, radius, primary, secondary))
+        }
+    }
+
+    private class FeatherBurst(
+        private val cx: Float, private val cy: Float,
+        private val radius: Float,
+        private val primary: Int,
+        private val secondary: Int
+    ) : Effects.PersistentEffect {
+        private class Feather(
+            var x: Float, var y: Float,
+            val vx: Float, val vy: Float,
+            var angle: Float, val spin: Float,
+            var alpha: Int,
+            val colorMix: Float
+        )
+
+        private val feathers: List<Feather>
+        private val paint = Paint().apply { isAntiAlias = true }
+        private var frame = 0
+        override var isDone = false
+            private set
+
+        init {
+            val count = 24
+            feathers = List(count) { i ->
+                val angle = (i.toFloat() / count) * 2f * PI.toFloat() + Random.nextFloat() * 0.4f
+                val speed = radius * (0.05f + Random.nextFloat() * 0.1f)
+                Feather(
+                    x = cx, y = cy,
+                    vx = cos(angle) * speed,
+                    vy = sin(angle) * speed,
+                    angle = Random.nextFloat() * 360f,
+                    spin = (Random.nextFloat() - 0.5f) * 6f,
+                    alpha = 220,
+                    colorMix = Random.nextFloat()
+                )
+            }
+        }
+
+        override fun step() {
+            frame++
+            if (frame > 42) isDone = true
+        }
+
+        val fw = radius * 0.2f
+        val fh = radius * 0.55f
+        override fun draw(canvas: Canvas) {
+
+            for (f in feathers) {
+                f.x += f.vx
+                f.y += f.vy
+                f.angle += f.spin
+                f.alpha = (220f * (1f - frame / 42f).coerceAtLeast(0f)).toInt()
+                if (f.alpha <= 0) continue
+
+                val c = Palette.lerpColor(primary, secondary, f.colorMix)
+                paint.style = Paint.Style.FILL
+                paint.color = Palette.withAlpha(c, f.alpha)
+                canvas.withRotation(f.angle, f.x, f.y) {
+                    drawOval(f.x - fw, f.y - fh, f.x + fw, f.y + fh, paint)
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = fw * 0.35f
+                    paint.strokeCap = Paint.Cap.ROUND
+                    paint.color = Palette.withAlpha(secondary, f.alpha)
+                    drawLine(f.x, f.y + fh * 1.3f, f.x, f.y - fh * 0.7f, paint)
+                }
+            }
+        }
     }
 }

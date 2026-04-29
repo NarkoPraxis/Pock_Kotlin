@@ -13,6 +13,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.paddles.ChickenLaunch
 import physics.Point
+import gameobjects.puckstyle.paddles.ChickenLaunch.Companion.spawnFeatherExplosion
 import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
@@ -536,6 +537,14 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
     }
 
     // ── PuckSkin hooks ─────────────────────────────────────────────────────────
+
+    override fun onCollisionWin(position: Point, speed: Float) {
+        spawnFeatherExplosion(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary)
+    }
+
+    override fun onShieldedCollision(position: Point) {
+        spawnFeatherExplosion(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary)
+    }
 
     override fun onPhaseChanged(phase: ChargePhase) {
         when (phase) {
