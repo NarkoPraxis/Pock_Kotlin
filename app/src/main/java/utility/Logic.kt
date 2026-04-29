@@ -22,6 +22,7 @@ import physics.Force
 import physics.Point
 import physics.Ticker
 import shapes.Circle
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.reflect.KFunction5
 
@@ -54,6 +55,9 @@ object Logic {
     private var lowPopupDragPointerId: Int = -1
 
     var winnerSoundHasBeenPlayed = false
+
+    private var highInDanger = false
+    private var lowInDanger  = false
 
     enum class Result {
         High,
@@ -453,6 +457,7 @@ object Logic {
                     lowPlayer.inertLocked = true
                     applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
                     highPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
+                    lowPlayer.puck.renderer.skin?.onHit()
                 } else if (lowPlayer.shielded && !highPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPlayer.power))
@@ -460,6 +465,7 @@ object Logic {
                     highPlayer.inertLocked = true
                     applyHitStun(highPlayer, highPlayer.puck.impactPower)
                     lowPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
+                    highPlayer.puck.renderer.skin?.onHit()
                 } else if (lowPlayer.shielded && highPlayer.shielded) {
                     Sounds.playDoubleChargeCollision(collisionPoint.x)
                     val lowPower = lowPlayer.power
@@ -496,8 +502,13 @@ object Logic {
                     val lowSpeed = lowPlayer.movementSpeed
                     if (highSpeed >= lowSpeed && highSpeed >= Settings.minLaunchPower) {
                         highPlayer.puck.renderer.skin?.onCollisionWin(intersection, highSpeed)
+                        lowPlayer.puck.renderer.skin?.onHit()
                     } else if (lowSpeed > highSpeed && lowSpeed >= Settings.minLaunchPower) {
                         lowPlayer.puck.renderer.skin?.onCollisionWin(intersection, lowSpeed)
+                        highPlayer.puck.renderer.skin?.onHit()
+                    } else {
+                        highPlayer.puck.renderer.skin?.onHit()
+                        lowPlayer.puck.renderer.skin?.onHit()
                     }
                 }
                 resetTails(highPlayer, lowPlayer)
@@ -550,6 +561,7 @@ object Logic {
         val hadMovementPower = player.puck.movement.hasPower
         if(player.applyForces()) {
             Effects.addWallCollisionEffect(player.bounceDirection, player.puckFillColor, player.puck)
+            if (!player.shielded) player.puck.renderer.skin?.onHit()
         }
         if (hadLaunchPower && !player.puck.launch.hasPower) {
             GameEvents.cantScore.emit(Unit)
@@ -712,11 +724,9 @@ object Logic {
             Effects.clearCollisionEffects()
             Effects.signalScored()
             // Todo: refactor this so it's not "other" the effect spawned should match the puck entering the goal, not the other way around
-            loser.puck.renderer.skin?.onScore(
-                loser.puckFillColor,
-                Point(loser.px,if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop),
-                highGoal
-            )
+            val goalPoint = Point(loser.px, if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop)
+            loser.puck.renderer.skin?.onScore(loser.puckFillColor, goalPoint, highGoal)
+            winner.puck.renderer.skin?.onScore(loser.puckFillColor, goalPoint, highGoal)
             return true
         }
         return false
@@ -1004,6 +1014,45 @@ object Logic {
     fun resetTails(highPlayer: Player, lowPlayer: Player) {
         setPuckColor(highPlayer, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor)
         setPuckColor(lowPlayer, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor)
+    }
+
+    fun checkDanger() {
+        updateDanger(highPlayer, lowPlayer, isHigh = true)
+        updateDanger(lowPlayer, highPlayer, isHigh = false)
+    }
+
+    private fun updateDanger(player: Player, opponent: Player, isHigh: Boolean) {
+        val threshold = player.puck.renderer.radius * 5f
+        val px = player.px
+        val py = player.py
+
+        var nearestDist = Float.MAX_VALUE
+        var nearestX = px
+        var nearestY = py
+
+        val wallPoints = arrayOf(
+            floatArrayOf(Settings.screenLeft,  py),
+            floatArrayOf(Settings.screenRight, py),
+            floatArrayOf(px, Settings.topGoalBottom),
+            floatArrayOf(px, Settings.bottomGoalTop)
+        )
+        for (wp in wallPoints) {
+            val d = hypot(px - wp[0], py - wp[1])
+            if (d < nearestDist) { nearestDist = d; nearestX = wp[0]; nearestY = wp[1] }
+        }
+
+        val od = hypot(px - opponent.px, py - opponent.py)
+        if (od < nearestDist) { nearestDist = od; nearestX = opponent.px; nearestY = opponent.py }
+
+        val inDanger = nearestDist < threshold
+        val wasInDanger = if (isHigh) highInDanger else lowInDanger
+        if (isHigh) highInDanger = inDanger else lowInDanger = inDanger
+
+        if (inDanger && !wasInDanger) {
+            player.puck.renderer.skin?.onDangerNear(nearestX, nearestY)
+        } else if (!inDanger && wasInDanger) {
+            player.puck.renderer.skin?.onDangerClear()
+        }
     }
 
 }

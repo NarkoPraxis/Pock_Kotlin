@@ -67,6 +67,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         Logic.checkCharge()
         Logic.calculateCollision()
         Logic.checkScored()
+        Logic.checkDanger()
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
