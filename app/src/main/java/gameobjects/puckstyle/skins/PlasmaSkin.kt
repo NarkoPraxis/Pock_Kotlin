@@ -12,6 +12,7 @@ import kotlin.random.Random
 import androidx.core.graphics.withTranslation
 import gameobjects.puckstyle.paddles.PlasmaLaunch
 import physics.Point
+import utility.Effects
 
 class PlasmaSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedShaderSkin(theme, renderer) {
 
@@ -56,6 +57,10 @@ class PlasmaSkin(theme: ColorTheme, override val renderer: PuckRenderer) : Cache
     }
 
     override fun onShieldedCollision(position: Point) {
-        PlasmaLaunch.spawnLighting(renderer.x, renderer.y, renderer.radius,responsivePrimary, responsiveSecondary)
+        PlasmaLaunch.spawnLighting(renderer.x, renderer.y, renderer.radius, responsivePrimary, responsiveSecondary)
+    }
+
+    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+        PlasmaLaunch.spawnCelebration(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, highGoal, fullCircle = false)
     }
 }

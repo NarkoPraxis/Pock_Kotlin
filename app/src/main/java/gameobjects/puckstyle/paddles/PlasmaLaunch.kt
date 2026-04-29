@@ -97,21 +97,27 @@ class PlasmaLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         fun spawnLighting(cx: Float, cy: Float, puckRadius: Float, primary: Int, secondary: Int) {
             Effects.addPersistentEffect(PlasmaLightningBurst(cx, cy, puckRadius, primary, secondary))
         }
+
+        fun spawnCelebration(cx: Float, cy: Float, puckRadius: Float, primary: Int, secondary: Int, highGoal: Boolean, fullCircle: Boolean) {
+            Effects.addPersistentEffect(PlasmaLightningBurst(cx, cy, puckRadius, primary, secondary, highGoal = highGoal, fullCircle = fullCircle))
+        }
     }
 
     // ── Persistent Effects ─────────────────────────────────────────────────────
 
     /**
      * Short-lived burst of jumping lightning bolts radiating from the impact point.
-     * Bolts jump between random anchor points each step, simulating static discharge.
-     * Fades and completes after ~55 frames.
+     * In fullCircle mode anchors scatter around center (persistent). In celebration
+     * mode anchors sit at maxDistance in a semicircle and expire after totalFrames.
      */
     private class PlasmaLightningBurst(
         private val cx: Float,
         private val cy: Float,
         private val radius: Float,
         private val primary: Int,
-        private val secondary: Int
+        private val secondary: Int,
+        private val highGoal: Boolean = false,
+        private val fullCircle: Boolean = true
     ) : Effects.PersistentEffect {
 
         private val boltPaint = Paint().apply {
@@ -122,17 +128,26 @@ class PlasmaLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         private var frame = 0
         private val totalFrames = 55
 
-        // Persistent — never expires on its own; cleared by score reset via Effects.onReset()
-        override val isDone = false
+        override val isDone: Boolean get() = !fullCircle && frame >= totalFrames
 
-        // 20 anchor points scattered around impact zone; bolts jump between random pairs
         private val anchors: Array<FloatArray>
         init {
             val rng = Random(cx.toLong() xor cy.toLong())
-            anchors = Array(20) {
-                val angle = rng.nextFloat() * 2f * PI.toFloat()
-                val dist = radius * (rng.nextFloat() * 3f)
-                floatArrayOf(cx + cos(angle) * dist, cy + sin(angle) * dist)
+            anchors = if (fullCircle) {
+                Array(20) {
+                    val angle = rng.nextFloat() * 2f * PI.toFloat()
+                    val dist = radius * (rng.nextFloat() * 3f)
+                    floatArrayOf(cx + cos(angle) * dist, cy + sin(angle) * dist)
+                }
+            } else {
+                val maxDist = radius * 3f
+                val arcRange = PI.toFloat()
+                val arcOffset = if (highGoal) 0f else PI.toFloat()
+                Array(20) { i ->
+                    val angle = arcOffset + (i.toFloat() / 20f) * arcRange + rng.nextFloat() * 0.3f
+                    floatArrayOf(cx + cos(angle) * maxDist * (0.5f + rng.nextFloat() * 0.5f),
+                                 cy + sin(angle) * maxDist * (0.5f + rng.nextFloat() * 0.5f))
+                }
             }
         }
 
@@ -144,33 +159,29 @@ class PlasmaLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
 
             boltPaint.strokeWidth = Settings.strokeWidth * 0.55f
 
-            // Animated bolts — skip once fully faded
             if (alpha > 0) {
                 val rand = Random((frame / 3).toLong())
                 val boltCount = (10 * life).toInt().coerceAtLeast(3)
                 repeat(boltCount) {
                     val aIdx = rand.nextInt(anchors.size)
                     val bIdx = (aIdx + 1 + rand.nextInt(anchors.size - 1)) % anchors.size
-                    val a = anchors[aIdx]
-                    val b = anchors[bIdx]
-                    val color = if (it % 2 == 0) primary else secondary
-                    boltPaint.color = Palette.withAlpha(color, alpha)
+                    val a = anchors[aIdx]; val b = anchors[bIdx]
+                    boltPaint.color = Palette.withAlpha(if (it % 2 == 0) primary else secondary, alpha)
                     drawBolt(canvas, a[0], a[1], b[0], b[1], rand)
                 }
             }
 
-            // First-frame bolts — fade with the animation but never below alpha 100
-            val persistAlpha = alpha.coerceAtLeast(100)
-            val firstRand = Random(0L)
-            val firstBoltCount = 10 // (10 * life@frame0=1.0).coerceAtLeast(3)
-            repeat(firstBoltCount) {
-                val aIdx = firstRand.nextInt(anchors.size)
-                val bIdx = (aIdx + 1 + firstRand.nextInt(anchors.size - 1)) % anchors.size
-                val a = anchors[aIdx]
-                val b = anchors[bIdx]
-                val color = if (it % 2 == 0) primary else secondary
-                boltPaint.color = Palette.withAlpha(color, persistAlpha)
-                drawBolt(canvas, a[0], a[1], b[0], b[1], firstRand)
+            // First-frame persistent bolts only in full-circle (residual) mode
+            if (fullCircle) {
+                val persistAlpha = alpha.coerceAtLeast(100)
+                val firstRand = Random(0L)
+                repeat(10) {
+                    val aIdx = firstRand.nextInt(anchors.size)
+                    val bIdx = (aIdx + 1 + firstRand.nextInt(anchors.size - 1)) % anchors.size
+                    val a = anchors[aIdx]; val b = anchors[bIdx]
+                    boltPaint.color = Palette.withAlpha(if (it % 2 == 0) primary else secondary, persistAlpha)
+                    drawBolt(canvas, a[0], a[1], b[0], b[1], firstRand)
+                }
             }
 
             boltPaint.alpha = 255

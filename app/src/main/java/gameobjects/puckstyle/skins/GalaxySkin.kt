@@ -10,12 +10,14 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 import androidx.core.graphics.withTranslation
 import gameobjects.puckstyle.paddles.GalaxyLaunch
 import physics.Point
+import utility.Effects
 
 class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
@@ -31,6 +33,84 @@ class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRend
 
     override fun onShieldedCollision(position: Point) {
         GalaxyLaunch.spawnStartImpact(renderer.x, renderer.y, renderer.radius, responsivePrimary, responsiveSecondary)
+    }
+
+    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+        Effects.addPersistentEffect(GalaxyScoreEffect(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, highGoal, fullCircle = false))
+    }
+
+    private class GalaxyScoreEffect(
+        private val cx: Float, private val cy: Float,
+        private val radius: Float,
+        private val colorA: Int,
+        private val colorB: Int,
+        highGoal: Boolean,
+        fullCircle: Boolean
+    ) : Effects.PersistentEffect {
+        private val directions: List<Pair<Float, Float>>
+        private var currentDistance = 0f
+        private val maxDistance = radius * 3f
+        private val speed = maxDistance / 55f
+        private var frame = 0
+        private var _isDone = false
+        override val isDone: Boolean get() = _isDone
+
+        private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private val path = Path()
+
+        init {
+            val baseAngles = listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, Math.PI)
+            val fullAngles = List(12) { i -> i * (2.0 * Math.PI / 12) }
+            val srcAngles = if (fullCircle) fullAngles else baseAngles
+            directions = srcAngles.map { a ->
+                val adj = if (!fullCircle && !highGoal) a + Math.PI else a
+                Pair(cos(adj.toFloat()), sin(adj.toFloat()))
+            }
+        }
+
+        override fun step() {
+            frame++
+            currentDistance += speed
+            if (currentDistance >= maxDistance) _isDone = true
+        }
+
+        override fun draw(canvas: Canvas) {
+            if (_isDone) return
+            val life = (1f - currentDistance / maxDistance).coerceAtLeast(0f)
+            val alpha = (255 * life * life).toInt().coerceIn(0, 255)
+            if (alpha <= 0) return
+            val color = Palette.lerpColor(colorA, colorB, 1f - life)
+            val starR = radius * 0.35f * life
+            if (starR < 1f) return
+            paint.color = Palette.withAlpha(color, alpha)
+            for ((dx, dy) in directions) {
+                buildStar(cx + dx * currentDistance, cy + dy * currentDistance, starR, frame * 0.03f)
+                canvas.drawPath(path, paint)
+            }
+        }
+
+        private fun buildStar(scx: Float, scy: Float, outer: Float, rotation: Float) {
+            val inner = outer * 0.42f
+            val count = 5
+            val angleStep = (2.0 * Math.PI / count).toFloat()
+            val halfStep = angleStep / 2f
+            path.reset()
+            for (i in 0 until count) {
+                val outerAngle = rotation + i * angleStep - (Math.PI / 2.0).toFloat()
+                val tipX = scx + cos(outerAngle) * outer
+                val tipY = scy + sin(outerAngle) * outer
+                val prevInnerAngle = outerAngle - halfStep
+                val nextInnerAngle = outerAngle + halfStep
+                val prevValX = scx + cos(prevInnerAngle) * inner
+                val prevValY = scy + sin(prevInnerAngle) * inner
+                val nextValX = scx + cos(nextInnerAngle) * inner
+                val nextValY = scy + sin(nextInnerAngle) * inner
+                if (i == 0) path.moveTo(prevValX, prevValY)
+                path.lineTo(tipX, tipY)
+                path.lineTo(nextValX, nextValY)
+            }
+            path.close()
+        }
     }
 
     // FloatArray: [angularPos, distSeed, twinklePhase, angularDrift, twinkleSpeed, distFactor]
