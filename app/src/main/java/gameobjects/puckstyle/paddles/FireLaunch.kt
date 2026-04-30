@@ -115,35 +115,46 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
     companion object {
         fun spawnFireImpact(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int, grey: Int) {
             Effects.addPersistentEffect(FireScorch(cx, cy, radius, primary, grey))
-            Effects.addPersistentEffect(FireSparkBurst(cx, cy, radius, secondary))
+            Effects.addPersistentEffect(FireSparkBurst(cx, cy, radius, secondary, fullCircle = true))
+        }
+
+        fun spawnFireCelebration(cx: Float, cy: Float, radius: Float, secondary: Int, highGoal: Boolean, fullCircle: Boolean) {
+            Effects.addPersistentEffect(FireSparkBurst(cx, cy, radius, secondary, highGoal = highGoal, fullCircle = fullCircle))
         }
     }
 
     private class FireSparkBurst(
         private val cx: Float, private val cy: Float,
         private val radius: Float,
-        private val color: Int
+        private val color: Int,
+        private val highGoal: Boolean = false,
+        private val fullCircle: Boolean = true
     ) : Effects.PersistentEffect {
         private class Spark(var x: Float, var y: Float, var vx: Float, var vy: Float, var life: Float)
 
         private val sparks: List<Spark>
         private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private var frame = 0
+        private val totalFrames = if (fullCircle) 42 else 60
+        private val maxDistance = radius * 3f
         override var isDone = false
             private set
 
         init {
-            val count = 28
+            val count = if (fullCircle) 28 else 14
+            val angleRange = if (fullCircle) 2f * PI.toFloat() else PI.toFloat()
+            val angleOffset = if (fullCircle || highGoal) 0f else PI.toFloat()
             sparks = List(count) { i ->
-                val angle = (i.toFloat() / count) * 2f * PI.toFloat() + Random.nextFloat() * 0.4f
-                val speed = radius * (0.12f + Random.nextFloat() * 0.18f)
+                val angle = (i.toFloat() / count) * angleRange + angleOffset + Random.nextFloat() * 0.4f
+                val speed = if (fullCircle) radius * (0.12f + Random.nextFloat() * 0.18f)
+                            else maxDistance / totalFrames.toFloat() * (0.8f + Random.nextFloat() * 0.4f)
                 Spark(cx, cy, cos(angle) * speed, sin(angle) * speed, 1f)
             }
         }
 
         override fun step() {
             frame++
-            if (frame > 42) isDone = true
+            if (frame > totalFrames) isDone = true
         }
 
         override fun draw(canvas: Canvas) {
@@ -151,7 +162,7 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
                 s.x += s.vx
                 s.y += s.vy
                 s.vy += 0.04f * radius / Settings.screenRatio
-                s.life = (1f - frame / 42f).coerceAtLeast(0f)
+                s.life = (1f - frame / totalFrames.toFloat()).coerceAtLeast(0f)
                 paint.color = Palette.withAlpha(color, (230f * s.life * s.life).toInt().coerceIn(0, 255))
                 canvas.drawCircle(s.x, s.y, (radius * 0.8f * s.life).coerceAtLeast(1f), paint)
             }

@@ -726,7 +726,6 @@ object Logic {
             // Todo: refactor this so it's not "other" the effect spawned should match the puck entering the goal, not the other way around
             val goalPoint = Point(loser.px, if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop)
             loser.puck.renderer.skin?.onScore(loser.puckFillColor, goalPoint, highGoal)
-            winner.puck.renderer.skin?.onScore(loser.puckFillColor, goalPoint, highGoal)
             return true
         }
         return false

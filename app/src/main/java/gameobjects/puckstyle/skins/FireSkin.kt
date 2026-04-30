@@ -7,6 +7,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.paddles.FireLaunch
 import physics.Point
+import utility.Effects
 
 class FireSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
@@ -33,5 +34,9 @@ class FireSkin(override val theme: ColorTheme, override val renderer: PuckRender
 
     override fun onShieldedCollision(position: Point) {
         FireLaunch.spawnFireImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, theme.inert.secondary)
+    }
+
+    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+        FireLaunch.spawnFireCelebration(position.x, position.y, renderer.radius, responsiveSecondary, highGoal, fullCircle = false)
     }
 }

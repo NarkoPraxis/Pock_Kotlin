@@ -6,6 +6,9 @@ import android.graphics.Paint
 import gameobjects.Settings
 import utility.PaintBucket
 
+/** Which theme ColorGroup to use this frame — computed once in draw(), read by all components. */
+enum class ColorKey { Main, Shield, Inert }
+
 /**
  * Owns all visual components for a puck and manages their draw order via local z-indices.
  *
@@ -17,14 +20,24 @@ import utility.PaintBucket
  */
 class PuckRenderer {
 
+    // Component setters also rebuild the pre-sorted draw order so draw() has zero per-frame allocation.
     var skin: PuckSkin? = null
+        set(value) { field = value; rebuildLayerOrder() }
     var tail: TailRenderer? = null
+        set(value) { field = value; rebuildLayerOrder() }
     var effect: LaunchEffect? = null
+        set(value) { field = value; rebuildLayerOrder() }
 
     // Position and size — synced from Puck each frame in gameplay; set directly in menus
     var x: Float = 0f
     var y: Float = 0f
+
+    // Setting radius rebuilds the BallSize lookup table so subclass r() calls never multiply per frame.
     var radius: Float = 0f
+        set(value) {
+            field = value
+            rebuildBallSizes()
+        }
 
     // Animation frame counter — incremented each draw in gameplay; also advanced in menus
     var frame: Int = 0
@@ -80,6 +93,38 @@ class PuckRenderer {
     var hitStunned: Boolean = false
     var hitStunRatio: Float = 0f  // 1.0 = full inert, fades to 0.0 as stun expires
 
+    // ---- per-frame color key ----
+    // Resolved once at the start of draw(). All resolvedColors() calls chain through
+    // resolveColorGroup(), which reads this instead of re-evaluating isInert/shielded on
+    // every particle or facet in a hot inner loop.
+    var colorKey: ColorKey = ColorKey.Main
+        private set
+
+    // ---- pre-computed radius multiples ----
+    // Rebuilt when radius changes (typically once at game start, not per frame).
+    // Subclasses call r(BallSize.P060) instead of radius * 0.6f — pure array read, no multiply.
+    private val _ballSizes = FloatArray(BallSize.entries.size)
+
+    fun r(size: BallSize): Float = _ballSizes[size.ordinal]
+
+    private fun rebuildBallSizes() {
+        BallSize.entries.forEachIndexed { i, s -> _ballSizes[i] = radius * s.factor }
+    }
+
+    // ---- pre-sorted draw order ----
+    // Rebuilt only when a component is assigned. draw() iterates this with zero allocation.
+    private val layerOrder = ArrayList<Any>(3)
+
+    private fun rebuildLayerOrder() {
+        layerOrder.clear()
+        val slots = ArrayList<Pair<Int, Any>>(3)
+        skin?.let   { slots.add(it.zIndex to it) }
+        tail?.let   { slots.add(it.zIndex to it) }
+        effect?.let { slots.add(it.zIndex to it) }
+        slots.sortBy { it.first }
+        for ((_, component) in slots) layerOrder.add(component)
+    }
+
     fun resetState() {
         shielded = false
         launched = false
@@ -96,11 +141,14 @@ class PuckRenderer {
         effect?.reset()
     }
 
-    /** Resolves the theme ColorGroup that all style components should use for this frame. Priority: inert > shielded > main. */
-    fun resolveColorGroup(theme: ColorTheme): ColorGroup = when {
-        isInert -> theme.inert
-        shielded -> theme.shield
-        else -> theme.main
+    /**
+     * Resolves the theme ColorGroup for this frame. Reads from [colorKey] — which is set once
+     * at the top of draw() — so the isInert/shielded conditions are not re-evaluated per call.
+     */
+    fun resolveColorGroup(theme: ColorTheme): ColorGroup = when (colorKey) {
+        ColorKey.Inert  -> theme.inert
+        ColorKey.Shield -> theme.shield
+        ColorKey.Main   -> theme.main
     }
 
     // Launch effect state forwarded from Player so effect.draw needs no Player reference
@@ -113,27 +161,27 @@ class PuckRenderer {
     var flingCurrentY: Float = 0f
 
     fun draw(canvas: Canvas) {
-        data class Layer(val zIndex: Int, val drawFn: () -> Unit)
-        val layers = ArrayList<Layer>(3)
+        // Resolve once — components call resolvedColors() → resolveColorGroup() which reads colorKey.
+        // Prevents evaluating (inertLocked || hitStunned) hundreds of times per frame in particle loops.
+        colorKey = when {
+            isInert  -> ColorKey.Inert
+            shielded -> ColorKey.Shield
+            else     -> ColorKey.Main
+        }
 
-        skin?.let { s ->
-            layers.add(Layer(s.zIndex) {
-                if (preview) canvas.drawCircle(x, y, radius, PaintBucket.placeholderPaint)
-                else s.drawBody(canvas)
-            })
-        }
-        tail?.let { t ->
-            layers.add(Layer(t.zIndex) {
-                t.renderWithPreview(canvas)
-            })
-        }
-        effect?.let { e ->
-            if (effectEnabled || (e is PaddleLaunchEffect && e.alwaysVisible)) {
-                layers.add(Layer(e.zIndex) { e.draw(canvas) })
+        // layerOrder is sorted by zIndex at component-assignment time; no ArrayList or lambda here.
+        for (layer in layerOrder) {
+            when (layer) {
+                is PuckSkin -> {
+                    if (preview) canvas.drawCircle(x, y, radius, PaintBucket.placeholderPaint)
+                    else layer.drawBody(canvas)
+                }
+                is TailRenderer -> layer.renderWithPreview(canvas)
+                is LaunchEffect -> {
+                    if (effectEnabled || (layer is PaddleLaunchEffect && layer.alwaysVisible))
+                        layer.draw(canvas)
+                }
             }
         }
-
-        layers.sortBy { it.zIndex }
-        layers.forEach { it.drawFn() }
     }
 }

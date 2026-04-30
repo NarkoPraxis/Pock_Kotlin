@@ -2,6 +2,7 @@ package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RectF
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -49,6 +50,10 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         private const val STALE_FADE_FRAMES = 25
         fun spawnRainbow(rx: Float, ry: Float, radius: Float) {
             Effects.addPersistentEffect(SpectralGleam(rx, ry, radius))
+        }
+
+        fun spawnCelebration(cx: Float, cy: Float, radius: Float, highGoal: Boolean, fullCircle: Boolean): Effects.PersistentEffect {
+            return SpectralGleam(cx, cy, radius, celebrationMaxAlpha = 255, halfCircle = !fullCircle, highGoal = highGoal)
         }
     }
 
@@ -238,13 +243,22 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
 
     private class SpectralGleam(
         private val cx: Float, private val cy: Float,
-        private val radius: Float
+        private val radius: Float,
+        private val celebrationMaxAlpha: Int = MAX_ALPHA,
+        private val halfCircle: Boolean = false,
+        private val highGoal: Boolean = false
     ) : Effects.PersistentEffect {
         private val paint = Paint().apply {
             isAntiAlias = true; style = Paint.Style.STROKE
         }
+        private val rect = RectF()
         private var frame = 0
-        override val isDone = false
+        private val startAngle = if (halfCircle && !highGoal) 180f else 0f
+        private val sweepAngle = if (halfCircle) 180f else 360f
+        private val maxRadius = if (halfCircle) radius * 3f else radius * 2f
+
+        private var _isDone = false
+        override val isDone: Boolean get() = _isDone
 
         companion object {
             private const val NUM_RINGS = 6
@@ -253,25 +267,37 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
             private const val MAX_ALPHA = 50
         }
 
-        override fun step() { frame++ }
+        override fun step() {
+            frame++
+            if (halfCircle && frame > RAMP_FRAMES + GROW_FRAMES) _isDone = true
+        }
 
         override fun draw(canvas: Canvas) {
             val sw = Settings.strokeWidth * (2f / 3f)
-            val maxStartRadius = radius * 2f - (NUM_RINGS - 1) * sw
             val growT = (frame.toFloat() / GROW_FRAMES).coerceIn(0f, 1f)
-            val alpha = if (frame < RAMP_FRAMES) {
-                ((frame.toFloat() / RAMP_FRAMES) * MAX_ALPHA).toInt().coerceIn(0, MAX_ALPHA)
+            val alpha = if (halfCircle) {
+                val fadeFrames = RAMP_FRAMES
+                if (frame < fadeFrames) ((frame.toFloat() / fadeFrames) * celebrationMaxAlpha).toInt()
+                else (celebrationMaxAlpha - ((frame - fadeFrames).toFloat() / GROW_FRAMES) * celebrationMaxAlpha).toInt()
             } else {
-                MAX_ALPHA
+                if (frame < RAMP_FRAMES) ((frame.toFloat() / RAMP_FRAMES) * MAX_ALPHA).toInt()
+                else MAX_ALPHA
             }
+            if (alpha <= 0) return
             paint.strokeWidth = sw
             for (i in 0 until NUM_RINGS) {
-                val finalRingRadius = maxStartRadius + i * sw
+                val finalRingRadius = maxRadius - (NUM_RINGS - 1 - i) * sw
                 val ringRadius = finalRingRadius * growT
+                if (ringRadius <= 0f) continue
                 val hue = i * (360f / NUM_RINGS) + frame * 0.5f
                 paint.color = Palette.hsvThemed(hue)
-                paint.alpha = alpha
-                canvas.drawCircle(cx, cy, ringRadius, paint)
+                paint.alpha = alpha.coerceIn(0, celebrationMaxAlpha)
+                if (halfCircle) {
+                    rect.set(cx - ringRadius, cy - ringRadius, cx + ringRadius, cy + ringRadius)
+                    canvas.drawArc(rect, startAngle, sweepAngle, false, paint)
+                } else {
+                    canvas.drawCircle(cx, cy, ringRadius, paint)
+                }
             }
         }
     }

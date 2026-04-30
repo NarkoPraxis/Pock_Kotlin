@@ -6,6 +6,7 @@ import android.graphics.Path
 import androidx.core.graphics.withRotation
 import androidx.core.graphics.withScale
 import androidx.core.graphics.withTranslation
+import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
@@ -21,6 +22,26 @@ class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRen
     private var spinAngle = 0f
     private val path = Path()
 
+    private var celebrationActive = false
+    private var celebrationFrame = 0
+    private val CELEB_EXPAND = 20
+    private val CELEB_HOLD = 10
+    private val CELEB_RETRACT = 30
+    private val CELEB_TOTAL = CELEB_EXPAND + CELEB_HOLD + CELEB_RETRACT
+
+    private val celebrationT: Float
+        get() {
+            if (!celebrationActive) return 0f
+            return when {
+                celebrationFrame <= CELEB_EXPAND -> celebrationFrame.toFloat() / CELEB_EXPAND
+                celebrationFrame <= CELEB_EXPAND + CELEB_HOLD -> 1f
+                else -> {
+                    val r = celebrationFrame - CELEB_EXPAND - CELEB_HOLD
+                    1f - r.toFloat() / CELEB_RETRACT
+                }
+            }.coerceIn(0f, 1f)
+        }
+
 
     override fun drawBody(canvas: Canvas) {
         val colors = resolvedColors()
@@ -34,7 +55,13 @@ class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRen
         val speed = (renderer.movementPower * 0.5f).coerceIn(2f, 10f)
         spinAngle += speed * spinDir
         val armCount = 8
-        val tipDist = (renderer.movementPower / 30f).coerceIn(.5f, r) * r * 2f
+        val baseTipDist = (renderer.movementPower / 30f).coerceIn(.5f, r) * r * 2f
+        val ct = celebrationT
+        val tipDist = if (ct > 0f) baseTipDist + (r * 3f - baseTipDist) * ct else baseTipDist
+        if (celebrationActive) {
+            celebrationFrame++
+            if (celebrationFrame >= CELEB_TOTAL) { celebrationActive = false; celebrationFrame = 0 }
+        }
 
         for (i in 0 until armCount) {
             canvas.withTranslation(renderer.x, renderer.y) {
@@ -58,6 +85,11 @@ class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRen
 
     override fun onShieldedCollision(position: Point) {
         Effects.addPersistentEffect(SpinnerResidual(renderer.x, renderer.y, renderer.radius, theme.main.primary, if (theme.isWarm) -1f else 1f))
+    }
+
+    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+        celebrationActive = true
+        celebrationFrame = 0
     }
     class SpinnerResidual(
         private val cx: Float, private val cy: Float,
