@@ -19,6 +19,10 @@ class NeonLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         strokeCap = Paint.Cap.ROUND
     }
 
+    // Cache stroke-width multiples — Settings.strokeWidth is fixed after setup
+    private val haloStrokeOuter = Settings.strokeWidth * 3.2f
+    private val haloStrokeInner = Settings.strokeWidth * 2.0f
+
     override fun drawChargingPaddle(canvas: Canvas) {
         drawHalo(canvas, paddleX, paddleY, aimX, aimY, phase)
         super.drawChargingPaddle(canvas)
@@ -52,12 +56,18 @@ class NeonLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
             innerAlpha = 130
         }
 
+        // Compute line endpoints once and reuse for both draw calls
+        val x0 = cx - perpX * half
+        val y0 = cy - perpY * half
+        val x1 = cx + perpX * half
+        val y1 = cy + perpY * half
+
         halo.color = Palette.withAlpha(glowColor, outerAlpha)
-        halo.strokeWidth = Settings.strokeWidth * 3.2f
-        canvas.drawLine(cx - perpX * half, cy - perpY * half, cx + perpX * half, cy + perpY * half, halo)
+        halo.strokeWidth = haloStrokeOuter
+        canvas.drawLine(x0, y0, x1, y1, halo)
         halo.color = Palette.withAlpha(glowColor, innerAlpha)
-        halo.strokeWidth = Settings.strokeWidth * 2.0f
-        canvas.drawLine(cx - perpX * half, cy - perpY * half, cx + perpX * half, cy + perpY * half, halo)
+        halo.strokeWidth = haloStrokeInner
+        canvas.drawLine(x0, y0, x1, y1, halo)
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {

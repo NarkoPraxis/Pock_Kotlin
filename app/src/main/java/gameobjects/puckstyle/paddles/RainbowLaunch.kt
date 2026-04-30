@@ -28,6 +28,19 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     private val hueOffset = Palette.themeHue(theme)
     private val shieldHue = Palette.colorHue(theme.shield.primary)
 
+    // ── radius-derived cache ──────────────────────────────────────────────────
+    private var cachedRadius = -1f
+    private var tailStrokeWidth = 0f   // renderer.radius * 0.44f
+    private var barRadius = 0f         // renderer.radius * 0.5f
+
+    private fun ensureCache() {
+        if (cachedRadius != renderer.radius) {
+            cachedRadius = renderer.radius
+            tailStrokeWidth = renderer.radius * 0.44f
+            barRadius = renderer.radius * 0.5f
+        }
+    }
+
     // ── tail history ─────────────────────────────────────────────────────────
     private var tailHistoryX = FloatArray(TAIL_COUNT)
     private var tailHistoryY = FloatArray(TAIL_COUNT)
@@ -48,6 +61,9 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     companion object {
         private const val TAIL_COUNT = 40
         private const val STALE_FADE_FRAMES = 25
+        private const val TAIL_LAST = TAIL_COUNT - 1
+        private const val TAIL_LAST_F = TAIL_LAST.toFloat()
+
         fun spawnRainbow(rx: Float, ry: Float, radius: Float) {
             Effects.addPersistentEffect(SpectralGleam(rx, ry, radius))
         }
@@ -68,7 +84,7 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
             tailInitialized = true
             return
         }
-        for (i in TAIL_COUNT - 1 downTo 1) {
+        for (i in TAIL_LAST downTo 1) {
             tailHistoryX[i] = tailHistoryX[i - 1]
             tailHistoryY[i] = tailHistoryY[i - 1]
         }
@@ -88,17 +104,22 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
     /** Draw line segments between consecutive history positions with hue cycling and alpha fade. */
     private fun drawTailLines(canvas: Canvas) {
         if (!tailInitialized) return
-        tailLinePaint.strokeWidth = renderer.radius * 0.44f
-        val last = TAIL_COUNT - 1
-        for (i in 0 until last) {
-            val ratio = i.toFloat() / last.toFloat()
-            val cycleHue = frame * 4f + hueOffset - i * 15f
+        tailLinePaint.strokeWidth = tailStrokeWidth
+
+        // Compute per-frame shielded oscillation once outside the loop.
+        val isInert = renderer.isInert
+        val isShielded = renderer.shielded
+        val shieldBase = if (isShielded) shieldHue + sin(frame * 0.04f) * 30f else 0f
+        val frameHue = frame * 4f + hueOffset
+
+        for (i in 0 until TAIL_LAST) {
+            val ratio = i.toFloat() / TAIL_LAST_F
+            val cycleHue = frameHue - i * 15f
             val color = when {
-                renderer.isInert -> Palette.hsv(cycleHue, 0.10f, 0.90f)
-                renderer.shielded -> Palette.hsvThemed(shieldHue + sin(frame * 0.04f) * 30f - i * 15f)
-                else -> Palette.hsvThemed(cycleHue)
+                isInert    -> Palette.hsv(cycleHue, 0.10f, 0.90f)
+                isShielded -> Palette.hsvThemed(shieldBase - i * 15f)
+                else       -> Palette.hsvThemed(cycleHue)
             }
-            val alpha = (255f * (1f - ratio)).toInt().coerceIn(0, 255)
             tailLinePaint.color = Palette.withAlpha(color, 255)
             canvas.drawLine(
                 tailHistoryX[i], tailHistoryY[i],
@@ -113,14 +134,15 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
      * multiplier so it fades independently of any active tail.
      */
     private fun drawStaleTailLines(canvas: Canvas, tail: StaleTail) {
-        tailLinePaint.strokeWidth = renderer.radius * 0.44f
-        val last = TAIL_COUNT - 1
-        for (i in 0 until last) {
-            val ratio = i.toFloat() / last.toFloat()
-            val frozenHue = tail.captureFrame * 4f + hueOffset - i * 15f
+        tailLinePaint.strokeWidth = tailStrokeWidth
+        val globalAlpha = tail.globalAlpha
+        val frozenFrameHue = tail.captureFrame * 4f + hueOffset
+        for (i in 0 until TAIL_LAST) {
+            val ratio = i.toFloat() / TAIL_LAST_F
+            val frozenHue = frozenFrameHue - i * 15f
             val color = Palette.hsvThemed(frozenHue)
             val segAlpha = (255f * (1f - ratio)).toInt().coerceIn(0, 255)
-            val finalAlpha = (segAlpha * tail.globalAlpha).toInt().coerceIn(0, 255)
+            val finalAlpha = (segAlpha * globalAlpha).toInt().coerceIn(0, 255)
             tailLinePaint.color = Palette.withAlpha(color, finalAlpha)
             canvas.drawLine(
                 tail.histX[i], tail.histY[i],
@@ -160,36 +182,35 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         fill: Float,
         f: Int
     ) {
-        val radius = renderer.radius * .5f
-
         if (renderer.isInert) {
             fillPaint.color = responsivePrimary
-            canvas.drawCircle(cx, cy, radius, fillPaint)
+            canvas.drawCircle(cx, cy, barRadius, fillPaint)
         } else {
-            fillPaint.color =  barColor(ph, f)
-            canvas.drawCircle(cx, cy, radius, fillPaint)
+            fillPaint.color = barColor(ph, f)
+            canvas.drawCircle(cx, cy, barRadius, fillPaint)
         }
 
         if (fill > 0f && !renderer.isInert) {
             paddlePaint.color = theme.shield.primary
-            canvas.drawCircle(cx, cy, radius * chargeFillRatio, paddlePaint)
+            canvas.drawCircle(cx, cy, barRadius * chargeFillRatio, paddlePaint)
         }
 
         paddlePaint.strokeWidth = Settings.strokeWidth
         paddlePaint.alpha = 255
         paddlePaint.color = if (phase == ChargePhase.Inert) theme.inert.secondary else responsiveSecondary
-        canvas.drawCircle(cx, cy, radius, paddlePaint)
+        canvas.drawCircle(cx, cy, barRadius, paddlePaint)
     }
 
     // ── overrides ─────────────────────────────────────────────────────────────
 
     override fun draw(canvas: Canvas) {
-        // Tick and draw all stale tails before the active paddle so they render beneath it.
-        val iter = staleTails.iterator()
-        while (iter.hasNext()) {
-            val stale = iter.next()
+        ensureCache()
+        // Tick all stale tails; remove expired ones; draw survivors — no iterator allocation.
+        staleTails.removeAll { stale ->
             stale.tick()
-            if (stale.isDone) { iter.remove(); continue }
+            stale.isDone
+        }
+        for (stale in staleTails) {
             drawStaleTailLines(canvas, stale)
         }
         super.draw(canvas)
@@ -257,6 +278,9 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         private val sweepAngle = if (halfCircle) 180f else 360f
         private val maxRadius = if (halfCircle) radius * 3f else radius * 2f
 
+        // strokeWidth is constant after construction — cache it.
+        private val fixedStrokeWidth = Settings.strokeWidth * (2f / 3f)
+
         private var _isDone = false
         override val isDone: Boolean get() = _isDone
 
@@ -273,7 +297,6 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         }
 
         override fun draw(canvas: Canvas) {
-            val sw = Settings.strokeWidth * (2f / 3f)
             val growT = (frame.toFloat() / GROW_FRAMES).coerceIn(0f, 1f)
             val alpha = if (halfCircle) {
                 val fadeFrames = RAMP_FRAMES
@@ -284,9 +307,9 @@ class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
                 else MAX_ALPHA
             }
             if (alpha <= 0) return
-            paint.strokeWidth = sw
+            paint.strokeWidth = fixedStrokeWidth
             for (i in 0 until NUM_RINGS) {
-                val finalRingRadius = maxRadius - (NUM_RINGS - 1 - i) * sw
+                val finalRingRadius = maxRadius - (NUM_RINGS - 1 - i) * fixedStrokeWidth
                 val ringRadius = finalRingRadius * growT
                 if (ringRadius <= 0f) continue
                 val hue = i * (360f / NUM_RINGS) + frame * 0.5f

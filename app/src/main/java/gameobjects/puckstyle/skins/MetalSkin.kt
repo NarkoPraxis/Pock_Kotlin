@@ -32,12 +32,19 @@ class MetalSkin(theme: ColorTheme, override val renderer: PuckRenderer) : Cached
             floatArrayOf(0f, 0.25f, 0.75f, 1f),
             Shader.TileMode.CLAMP)
 
+    private var cachedEdgeStrokeWidth = -1f
+
     override fun drawBody(canvas: Canvas) {
         ensureShader(renderer.radius)
+        // Cache strokeWidth — only changes when radius changes (same cadence as shader rebuild)
+        val sw = renderer.strokePaint.strokeWidth * 0.9f
+        if (cachedEdgeStrokeWidth != sw) {
+            cachedEdgeStrokeWidth = sw
+            edgePaint.strokeWidth = sw
+        }
         canvas.withTranslation(renderer.x, renderer.y) {
             drawCircle(0f, 0f, renderer.radius, fill)
         }
-        edgePaint.strokeWidth = renderer.strokePaint.strokeWidth * 0.9f
         edgePaint.color = responsiveSecondary
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, edgePaint)
     }
@@ -52,8 +59,14 @@ class MetalSkin(theme: ColorTheme, override val renderer: PuckRenderer) : Cached
         highGoal: Boolean,
         fullCircle: Boolean
     ) : Effects.PersistentEffect {
-        private val outerPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-        private val innerPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+        private val outerPaint = Paint().apply {
+            isAntiAlias = true; style = Paint.Style.FILL
+            color = Color.rgb(255, 180, 40)
+        }
+        private val innerPaint = Paint().apply {
+            isAntiAlias = true; style = Paint.Style.FILL
+            color = Color.rgb(255, 240, 150)
+        }
         private val clipPath = if (!fullCircle) Path().also { p ->
             if (highGoal)
                 p.addRect(cx - radius * 20f, cy, cx + radius * 20f, cy + radius * 20f, Path.Direction.CW)
@@ -73,9 +86,9 @@ class MetalSkin(theme: ColorTheme, override val renderer: PuckRenderer) : Cached
             if (outerAlpha <= 0) return
             canvas.save()
             clipPath?.let { canvas.clipPath(it) }
-            outerPaint.color = Color.rgb(255, 180, 40); outerPaint.alpha = outerAlpha
+            outerPaint.alpha = outerAlpha
             canvas.drawCircle(cx, cy, r, outerPaint)
-            innerPaint.color = Color.rgb(255, 240, 150); innerPaint.alpha = (220 * (1f - progress)).toInt().coerceIn(0, 255)
+            innerPaint.alpha = (220 * (1f - progress)).toInt().coerceIn(0, 255)
             canvas.drawCircle(cx, cy, r * 0.55f, innerPaint)
             canvas.restore()
         }

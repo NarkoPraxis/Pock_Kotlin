@@ -24,6 +24,25 @@ class NeonSkin(override val theme: ColorTheme, override val renderer: PuckRender
         isAntiAlias = true; isDither = true; style = Paint.Style.STROKE
     }
 
+    // Cache for stroke-width-derived values — updated only when strokeWidth changes
+    private var cachedStrokeWidth = -1f
+    private var sw5 = 0f
+    private var sw32 = 0f
+    private var sw18 = 0f
+    private var sw1 = 0f
+
+    // Cache for primary-color-derived glow colors — updated only when primary changes
+    private var cachedPrimary = Int.MIN_VALUE
+    private var glowColor25 = 0
+    private var glowColor45 = 0
+    private var glowColor110 = 0
+    private var glowColor220 = 0
+
+    init {
+        // chargePaint color never changes — set once here
+        renderer.chargePaint.color = theme.shield.primary
+    }
+
     override fun onCollisionWin(position: Point, speed: Float) {
         Effects.addPersistentEffect(NeonRingScar(renderer.x, renderer.y, renderer.radius, responsivePrimary))
     }
@@ -125,18 +144,31 @@ class NeonSkin(override val theme: ColorTheme, override val renderer: PuckRender
 
     override fun drawBody(canvas: Canvas) {
         val sw = renderer.strokePaint.strokeWidth
+        if (cachedStrokeWidth != sw) {
+            cachedStrokeWidth = sw
+            sw5  = sw * 5.0f
+            sw32 = sw * 3.2f
+            sw18 = sw * 1.8f
+            sw1  = sw * 1.0f
+        }
+
         val primary = resolvedColors().primary
+        if (cachedPrimary != primary) {
+            cachedPrimary = primary
+            glowColor25  = Palette.withAlpha(primary, 25)
+            glowColor45  = Palette.withAlpha(primary, 45)
+            glowColor110 = Palette.withAlpha(primary, 110)
+            glowColor220 = Palette.withAlpha(primary, 220)
+        }
 
         // 4 glow rings, outermost first — body always stays theme color, charging shown via chargePaint
-        glowPaint.color = Palette.withAlpha(primary, 25);  glowPaint.strokeWidth = sw * 5.0f
+        glowPaint.color = glowColor25;  glowPaint.strokeWidth = sw5
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-        glowPaint.color = Palette.withAlpha(primary, 45);  glowPaint.strokeWidth = sw * 3.2f
+        glowPaint.color = glowColor45;  glowPaint.strokeWidth = sw32
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-        glowPaint.color = Palette.withAlpha(primary, 110); glowPaint.strokeWidth = sw * 1.8f
+        glowPaint.color = glowColor110; glowPaint.strokeWidth = sw18
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-        glowPaint.color = Palette.withAlpha(primary, 220); glowPaint.strokeWidth = sw
+        glowPaint.color = glowColor220; glowPaint.strokeWidth = sw1
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-
-        renderer.chargePaint.color = theme.shield.primary
     }
 }
