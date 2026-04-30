@@ -17,7 +17,6 @@ import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
-import gameobjects.puckstyle.RandomRoll
 import physics.Force
 import physics.Point
 import physics.Ticker
@@ -158,7 +157,7 @@ object Logic {
 
     private fun interceptBallMenu(event: MotionEvent?, motionEvent: Int?): Boolean {
         if (event == null) return false
-        if (Settings.gameState != GameState.BallSelection || Settings.pauseGame) return false
+        if (Settings.gameState != GameState.BallSelection) return false
         val action = motionEvent ?: return false
         val maskedAction = action and MotionEvent.ACTION_MASK
 
@@ -208,6 +207,7 @@ object Logic {
                 val pid = event.getPointerId(idx)
                 val x = event.getX(idx)
                 val y = event.getY(idx)
+
                 if (pid == highPopupDragPointerId) {
                     highPopupDragPointerId = -1
                     if (highBallPopup.isOpen) highBallPopup.handleTouchEvent(action, x, y)
@@ -219,7 +219,7 @@ object Logic {
                     return true
                 }
                 // Untracked pointer lifting in the popup area — consume only if the lift lands inside the carousel
-                return highBallPopup.hitTest(x, y) || lowBallPopup.hitTest(x, y)
+                return false
             }
             MotionEvent.ACTION_CANCEL -> {
                 if (highBallPopup.isOpen) highBallPopup.handleTouchEvent(action, event.x, event.y)

@@ -13,12 +13,12 @@ import gameobjects.puckstyle.RandomRoll
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.TailRenderer
-import utility.PaintBucket
 import utility.Storage
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import androidx.core.graphics.withClip
+import utility.Logic
 
 class BallSelectionPopup(val isHigh: Boolean) {
 
