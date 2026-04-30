@@ -14,6 +14,9 @@ class PixelTail(override val theme: ColorTheme, override val renderer: PuckRende
     private class Block(var x: Float = 0f, var y: Float = 0f)
     private class Ring(val x: Float, val y: Float, var size: Float, var alpha: Int, val isFront: Boolean, val growRate: Float, val color: Int)
 
+    // Tail length is constant — computed once at init from the immutable multiplier
+    private val len = (15 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+
     private var blocks: MutableList<Block>? = null
     private val rings = mutableListOf<Ring>()
     private val paint     = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
@@ -25,7 +28,28 @@ class PixelTail(override val theme: ColorTheme, override val renderer: PuckRende
     private var shiftCounter = 0
     private var rippleIndex  = -1   // collision ripple; -1 = idle
 
+    // Cached radius-derived values — recomputed only when radius changes
+    private var cachedRadius   = -1f
+    private var cachedSizes    = FloatArray(len)   // computeSize per index
+    private var cachedAlphas   = IntArray(len)     // computeAlpha per index
+    private var cachedStrokeW  = 0f               // radius * 0.3f
+    private var cachedGrowRate = 0f               // radius * 0.09f
+
+    private fun ensureCache() {
+        if (cachedRadius == renderer.radius) return
+        cachedRadius   = renderer.radius
+        cachedStrokeW  = renderer.radius * 0.3f
+        cachedGrowRate = renderer.radius * 0.09f
+        ringPaint.strokeWidth = cachedStrokeW
+        for (i in 0 until len) {
+            cachedSizes[i]  = renderer.radius * (0.95f + 0.85f * exp(-i.toFloat() * 0.3f))
+            cachedAlphas[i] = computeAlpha(i, len)
+        }
+    }
+
     override fun render(canvas: Canvas) {
+        ensureCache()
+
         val justHit      = renderer.launched && !wasLaunched
         val justShielded = renderer.shielded && !wasShielded
         wasLaunched = renderer.launched
@@ -34,7 +58,6 @@ class PixelTail(override val theme: ColorTheme, override val renderer: PuckRende
         pulseFade *= 0.82f
 
         // shift every 3rd frame → wide gaps between squares; 15 blocks gives locked tail after index ~10
-        val len = (15 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (blocks == null || blocks!!.size != len) {
             blocks = MutableList(len) { Block(renderer.x, renderer.y) }
             rippleIndex = -1
@@ -57,48 +80,48 @@ class PixelTail(override val theme: ColorTheme, override val renderer: PuckRende
         // single effect-color front ring on shield earned
         if (justShielded) {
             val b = blocks[0]
-            rings += Ring(b.x, b.y, computeSize(0, renderer.radius), 200,
-                isFront = true, growRate = renderer.radius * 0.09f, color = theme.shield.primary)
+            rings += Ring(b.x, b.y, cachedSizes[0], 200,
+                isFront = true, growRate = cachedGrowRate, color = theme.shield.primary)
         }
 
         // collision ripple — one ring per frame, propagating down the tail
         if (rippleIndex in blocks.indices) {
             val b = blocks[rippleIndex]
-            rings += Ring(b.x, b.y, computeSize(rippleIndex, renderer.radius), 200,
-                isFront = (rippleIndex == 0), growRate = renderer.radius * 0.09f, color = renderer.strokeColor)
+            rings += Ring(b.x, b.y, cachedSizes[rippleIndex], 200,
+                isFront = (rippleIndex == 0), growRate = cachedGrowRate, color = renderer.strokeColor)
             rippleIndex++
             if (rippleIndex >= blocks.size) rippleIndex = -1
         }
 
-        // rings drawn first — behind all blocks
-        ringPaint.strokeWidth = renderer.radius * 0.3f
-        val iter = rings.iterator()
-        while (iter.hasNext()) {
-            val r = iter.next()
+        // rings drawn first — behind all blocks; index-based loop avoids iterator allocation
+        var ri = 0
+        while (ri < rings.size) {
+            val r = rings[ri]
             r.size  += r.growRate
             r.alpha -= if (r.isFront) 6 else 12
-            if (r.alpha <= 0) { iter.remove(); continue }
-            val half = r.size / 2f
-            ringPaint.color = Palette.withAlpha(r.color, r.alpha)
-            canvas.drawRect(r.x - half, r.y - half, r.x + half, r.y + half, ringPaint)
+            if (r.alpha <= 0) {
+                rings.removeAt(ri)
+                // don't advance ri — the next element shifted into this slot
+            } else {
+                val half = r.size / 2f
+                ringPaint.color = Palette.withAlpha(r.color, r.alpha)
+                canvas.drawRect(r.x - half, r.y - half, r.x + half, r.y + half, ringPaint)
+                ri++
+            }
         }
 
         val colors = resolvedColors()
+        val localPulseFade = pulseFade  // hoist to avoid repeated field reads in tight loop
 
         // main blocks drawn on top of rings
         for (i in blocks.indices) {
-            val baseSize = computeSize(i, renderer.radius)
-            val side     = baseSize + pulseFade * 0.25f * baseSize
+            val baseSize = cachedSizes[i]
+            val side     = baseSize + localPulseFade * 0.25f * baseSize
             val half     = side / 2f
-            val alpha    = computeAlpha(i, blocks.size)
-            paint.color = Palette.withAlpha(colors.primary, alpha)
+            paint.color  = Palette.withAlpha(colors.primary, cachedAlphas[i])
             canvas.drawRect(blocks[i].x - half, blocks[i].y - half, blocks[i].x + half, blocks[i].y + half, paint)
         }
     }
-
-    // smooth exponential decay; settled at ~index 10, locked there for the rest
-    private fun computeSize(i: Int, radius: Float): Float =
-        radius * (0.95f + 0.85f * exp(-i.toFloat() * 0.3f))
 
     private fun computeAlpha(i: Int, totalSize: Int): Int = when {
         i == 0 -> 255

@@ -14,6 +14,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.core.graphics.withRotation
+import gameobjects.puckstyle.BallSize
 import kotlin.random.Random
 
 class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
@@ -38,8 +39,8 @@ class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
 
     private fun drawEgg(canvas: Canvas, cx: Float, cy: Float, fillRatio: Float, ph: ChargePhase) {
         val r = renderer.radius
-        val eggW = r * 0.5f
-        val eggH = r * 0.7f
+        val eggW = renderer.r(BallSize.P050)
+        val eggH = renderer.r(BallSize.P070)
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
 
         val angle = Math.toDegrees(atan2(aimY.toDouble(), aimX.toDouble())).toFloat()

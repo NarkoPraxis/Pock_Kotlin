@@ -18,16 +18,30 @@ class PixelSkin(override val theme: ColorTheme, override val renderer: PuckRende
     private val fill = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
     private val stroke = Paint().apply { isAntiAlias = false; style = Paint.Style.STROKE }
 
+    // Cached radius-derived values
+    private var cachedRadius = -1f
+    private var cachedSide = 0f
+    private var cachedLeft = 0f
+    private var cachedTop = 0f
+
+    private fun ensureCache() {
+        if (cachedRadius != renderer.radius) {
+            cachedRadius = renderer.radius
+            cachedSide = renderer.radius * 1.7f
+            stroke.strokeWidth = renderer.strokePaint.strokeWidth
+        }
+        // x/y change every frame so recompute rect origin each call
+        cachedLeft = renderer.x - cachedSide / 2f
+        cachedTop  = renderer.y - cachedSide / 2f
+    }
+
     override fun drawBody(canvas: Canvas) {
+        ensureCache()
         val colors = resolvedColors()
-        fill.color = colors.primary
+        fill.color   = colors.primary
         stroke.color = colors.secondary
-        val side = renderer.radius * 1.7f
-        val left = renderer.x - side / 2f
-        val top = renderer.y - side / 2f
-        canvas.drawRect(left, top, left + side, top + side, fill)
-        stroke.strokeWidth = renderer.strokePaint.strokeWidth
-        canvas.drawRect(left, top, left + side, top + side, stroke)
+        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + cachedSide, cachedTop + cachedSide, fill)
+        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + cachedSide, cachedTop + cachedSide, stroke)
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {
@@ -65,6 +79,7 @@ class PixelSkin(override val theme: ColorTheme, override val renderer: PuckRende
             var traveled = 0f
             var rippling = false
             var rippleSize = 0f
+            // alpha is clamped to [0,255] in step() so draw() never needs coerceIn
             var rippleAlpha = 0
             var done = false
         }
@@ -95,8 +110,12 @@ class PixelSkin(override val theme: ColorTheme, override val renderer: PuckRende
                         p.rippling = true; p.rippleSize = p.halfSide * 1.8f; p.rippleAlpha = 200
                     }
                 } else {
-                    p.rippleSize += radius * 0.09f; p.rippleAlpha -= 12
-                    if (p.rippleAlpha <= 0) p.done = true
+                    p.rippleSize += radius * 0.09f
+                    p.rippleAlpha -= 12
+                    if (p.rippleAlpha <= 0) {
+                        p.rippleAlpha = 0
+                        p.done = true
+                    }
                 }
             }
             if (allDone) _isDone = true
@@ -110,7 +129,8 @@ class PixelSkin(override val theme: ColorTheme, override val renderer: PuckRende
                     canvas.drawRect(p.x - p.halfSide, p.y - p.halfSide, p.x + p.halfSide, p.y + p.halfSide, fill)
                 } else {
                     val half = p.rippleSize / 2f
-                    ring.color = Palette.withAlpha(secondaryColor, p.rippleAlpha.coerceIn(0, 255))
+                    // rippleAlpha is already clamped to [0,255] by step()
+                    ring.color = Palette.withAlpha(secondaryColor, p.rippleAlpha)
                     canvas.drawRect(p.x - half, p.y - half, p.x + half, p.y + half, ring)
                 }
             }

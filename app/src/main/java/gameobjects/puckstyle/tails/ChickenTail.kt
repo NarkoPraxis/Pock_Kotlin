@@ -3,6 +3,7 @@ package gameobjects.puckstyle.tails
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.core.graphics.withRotation
 import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
@@ -41,10 +42,31 @@ class ChickenTail(override val theme: ColorTheme, override val renderer: PuckRen
     private val paint    = Paint().apply { isAntiAlias = true }
     private val footPath = Path()
 
+    // Cached radius-derived values
+    private var cachedRadius = -1f
+    private var cachedFw = 0f
+    private var cachedFh = 0f
+
+    private fun ensureCache(r: Float) {
+        if (cachedRadius != r) {
+            cachedRadius = r
+            cachedFw = r * 0.2f
+            cachedFh = r * 0.55f
+        }
+    }
+
+    private companion object {
+        val DEG35_RAD = Math.toRadians(35.0).toFloat()
+        val PI_F      = Math.PI.toFloat()
+    }
+
     override val zIndex: Int get() = -1
 
     override fun render(canvas: Canvas) {
         val r = renderer.radius
+        ensureCache(r)
+        val fw = cachedFw
+        val fh = cachedFh
         val colors = resolvedColors()
 
         var speed = 0f
@@ -69,13 +91,15 @@ class ChickenTail(override val theme: ColorTheme, override val renderer: PuckRen
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = r * 0.13f
         paint.strokeCap = Paint.Cap.ROUND
-        val fpIter = footprints.iterator()
-        while (fpIter.hasNext()) {
-            val f = fpIter.next()
-            f.alpha -= (3f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
-            if (f.alpha <= 0) { fpIter.remove(); continue }
+        val fadeStep = (3f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        var fi = footprints.size - 1
+        while (fi >= 0) {
+            val f = footprints[fi]
+            f.alpha -= fadeStep
+            if (f.alpha <= 0) { footprints.removeAt(fi); fi--; continue }
             paint.color = Palette.withAlpha(colors.secondary, f.alpha)
             drawFoot(canvas, f, r)
+            fi--
         }
 
         // Layer 2: feather particles
@@ -93,45 +117,44 @@ class ChickenTail(override val theme: ColorTheme, override val renderer: PuckRen
                 colorMix = Random.nextFloat()
             )
         }
-        val fw = r * 0.2f
-        val fh = r * 0.55f
-        val featherIter = feathers.iterator()
-        while (featherIter.hasNext()) {
-            val f = featherIter.next()
+        val featherFadeStep = (5f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        var fIdx = feathers.size - 1
+        while (fIdx >= 0) {
+            val f = feathers[fIdx]
             f.x += f.driftX
             f.y += f.driftY
             f.angle += f.spin
-            f.alpha -= (5f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
-            if (f.alpha <= 0) { featherIter.remove(); continue }
+            f.alpha -= featherFadeStep
+            if (f.alpha <= 0) { feathers.removeAt(fIdx); fIdx--; continue }
             val c = Palette.lerpColor(colors.primary, colors.secondary, f.colorMix)
             paint.style = Paint.Style.FILL
             paint.color = Palette.withAlpha(c, f.alpha)
-            canvas.save()
-            canvas.rotate(f.angle, f.x, f.y)
-            canvas.drawOval(f.x - fw, f.y - fh, f.x + fw, f.y + fh, paint)
-            // Quill stem along long axis
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = fw * 0.35f
-            paint.strokeCap = Paint.Cap.ROUND
-            paint.color = Palette.withAlpha(colors.secondary, f.alpha)
-            canvas.drawLine(f.x, f.y + fh * 1.3f, f.x, f.y - fh * 0.7f, paint)
-            canvas.restore()
+            canvas.withRotation(f.angle, f.x, f.y) {
+                drawOval(f.x - fw, f.y - fh, f.x + fw, f.y + fh, paint)
+                // Quill stem along long axis
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = fw * 0.35f
+                paint.strokeCap = Paint.Cap.ROUND
+                paint.color = Palette.withAlpha(colors.secondary, f.alpha)
+                drawLine(f.x, f.y + fh * 1.3f, f.x, f.y - fh * 0.7f, paint)
+            }
+            fIdx--
         }
     }
 
     private fun drawFoot(canvas: Canvas, f: Footprint, r: Float) {
         val toeLen = r * 0.55f
         val faceAngle = f.angle
-        val deg35 = Math.toRadians(35.0).toFloat()
-        val rearAngle = faceAngle + Math.PI.toFloat()
+        val rearAngle = faceAngle + PI_F
 
         // Single path for all toes — no alpha accumulation at the shared center point
         footPath.reset()
-        for (offset in floatArrayOf(0f, deg35, -deg35)) {
-            val ang = faceAngle + offset
-            footPath.moveTo(f.x, f.y)
-            footPath.lineTo(f.x + cos(ang) * toeLen, f.y + sin(ang) * toeLen)
-        }
+        footPath.moveTo(f.x, f.y)
+        footPath.lineTo(f.x + cos(faceAngle) * toeLen, f.y + sin(faceAngle) * toeLen)
+        footPath.moveTo(f.x, f.y)
+        footPath.lineTo(f.x + cos(faceAngle + DEG35_RAD) * toeLen, f.y + sin(faceAngle + DEG35_RAD) * toeLen)
+        footPath.moveTo(f.x, f.y)
+        footPath.lineTo(f.x + cos(faceAngle - DEG35_RAD) * toeLen, f.y + sin(faceAngle - DEG35_RAD) * toeLen)
         footPath.moveTo(f.x, f.y)
         footPath.lineTo(f.x + cos(rearAngle) * toeLen * 0.6f, f.y + sin(rearAngle) * toeLen * 0.6f)
         canvas.drawPath(footPath, paint)

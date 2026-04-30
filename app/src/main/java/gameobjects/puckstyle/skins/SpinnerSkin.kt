@@ -3,15 +3,13 @@ package gameobjects.puckstyle.skins
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
-import androidx.core.graphics.withRotation
-import androidx.core.graphics.withScale
-import androidx.core.graphics.withTranslation
-import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import physics.Point
 import utility.Effects
+import androidx.core.graphics.withRotation
+import androidx.core.graphics.withTranslation
 
 class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
@@ -28,6 +26,9 @@ class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRen
     private val CELEB_HOLD = 10
     private val CELEB_RETRACT = 30
     private val CELEB_TOTAL = CELEB_EXPAND + CELEB_HOLD + CELEB_RETRACT
+
+    // Pre-computed arm angle step (8 arms, 360 / 8 = 45 degrees)
+    private val armAngleStep = 360f / 8
 
     private val celebrationT: Float
         get() {
@@ -63,15 +64,21 @@ class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRen
             if (celebrationFrame >= CELEB_TOTAL) { celebrationActive = false; celebrationFrame = 0 }
         }
 
-        for (i in 0 until armCount) {
-            canvas.withTranslation(renderer.x, renderer.y) {
-                rotate(spinAngle)
-                withRotation(360f / armCount * i) {
-                    baseFill.color = responsiveSecondary
+        // Hoist responsiveSecondary once outside the arm loop
+        val armColor = responsiveSecondary
+        baseFill.color = armColor
+
+        val tipHalf  = tipDist * 0.5f
+        val tipCtrlX = tipDist * 0.55f
+
+        canvas.withTranslation(renderer.x, renderer.y) {
+            rotate(spinAngle)
+            for (i in 0 until armCount) {
+                withRotation(armAngleStep * i) {
                     path.reset()
                     path.moveTo(0f, 0f)
-                    path.quadTo(tipDist * 0.55f, tipDist * 0.5f, tipDist, 0f)
-                    path.quadTo(tipDist * 0.55f, -tipDist * 0.5f, 0f, 0f)
+                    path.quadTo(tipCtrlX, tipHalf, tipDist, 0f)
+                    path.quadTo(tipCtrlX, -tipHalf, 0f, 0f)
                     path.close()
                     drawPath(path, baseFill)
                 }
@@ -98,10 +105,20 @@ class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRen
         private val spinDir: Float,
     ) : Effects.PersistentEffect {
         private val arm = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-        private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val path = Path()
         private var frame = 0
         override val isDone = false
+
+        // Pre-computed arm angle step (4 arms, 360 / 4 = 90 degrees)
+        private val armAngleStep = 360f / 4
+
+        // Cache radius-derived values (radius is fixed for the lifetime of a residual)
+        private val midSize   = radius * .5f
+        private val outerTipX = radius * 0.9f
+        private val outerHalf = radius * .5f
+        private val innerCtrl = midSize * .7f
+        private val innerTipX = radius * 0.7f
+        private val innerHalf = radius * .3f
 
         override fun step() { frame++ }
 
@@ -110,35 +127,36 @@ class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRen
             val alpha = (255 - 155 * t).toInt().coerceIn(50, 255)
             arm.color = armColor
             arm.alpha = alpha
-            val r = radius
-            val midSize = r * .5f
 
-            canvas.withTranslation(cx, cy) {
-                rotate(frame * 2f * spinDir)
-                val armCount = 4
+            canvas.save()
+            canvas.translate(cx, cy)
+            canvas.rotate(frame * 2f * spinDir)
+            val armCount = 4
 
-                for (i in 0 until armCount) {
-                    withRotation(360f / armCount * i) {
-                        path.reset()
-                        path.moveTo(0f, 0f)
-                        path.quadTo(midSize, r * .5f, r * 0.9f, 0f)
-                        path.quadTo(midSize, -r * .5f, 0f, 0f)
-                        path.close()
-                        drawPath(path, arm)
-                    }
-                }
-                for (i in 0 until armCount) {
-                    withRotation(360f / armCount * i) {
-                        arm.color = armColor
-                        path.reset()
-                        path.moveTo(0f, 0f)
-                        path.quadTo(midSize * .7f, r * .3f, r * 0.7f, 0f)
-                        path.quadTo(midSize * .7f, -r * .3f, 0f, 0f)
-                        path.close()
-                        drawPath(path, arm)
-                    }
-                }
+            // Merged loop: draw outer arm then inner arm for the same index
+            for (i in 0 until armCount) {
+                canvas.save()
+                canvas.rotate(armAngleStep * i)
+
+                // Outer arm
+                path.reset()
+                path.moveTo(0f, 0f)
+                path.quadTo(midSize, outerHalf, outerTipX, 0f)
+                path.quadTo(midSize, -outerHalf, 0f, 0f)
+                path.close()
+                canvas.drawPath(path, arm)
+
+                // Inner arm (same color, no need to re-set arm.color)
+                path.reset()
+                path.moveTo(0f, 0f)
+                path.quadTo(innerCtrl, innerHalf, innerTipX, 0f)
+                path.quadTo(innerCtrl, -innerHalf, 0f, 0f)
+                path.close()
+                canvas.drawPath(path, arm)
+
+                canvas.restore()
             }
+            canvas.restore()
         }
     }
 }

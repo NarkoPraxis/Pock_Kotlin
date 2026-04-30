@@ -9,7 +9,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.sqrt
+
 
 class SpinnerTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
@@ -22,12 +22,19 @@ class SpinnerTail(override val theme: ColorTheme, override val renderer: PuckRen
     private val centerPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
     private val tipPaint    = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
 
+    // Cached constant: tail length is fixed — tailLengthMultiplier never changes after setup
+    private val tailLen = (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+
+    // Cached constants: convert degrees to radians once
+    private val piF        = Math.PI.toFloat()
+    private val angleStep  = 18f * piF / 180f   // per-segment rotation step in radians
+    private val degToRad   = piF / 180f
+
     override fun render(canvas: Canvas) {
-        val len = (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
-        if (history == null || history!!.size != len) history = MutableList(len) { Pos(renderer.x, renderer.y) }
+        if (history == null || history!!.size != tailLen) history = MutableList(tailLen) { Pos(renderer.x, renderer.y) }
         val history = history!!
 
-        tailRotation += (10f)
+        tailRotation += 10f
 
         for (i in history.size - 1 downTo 0) {
             if (i - 1 >= 0) { history[i].x = history[i - 1].x; history[i].y = history[i - 1].y }
@@ -38,52 +45,45 @@ class SpinnerTail(override val theme: ColorTheme, override val renderer: PuckRen
         val halfLen   = lineLen / 2f
         val tipLen    = lineLen / 6f
         val sw        = renderer.strokePaint.strokeWidth
-        val angleStep = 18f * Math.PI.toFloat() / 180f
-        val strokeWidth = sw
 
         val colors = resolvedColors()
         val color  = colors.primary
         val hilite = colors.secondary
 
-        tipPaint.strokeWidth = strokeWidth * 3f
-        centerPaint.strokeWidth = strokeWidth * 2f
+        tipPaint.strokeWidth    = sw * 3f
+        centerPaint.strokeWidth = sw * 2f
 
         val holdCount = 5
+        // Hoist the fade denominator — constant for the entire render call
+        val fadeDenom = (history.size - 1 - holdCount).coerceAtLeast(1).toFloat()
+        // Hoist the base angle in radians once
+        val baseAngRad = tailRotation * degToRad
 
         for (i in 0 until history.size) {
             val alpha = if (i < holdCount) {
                 255
             } else {
-                val fadeRatio = (i - holdCount).toFloat() / (history.size - 1 - holdCount).coerceAtLeast(1)
+                val fadeRatio = (i - holdCount).toFloat() / fadeDenom
                 (255f * (1f - fadeRatio)).toInt()
             }
             if (alpha <= 0) continue
 
-
-            val ang = (tailRotation * Math.PI.toFloat() / 180f - i * angleStep) * spinDir
+            val ang = (baseAngRad - i * angleStep) * spinDir
             val cx  = history[i].x
             val cy  = history[i].y
             val ca  = cos(ang)
             val sa  = sin(ang)
+            val caHalf    = ca * halfLen
+            val saHalf    = sa * halfLen
+            val caTip     = ca * (halfLen - tipLen)
+            val saTip     = sa * (halfLen - tipLen)
 
-            tipPaint.color       = Palette.withAlpha(hilite, alpha)
-            canvas.drawLine(
-                cx - ca * halfLen,            cy - sa * halfLen,
-                cx - ca * (halfLen - tipLen), cy - sa * (halfLen - tipLen),
-                tipPaint
-            )
-            canvas.drawLine(
-                cx + ca * halfLen,            cy + sa * halfLen,
-                cx + ca * (halfLen - tipLen), cy + sa * (halfLen - tipLen),
-                tipPaint
-            )
+            tipPaint.color    = Palette.withAlpha(hilite, alpha)
+            canvas.drawLine(cx - caHalf, cy - saHalf, cx - caTip, cy - saTip, tipPaint)
+            canvas.drawLine(cx + caHalf, cy + saHalf, cx + caTip, cy + saTip, tipPaint)
 
-            centerPaint.color       = Palette.withAlpha(color, alpha)
-            canvas.drawLine(
-                cx - ca * halfLen, cy - sa * halfLen,
-                cx + ca * halfLen, cy + sa * halfLen,
-                centerPaint
-            )
+            centerPaint.color = Palette.withAlpha(color, alpha)
+            canvas.drawLine(cx - caHalf, cy - saHalf, cx + caHalf, cy + saHalf, centerPaint)
         }
     }
 

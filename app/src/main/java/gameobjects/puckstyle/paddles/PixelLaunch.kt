@@ -17,14 +17,33 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
     private val block = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
     private val rect = RectF()
 
-    override fun drawChargingPaddle(canvas: Canvas) =
+    // Cached radius-derived values — recomputed only when radius changes
+    private var cachedRadius  = -1f
+    private var cachedTotalLen = 0f
+    private var cachedThick   = 0f
+    private var cachedHalf    = 0f
+    private var cachedCellW   = 0f
+
+    private fun ensureCache() {
+        if (cachedRadius == renderer.radius) return
+        cachedRadius   = renderer.radius
+        cachedTotalLen = paddleHalfLength() * 2f
+        cachedThick    = renderer.radius * 0.2f
+        cachedHalf     = cachedTotalLen / 2f
+        cachedCellW    = cachedTotalLen / 5f  // steps = 5
+    }
+
+    override fun drawChargingPaddle(canvas: Canvas) {
+        ensureCache()
         drawPixelBar(canvas, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
+    }
 
     override fun drawStrikingPaddle(
         canvas: Canvas,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
+        ensureCache()
         val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
         drawPixelBar(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
@@ -37,9 +56,10 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
             rotate(angle + 90f, cx, cy)
 
-            val totalLen = paddleHalfLength() * 2f
-            val thick = renderer.radius * 0.2f
-            val half = totalLen / 2f
+            val totalLen = cachedTotalLen
+            val thick    = cachedThick
+            val half     = cachedHalf
+            val cellW    = cachedCellW
 
             // Base line
             block.color = responsiveSecondary
@@ -48,7 +68,6 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
 
             // Charge overlay: cells growing outward from center in 20% steps
             val steps = 5
-            val cellW = totalLen / steps
             val filledCount = when {
                 ph == ChargePhase.Inert -> 0
                 ph == ChargePhase.SweetSpot -> steps
@@ -91,7 +110,12 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
     ) : Effects.PersistentEffect {
         private val halfSize = puckRadius * 0.5f
         private val fillPaint = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
-        private val ringPaint = Paint().apply { isAntiAlias = false; style = Paint.Style.STROKE }
+        // strokeWidth is constant for the life of this object — set once at construction
+        private val ringPaint = Paint().apply {
+            isAntiAlias = false
+            style = Paint.Style.STROKE
+            strokeWidth = puckRadius * 0.3f
+        }
 
         private var rippleSize = 0f
         private var rippleAlpha = 0
@@ -120,7 +144,6 @@ class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffec
             } else if (!_isDone) {
                 val half = rippleSize / 2f
                 ringPaint.color = Palette.withAlpha(theme.main.secondary, rippleAlpha.coerceIn(0, 255))
-                ringPaint.strokeWidth = puckRadius * 0.3f
                 canvas.drawRect(cx - half, cy - half, cx + half, cy + half, ringPaint)
             }
         }

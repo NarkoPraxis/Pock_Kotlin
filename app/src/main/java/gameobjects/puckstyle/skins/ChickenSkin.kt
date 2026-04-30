@@ -32,6 +32,28 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
     private val wingSecondary = Path()
     private val wingPrimary   = Path()
     private val mouthRect     = RectF()
+    // Avoids List allocation inside eye-drawing loops
+    private val eyeSides      = floatArrayOf(0f, 0f)
+
+    // Cached radius-derived values
+    private var cachedRadius = -1f
+    private var cachedStrokeWidth = 0f
+    private var cachedEyeR   = 0f
+    private var cachedEyeX   = 0f
+    private var cachedEyeY   = 0f
+    private var cachedBeakTopY = 0f
+
+    private fun ensureCache() {
+        val newR = renderer.radius
+        if (cachedRadius != newR) {
+            cachedRadius    = newR
+            cachedStrokeWidth = renderer.strokePaint.strokeWidth
+            cachedEyeR      = newR * 0.25f
+            cachedEyeX      = newR * 0.30f
+            cachedEyeY      = -newR * 0.28f
+            cachedBeakTopY  = newR * 0.14f
+        }
+    }
 
     // --- wing flap ---
     private var wingPhase = 0f
@@ -82,9 +104,14 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
     private var eyeOpen   = true
 
     override fun drawBody(canvas: Canvas) {
+        ensureCache()
         frameColors = resolvedColors()
-        r   = renderer.radius
-        val sw = renderer.strokePaint.strokeWidth
+        r        = cachedRadius
+        val sw   = cachedStrokeWidth
+        eyeR     = cachedEyeR
+        eyeX     = cachedEyeX
+        eyeY     = cachedEyeY
+        beakTopY = cachedBeakTopY
 
         // Movement tracking for wing flap
         if (lastX.isNaN()) { lastX = renderer.x; lastY = renderer.y }
@@ -107,12 +134,6 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
         }
         eyeOpen = blinkFrame == 0
         if (blinkFrame > 0) blinkFrame--
-
-        // Shared size constants
-        eyeR     = r * 0.25f
-        eyeX     = r * 0.30f
-        eyeY     = -r * 0.28f
-        beakTopY = r * 0.14f
 
         // Iris direction — tracks paddle by default; tracks threat during proximity AlmostHit
         computeIrisOffset()
@@ -260,7 +281,8 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
     private fun drawEye(canvas: Canvas, open: Boolean) {
         if (open) {
             val maxOff = eyeR * 0.45f
-            for (side in listOf(-eyeX, eyeX)) {
+            eyeSides[0] = -eyeX; eyeSides[1] = eyeX
+            for (side in eyeSides) {
                 val cx = side + irisOffX * maxOff
                 val cy = eyeY + irisOffY * maxOff
                 paint.style = Paint.Style.FILL
@@ -326,7 +348,8 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
         val scaleX = lerp(1f, 0.75f, t)
         val scaleY = lerp(1f, 1.35f, t)
         val maxOff  = eyeR * 0.45f
-        for (side in listOf(-eyeX, eyeX)) {
+        eyeSides[0] = -eyeX; eyeSides[1] = eyeX
+        for (side in eyeSides) {
             val cx = side + irisOffX * maxOff
             val cy = eyeY + irisOffY * maxOff
             canvas.save()
@@ -360,7 +383,8 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
         val scaleX = lerp(1f, 1.3f,  t)
         val scaleY = lerp(1f, 0.75f, t)
         val maxOff  = eyeR * 0.45f
-        for (side in listOf(-eyeX, eyeX)) {
+        eyeSides[0] = -eyeX; eyeSides[1] = eyeX
+        for (side in eyeSides) {
             val cx = side + irisOffX * maxOff
             val cy = eyeY + irisOffY * maxOff
             canvas.save()
@@ -664,7 +688,11 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
     private fun startAnim(anim: ChickenAnim) { currentAnim = anim; animFrame = 0 }
 
     private fun easeIn(frame: Float, duration: Float): Float =
-        sin(min(frame, duration) / duration * (Math.PI / 2.0).toFloat())
+        sin(min(frame, duration) / duration * HALF_PI)
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+
+    companion object {
+        private val HALF_PI = (Math.PI / 2.0).toFloat()
+    }
 }
