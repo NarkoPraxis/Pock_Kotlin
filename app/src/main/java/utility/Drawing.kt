@@ -475,11 +475,11 @@ object Drawing {
     }
 
     private val tipPages: List<List<String>> = listOf(
-        listOf("Scoring:", "   Knock your opponent", "   into either purple zone", "   to score a point."),
+        listOf("Scoring:", "   Hit your opponent", "   into either purple zone", "   to score a point."),
         listOf("Charging:", "   Hold to build power.", "   Release when purple", "   Gain a shield!"),
-        listOf("Purple Shields:", "   A shielded puck", "   wins every bounce", "   so time your release!"),
+        listOf("Purple Shields:", "   A shielded Pock", "   wins every bounce", "   so time your release!"),
         listOf("Overcharge:", "   Charging too long", "   resets your power.", "   Don't hold forever!"),
-        listOf("Both Shielded:", "   If both pucks are", "   shielded, both shields", "   cancel out. Plan ahead.")
+        listOf("Grey:", "   If your Pock turns grey", "   you can't strike it", "   unless timed correctly!")
     )
 
     var highTipIndex: Int = 0
@@ -524,6 +524,7 @@ object Drawing {
             val paint = if (i == 0) PaintBucket.rulesTitlePaint else PaintBucket.rulesTextPaint
             mirrorText(canvas, highPage.getOrElse(i) { "" }, lowPage.getOrElse(i) { "" }, textX, y, paint)
         }
+        mirrorText(canvas, "Hold Here When Ready", textX, Settings.screenHeight / 2 +  lineHeight * 3f, PaintBucket.rulesTitlePaint)
     }
 
     fun drawGoalMenuHints(canvas: Canvas) {
