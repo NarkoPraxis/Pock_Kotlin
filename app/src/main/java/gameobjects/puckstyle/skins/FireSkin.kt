@@ -2,30 +2,31 @@ package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import gameobjects.puckstyle.BallSize
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.paddles.FireLaunch
 import physics.Point
-import utility.Effects
 
 class FireSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     override val zIndex = 0
 
-    private val fillPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-    private val borderPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
+    private val fillPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+        strokeWidth = renderer.strokePaint.strokeWidth
+    }
 
     override fun drawBody(canvas: Canvas) {
         val colors = resolvedColors()
-        val orbRadius = renderer.radius * 0.6f
 
         fillPaint.color = colors.secondary
-        fillPaint.strokeWidth = renderer.strokePaint.strokeWidth
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, fillPaint)
 
         fillPaint.color = colors.primary
-        canvas.drawCircle(renderer.x, renderer.y, orbRadius, fillPaint)
+        canvas.drawCircle(renderer.x, renderer.y, renderer.r(BallSize.P060), fillPaint)
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {

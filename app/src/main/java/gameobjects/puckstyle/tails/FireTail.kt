@@ -3,6 +3,7 @@ package gameobjects.puckstyle.tails
 import android.graphics.Canvas
 import android.graphics.Paint
 import gameobjects.Settings
+import gameobjects.puckstyle.BallSize
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -22,14 +23,24 @@ class FireTail(override val theme: ColorTheme, override val renderer: PuckRender
     private val maxSparks = 80
     private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 
+    // Constants cached at construction — Settings.tailLengthMultiplier and screenRatio
+    // do not change after initialization.
+    private val maxCount = (maxSparks * Settings.tailLengthMultiplier).toInt()
+    private val lifeDrain = 0.04f / Settings.tailLengthMultiplier
+    private val baseParticleSize = Settings.screenRatio * 0.08f
+
+    private val twoPi = (Math.PI * 2).toFloat()
+
     override fun render(canvas: Canvas) {
         val spawn = if (renderer.launched) 5 else 3
+        val spawnRadius = renderer.r(BallSize.P040)
+        val halfRadius = renderer.radius * 0.5f
         repeat(spawn) {
-            val angle = Random.nextFloat() * Math.PI.toFloat() * 2
+            val angle = Random.nextFloat() * twoPi
             val speed = Random.nextFloat() * 1.5f
             val dx = (Random.nextFloat() - 0.5f) * renderer.radius
             val dy = (Random.nextFloat() - 0.5f) * renderer.radius
-            val isCore = kotlin.math.sqrt(dx * dx + dy * dy) < renderer.radius * 0.4f
+            val isCore = kotlin.math.sqrt(dx * dx + dy * dy) < spawnRadius
             sparks.addLast(Spark(
                 renderer.x + dx,
                 renderer.y + dy,
@@ -39,23 +50,30 @@ class FireTail(override val theme: ColorTheme, override val renderer: PuckRender
                 isCore
             ))
         }
-        while (sparks.size > (maxSparks * Settings.tailLengthMultiplier).toInt()) sparks.removeFirst()
+        while (sparks.size > maxCount) sparks.removeFirst()
 
-        val it = sparks.iterator()
-        while (it.hasNext()) {
-            val s = it.next()
+        // Hoist loop-invariant color resolution — resolvedColors() must not be called per-spark.
+        val colors = resolvedColors()
+        val cSecondary = colors.secondary
+        val cPrimary = colors.primary
+        val particleBaseSize = renderer.r(BallSize.P060)
+
+        var i = 0
+        while (i < sparks.size) {
+            val s = sparks[i]
             s.x += s.vx
             s.y += s.vy
-            s.life -= 0.04f / Settings.tailLengthMultiplier
-            if (s.life <= 0f) { it.remove(); continue }
+            s.life -= lifeDrain
+            if (s.life <= 0f) {
+                sparks.removeAt(i)
+                continue
+            }
             val t = 1f - s.life
-            val colors = resolvedColors()
-            val c = Palette.lerpColor(colors.secondary, colors.primary, t)
-
-
+            val c = Palette.lerpColor(cSecondary, cPrimary, t)
             paint.color = Palette.withAlpha(c, (255f * s.life).toInt())
-            val size = renderer.radius * 0.6f * s.life + Settings.screenRatio * 0.08f
+            val size = particleBaseSize * s.life + baseParticleSize
             canvas.drawCircle(s.x, s.y, size, paint)
+            i++
         }
     }
 

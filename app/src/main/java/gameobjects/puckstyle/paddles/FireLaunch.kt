@@ -8,6 +8,7 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import gameobjects.Settings
+import gameobjects.puckstyle.BallSize
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
@@ -60,13 +61,14 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         val dist = sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
         val nx = dx / dist
         val ny = dy / dist
+        val spawnJitter = renderer.r(BallSize.P070) * 0.5f  // 0.7 * 0.5 = 0.35 * radius
 
         repeat(2) {
             val speed = Random.nextFloat() * 1.2f + 0.4f
             val perpAmount = (Random.nextFloat() - 0.5f) * speed * 0.7f
             tailSparks.addLast(Spark(
-                cx + (Random.nextFloat() - 0.5f) * renderer.radius * 0.7f,
-                cy + (Random.nextFloat() - 0.5f) * renderer.radius * 0.7f,
+                cx + (Random.nextFloat() - 0.5f) * spawnJitter * 2f,
+                cy + (Random.nextFloat() - 0.5f) * spawnJitter * 2f,
                 nx * speed + (-ny) * perpAmount,
                 ny * speed + nx * perpAmount,
                 1f
@@ -74,21 +76,30 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         }
         while (tailSparks.size > 24) tailSparks.removeFirst()
 
-        val it = tailSparks.iterator()
-        while (it.hasNext()) {
-            val s = it.next()
+        // Hoist color resolution out of the loop — same value for every spark this frame.
+        val primary = responsivePrimary
+        val secondary = responsiveSecondary
+        val sparkBaseSize = renderer.r(BallSize.P032)
+
+        var i = 0
+        while (i < tailSparks.size) {
+            val s = tailSparks[i]
             s.x += s.vx
             s.y += s.vy
             s.life -= 0.065f
-            if (s.life <= 0f) { it.remove(); continue }
-            val c = Palette.lerpColor(responsiveSecondary, responsivePrimary, 1f - s.life)
+            if (s.life <= 0f) {
+                tailSparks.removeAt(i)
+                continue
+            }
+            val c = Palette.lerpColor(secondary, primary, 1f - s.life)
             tailPaint.color = Palette.withAlpha(c, (220f * s.life).toInt().coerceIn(0, 255))
-            canvas.drawCircle(s.x, s.y, (renderer.radius * 0.32f * s.life).coerceAtLeast(1f), tailPaint)
+            canvas.drawCircle(s.x, s.y, (sparkBaseSize * s.life).coerceAtLeast(1f), tailPaint)
+            i++
         }
     }
 
     private fun drawFireball(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val base = renderer.radius * 0.6f
+        val base = renderer.r(BallSize.P060)
         val jitter = 1f + 0.08f * sin(frame * 0.9f)
         val outerR = base * jitter
 
@@ -136,7 +147,9 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private var frame = 0
         private val totalFrames = if (fullCircle) 42 else 60
-        private val maxDistance = radius * 3f
+        private val invTotalFrames = 1f / totalFrames
+        private val gravity = 0.04f * radius / Settings.screenRatio
+        private val sparkBaseRadius = radius * 0.8f
         override var isDone = false
             private set
 
@@ -147,7 +160,7 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
             sparks = List(count) { i ->
                 val angle = (i.toFloat() / count) * angleRange + angleOffset + Random.nextFloat() * 0.4f
                 val speed = if (fullCircle) radius * (0.12f + Random.nextFloat() * 0.18f)
-                            else maxDistance / totalFrames.toFloat() * (0.8f + Random.nextFloat() * 0.4f)
+                            else (radius * 3f) / totalFrames.toFloat() * (0.8f + Random.nextFloat() * 0.4f)
                 Spark(cx, cy, cos(angle) * speed, sin(angle) * speed, 1f)
             }
         }
@@ -158,13 +171,17 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         }
 
         override fun draw(canvas: Canvas) {
+            // Cache per-frame invariant: life ratio is the same for every spark this frame.
+            val lifeRatio = (1f - frame * invTotalFrames).coerceAtLeast(0f)
+            val alpha = (230f * lifeRatio * lifeRatio).toInt().coerceIn(0, 255)
+            paint.color = Palette.withAlpha(color, alpha)
+            val drawRadius = (sparkBaseRadius * lifeRatio).coerceAtLeast(1f)
+
             for (s in sparks) {
                 s.x += s.vx
                 s.y += s.vy
-                s.vy += 0.04f * radius / Settings.screenRatio
-                s.life = (1f - frame / totalFrames.toFloat()).coerceAtLeast(0f)
-                paint.color = Palette.withAlpha(color, (230f * s.life * s.life).toInt().coerceIn(0, 255))
-                canvas.drawCircle(s.x, s.y, (radius * 0.8f * s.life).coerceAtLeast(1f), paint)
+                s.vy += gravity
+                canvas.drawCircle(s.x, s.y, drawRadius, paint)
             }
         }
     }
@@ -234,13 +251,9 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
                 }
                 close()
             }
-        }
 
-        override fun step() { frame++ }
-
-        override fun draw(canvas: Canvas) {
-            // Starburst char mark: radial gradient from opaque black center to transparent tip.
-            // The gradient + blur together ensure no hard edges anywhere on the spikes.
+            // Build the radial gradient once — cx, cy, radius, and colors are all
+            // fixed at construction time and never change for a given scorch mark.
             fillPaint.shader = RadialGradient(
                 cx, cy,
                 radius * 1.45f,
@@ -248,6 +261,14 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
                 floatArrayOf(0f, 0.4f, 1f),
                 Shader.TileMode.CLAMP
             )
+        }
+
+        override fun step() { frame++ }
+
+        override fun draw(canvas: Canvas) {
+            // Starburst char mark: radial gradient from opaque black center to transparent tip.
+            // The gradient + blur together ensure no hard edges anywhere on the spikes.
+            // Gradient is pre-built in init — no per-frame allocation.
             for (path in spikePaths) {
                 canvas.drawPath(path, fillPaint)
             }
