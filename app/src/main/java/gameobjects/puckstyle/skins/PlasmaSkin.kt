@@ -18,8 +18,27 @@ class PlasmaSkin(theme: ColorTheme, override val renderer: PuckRenderer) : Cache
 
     private var lastColors = theme.main
 
-    private val arc = Paint().apply { color = Color.WHITE; isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
+    // Color.argb(180, 255, 255, 255) is constant — set once at init
+    private val arc = Paint().apply {
+        color = Color.argb(180, 255, 255, 255)
+        isAntiAlias = true
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
 
+    // Cached radius-derived values
+    private var cachedRadius = -1f
+    private var innerR = 0f   // renderer.radius * 0.5f
+    private var outerR = 0f   // renderer.radius * 0.9f
+
+    private fun ensureCache() {
+        if (cachedRadius != renderer.radius) {
+            cachedRadius = renderer.radius
+            innerR = renderer.radius * 0.5f
+            outerR = renderer.radius * 0.9f
+            arc.strokeWidth = renderer.strokePaint.strokeWidth * 0.5f
+        }
+    }
 
     override fun createShader(radius: Float): Shader =
         RadialGradient(0f, 0f, radius,
@@ -33,19 +52,18 @@ class PlasmaSkin(theme: ColorTheme, override val renderer: PuckRenderer) : Cache
             lastColors = colors
             invalidateShader()
         }
+        ensureCache()
         ensureShader(renderer.radius)
         canvas.withTranslation(renderer.x, renderer.y) {
             drawCircle(0f, 0f, renderer.radius, fill)
-            arc.strokeWidth = renderer.strokePaint.strokeWidth * 0.5f
             repeat(3) {
-                val a1 = Random.nextFloat() * Math.PI.toFloat() * 2
+                val a1 = Random.nextFloat() * TWO_PI
                 val a2 = a1 + (Random.nextFloat() - 0.5f) * 2
-                arc.color = Color.argb(180, 255, 255, 255)
                 drawLine(
-                    kotlin.math.cos(a1) * renderer.radius * 0.5f,
-                    kotlin.math.sin(a1) * renderer.radius * 0.5f,
-                    kotlin.math.cos(a2) * renderer.radius * 0.9f,
-                    kotlin.math.sin(a2) * renderer.radius * 0.9f,
+                    kotlin.math.cos(a1) * innerR,
+                    kotlin.math.sin(a1) * innerR,
+                    kotlin.math.cos(a2) * outerR,
+                    kotlin.math.sin(a2) * outerR,
                     arc
                 )
             }
@@ -62,5 +80,9 @@ class PlasmaSkin(theme: ColorTheme, override val renderer: PuckRenderer) : Cache
 
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         PlasmaLaunch.spawnCelebration(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, highGoal, fullCircle = false)
+    }
+
+    companion object {
+        private val TWO_PI = kotlin.math.PI.toFloat() * 2f
     }
 }
