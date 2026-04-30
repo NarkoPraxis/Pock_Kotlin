@@ -10,6 +10,7 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -17,7 +18,13 @@ import kotlin.math.sin
 class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
 
     private val shardFill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-    private val shardStroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeJoin = Paint.Join.ROUND }
+    private val shardStroke = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.STROKE
+        strokeJoin = Paint.Join.ROUND
+        // Settings.strokeWidth is constant after setup; cache the scaled value once.
+        strokeWidth = Settings.strokeWidth * 0.6f
+    }
     private val path = Path()
 
     override fun drawChargingPaddle(canvas: Canvas) {
@@ -58,7 +65,6 @@ class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(
         }
 
         shardStroke.color = Color.WHITE
-        shardStroke.strokeWidth = Settings.strokeWidth * 0.6f
         canvas.drawPath(path, shardStroke)
     }
 
@@ -70,6 +76,9 @@ class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(
         fun spawnImpact(cx: Float, cy: Float, radius: Float, theme: ColorTheme) {
             Effects.addPersistentEffect(IcePuddle(cx, cy, radius, theme))
         }
+
+        // 8-point star angles (fixed), precomputed once for all IcePuddle instances.
+        private val CRYSTAL_ANGLES = FloatArray(8) { i -> (i * 2.0 * PI / 8).toFloat() }
     }
 
     private class IcePuddle(
@@ -77,7 +86,14 @@ class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(
         private val radius: Float, private val theme: ColorTheme
     ) : Effects.PersistentEffect {
         private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-        private val stroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
+        private val stroke = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            // strokeWidth is constant for the lifetime of this effect.
+            strokeWidth = Settings.strokeWidth * 0.5f
+            color = theme.main.primary
+            alpha = 130
+        }
         private val crystalPath = Path()
         private var frame = 0
         private val evaporateDuration = 120f
@@ -140,9 +156,8 @@ class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(
         private fun drawCrystal(canvas: Canvas, t: Float) {
             val crystalR = radius * (1.4f - t * 1.1f)
             crystalPath.reset()
-            val pts = 8
-            for (i in 0 until pts) {
-                val angle = (i * 360.0 / pts * Math.PI / 180.0).toFloat()
+            for (i in 0 until 8) {
+                val angle = CRYSTAL_ANGLES[i]
                 val outerR = crystalR * (if (i % 2 == 0) 2.3f else 1f)
                 val x = cx + cos(angle) * outerR
                 val y = cy + sin(angle) * outerR
@@ -152,9 +167,7 @@ class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(
             fill.color = Color.WHITE
             fill.alpha = 255
             canvas.drawPath(crystalPath, fill)
-            stroke.color = theme.main.primary
-            stroke.alpha = 130
-            stroke.strokeWidth = Settings.strokeWidth * 0.5f
+            // stroke color/alpha/strokeWidth are set once at construction; no per-call assignment needed.
             canvas.drawPath(crystalPath, stroke)
         }
     }

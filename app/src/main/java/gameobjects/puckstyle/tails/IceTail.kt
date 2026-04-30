@@ -23,6 +23,10 @@ class IceTail(override val theme: ColorTheme, override val renderer: PuckRendere
     private val maxShards = 120
     private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 
+    // Cached constants derived from Settings values that never change after init.
+    private val maxCount = (maxShards * Settings.tailLengthMultiplier).toInt()
+    private val lifeDecrement = 0.012f / Settings.tailLengthMultiplier
+
     override fun render(canvas: Canvas) {
         shards.addLast(Shard(
             x = renderer.x,
@@ -31,31 +35,41 @@ class IceTail(override val theme: ColorTheme, override val renderer: PuckRendere
             puddleSize = renderer.radius * 0.3f,
             life = 1f
         ))
-        while (shards.size > (maxShards * Settings.tailLengthMultiplier).toInt()) shards.removeFirst()
+        while (shards.size > maxCount) shards.removeFirst()
 
-        val it = shards.iterator()
-        while (it.hasNext()) {
-            val s = it.next()
-            s.life -= 0.012f / Settings.tailLengthMultiplier
+        // Resolve color and radius-derived thresholds once before the loop.
+        val primaryColor = resolvedColors().primary
+        val maxPuddleSize = renderer.radius * 1.5f
+        val iceCutoff = renderer.radius * 0.05f
+
+        var i = 0
+        while (i < shards.size) {
+            val s = shards[i]
+            s.life -= lifeDecrement
             s.iceSize *= 0.95f
             if (s.life > 0.6f) {
                 s.puddleSize *= 1.2f
             } else {
                 s.puddleSize *= 0.99f
             }
-            s.puddleSize = s.puddleSize.coerceIn(0f, renderer.radius * 1.5f)
-            if (s.life <= 0f) { it.remove(); continue }
+            s.puddleSize = s.puddleSize.coerceIn(0f, maxPuddleSize)
+            if (s.life <= 0f) {
+                shards.removeAt(i)
+                // do not increment i — the element at i is now the next shard
+                continue
+            }
 
-            // Puddle layer — peaks at mid-life, then fades as water evaporates
+            // Puddle layer — peaks at mid-life, then fades as water evaporates.
             val puddleAlpha = (90f * s.life * (1f - s.life)).toInt().coerceIn(0, 180)
-            paint.color = Palette.withAlpha(resolvedColors().primary, puddleAlpha)
+            paint.color = Palette.withAlpha(primaryColor, puddleAlpha)
             canvas.drawCircle(s.x, s.y, s.puddleSize, paint)
 
-            // Ice crystal layer on top — shrinking white circle
-            if (s.iceSize > renderer.radius * 0.05f) {
-                paint.color = Palette.withAlpha(Color.WHITE, 255)
+            // Ice crystal layer on top — shrinking white circle.
+            if (s.iceSize > iceCutoff) {
+                paint.color = Color.WHITE
                 canvas.drawCircle(s.x, s.y, s.iceSize, paint)
             }
+            i++
         }
     }
 

@@ -28,6 +28,9 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     private val starPaintFill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val starPath  = Path()
 
+    // Cached stroke width — only updated when radius changes
+    private var cachedStrokeWidth = -1f
+
     override var minDist: Float = 0f
         get() = 0f
 
@@ -50,6 +53,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         starDescs[0] = StarDesc(r * 2f, r)
         starDescs[1] = StarDesc(r * 3f, r * 0.9f)
         starDescs[2] = StarDesc(r * 4f, r * 0.6f)
+        cachedStrokeWidth = r * 0.2f
     }
 
     // ── Orbit ─────────────────────────────────────────────────────────────────
@@ -78,14 +82,13 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     private fun buildStar(cx: Float, cy: Float, outer: Float, rotation: Float) {
         val inner = outer * 0.40f               // inner (valley) radius
         val roundness = outer * 0.04f           // control-point offset for rounded tips
-        val count = 5
-        val angleStep = (2f * PI / count).toFloat()
-        val halfStep  = angleStep / 2f
+        val angleStep = ANGLE_STEP_5
+        val halfStep  = HALF_STEP_5
 
         starPath.reset()
-        for (i in 0 until count) {
+        for (i in 0 until 5) {
             // Outer tip
-            val outerAngle = rotation + i * angleStep - (PI / 2f).toFloat()
+            val outerAngle = rotation + i * angleStep - HALF_PI
             val tipX = cx + cos(outerAngle) * outer
             val tipY = cy + sin(outerAngle) * outer
 
@@ -116,52 +119,55 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
     }
 
     /**
-     * Color for a single star given its index threshold and current phase.
-     * Star i becomes "charged" once chargeFillRatio exceeds its threshold.
-     * In SweetSpot all three strobe between shield colors regardless of threshold.
+     * Resolve colors for both stroke and fill paints in a single pass.
+     * Avoids calling renderer.shielded, renderer.isInert, and sin() multiple times
+     * per draw call when both starColor and starColorFill are needed together.
+     *
+     * Returns a pair: (strokeColor, fillColor)
      */
-    private fun starColor(starIndex: Int, ph: ChargePhase): Int {
-        if (renderer.shielded && phase == ChargePhase.Idle) return theme.shield.secondary
-        if (renderer.isInert) return theme.inert.secondary
-
+    private fun resolveStarColors(starIndex: Int, ph: ChargePhase): Pair<Int, Int> {
+        if (renderer.shielded && phase == ChargePhase.Idle) {
+            return Pair(theme.shield.secondary, theme.shield.primary)
+        }
+        if (renderer.isInert) {
+            return Pair(theme.inert.secondary, theme.inert.primary)
+        }
         if (ph == ChargePhase.SweetSpot) {
             val t = sin(frame * 0.25f) * 0.5f + 0.5f
-            return Palette.lerpColor(theme.shield.primary, theme.shield.secondary, t)
+            return Pair(
+                Palette.lerpColor(theme.shield.primary, theme.shield.secondary, t),
+                Palette.lerpColor(theme.shield.secondary, theme.shield.primary, t)
+            )
         }
-        if (ph == ChargePhase.Inert) return theme.inert.secondary
-        return if (chargeFillRatio > COLOR_THRESHOLDS[starIndex]) theme.shield.secondary else theme.main.secondary
-    }
-
-    private fun starColorFill(starIndex: Int, ph: ChargePhase): Int {
-        if (renderer.shielded && phase == ChargePhase.Idle) return theme.shield.primary
-        if (renderer.isInert) return theme.inert.primary
-
-        if (ph == ChargePhase.SweetSpot) {
-            val t = sin(frame * 0.25f) * 0.5f + 0.5f
-            return Palette.lerpColor(theme.shield.secondary, theme.shield.primary, t)
+        if (ph == ChargePhase.Inert) {
+            return Pair(theme.inert.secondary, theme.inert.primary)
         }
-        if (ph == ChargePhase.Inert) return theme.inert.primary
-
-        return if (chargeFillRatio > COLOR_THRESHOLDS[starIndex]) theme.shield.primary else theme.main.primary
+        return if (chargeFillRatio > COLOR_THRESHOLDS[starIndex]) {
+            Pair(theme.shield.secondary, theme.shield.primary)
+        } else {
+            Pair(theme.main.secondary, theme.main.primary)
+        }
     }
 
     override fun drawIdlePaddle(canvas: Canvas) {
         ensureStarDescs()
-        starPaint.strokeWidth = renderer.radius * 0.2f
+        starPaint.strokeWidth = cachedStrokeWidth
         val descs = starDescs
         val sx = renderer.x
         val sy = renderer.y
         val baseRot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
 
+        val (stroke1, fill1) = resolveStarColors(1, phase)
         buildStar(sx, sy, descs[1].starRadius, -baseRot)
-        starPaint.color = Palette.withAlpha(starColorFill(1, phase), 255)
-        starPaintFill.color = Palette.withAlpha(starColor(1, phase), 255)
+        starPaintFill.color = Palette.withAlpha(fill1, 255)
+        starPaint.color = Palette.withAlpha(stroke1, 255)
         canvas.drawPath(starPath, starPaintFill)
         canvas.drawPath(starPath, starPaint)
 
+        val (stroke0, fill0) = resolveStarColors(0, phase)
         buildStar(sx, sy, descs[0].starRadius, baseRot)
-        starPaint.color = Palette.withAlpha(starColor(0, phase), 255)
-        starPaintFill.color = Palette.withAlpha(starColorFill(0, phase), 255)
+        starPaint.color = Palette.withAlpha(stroke0, 255)
+        starPaintFill.color = Palette.withAlpha(fill0, 255)
         canvas.drawPath(starPath, starPaintFill)
         canvas.drawPath(starPath, starPaint)
     }
@@ -169,7 +175,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
 
     override fun drawChargingPaddle(canvas: Canvas) {
         ensureStarDescs()
-        starPaint.strokeWidth = renderer.radius * 0.2f
+        starPaint.strokeWidth = cachedStrokeWidth
 
         val desc = starDescs[0]
 
@@ -193,9 +199,11 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
             chargeFillRatio <= dipEnd        -> halfRatio
             else                             -> halfRatio + ((chargeFillRatio - dipEnd) / (1f - dipEnd)) * (1f - halfRatio)
         }
+
+        val (stroke2, fill2) = resolveStarColors(2, phase)
         buildStar(sx, sy, desc.starRadius * starSizeRatio, rot)
-        starPaint.color = Palette.withAlpha(starColor(2, phase), 255)
-        starPaintFill.color = Palette.withAlpha(starColorFill(2, phase), 255)
+        starPaint.color = Palette.withAlpha(stroke2, 255)
+        starPaintFill.color = Palette.withAlpha(fill2, 255)
         canvas.drawPath(starPath, starPaintFill)
         canvas.drawPath(starPath, starPaint)
 
@@ -211,9 +219,9 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        starPaint.strokeWidth = renderer.radius * 0.2f
-
         ensureStarDescs()
+        starPaint.strokeWidth = cachedStrokeWidth
+
         // Detect when progress resets (new strike started)
         if (progress < lastStrikeProgress) {
             starReturnProgress[0] = 0f
@@ -227,9 +235,11 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         val sy = cy + (renderer.y - cy) * ret
 
         val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
+
+        val (stroke0, fill0) = resolveStarColors(0, phase)
         buildStar(sx, sy, desc.starRadius, rot)
-        starPaint.color = Palette.withAlpha(starColor(0, phase), 255)
-        starPaintFill.color = Palette.withAlpha(starColorFill(0, phase), 255)
+        starPaint.color = Palette.withAlpha(stroke0, 255)
+        starPaintFill.color = Palette.withAlpha(fill0, 255)
         canvas.drawPath(starPath, starPaintFill)
         canvas.drawPath(starPath, starPaint)
     }
@@ -245,6 +255,11 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         private val COLOR_THRESHOLDS = floatArrayOf(0.33f, 0.66f, 1f)
         // Pre-computed 8-point star angles — saves 8 trig conversions per drawStar call
         private val STAR_ANGLES = FloatArray(8) { i -> (i * 45f - 90f) * Math.PI.toFloat() / 180f }
+
+        // Pre-computed five-point star geometry constants
+        private val ANGLE_STEP_5 = (2f * PI / 5f).toFloat()
+        private val HALF_STEP_5  = ANGLE_STEP_5 / 2f
+        private val HALF_PI      = (PI / 2f).toFloat()
 
         fun spawnStartImpact(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int) {
             Effects.addPersistentEffect(NebulaMark(cx, cy, radius, primary, secondary))
@@ -269,7 +284,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
             var vx: Float, var vy: Float,
             var life: Float,
             val twinkleSpeed: Float,
-            val twinkleSeed: Float
+            val twinkleSeedRad: Float   // twinkleSeed * TAU, pre-multiplied
         )
 
         private val burstStars: List<BurstStar>
@@ -277,10 +292,19 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         private val burstPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val BURST_DURATION = 48
 
+        // Cached constant: Settings.screenRatio * 0.5f — only needs to be read once
+        private val screenRatioHalf = Settings.screenRatio * 0.5f
+
+        // Pre-computed NebulaMark star geometry constants
+        private val angleStep = (2f * PI / 5f).toFloat()
+        private val halfStep  = angleStep / 2f
+        private val halfPi    = (PI / 2f).toFloat()
+
         init {
+            val tau = (PI * 2).toFloat()
             val count = 22
             burstStars = List(count) { i ->
-                val angle = (i.toFloat() / count) * 2f * PI.toFloat() + Random.nextFloat() * 0.28f
+                val angle = (i.toFloat() / count) * tau + Random.nextFloat() * 0.28f
                 val speed = radius * (0.09f + Random.nextFloat() * 0.13f)
                 BurstStar(
                     cx, cy,
@@ -288,7 +312,7 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
                     sin(angle) * speed,
                     1f,
                     0.12f + Random.nextFloat() * 0.18f,
-                    Random.nextFloat()
+                    Random.nextFloat() * tau   // pre-multiply twinkleSeed * TAU
                 )
             }
         }
@@ -317,16 +341,19 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
             // Star burst — active only for the first BURST_DURATION frames
             if (frame <= BURST_DURATION) {
                 val burstT = frame.toFloat() / BURST_DURATION
+                // Compute lerped color once — it's the same for all burst stars this frame
+                val burstColor = Palette.lerpColor(colorA, colorB, burstT)
+                val frameF = frame.toFloat()
                 for (s in burstStars) {
                     s.x += s.vx
                     s.y += s.vy
                     s.vx *= 0.96f
                     s.vy *= 0.96f
                     s.life = (1f - burstT).coerceAtLeast(0f)
-                    val twinkle = 0.75f + 0.25f * sin(frame * s.twinkleSpeed + s.twinkleSeed * PI.toFloat() * 2f)
-                    val burstColor = Palette.lerpColor(colorA, colorB, burstT)
+                    // s.twinkleSeedRad already holds twinkleSeed * TAU
+                    val twinkle = 0.75f + 0.25f * sin(frameF * s.twinkleSpeed + s.twinkleSeedRad)
                     burstPaint.color = Palette.withAlpha(burstColor, (255f * s.life * s.life).toInt().coerceIn(0, 255))
-                    val outerR = Settings.screenRatio * 0.5f * s.life * twinkle
+                    val outerR = screenRatioHalf * s.life * twinkle
                     if (outerR > 0.5f) drawBurstStar(canvas, s.x, s.y, outerR)
                 }
             }
@@ -343,12 +370,9 @@ class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffe
         private fun buildStar(dst: Path, cx: Float, cy: Float, outer: Float, rotation: Float) {
             val inner = outer * 0.42f
             val roundness = outer * 0.14f
-            val count = 5
-            val angleStep = (2f * PI / count).toFloat()
-            val halfStep  = angleStep / 2f
             dst.reset()
-            for (i in 0 until count) {
-                val outerAngle = rotation + i * angleStep - (PI / 2f).toFloat()
+            for (i in 0 until 5) {
+                val outerAngle = rotation + i * angleStep - halfPi
                 val tipX = cx + cos(outerAngle) * outer
                 val tipY = cy + sin(outerAngle) * outer
                 val perpX = -sin(outerAngle)

@@ -8,7 +8,6 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
-import gameobjects.puckstyle.paddles.GalaxyLaunch
 import gameobjects.puckstyle.paddles.GhostLaunch
 import physics.Point
 import kotlin.math.PI
@@ -83,6 +82,15 @@ class GhostSkin(override val theme: ColorTheme, override val renderer: PuckRende
         private var _isDone = false
         override val isDone: Boolean get() = _isDone
 
+        // Cached constants for draw() — computed once, never change
+        private val spiritRadius = radius * 0.45f
+        private val spiritStrokeWidth = Settings.strokeWidth * 0.7f
+        private val spiritGlowRadius = spiritRadius * 1.2f
+        private val spiritStrokeGlow = spiritStrokeWidth * 1.4f
+        private val bodyWhite = Color.argb(120, 255, 255, 255)
+        private val strokeWhite = Color.argb(180, 255, 255, 255)
+        private val maxDistSq = maxDistance * maxDistance
+
         init {
             val baseAngles = listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, Math.PI)
             val fullAngles = List(12) { i -> i * (2.0 * Math.PI / 12) }
@@ -103,7 +111,8 @@ class GhostSkin(override val theme: ColorTheme, override val renderer: PuckRende
                     Phase.Expanding -> {
                         s.x += s.dirX * s.speed; s.y += s.dirY * s.speed
                         val dx = s.x - cx; val dy = s.y - cy
-                        if (sqrt(dx * dx + dy * dy) >= s.maxDist) {
+                        // Use squared distance to avoid sqrt in the expansion check
+                        if (dx * dx + dy * dy >= maxDistSq) {
                             s.x = cx + s.dirX * s.maxDist; s.y = cy + s.dirY * s.maxDist
                             s.phase = Phase.Hovering
                         }
@@ -126,18 +135,17 @@ class GhostSkin(override val theme: ColorTheme, override val renderer: PuckRende
         }
 
         override fun draw(canvas: Canvas) {
-            val r = radius * 0.45f
-            val sw = Settings.strokeWidth * 0.7f
+            val glowAlpha = Palette.withAlpha(color, 55)
             for (s in spirits) {
                 if (s.done) continue
-                glowPaint.color = Palette.withAlpha(color, 55)
-                glowPaint.strokeWidth = sw * 1.4f
-                canvas.drawCircle(s.x, s.y, r * 1.2f, glowPaint)
-                bodyPaint.color = Color.argb(120, 255, 255, 255)
-                canvas.drawCircle(s.x, s.y, r, bodyPaint)
-                glowPaint.color = Color.argb(180, 255, 255, 255)
-                glowPaint.strokeWidth = sw
-                canvas.drawCircle(s.x, s.y, r, glowPaint)
+                glowPaint.color = glowAlpha
+                glowPaint.strokeWidth = spiritStrokeGlow
+                canvas.drawCircle(s.x, s.y, spiritGlowRadius, glowPaint)
+                bodyPaint.color = bodyWhite
+                canvas.drawCircle(s.x, s.y, spiritRadius, bodyPaint)
+                glowPaint.color = strokeWhite
+                glowPaint.strokeWidth = spiritStrokeWidth
+                canvas.drawCircle(s.x, s.y, spiritRadius, glowPaint)
             }
         }
     }
@@ -153,27 +161,29 @@ class GhostSkin(override val theme: ColorTheme, override val renderer: PuckRende
 
     override fun drawBody(canvas: Canvas) {
         val glowColor = responsivePrimary
-
+        val r = renderer.radius
         val sw = renderer.strokePaint.strokeWidth
-
         val radiusOffset = radiusOffset(renderer)
+
+        // Hoist per-frame oscillator base values shared across aura rings
+        val framePhase = renderer.frame * 0.04f
+        val innerFramePhase = renderer.frame * 0.025f
 
         // Animated aura rings drawn behind the orb — each has its own oscillation phase
         for (ring in auraRings) {
-            val r = renderer.radius * ring.baseMult +
-                    renderer.radius * ring.amp * sin(renderer.frame * 0.04f + ring.phase)
-            val alpha = ring.alpha + ring.alpha * (ring.amp * sin(renderer.frame * 0.04f + ring.phase)).toInt()
+            val sinVal = sin(framePhase + ring.phase)
+            val ringR = r * ring.baseMult + r * ring.amp * sinVal
+            val alpha = ring.alpha + (ring.alpha * ring.amp * sinVal).toInt()
             glow.color = Palette.withAlpha(glowColor, alpha)
             glow.strokeWidth = sw * ring.strokeMult
-            canvas.drawCircle(renderer.x, renderer.y, r , glow)
+            canvas.drawCircle(renderer.x, renderer.y, ringR, glow)
         }
 
         // White orb at exact radius — not oversized
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius * radiusOffset, fill)
+        canvas.drawCircle(renderer.x, renderer.y, r * radiusOffset, fill)
 
         // Inner ring pulses between 50% and 100% of radius, slowly
-        val innerR = renderer.radius * 0.75f +
-                renderer.radius * 0.1f * sin(renderer.frame * 0.025f + 5.0f)
+        val innerR = r * 0.75f + r * 0.1f * sin(innerFramePhase + 5.0f)
         stroke.strokeWidth = sw * 0.7f
         canvas.drawCircle(renderer.x, renderer.y, innerR * radiusOffset, stroke)
 

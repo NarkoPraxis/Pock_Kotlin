@@ -10,7 +10,6 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
-import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -58,9 +57,14 @@ class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRend
         private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val path = Path()
 
+        // Pre-computed star geometry constants (count = 5 is fixed)
+        private val angleStep = (TAU / 5f)
+        private val halfStep = angleStep / 2f
+        private val halfPi = (Math.PI / 2.0).toFloat()
+
         init {
             val baseAngles = listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, Math.PI)
-            val fullAngles = List(12) { i -> i * (2.0 * Math.PI / 12) }
+            val fullAngles = List(12) { i -> i * (TAU_DOUBLE / 12) }
             val srcAngles = if (fullCircle) fullAngles else baseAngles
             directions = srcAngles.map { a ->
                 val adj = if (!fullCircle && !highGoal) a + Math.PI else a
@@ -83,20 +87,18 @@ class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRend
             val starR = radius * 0.35f * life
             if (starR < 1f) return
             paint.color = Palette.withAlpha(color, alpha)
+            val rot = frame * 0.03f
             for ((dx, dy) in directions) {
-                buildStar(cx + dx * currentDistance, cy + dy * currentDistance, starR, frame * 0.03f)
+                buildStar(cx + dx * currentDistance, cy + dy * currentDistance, starR, rot)
                 canvas.drawPath(path, paint)
             }
         }
 
         private fun buildStar(scx: Float, scy: Float, outer: Float, rotation: Float) {
             val inner = outer * 0.42f
-            val count = 5
-            val angleStep = (2.0 * Math.PI / count).toFloat()
-            val halfStep = angleStep / 2f
             path.reset()
-            for (i in 0 until count) {
-                val outerAngle = rotation + i * angleStep - (Math.PI / 2.0).toFloat()
+            for (i in 0 until 5) {
+                val outerAngle = rotation + i * angleStep - halfPi
                 val tipX = scx + cos(outerAngle) * outer
                 val tipY = scy + sin(outerAngle) * outer
                 val prevInnerAngle = outerAngle - halfStep
@@ -110,6 +112,11 @@ class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRend
                 path.lineTo(nextValX, nextValY)
             }
             path.close()
+        }
+
+        companion object {
+            private val TAU = (Math.PI * 2).toFloat()
+            private val TAU_DOUBLE = Math.PI * 2
         }
     }
 
@@ -166,15 +173,18 @@ class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRend
         }
 
         val outerRBase = renderer.radius * 0.12f
+        val primaryColor = lastColors.primary
+        val frameF = renderer.frame.toFloat()
         for (seed in starSeeds) {
             seed[0] += seed[3]
             val ang = seed[0]
             val dist = seed[5] * renderer.radius
             val px = renderer.x + cos(ang) * dist
             val py = renderer.y + sin(ang) * dist
-            val twinkle = (sin(renderer.frame * seed[4] + seed[2]) + 1f) * 0.5f
-            star.alpha = (110 + 145 * twinkle).toInt()
-            star.color = Palette.withAlpha(lastColors.primary, star.alpha)
+            val twinkle = (sin(frameF * seed[4] + seed[2]) + 1f) * 0.5f
+            val alpha = (110 + 145 * twinkle).toInt()
+            // Set color with alpha in one shot — avoids a redundant star.alpha assignment
+            star.color = Palette.withAlpha(primaryColor, alpha)
             val outerR = outerRBase * (0.6f + twinkle * 0.8f)
             drawStar(canvas, px, py, outerR, outerR * 0.38f, star)
         }

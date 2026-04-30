@@ -30,6 +30,9 @@ class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedSh
         style = Paint.Style.STROKE
     }
 
+    // Cache to avoid recomputing rimStroke.strokeWidth every frame.
+    private var cachedRadius = -1f
+
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(IceScoreEffect(position.x, position.y, renderer.radius, highGoal, fullCircle = false, theme))
     }
@@ -44,7 +47,14 @@ class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedSh
         private val maxDistance = radius * 3f
         private val crystalPath = Path()
         private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-        private val stroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
+        private val stroke = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            // strokeWidth is constant; set once at construction.
+            strokeWidth = Settings.strokeWidth * 0.5f
+            color = theme.main.primary
+            alpha = 130
+        }
 
         // Central large puddle
         private var centralFrame = 0
@@ -139,19 +149,23 @@ class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedSh
             val crystalR = r * (1.4f - t * 1.1f)
             if (crystalR < 1f) return
             crystalPath.reset()
-            val pts = 8
-            for (i in 0 until pts) {
-                val angle = (i * 360.0 / pts * Math.PI / 180.0).toFloat()
+            for (i in 0 until 8) {
+                val angle = CRYSTAL_ANGLES[i]
                 val outerR = crystalR * (if (i % 2 == 0) 2.3f else 1f)
-                val px = x + cos(angle) * outerR; val py = y + sin(angle) * outerR
+                val px = x + cos(angle) * outerR
+                val py = y + sin(angle) * outerR
                 if (i == 0) crystalPath.moveTo(px, py) else crystalPath.lineTo(px, py)
             }
             crystalPath.close()
             fill.color = Color.WHITE; fill.alpha = 255
             canvas.drawPath(crystalPath, fill)
-            stroke.color = theme.main.primary; stroke.alpha = 130
-            stroke.strokeWidth = Settings.strokeWidth * 0.5f
+            // stroke color/alpha/strokeWidth set once at construction; no per-call reassignment.
             canvas.drawPath(crystalPath, stroke)
+        }
+
+        companion object {
+            // 8-point star angles shared across all IceScoreEffect instances.
+            private val CRYSTAL_ANGLES = FloatArray(8) { i -> (i * 2.0 * PI / 8).toFloat() }
         }
     }
 
@@ -178,10 +192,16 @@ class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedSh
             invalidateShader()
         }
         ensureShader(renderer.radius)
+
+        // Update rimStroke.strokeWidth only when radius changes.
+        if (cachedRadius != renderer.radius) {
+            cachedRadius = renderer.radius
+            rimStroke.strokeWidth = renderer.strokePaint.strokeWidth * 0.7f
+        }
+
         canvas.withTranslation(renderer.x, renderer.y) {
             drawCircle(0f, 0f, renderer.radius, fill)
         }
-        rimStroke.strokeWidth = renderer.strokePaint.strokeWidth * 0.7f
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, rimStroke)
     }
 }

@@ -12,8 +12,13 @@ import gameobjects.puckstyle.skins.GhostSkin.Companion.radiusOffset
 
 class GhostTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
 
-    private data class Ghost(var x: Float = 0f, var y: Float = 0f)
-    private var points: MutableList<Ghost>? = null
+    // Parallel float arrays instead of a list of data-class objects — zero per-frame allocation.
+    private var xs: FloatArray? = null
+    private var ys: FloatArray? = null
+
+    // Cached tail length so we don't recompute Settings.tailLengthMultiplier every frame.
+    private var cachedGhostLen = -1
+    private val baseCount = 30
 
     private val whitePaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val glowPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
@@ -22,41 +27,59 @@ class GhostTail(override val theme: ColorTheme, override val renderer: PuckRende
         get() = 2
 
     override fun render(canvas: Canvas) {
-        val ghostLen = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
-        if (points == null || points!!.size != ghostLen) points = MutableList(ghostLen) { Ghost(renderer.x, renderer.y) }
-        val points = points!!
+        val ghostLen = (baseCount * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+
+        // Reallocate arrays only when length changes (rare).
+        if (ghostLen != cachedGhostLen) {
+            xs = FloatArray(ghostLen) { renderer.x }
+            ys = FloatArray(ghostLen) { renderer.y }
+            cachedGhostLen = ghostLen
+        }
+        val xs = xs!!
+        val ys = ys!!
 
         val glowColor = responsivePrimary
         val radiusOffset = radiusOffset(renderer)
+        val r = renderer.radius
+        val sw = renderer.strokePaint.strokeWidth * 1.2f
+        val lastIdx = ghostLen - 1
 
+        // Single shift pass: oldest entry (index 0) is dropped, newest puck position goes to index 0.
+        for (i in lastIdx downTo 1) {
+            xs[i] = xs[i - 1]
+            ys[i] = ys[i - 1]
+        }
+        xs[0] = renderer.x
+        ys[0] = renderer.y
 
-        for (i in points.size - 1 downTo 0) {
-            if (i - 1 >= 0) points[i] = points[i - 1].copy()
-            else { points[i].x = renderer.x; points[i].y = renderer.y }
-            val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
-            val size = renderer.radius * 1f - Settings.strokeWidth - renderer.radius * ((i - 1).coerceAtLeast(0).toFloat() / (points.size - 1))
-            val alpha = (255f * (1 - ratio)).toInt()
-            // Outer aura ring drawn first so the white fill sits on top cleanly
+        // Pass 1 — glow rings (drawn first so white fill sits on top)
+        glowPaint.strokeWidth = sw
+        for (i in lastIdx downTo 0) {
+            val ratio = i.toFloat() / lastIdx.coerceAtLeast(1)
+            val size = r - Settings.strokeWidth - r * (i.coerceAtLeast(1).toFloat() / lastIdx)
+            val alpha = (255f * (1f - ratio)).toInt()
             glowPaint.color = Palette.withAlpha(glowColor, (alpha * 0.45f).toInt())
-            glowPaint.strokeWidth = renderer.strokePaint.strokeWidth * 1.2f
-            canvas.drawCircle(points[i].x, points[i].y, size * 1.15f * radiusOffset, glowPaint)
+            canvas.drawCircle(xs[i], ys[i], size * 1.15f * radiusOffset, glowPaint)
         }
 
-        for (i in points.size - 1 downTo 0) {
-            if (i - 1 >= 0) points[i] = points[i - 1].copy()
-            else { points[i].x = renderer.x; points[i].y = renderer.y }
-            val ratio = i.toFloat() / (points.size - 1).coerceAtLeast(1)
-            val size = renderer.radius * 1.1f - Settings.strokeWidth - renderer.radius * ((i - 1).coerceAtLeast(0).toFloat() / (points.size - 1))
-            val alpha = (255f * (1 - ratio)).toInt()
-            // White fill disc
+        // Pass 2 — white fill discs
+        for (i in lastIdx downTo 0) {
+            val ratio = i.toFloat() / lastIdx.coerceAtLeast(1)
+            val size = r * 1.1f - Settings.strokeWidth - r * (i.coerceAtLeast(1).toFloat() / lastIdx)
+            val alpha = (255f * (1f - ratio)).toInt()
             whitePaint.color = Color.argb((alpha * 0.75f).toInt(), 255, 255, 255)
-            canvas.drawCircle(points[i].x, points[i].y, size * radiusOffset, whitePaint)
+            canvas.drawCircle(xs[i], ys[i], size * radiusOffset, whitePaint)
         }
     }
 
-    override fun clear() { points = null }
+    override fun clear() {
+        xs = null
+        ys = null
+        cachedGhostLen = -1
+    }
 
     override fun fillTo(x: Float, y: Float) {
-        points?.forEach { it.x = x; it.y = y }
+        xs?.fill(x)
+        ys?.fill(y)
     }
 }

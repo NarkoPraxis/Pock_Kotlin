@@ -18,7 +18,7 @@ class GalaxyTail(override val theme: ColorTheme, override val renderer: PuckRend
         var x: Float, var y: Float,
         var vx: Float, var vy: Float,
         var life: Float,
-        var twinkleSeed: Float,
+        var twinkleSeed: Float,       // stores twinkleSeed * TAU pre-multiplied
         var twinkleSpeed: Float
     )
 
@@ -28,9 +28,16 @@ class GalaxyTail(override val theme: ColorTheme, override val renderer: PuckRend
     private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val starPath = Path()
 
+    // Constants derived from Settings — computed once since these never change after setup
+    private val cap = (100 * Settings.tailLengthMultiplier).toInt()
+    private val lifeDelta = 0.01f / Settings.tailLengthMultiplier
+    private val outerRBase = Settings.screenRatio * 0.32f
+
     private fun acquire(x: Float, y: Float, vx: Float, vy: Float, life: Float, seed: Float, speed: Float): Star {
         val s = if (pool.isNotEmpty()) pool.removeFirst() else Star(0f, 0f, 0f, 0f, 0f, 0f, 0f)
-        s.x = x; s.y = y; s.vx = vx; s.vy = vy; s.life = life; s.twinkleSeed = seed; s.twinkleSpeed = speed
+        s.x = x; s.y = y; s.vx = vx; s.vy = vy; s.life = life
+        s.twinkleSeed = seed * TAU   // pre-multiply so inner loop avoids the multiply each frame
+        s.twinkleSpeed = speed
         return s
     }
 
@@ -61,31 +68,38 @@ class GalaxyTail(override val theme: ColorTheme, override val renderer: PuckRend
                 0.157f + Random.nextFloat() * 0.157f
             ))
         }
-        val cap = (100 * Settings.tailLengthMultiplier).toInt()
         while (sparks.size > cap) pool.addLast(sparks.removeFirst())
 
-        val lifeDelta = 0.01f / Settings.tailLengthMultiplier
-        val outerRBase = Settings.screenRatio * 0.32f
         val primaryColor = resolvedColors().primary
-        val it = sparks.iterator()
-        while (it.hasNext()) {
-            val s = it.next()
+        val frameF = renderer.frame.toFloat()
+
+        // Index-based iteration avoids allocating an Iterator object each frame.
+        // Dead sparks are collected and returned to the pool after the draw pass.
+        var i = 0
+        while (i < sparks.size) {
+            val s = sparks[i]
             s.x += s.vx
             s.y += s.vy
             s.vx *= 0.97f
             s.vy *= 0.97f
             s.life -= lifeDelta
-            if (s.life <= 0f) { it.remove(); pool.addLast(s); continue }
-            val twinkle = 0.75f + 0.25f * sin(renderer.frame * s.twinkleSpeed + s.twinkleSeed * TAU)
+            if (s.life <= 0f) {
+                sparks.removeAt(i)
+                pool.addLast(s)
+                // do not increment i — the element at index i is now the next star
+                continue
+            }
+            // s.twinkleSeed already holds twinkleSeed * TAU (pre-multiplied at acquire time)
+            val twinkle = 0.75f + 0.25f * sin(frameF * s.twinkleSpeed + s.twinkleSeed)
             paint.color = Palette.withAlpha(primaryColor, (255f * s.life).toInt())
             val outerR = outerRBase * s.life * twinkle
             drawStar(canvas, s.x, s.y, outerR, outerR * 0.38f)
+            i++
         }
     }
 
     override fun clear() {
-        val it = sparks.iterator()
-        while (it.hasNext()) { pool.addLast(it.next()); it.remove() }
+        while (sparks.isNotEmpty()) pool.addLast(sparks.removeFirst())
     }
 
     override fun fillTo(x: Float, y: Float) {
