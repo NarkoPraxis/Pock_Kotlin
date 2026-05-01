@@ -18,7 +18,7 @@ import kotlin.math.sin
  * matching the RainbowSkin/RainbowTail hue animation. A standard charge fill grows from
  * the bar center on top of the base color.
  */
-class RainbowLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class RainbowLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val tailLinePaint = Paint().apply {
         isAntiAlias = true

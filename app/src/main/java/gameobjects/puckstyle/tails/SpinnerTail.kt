@@ -11,7 +11,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 
-class SpinnerTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class SpinnerTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private data class Pos(var x: Float = 0f, var y: Float = 0f)
 
@@ -46,7 +46,7 @@ class SpinnerTail(override val theme: ColorTheme, override val renderer: PuckRen
         val tipLen    = lineLen / 6f
         val sw        = renderer.strokePaint.strokeWidth
 
-        val colors = resolvedColors()
+        val colors = responsiveGroup
         val color  = colors.primary
         val hilite = colors.secondary
 

@@ -12,7 +12,7 @@ import utility.Effects
 import kotlin.math.sin
 
 /** Glow-stick: paddle bar with an outer halo glow. Sweet spot flickers at a distinct frequency. */
-class NeonLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class NeonLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private val halo = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.STROKE

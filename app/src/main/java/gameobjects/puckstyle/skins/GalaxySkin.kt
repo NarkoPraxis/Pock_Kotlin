@@ -18,7 +18,7 @@ import gameobjects.puckstyle.paddles.GalaxyLaunch
 import physics.Point
 import utility.Effects
 
-class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
+class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
 
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val star = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
@@ -161,7 +161,7 @@ class GalaxySkin(override val theme: ColorTheme, override val renderer: PuckRend
     }
 
     override fun drawBody(canvas: Canvas) {
-        val colors = resolvedColors()
+        val colors = responsiveGroup
         if (colors != lastColors) {
             lastColors = colors
             lastRadius = -1f

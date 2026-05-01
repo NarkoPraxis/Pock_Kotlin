@@ -15,7 +15,7 @@ import kotlin.math.sqrt
 
 /** Tethered mini-ghost orb: a scaled-down copy of the GhostSkin with a ghost tail. Sweet-spot leaves a
  *  persistent spirit that animates back to the host puck when a goal is scored. */
-class GhostLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private data class AuraConfig(val baseMult: Float, val amp: Float, val phase: Float, val alpha: Int, val strokeMult: Float)
 

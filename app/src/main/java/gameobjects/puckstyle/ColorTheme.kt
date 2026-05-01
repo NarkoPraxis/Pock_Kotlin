@@ -23,5 +23,9 @@ data class ColorTheme(
             inert = ColorGroup(PaintBucket.inertPrimaryColor, PaintBucket.inertSecondaryColor),
             isWarm = false
         )
+
+        fun getTheme(isHigh: Boolean) : ColorTheme {
+            return if (isHigh) ColorTheme.Warm else ColorTheme.Cold
+        }
     }
 }

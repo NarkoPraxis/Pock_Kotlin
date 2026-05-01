@@ -18,8 +18,8 @@ import utility.PaintBucket
 import utility.Sounds
 
 class Player(
-    var puck: Puck = Puck(0f, 0f,0f, ColorTheme.Cold),
-    var finger: Circle = Circle(0f, 0f,0f, Color.BLACK, Color.GRAY),
+    var puck: Puck,
+    var finger: Circle,
     var isHigh: Boolean = true
 ) {
 
@@ -164,20 +164,20 @@ class Player(
         renderer.inertLocked = isInertLocked
         renderer.hitStunned = isHitStunned
         renderer.hitStunRatio = hitStunRatio
-        val theme = puck.renderer.effect?.theme ?: puck.renderer.skin?.theme
-        if (theme != null) {
-            val targetColors = renderer.resolveColorGroup(theme)
-            if (isHitStunned) {
-                val r = hitStunRatio
-                renderer.fillColor = blendColors(targetColors.primary, theme.inert.primary, r)
-                renderer.strokeColor = blendColors(targetColors.secondary, theme.inert.secondary, r)
-                renderer.baseFillColor = renderer.fillColor
-            } else {
-                renderer.fillColor = targetColors.primary
-                renderer.strokeColor = targetColors.secondary
-                renderer.baseFillColor = targetColors.primary
-            }
+        val theme = puck.renderer.theme
+
+        val targetColors = renderer.responsiveColorGroup
+        if (isHitStunned) {
+            val r = hitStunRatio
+            renderer.fillColor = blendColors(targetColors.primary, theme.inert.primary, r)
+            renderer.strokeColor = blendColors(targetColors.secondary, theme.inert.secondary, r)
+            renderer.baseFillColor = renderer.fillColor
+        } else {
+            renderer.fillColor = targetColors.primary
+            renderer.strokeColor = targetColors.secondary
+            renderer.baseFillColor = targetColors.primary
         }
+
 
         if (chargePowerLocked) overchargeFrames++ else overchargeFrames = 0
         if (preparingToTeleport || isTeleporting) {

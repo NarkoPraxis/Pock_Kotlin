@@ -10,7 +10,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import gameobjects.puckstyle.skins.GhostSkin.Companion.radiusOffset
 
-class GhostTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class GhostTail( override val renderer: PuckRenderer) : TailRenderer {
 
     // Parallel float arrays instead of a list of data-class objects — zero per-frame allocation.
     private var xs: FloatArray? = null

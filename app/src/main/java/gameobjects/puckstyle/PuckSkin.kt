@@ -4,22 +4,22 @@ import android.graphics.Canvas
 import physics.Point
 
 interface PuckSkin {
-    val theme: ColorTheme
-
     val renderer: PuckRenderer
 
     /** Local z-index within a PuckRenderer composition. Default 0 (body layer). */
     val zIndex: Int get() = 0
 
-
-    /** Returns the ColorGroup this skin should use for the current frame based on renderer state. */
-    fun resolvedColors(): ColorGroup = renderer.resolveColorGroup(theme)
+    val theme: ColorTheme
+        get() = renderer.theme
 
     val responsivePrimary: Int
-        get() = resolvedColors().primary
+        get() = responsiveGroup.primary
 
     val responsiveSecondary: Int
-        get() = resolvedColors().secondary
+        get() = responsiveGroup.secondary
+
+    val responsiveGroup: ColorGroup
+        get() = renderer.responsiveColorGroup
     fun drawBody(canvas: Canvas)
 
     fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {}

@@ -9,7 +9,7 @@ import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
 
 /** Classic paddle: a clean perpendicular bar that fills center-out with purple. */
-class ClassicLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class ClassicLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
         Effects.addPersistentEffect(ClassicResidual(rx, ry, renderer.radius, theme.main.primary))

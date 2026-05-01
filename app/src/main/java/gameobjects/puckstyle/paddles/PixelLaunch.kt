@@ -13,7 +13,7 @@ import utility.Effects
 import androidx.core.graphics.withSave
 
 /** 8-bit paddle: solid secondary base line; charge overlays discrete centered cells in 20% steps. */
-class PixelLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class PixelLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private val block = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
     private val rect = RectF()
 

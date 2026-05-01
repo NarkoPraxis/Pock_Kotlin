@@ -9,7 +9,7 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
-class IceTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class IceTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private class Shard(
         val x: Float,
@@ -38,7 +38,7 @@ class IceTail(override val theme: ColorTheme, override val renderer: PuckRendere
         while (shards.size > maxCount) shards.removeFirst()
 
         // Resolve color and radius-derived thresholds once before the loop.
-        val primaryColor = resolvedColors().primary
+        val primaryColor = responsivePrimary
         val maxPuddleSize = renderer.radius * 1.5f
         val iceCutoff = renderer.radius * 0.05f
 

@@ -17,7 +17,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-class PrismSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
+class PrismSkin( override val renderer: PuckRenderer) : PuckSkin {
 
     private val facet = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val edge = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }

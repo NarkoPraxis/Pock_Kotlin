@@ -9,7 +9,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.random.Random
 
-class FireTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class FireTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private class Spark(
         var x: Float, var y: Float,
@@ -18,8 +18,8 @@ class FireTail(override val theme: ColorTheme, override val renderer: PuckRender
         val isCore: Boolean
     )
 
-    val SPAWN_RADIUS = renderer.radius * .04f
-    val PARTICLE_BASE_SIZE = renderer.radius * .6f
+    val SPAWN_RADIUS get() = renderer.radius * .04f
+    val PARTICLE_BASE_SIZE get() = renderer.radius * .6f
 
 
     private val sparks = ArrayDeque<Spark>()
@@ -55,7 +55,7 @@ class FireTail(override val theme: ColorTheme, override val renderer: PuckRender
         while (sparks.size > maxCount) sparks.removeFirst()
 
         // Hoist loop-invariant color resolution — resolvedColors() must not be called per-spark.
-        val colors = resolvedColors()
+        val colors = responsiveGroup
         val cSecondary = colors.secondary
         val cPrimary = colors.primary
 

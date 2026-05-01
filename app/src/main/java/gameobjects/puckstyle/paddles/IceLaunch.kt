@@ -15,7 +15,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** Ice shard: diamond-shape perpendicular to aim. Sweet-spot leaves a frost mark that evaporates to a water puddle. */
-class IceLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val shardFill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val shardStroke = Paint().apply {

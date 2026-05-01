@@ -4,55 +4,105 @@ import enums.BallType
 import gameobjects.puckstyle.paddles.*
 import gameobjects.puckstyle.skins.*
 import gameobjects.puckstyle.tails.*
-import utility.Logic.highPlayer
 
-data class BallStyle(val skin: PuckSkin, val tail: TailRenderer, val effect: LaunchEffect)
+data class BallStyle(val skin: PuckSkin, val tail: TailRenderer, val effect: PaddleLaunchEffect)
 
 data class RandomRoll(val skinType: BallType, val tailType: BallType, val effectType: BallType, val tailZIndex: Int)
 
 object BallStyleFactory {
+
+
+    fun buildBallStyle(type: BallType, renderer: PuckRenderer): BallStyle {
+        return when (type) {
+            BallType.Classic -> BallStyle(ClassicSkin(renderer), ClassicTail(renderer), ClassicLaunch(renderer))
+            BallType.Neon    -> BallStyle(NeonSkin(renderer),    NeonTail(renderer),    NeonLaunch(renderer))
+            BallType.Ghost   -> BallStyle(GhostSkin(renderer),   GhostTail(renderer),   GhostLaunch(renderer))
+            BallType.Fire    -> BallStyle(FireSkin(renderer),    FireTail(renderer),    FireLaunch(renderer))
+            BallType.Ice     -> BallStyle(IceSkin(renderer),     IceTail(renderer),     IceLaunch(renderer))
+            BallType.Galaxy  -> BallStyle(GalaxySkin(renderer),  GalaxyTail(renderer),  GalaxyLaunch(renderer))
+            BallType.Spinner -> BallStyle(SpinnerSkin(renderer), SpinnerTail(renderer), SpinnerLaunch(renderer))
+            BallType.Metal   -> BallStyle(MetalSkin(renderer),   MetalTail(renderer),   MetalLaunch(renderer))
+            BallType.Pixel   -> BallStyle(PixelSkin(renderer),   PixelTail(renderer),   PixelLaunch(renderer))
+            BallType.Rainbow -> BallStyle(RainbowSkin(renderer), RainbowTail(renderer), RainbowLaunch(renderer))
+            BallType.Prism   -> BallStyle(PrismSkin(renderer),   PrismTail(renderer),   PrismLaunch(renderer))
+            BallType.Plasma   -> BallStyle(PlasmaSkin(renderer),   PlasmaTail(renderer),   PlasmaLaunch(renderer))
+            BallType.Chicken  -> BallStyle(ChickenSkin(renderer),  ChickenTail(renderer),  ChickenLaunch(renderer))
+            BallType.Random   -> buildRandom(renderer)
+        }
+    }
 
     fun rollRandom(): RandomRoll {
         val pool = BallType.entries.filter { it != BallType.Random }
         return RandomRoll(pool.random(), pool.random(), pool.random(), if (kotlin.random.Random.nextBoolean()) -1 else 1)
     }
 
-    fun buildFromRoll(roll: RandomRoll, theme: ColorTheme, renderer: PuckRenderer): BallStyle {
-        val skin   = buildStyle(roll.skinType, theme, renderer).skin
-        val tail   = buildStyle(roll.tailType, theme, renderer).tail
-        val effect = buildStyle(roll.effectType, theme, renderer).effect
-        val wrappedTail = ZIndexTailWrapper(tail, roll.tailZIndex)
-        renderer.skin   = skin
-        renderer.tail   = wrappedTail
-        renderer.effect = effect
-        return BallStyle(skin, wrappedTail, effect)
+    fun buildRandom(renderer: PuckRenderer): BallStyle {
+        val roll = rollRandom()
+        val wrappedTail = ZIndexTailWrapper(buildTail(roll.tailType, renderer), roll.tailZIndex)
+
+        return BallStyle(buildSkin(roll.skinType, renderer), wrappedTail, buildPaddle(roll.effectType, renderer))
     }
 
-    fun buildStyle(type: BallType, theme: ColorTheme, renderer: PuckRenderer): BallStyle {
-        val ballStyle = when (type) {
-            BallType.Classic -> BallStyle(ClassicSkin(theme, renderer), ClassicTail(theme, renderer), ClassicLaunch(theme, renderer))
-            BallType.Neon    -> BallStyle(NeonSkin(theme, renderer),    NeonTail(theme, renderer),    NeonLaunch(theme, renderer))
-            BallType.Ghost   -> BallStyle(GhostSkin(theme, renderer),   GhostTail(theme, renderer),   GhostLaunch(theme, renderer))
-            BallType.Fire    -> BallStyle(FireSkin(theme, renderer),    FireTail(theme, renderer),    FireLaunch(theme, renderer))
-            BallType.Ice     -> BallStyle(IceSkin(theme, renderer),     IceTail(theme, renderer),     IceLaunch(theme, renderer))
-            BallType.Galaxy  -> BallStyle(GalaxySkin(theme, renderer),  GalaxyTail(theme, renderer),  GalaxyLaunch(theme, renderer))
-            BallType.Spinner -> BallStyle(SpinnerSkin(theme, renderer), SpinnerTail(theme, renderer), SpinnerLaunch(theme, renderer))
-            BallType.Metal   -> BallStyle(MetalSkin(theme, renderer),   MetalTail(theme, renderer),   MetalLaunch(theme, renderer))
-            BallType.Pixel   -> BallStyle(PixelSkin(theme, renderer),   PixelTail(theme, renderer),   PixelLaunch(theme, renderer))
-            BallType.Rainbow -> BallStyle(RainbowSkin(theme, renderer), RainbowTail(theme, renderer), RainbowLaunch(theme, renderer))
-            BallType.Prism   -> BallStyle(PrismSkin(theme, renderer),   PrismTail(theme, renderer),   PrismLaunch(theme, renderer))
-            BallType.Plasma   -> BallStyle(PlasmaSkin(theme, renderer),   PlasmaTail(theme, renderer),   PlasmaLaunch(theme, renderer))
-            BallType.Chicken  -> BallStyle(ChickenSkin(theme, renderer),  ChickenTail(theme, renderer),  ChickenLaunch(theme, renderer))
-            BallType.Random   -> buildRandomStyle(theme, renderer)
+    fun buildSkin(type: BallType, renderer: PuckRenderer): PuckSkin {
+        return when (type) {
+            BallType.Classic -> ClassicSkin(renderer)
+            BallType.Neon    -> NeonSkin(renderer)
+            BallType.Ghost   -> GhostSkin(renderer)
+            BallType.Fire    -> FireSkin(renderer)
+            BallType.Ice     -> IceSkin(renderer)
+            BallType.Galaxy  -> GalaxySkin(renderer)
+            BallType.Spinner -> SpinnerSkin(renderer)
+            BallType.Metal   -> MetalSkin(renderer)
+            BallType.Pixel   -> PixelSkin(renderer)
+            BallType.Rainbow -> RainbowSkin(renderer)
+            BallType.Prism   -> PrismSkin(renderer)
+            BallType.Plasma   -> PlasmaSkin(renderer)
+            BallType.Chicken  -> ChickenSkin(renderer)
+            BallType.Random -> buildSkin(BallType.entries.random(), renderer)
         }
-        renderer.skin = ballStyle.skin
-        renderer.tail = ballStyle.tail
-        renderer.effect = ballStyle.effect
-        return ballStyle
     }
 
-    private fun buildRandomStyle(theme: ColorTheme, renderer: PuckRenderer): BallStyle {
-        return buildFromRoll(rollRandom(), theme, renderer)
+    fun buildTail(type: BallType, renderer: PuckRenderer): TailRenderer {
+        return when (type) {
+            BallType.Classic -> ClassicTail(renderer)
+            BallType.Neon    -> NeonTail(renderer)
+            BallType.Ghost   -> GhostTail(renderer)
+            BallType.Fire    -> FireTail(renderer)
+            BallType.Ice     -> IceTail(renderer)
+            BallType.Galaxy  -> GalaxyTail(renderer)
+            BallType.Spinner -> SpinnerTail(renderer)
+            BallType.Metal   -> MetalTail(renderer)
+            BallType.Pixel   -> PixelTail(renderer)
+            BallType.Rainbow -> RainbowTail(renderer)
+            BallType.Prism   -> PrismTail(renderer)
+            BallType.Plasma   -> PlasmaTail(renderer)
+            BallType.Chicken  -> ChickenTail(renderer)
+            BallType.Random   -> buildTail(BallType.entries.random(), renderer)
+        }
+    }
+
+    fun buildPaddle(type: BallType, renderer: PuckRenderer): PaddleLaunchEffect {
+        return when (type) {
+            BallType.Classic -> ClassicLaunch(renderer)
+            BallType.Neon    -> NeonLaunch(renderer)
+            BallType.Ghost   -> GhostLaunch(renderer)
+            BallType.Fire    -> FireLaunch(renderer)
+            BallType.Ice     -> IceLaunch(renderer)
+            BallType.Galaxy  -> GalaxyLaunch(renderer)
+            BallType.Spinner -> SpinnerLaunch(renderer)
+            BallType.Metal   -> MetalLaunch(renderer)
+            BallType.Pixel   -> PixelLaunch(renderer)
+            BallType.Rainbow -> RainbowLaunch(renderer)
+            BallType.Prism   -> PrismLaunch(renderer)
+            BallType.Plasma   -> PlasmaLaunch(renderer)
+            BallType.Chicken  -> ChickenLaunch(renderer)
+            BallType.Random   -> buildPaddle(BallType.entries.random(), renderer)
+        }
+    }
+
+    fun buildRenderer(type: BallType, theme: ColorTheme): PuckRenderer {
+        val renderer = PuckRenderer(type, theme)
+        return renderer
     }
 
     fun displayName(type: BallType): String = type.name

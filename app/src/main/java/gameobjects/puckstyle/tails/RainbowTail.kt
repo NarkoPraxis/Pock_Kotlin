@@ -9,7 +9,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import shapes.DrawablePoint
 
-class RainbowTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class RainbowTail( override val renderer: PuckRenderer) : TailRenderer {
     private var points: MutableList<DrawablePoint>? = null
     private val hueOffset = Palette.themeHue(theme)
     private val shieldHue = Palette.colorHue(theme.shield.primary)

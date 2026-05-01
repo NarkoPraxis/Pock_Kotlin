@@ -11,7 +11,7 @@ import utility.Effects
 import androidx.core.graphics.withRotation
 import androidx.core.graphics.withTranslation
 
-class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
+class SpinnerSkin( override val renderer: PuckRenderer) : PuckSkin {
 
     private val baseFill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val rim = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
@@ -45,7 +45,7 @@ class SpinnerSkin(override val theme: ColorTheme, override val renderer: PuckRen
 
 
     override fun drawBody(canvas: Canvas) {
-        val colors = resolvedColors()
+        val colors = responsiveGroup
         baseFill.color = colors.primary
         rim.color = colors.secondary
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, baseFill)

@@ -13,9 +13,7 @@ import physics.Ticker
 import shapes.Circle
 import utility.PaintBucket
 
-class Puck(radius: Float, x: Float, y: Float, theme: ColorTheme) : Circle(radius, x, y, theme.main.primary, theme.main.secondary) {
-
-    val renderer: PuckRenderer = PuckRenderer()
+class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circle(radius, x, y, renderer.theme.main.primary, renderer.theme.main.secondary) {
 
     /** Preview mode — renders body as a dark silhouette and desaturates tail. Wraps renderer.preview. */
     var isPlaceholder: Boolean
@@ -31,6 +29,8 @@ class Puck(radius: Float, x: Float, y: Float, theme: ColorTheme) : Circle(radius
     var impactPower: Float = 0.0f
         get() = (movement + launch).power
 
+    val theme: ColorTheme
+        get() = renderer.theme
 
     override fun setStroke(stroke: Int) {
         super.setStroke(stroke)

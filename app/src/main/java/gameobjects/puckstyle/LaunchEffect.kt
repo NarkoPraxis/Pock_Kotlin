@@ -3,15 +3,11 @@ package gameobjects.puckstyle
 import android.graphics.Canvas
 
 interface LaunchEffect {
-    val theme: ColorTheme
 
     val renderer: PuckRenderer
 
     /** Local z-index within a PuckRenderer composition. Default 3 (in front of body and tail). */
     val zIndex: Int get() = 3
-
-    /** Returns the ColorGroup this effect should use for the current frame based on renderer state. */
-    fun resolvedColors(): ColorGroup = renderer.resolveColorGroup(theme)
 
 
     fun draw(canvas: Canvas)

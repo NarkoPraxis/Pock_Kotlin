@@ -9,7 +9,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.math.exp
 
-class PixelTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class PixelTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private class Block(var x: Float = 0f, var y: Float = 0f)
     private class Ring(val x: Float, val y: Float, var size: Float, var alpha: Int, val isFront: Boolean, val growRate: Float, val color: Int)
@@ -110,7 +110,7 @@ class PixelTail(override val theme: ColorTheme, override val renderer: PuckRende
             }
         }
 
-        val colors = resolvedColors()
+        val colors = responsiveGroup
         val localPulseFade = pulseFade  // hoist to avoid repeated field reads in tight loop
 
         // main blocks drawn on top of rings

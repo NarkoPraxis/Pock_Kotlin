@@ -12,7 +12,7 @@ import gameobjects.puckstyle.PuckSkin
 import physics.Point
 import utility.Effects
 
-class NeonSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
+class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     // Subtle dark fill so the hollow center reads as a translucent tube, not empty space
     private val subtleFill = Paint().apply {
@@ -37,11 +37,6 @@ class NeonSkin(override val theme: ColorTheme, override val renderer: PuckRender
     private var glowColor45 = 0
     private var glowColor110 = 0
     private var glowColor220 = 0
-
-    init {
-        // chargePaint color never changes — set once here
-        renderer.chargePaint.color = theme.shield.primary
-    }
 
     override fun onCollisionWin(position: Point, speed: Float) {
         Effects.addPersistentEffect(NeonRingScar(renderer.x, renderer.y, renderer.radius, responsivePrimary))
@@ -152,13 +147,12 @@ class NeonSkin(override val theme: ColorTheme, override val renderer: PuckRender
             sw1  = sw * 1.0f
         }
 
-        val primary = resolvedColors().primary
-        if (cachedPrimary != primary) {
-            cachedPrimary = primary
-            glowColor25  = Palette.withAlpha(primary, 25)
-            glowColor45  = Palette.withAlpha(primary, 45)
-            glowColor110 = Palette.withAlpha(primary, 110)
-            glowColor220 = Palette.withAlpha(primary, 220)
+        if (cachedPrimary != responsivePrimary) {
+            cachedPrimary = responsivePrimary
+            glowColor25  = Palette.withAlpha(responsivePrimary, 25)
+            glowColor45  = Palette.withAlpha(responsivePrimary, 45)
+            glowColor110 = Palette.withAlpha(responsivePrimary, 110)
+            glowColor220 = Palette.withAlpha(responsivePrimary, 220)
         }
 
         // 4 glow rings, outermost first — body always stays theme color, charging shown via chargePaint

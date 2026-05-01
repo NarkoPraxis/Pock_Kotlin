@@ -8,20 +8,19 @@ import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.paddles.FireLaunch
 import physics.Point
 
-class FireSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
+class FireSkin( override val renderer: PuckRenderer) : PuckSkin {
 
     override val zIndex = 0
 
-    val INNER_CORE_SIZE = renderer.radius * .6f
+    val INNER_CORE_SIZE get() = renderer.radius * .6f
 
     private val fillPaint = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.FILL
-        strokeWidth = renderer.strokePaint.strokeWidth
     }
 
     override fun drawBody(canvas: Canvas) {
-        val colors = resolvedColors()
+        val colors = responsiveGroup
 
         fillPaint.color = colors.secondary
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, fillPaint)

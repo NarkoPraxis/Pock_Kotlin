@@ -6,20 +6,25 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 
 interface TailRenderer {
-    val theme: ColorTheme
-
     val renderer: PuckRenderer
 
     /** Local z-index within a PuckRenderer composition. Default -1 (behind body). */
     val zIndex: Int get() = -1
 
-    /** Returns the ColorGroup this tail should use for the current frame based on renderer state. */
-    fun resolvedColors(): ColorGroup = renderer.resolveColorGroup(theme)
+    val theme: ColorTheme
+        get() = renderer.theme
+
     val responsivePrimary: Int
-        get() = resolvedColors().primary
+        get() = responsiveGroup.primary
 
     val responsiveSecondary: Int
-        get() = resolvedColors().secondary
+        get() = responsiveGroup.secondary
+
+    /** Returns the ColorGroup this tail should use for the current frame based on renderer state. */
+    val responsiveGroup: ColorGroup
+        get() = renderer.responsiveColorGroup
+
+
     fun render(canvas: Canvas)
     fun clear()
 

@@ -18,9 +18,9 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import androidx.core.graphics.withClip
-import utility.Logic
 
 class BallSelectionPopup(val isHigh: Boolean) {
+
 
     var isOpen: Boolean = false
     var randomRoll: RandomRoll? = null
@@ -31,17 +31,18 @@ class BallSelectionPopup(val isHigh: Boolean) {
     private val slotBgSel = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
     private val lockPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; isAntiAlias = true; strokeCap = Paint.Cap.ROUND }
 
-    private val previewRenderer = PuckRenderer()
 
     private var snapIndex: Int = 0
 
     // Per-slot skins+tails — one per BallType, skin cached so randomized seeds don't re-roll each frame
-    private val slotTails: Array<TailRenderer?> = arrayOfNulls(BallType.values().size)
-    private val slotSkins: Array<PuckSkin?> = arrayOfNulls(BallType.values().size)
-    private val slotStyles: Array<BallStyle?> = arrayOfNulls(BallType.values().size)
-    private val slotTailTypes: Array<BallType?> = arrayOfNulls(BallType.values().size)
 
-    val w: Float get() = Settings.screenWidth.toFloat()
+    private val renderers: Array<PuckRenderer> = Array(BallType.entries.size) { i -> PuckRenderer(BallType.entries.toTypedArray()[i], ColorTheme.getTheme(isHigh))}
+//    private val slotTails: Array<TailRenderer?> = arrayOfNulls(BallType.entries.size)
+  //  private val slotSkins: Array<PuckSkin?> = arrayOfNulls(BallType.entries.size)
+    //private val slotStyles: Array<BallStyle?> = arrayOfNulls(BallType.entries.size)
+    //private val slotTailTypes: Array<BallType?> = arrayOfNulls(BallType.entries.size)
+
+    val w: Float get() = Settings.screenWidth
     val h: Float get() = Settings.screenRatio * 3.8f
     val cx: Float get() = Settings.middleX
     val cy: Float get() = if (isHigh) Settings.topGoalBottom + h / 2f else Settings.bottomGoalTop - h / 2f
@@ -56,7 +57,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
     // Plan 04: expose the ball nearest to center for live card label update while scrolling
     val previewType: BallType get() {
         val idx = (scrollX / slotW).roundToInt().coerceIn(0, BallType.values().size - 1)
-        return BallType.values()[idx]
+        return BallType.entries[idx]
     }
 
     fun open() {
@@ -65,17 +66,13 @@ class BallSelectionPopup(val isHigh: Boolean) {
         scrollX = current.ordinal * slotW
         snapIndex = current.ordinal
         dragging = false
-        slotTails[snapIndex]?.clear()   // reseed selected tail from current puck position on open
+        renderers[snapIndex].tail.clear()   // reseed selected tail from current puck position on open
 
-        val randomIdx = BallType.Random.ordinal
-        val popupTheme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
-        slotTails[randomIdx]?.clear()
-        randomRoll = BallStyleFactory.rollRandom()
-        val randomStyle = BallStyleFactory.buildFromRoll(randomRoll!!, popupTheme, previewRenderer)
-        slotTails[randomIdx]     = randomStyle.tail
-        slotSkins[randomIdx]     = randomStyle.skin
-        slotStyles[randomIdx]    = randomStyle
-        slotTailTypes[randomIdx] = BallType.Random
+        renderers[BallType.Random.ordinal] = PuckRenderer(BallType.Random, ColorTheme.getTheme(isHigh))
+//        = randomStyle.tail
+//        slotSkins[randomIdx]     = randomStyle.skin
+//        slotStyles[randomIdx]    = randomStyle
+//        slotTailTypes[randomIdx] = BallType.Random
 
         if (current == BallType.Random) {
             utility.Logic.applyBallStyles()
@@ -112,7 +109,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         if (!isOpen) return false
         val masked = action and MotionEvent.ACTION_MASK
         val logicalX = toLogicalX(x)
-        val types = BallType.values()
+        val types = BallType.entries.toTypedArray()
 
         when (masked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
@@ -141,7 +138,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     scrollX = index * slotW
                     if (index != snapIndex) {
                         snapIndex = index
-                        slotTails[snapIndex]?.clear()
+                        renderers[snapIndex].tail.clear()
                     }
                     trySelect(types[index])
                 } else {
@@ -150,7 +147,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     scrollX = snap * slotW
                     if (snap != snapIndex) {
                         snapIndex = snap
-                        slotTails[snapIndex]?.clear()
+                        renderers[snapIndex].tail.clear()
                     }
                     trySelect(types[snapIndex])
                 }
@@ -161,10 +158,12 @@ class BallSelectionPopup(val isHigh: Boolean) {
     }
 
     private fun clampScroll() {
-        val max = (BallType.values().size - 1) * slotW
+        val max = (BallType.entries.size - 1) * slotW
         if (scrollX < 0f) scrollX = 0f
         if (scrollX > max) scrollX = max
     }
+
+
 
     fun drawTo(canvas: Canvas) {
         if (!isOpen) return
@@ -175,7 +174,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         val halfW = w / 2f
         val halfH = h / 2f
         val theme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
-        val types = BallType.values()
+        val types = BallType.entries.toTypedArray()
         val pr = Settings.ballRadius
         val centerIndex = scrollX / slotW
 
@@ -188,16 +187,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
         border.strokeWidth = Settings.screenRatio * 0.25f  // Plan 06: thicker border
         canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, border)
 
-        previewRenderer.frame++
-
-        // Shared renderer config: effects gated by effectEnabled=false; alwaysVisible paddles still draw.
-        // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
-        // is set by initializeSettings(), so the baked-in value is 0f.
-        previewRenderer.effectEnabled = false
-        previewRenderer.radius = pr
-        previewRenderer.strokePaint.strokeWidth = Settings.strokeWidth
-        previewRenderer.chargePaint.strokeWidth = Settings.strokeWidth
-
         canvas.save()
         canvas.clipRect(
             cx - halfW + Settings.screenRatio * 0.2f, cy - halfH + Settings.screenRatio * 0.2f,
@@ -205,6 +194,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         )
 
         for (i in types.indices) {
+            val previewRenderer = renderers[i]
             val slotCenterX = cx - scrollX + i * slotW
             if (slotCenterX < cx - halfW - slotW || slotCenterX > cx + halfW + slotW) continue
 
@@ -223,20 +213,15 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     Settings.screenRatio * 0.25f, Settings.screenRatio * 0.25f, slotBg)
             }
 
-            // Build/cache per-slot skin+tail
-            if (slotTailTypes[i] != type) {
-                slotTails[i]?.clear()
-                slotTailTypes[i] = type
-                val style = if (type == BallType.Random) {
-                    val roll = randomRoll ?: BallStyleFactory.rollRandom().also { randomRoll = it }
-                    BallStyleFactory.buildFromRoll(roll, theme, previewRenderer)
-                } else {
-                    BallStyleFactory.buildStyle(type, theme, previewRenderer)
-                }
-                slotTails[i]  = style.tail
-                slotSkins[i]  = style.skin
-                slotStyles[i] = style
-            }
+            previewRenderer.frame++
+
+            // Shared renderer config: effects gated by effectEnabled=false; alwaysVisible paddles still draw.
+            // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
+            // is set by initializeSettings(), so the baked-in value is 0f.
+            previewRenderer.effectEnabled = false
+            previewRenderer.radius = pr
+            previewRenderer.strokePaint.strokeWidth = Settings.strokeWidth
+            previewRenderer.chargePaint.strokeWidth = Settings.strokeWidth
 
             val amplitude = if (isCenter) Settings.screenRatio * 0.9f else Settings.screenRatio * 0.45f
             val phase = i * 0.7f
@@ -252,9 +237,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
                 previewRenderer.strokeColor = theme.main.secondary
                 previewRenderer.baseFillColor = theme.main.primary
                 previewRenderer.preview = !isUnlocked(type)
-                previewRenderer.skin = slotSkins[i]
-                previewRenderer.tail = slotTails[i]
-                previewRenderer.effect = slotStyles[i]?.effect
+
                 previewRenderer.draw(this)
                 if (!isUnlocked(type)) drawLock(this, slotCenterX, puckY, pr)
             }
