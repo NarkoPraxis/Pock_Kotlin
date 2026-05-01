@@ -103,7 +103,7 @@ class BallUnlockView @JvmOverloads constructor(
         val progress = Settings.unlockProgress
         if (renderers == null || tailsBuiltForProgress != progress) {
             val types = BallType.entries.toTypedArray()
-            renderers = Array(types.size) { i -> PuckRenderer(types[i], themeForCell(i)) }
+            renderers = Array(types.size) { i -> BallStyleFactory.buildRenderer(types[i], themeForCell(i)) }
             tailsBuiltForProgress = progress
         }
     }
@@ -249,7 +249,7 @@ class BallUnlockView @JvmOverloads constructor(
                         if (downX >= b[0] && downX <= b[2] && downY >= b[1] && downY <= b[3]) {
                             warmFlags[i] = !warmFlags[i]
                             renderers!![i].tail.clear()
-                            renderers!![i] = PuckRenderer(types[i], themeForCell(i))
+                            renderers!![i] = BallStyleFactory.buildRenderer(types[i], themeForCell(i))
                             bouncingIndex = i
                             break
                         }

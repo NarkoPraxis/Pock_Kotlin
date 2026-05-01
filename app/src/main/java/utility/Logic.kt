@@ -152,12 +152,12 @@ object Logic {
 
     fun applyBallStyles() {
         highPlayer = Player(
-            Puck(Settings.ballRadius, highStartX, Settings.middleY, PuckRenderer(Settings.highBallType, ColorTheme.getTheme(true))),
+            Puck(Settings.ballRadius, highStartX, Settings.middleY, BallStyleFactory.buildRenderer(Settings.highBallType, ColorTheme.getTheme(true))),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight / 5, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
             true
         )
         lowPlayer = Player(
-            Puck(Settings.ballRadius, lowStartX, Settings.middleY, PuckRenderer(Settings.lowBallType, ColorTheme.getTheme(false))),
+            Puck(Settings.ballRadius, lowStartX, Settings.middleY, BallStyleFactory.buildRenderer(Settings.lowBallType, ColorTheme.getTheme(false))),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight - Settings.screenHeight / 5, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor),
             false
         )

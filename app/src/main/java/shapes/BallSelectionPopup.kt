@@ -36,7 +36,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
     // Per-slot skins+tails — one per BallType, skin cached so randomized seeds don't re-roll each frame
 
-    private val renderers: Array<PuckRenderer> = Array(BallType.entries.size) { i -> PuckRenderer(BallType.entries.toTypedArray()[i], ColorTheme.getTheme(isHigh))}
+    private val renderers: Array<PuckRenderer> = Array(BallType.entries.size) { i -> BallStyleFactory.buildRenderer(BallType.entries.toTypedArray()[i], ColorTheme.getTheme(isHigh))}
 //    private val slotTails: Array<TailRenderer?> = arrayOfNulls(BallType.entries.size)
   //  private val slotSkins: Array<PuckSkin?> = arrayOfNulls(BallType.entries.size)
     //private val slotStyles: Array<BallStyle?> = arrayOfNulls(BallType.entries.size)
@@ -68,7 +68,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         dragging = false
         renderers[snapIndex].tail.clear()   // reseed selected tail from current puck position on open
 
-        renderers[BallType.Random.ordinal] = PuckRenderer(BallType.Random, ColorTheme.getTheme(isHigh))
+        renderers[BallType.Random.ordinal] = BallStyleFactory.buildRenderer(BallType.Random, ColorTheme.getTheme(isHigh))
 //        = randomStyle.tail
 //        slotSkins[randomIdx]     = randomStyle.skin
 //        slotStyles[randomIdx]    = randomStyle

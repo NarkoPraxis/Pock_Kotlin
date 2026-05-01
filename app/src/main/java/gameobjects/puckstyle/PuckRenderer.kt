@@ -3,7 +3,6 @@ package gameobjects.puckstyle
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import enums.BallType
 import gameobjects.Settings
 import utility.PaintBucket
 
@@ -19,12 +18,12 @@ enum class ColorKey { Main, Shield, Inert }
  *
  * Used directly by menu views (no Puck needed) and owned by Puck for gameplay.
  */
-class PuckRenderer(type: BallType, val theme: ColorTheme){
-    var skin: PuckSkin
-    var tail: TailRenderer
-    var effect: PaddleLaunchEffect
+class PuckRenderer(val theme: ColorTheme) {
+    lateinit var skin: PuckSkin
+    lateinit var tail: TailRenderer
+    lateinit var effect: PaddleLaunchEffect
 
-    // All properties accessed by skin/tail/effect constructors must be declared before init.
+    // All properties that skin/tail/effect constructors may access are declared here, before attach().
 
     // Paint objects owned here; Classic skin draws with fillPaint/strokePaint directly;
     // other skins use strokePaint.strokeWidth for sizing; some skins mutate chargePaint.color
@@ -50,14 +49,13 @@ class PuckRenderer(type: BallType, val theme: ColorTheme){
 
     var responsiveColorGroup: ColorGroup = theme.main
 
-    // Must be declared before init so rebuildLayerOrder() can call .clear() during construction.
     private val layerOrder = ArrayList<Any>(3)
 
-    init {
-        val ballStyle = BallStyleFactory.buildBallStyle(type, this)
-        skin = ballStyle.skin
-        tail = ballStyle.tail
-        effect = ballStyle.effect
+    /** Called by BallStyleFactory.buildRenderer() after the renderer is fully constructed. */
+    internal fun attach(skin: PuckSkin, tail: TailRenderer, effect: PaddleLaunchEffect) {
+        this.skin = skin
+        this.tail = tail
+        this.effect = effect
         rebuildLayerOrder()
     }
 

@@ -101,7 +101,9 @@ object BallStyleFactory {
     }
 
     fun buildRenderer(type: BallType, theme: ColorTheme): PuckRenderer {
-        val renderer = PuckRenderer(type, theme)
+        val renderer = PuckRenderer(theme)
+        val style = buildBallStyle(type, renderer)
+        renderer.attach(style.skin, style.tail, style.effect)
         return renderer
     }
 
