@@ -46,15 +46,20 @@ interface TailRenderer {
             render(canvas)
             return
         }
-        val cm = ColorMatrix(floatArrayOf(
-            0.12f, 0f,    0f,    0f, 0f,
-            0f,    0.12f, 0f,    0f, 0f,
-            0f,    0f,    0.12f, 0f, 0f,
-            0f,    0f,    0f,    1f, 0f
-        ))
         @Suppress("DEPRECATION")
-        canvas.saveLayer(null, Paint().apply { colorFilter = ColorMatrixColorFilter(cm) })
+        canvas.saveLayer(null, previewLayerPaint)
         render(canvas)
         canvas.restore()
+    }
+
+    companion object {
+        private val previewLayerPaint = Paint().apply {
+            colorFilter = ColorMatrixColorFilter(ColorMatrix(floatArrayOf(
+                0.12f, 0f,    0f,    0f, 0f,
+                0f,    0.12f, 0f,    0f, 0f,
+                0f,    0f,    0.12f, 0f, 0f,
+                0f,    0f,    0f,    1f, 0f
+            )))
+        }
     }
 }

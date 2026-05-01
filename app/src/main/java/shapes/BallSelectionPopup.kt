@@ -49,6 +49,8 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
     private val slotW: Float get() = Settings.screenRatio * 4f
 
+    private val ballTypes = BallType.entries.toTypedArray()
+
     private var scrollX: Float = 0f
     private var dragging: Boolean = false
     private var lastLogicalX: Float = 0f
@@ -109,7 +111,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         if (!isOpen) return false
         val masked = action and MotionEvent.ACTION_MASK
         val logicalX = toLogicalX(x)
-        val types = BallType.entries.toTypedArray()
+        val types = ballTypes
 
         when (masked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
@@ -174,7 +176,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         val halfW = w / 2f
         val halfH = h / 2f
         val theme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
-        val types = BallType.entries.toTypedArray()
+        val types = ballTypes
         val pr = Settings.ballRadius
         val centerIndex = scrollX / slotW
 
