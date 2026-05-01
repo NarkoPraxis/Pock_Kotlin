@@ -28,9 +28,8 @@ class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
         if (cachedRadius != renderer.radius) {
             cachedRadius = renderer.radius
             cachedSide = renderer.radius * .85f
-            stroke.strokeWidth = renderer.strokePaint.strokeWidth
         }
-        // x/y change every frame so recompute rect origin each call
+        stroke.strokeWidth = renderer.strokePaint.strokeWidth
         cachedLeft = renderer.x - cachedSide
         cachedTop  = renderer.y - cachedSide
     }
@@ -39,8 +38,8 @@ class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
         ensureCache()
         fill.color   = responsivePrimary
         stroke.color = responsiveSecondary
-        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + cachedSide, cachedTop + cachedSide, fill)
-        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + cachedSide, cachedTop + cachedSide, stroke)
+        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + 2 * cachedSide, cachedTop + 2 * cachedSide, fill)
+        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + 2 * cachedSide, cachedTop + 2 * cachedSide, stroke)
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {

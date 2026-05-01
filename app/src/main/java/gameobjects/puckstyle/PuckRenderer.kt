@@ -18,7 +18,7 @@ enum class ColorKey { Main, Shield, Inert }
  *
  * Used directly by menu views (no Puck needed) and owned by Puck for gameplay.
  */
-class PuckRenderer(val theme: ColorTheme) {
+class PuckRenderer(var theme: ColorTheme) {
     lateinit var skin: PuckSkin
     lateinit var tail: TailRenderer
     lateinit var effect: PaddleLaunchEffect

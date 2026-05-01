@@ -68,15 +68,11 @@ class BallSelectionPopup(val isHigh: Boolean) {
         dragging = false
         renderers[snapIndex].tail.clear()   // reseed selected tail from current puck position on open
 
-        renderers[BallType.Random.ordinal] = BallStyleFactory.buildRenderer(BallType.Random, ColorTheme.getTheme(isHigh))
-//        = randomStyle.tail
-//        slotSkins[randomIdx]     = randomStyle.skin
-//        slotStyles[randomIdx]    = randomStyle
-//        slotTailTypes[randomIdx] = BallType.Random
-
         if (current == BallType.Random) {
             utility.Logic.applyBallStyles()
         }
+        val storedRoll = if (isHigh) Settings.highRandomRoll else Settings.lowRandomRoll
+        renderers[BallType.Random.ordinal] = BallStyleFactory.buildRenderer(BallType.Random, ColorTheme.getTheme(isHigh), storedRoll)
     }
 
     fun close() {
@@ -97,6 +93,10 @@ class BallSelectionPopup(val isHigh: Boolean) {
             Storage.saveLowBallType(type)
         }
         utility.Logic.applyBallStyles()
+        if (type == BallType.Random) {
+            val storedRoll = if (isHigh) Settings.highRandomRoll else Settings.lowRandomRoll
+            renderers[BallType.Random.ordinal] = BallStyleFactory.buildRenderer(BallType.Random, ColorTheme.getTheme(isHigh), storedRoll)
+        }
         return true
     }
 
@@ -233,6 +233,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
             ) {
                 previewRenderer.x = slotCenterX
                 previewRenderer.y = puckY
+                previewRenderer.theme = theme
                 previewRenderer.fillColor = theme.main.primary
                 previewRenderer.strokeColor = theme.main.secondary
                 previewRenderer.baseFillColor = theme.main.primary

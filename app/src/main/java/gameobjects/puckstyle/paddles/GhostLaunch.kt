@@ -149,14 +149,14 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val countF = count.toFloat()
             glowPaint.strokeWidth = sw * 1.2f
             for (i in 0 until count) {
-                val ratio = (count - 1 - i).toFloat() / countF
+                val ratio = i.toFloat() / countF
                 val r = outlineR * (1f - ratio * 0.9f)
                 glowPaint.color = glowColor
                 canvas.drawCircle(xs[i], ys[i], r, glowPaint)
             }
             val hasCharge = chargeFill > 0f
             for (i in 0 until count) {
-                val ratio = (count - 1 - i).toFloat() / countF
+                val ratio = i.toFloat() / countF
                 val r = baseR * (1f - ratio * 0.9f)
                 fillPaint.color = Color.WHITE
                 fillPaint.alpha = 255

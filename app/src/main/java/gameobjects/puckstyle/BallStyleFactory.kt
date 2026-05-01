@@ -36,8 +36,8 @@ object BallStyleFactory {
         return RandomRoll(pool.random(), pool.random(), pool.random(), if (kotlin.random.Random.nextBoolean()) -1 else 1)
     }
 
-    fun buildRandom(renderer: PuckRenderer): BallStyle {
-        val roll = rollRandom()
+    fun buildRandom(renderer: PuckRenderer, existingRoll: RandomRoll? = null): BallStyle {
+        val roll = existingRoll ?: rollRandom()
         val wrappedTail = ZIndexTailWrapper(buildTail(roll.tailType, renderer), roll.tailZIndex)
 
         return BallStyle(buildSkin(roll.skinType, renderer), wrappedTail, buildPaddle(roll.effectType, renderer))
@@ -100,9 +100,12 @@ object BallStyleFactory {
         }
     }
 
-    fun buildRenderer(type: BallType, theme: ColorTheme): PuckRenderer {
+    fun buildRenderer(type: BallType, theme: ColorTheme, existingRoll: RandomRoll? = null): PuckRenderer {
         val renderer = PuckRenderer(theme)
-        val style = buildBallStyle(type, renderer)
+        val style = if (type == BallType.Random && existingRoll != null)
+            buildRandom(renderer, existingRoll)
+        else
+            buildBallStyle(type, renderer)
         renderer.attach(style.skin, style.tail, style.effect)
         return renderer
     }

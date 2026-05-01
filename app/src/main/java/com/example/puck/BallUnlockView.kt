@@ -163,6 +163,7 @@ class BallUnlockView @JvmOverloads constructor(
             previewRenderer.y = puckY
             previewRenderer.radius = pr
             previewRenderer.frame = bounceFrame
+            previewRenderer.theme = theme
             previewRenderer.fillColor = theme.main.primary
             previewRenderer.strokeColor = theme.main.secondary
             previewRenderer.baseFillColor = theme.main.primary
