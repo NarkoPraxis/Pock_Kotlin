@@ -3,7 +3,6 @@ package gameobjects.puckstyle.tails
 import android.graphics.Canvas
 import android.graphics.Paint
 import gameobjects.Settings
-import gameobjects.puckstyle.BallSize
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -19,6 +18,10 @@ class FireTail(override val theme: ColorTheme, override val renderer: PuckRender
         val isCore: Boolean
     )
 
+    val SPAWN_RADIUS = renderer.radius * .04f
+    val PARTICLE_BASE_SIZE = renderer.radius * .6f
+
+
     private val sparks = ArrayDeque<Spark>()
     private val maxSparks = 80
     private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
@@ -33,14 +36,13 @@ class FireTail(override val theme: ColorTheme, override val renderer: PuckRender
 
     override fun render(canvas: Canvas) {
         val spawn = if (renderer.launched) 5 else 3
-        val spawnRadius = renderer.r(BallSize.P040)
         val halfRadius = renderer.radius * 0.5f
         repeat(spawn) {
             val angle = Random.nextFloat() * twoPi
             val speed = Random.nextFloat() * 1.5f
             val dx = (Random.nextFloat() - 0.5f) * renderer.radius
             val dy = (Random.nextFloat() - 0.5f) * renderer.radius
-            val isCore = kotlin.math.sqrt(dx * dx + dy * dy) < spawnRadius
+            val isCore = kotlin.math.sqrt(dx * dx + dy * dy) < SPAWN_RADIUS
             sparks.addLast(Spark(
                 renderer.x + dx,
                 renderer.y + dy,
@@ -56,7 +58,6 @@ class FireTail(override val theme: ColorTheme, override val renderer: PuckRender
         val colors = resolvedColors()
         val cSecondary = colors.secondary
         val cPrimary = colors.primary
-        val particleBaseSize = renderer.r(BallSize.P060)
 
         var i = 0
         while (i < sparks.size) {
@@ -71,7 +72,7 @@ class FireTail(override val theme: ColorTheme, override val renderer: PuckRender
             val t = 1f - s.life
             val c = Palette.lerpColor(cSecondary, cPrimary, t)
             paint.color = Palette.withAlpha(c, (255f * s.life).toInt())
-            val size = particleBaseSize * s.life + baseParticleSize
+            val size = PARTICLE_BASE_SIZE * s.life + baseParticleSize
             canvas.drawCircle(s.x, s.y, size, paint)
             i++
         }

@@ -36,7 +36,6 @@ class PuckRenderer {
     var radius: Float = 0f
         set(value) {
             field = value
-            rebuildBallSizes()
         }
 
     // Animation frame counter — incremented each draw in gameplay; also advanced in menus
@@ -99,17 +98,6 @@ class PuckRenderer {
     // every particle or facet in a hot inner loop.
     var colorKey: ColorKey = ColorKey.Main
         private set
-
-    // ---- pre-computed radius multiples ----
-    // Rebuilt when radius changes (typically once at game start, not per frame).
-    // Subclasses call r(BallSize.P060) instead of radius * 0.6f — pure array read, no multiply.
-    private val _ballSizes = FloatArray(BallSize.entries.size)
-
-    fun r(size: BallSize): Float = _ballSizes[size.ordinal]
-
-    private fun rebuildBallSizes() {
-        BallSize.entries.forEachIndexed { i, s -> _ballSizes[i] = radius * s.factor }
-    }
 
     // ---- pre-sorted draw order ----
     // Rebuilt only when a component is assigned. draw() iterates this with zero allocation.

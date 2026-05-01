@@ -2,7 +2,6 @@ package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
 import android.graphics.Paint
-import gameobjects.puckstyle.BallSize
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
@@ -12,6 +11,8 @@ import physics.Point
 class FireSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
 
     override val zIndex = 0
+
+    val INNER_CORE_SIZE = renderer.radius * .6f
 
     private val fillPaint = Paint().apply {
         isAntiAlias = true
@@ -26,7 +27,7 @@ class FireSkin(override val theme: ColorTheme, override val renderer: PuckRender
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, fillPaint)
 
         fillPaint.color = colors.primary
-        canvas.drawCircle(renderer.x, renderer.y, renderer.r(BallSize.P060), fillPaint)
+        canvas.drawCircle(renderer.x, renderer.y, INNER_CORE_SIZE, fillPaint)
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {

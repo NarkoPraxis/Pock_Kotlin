@@ -8,7 +8,6 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import gameobjects.Settings
-import gameobjects.puckstyle.BallSize
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
@@ -39,6 +38,11 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         var life: Float
     )
 
+    val SPAWN_JITTER = renderer.radius * 0.35f
+    val SPARK_BASE_SIZE = renderer.radius * .32f
+    val BASE_SIZE = renderer.radius * .6f
+
+
     private val tailSparks = ArrayDeque<Spark>()
 
     override fun drawChargingPaddle(canvas: Canvas) {
@@ -61,14 +65,13 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         val dist = sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
         val nx = dx / dist
         val ny = dy / dist
-        val spawnJitter = renderer.r(BallSize.P070) * 0.5f  // 0.7 * 0.5 = 0.35 * radius
 
         repeat(2) {
             val speed = Random.nextFloat() * 1.2f + 0.4f
             val perpAmount = (Random.nextFloat() - 0.5f) * speed * 0.7f
             tailSparks.addLast(Spark(
-                cx + (Random.nextFloat() - 0.5f) * spawnJitter * 2f,
-                cy + (Random.nextFloat() - 0.5f) * spawnJitter * 2f,
+                cx + (Random.nextFloat() - 0.5f) * SPAWN_JITTER * 2f,
+                cy + (Random.nextFloat() - 0.5f) * SPAWN_JITTER * 2f,
                 nx * speed + (-ny) * perpAmount,
                 ny * speed + nx * perpAmount,
                 1f
@@ -79,7 +82,6 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         // Hoist color resolution out of the loop — same value for every spark this frame.
         val primary = responsivePrimary
         val secondary = responsiveSecondary
-        val sparkBaseSize = renderer.r(BallSize.P032)
 
         var i = 0
         while (i < tailSparks.size) {
@@ -93,15 +95,14 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
             }
             val c = Palette.lerpColor(secondary, primary, 1f - s.life)
             tailPaint.color = Palette.withAlpha(c, (220f * s.life).toInt().coerceIn(0, 255))
-            canvas.drawCircle(s.x, s.y, (sparkBaseSize * s.life).coerceAtLeast(1f), tailPaint)
+            canvas.drawCircle(s.x, s.y, (SPARK_BASE_SIZE * s.life).coerceAtLeast(1f), tailPaint)
             i++
         }
     }
 
     private fun drawFireball(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val base = renderer.r(BallSize.P060)
         val jitter = 1f + 0.08f * sin(frame * 0.9f)
-        val outerR = base * jitter
+        val outerR = BASE_SIZE * jitter
 
         flamePaint.color = responsiveSecondary
         flamePaint.alpha = 255

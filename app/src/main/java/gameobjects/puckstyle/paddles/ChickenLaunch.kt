@@ -14,7 +14,6 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.core.graphics.withRotation
-import gameobjects.puckstyle.BallSize
 import kotlin.random.Random
 
 class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
@@ -37,23 +36,24 @@ class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         drawEgg(canvas, cx, cy, if (sweet || !fatigued) 1f else 0f, ph)
     }
 
+    val EGG_WIDTH = renderer.radius * .05f
+    val EGG_HEIGHT = renderer.radius * .07f
+
     private fun drawEgg(canvas: Canvas, cx: Float, cy: Float, fillRatio: Float, ph: ChargePhase) {
-        val r = renderer.radius
-        val eggW = renderer.r(BallSize.P050)
-        val eggH = renderer.r(BallSize.P070)
+
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
 
         val angle = Math.toDegrees(atan2(aimY.toDouble(), aimX.toDouble())).toFloat()
         canvas.withRotation(angle + 90f, cx, cy) {
             eggPaint.style = Paint.Style.FILL
             eggPaint.color = if (renderer.isInert) responsivePrimary else android.graphics.Color.WHITE
-            drawOval(cx - eggW, cy - eggH, cx + eggW, cy + eggH, eggPaint)
+            drawOval(cx - EGG_WIDTH, cy - EGG_HEIGHT, cx + EGG_WIDTH, cy + EGG_HEIGHT, eggPaint)
 
             if (fillRatio > 0f && ph != ChargePhase.Inert) {
                 eggPaint.color = Palette.withAlpha(theme.shield.primary, (220 * pulse).toInt())
                 drawOval(
-                    cx - eggW * fillRatio, cy - eggH * fillRatio,
-                    cx + eggW * fillRatio, cy + eggH * fillRatio, eggPaint
+                    cx - EGG_WIDTH * fillRatio, cy - EGG_HEIGHT * fillRatio,
+                    cx + EGG_WIDTH * fillRatio, cy + EGG_HEIGHT * fillRatio, eggPaint
                 )
             }
 
@@ -62,8 +62,7 @@ class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
 
     val exposedPaddleX: Float get() = paddleX
     val exposedPaddleY: Float get() = paddleY
-    val exposedAimX:    Float get() = aimX
-    val exposedAimY:    Float get() = aimY
+
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
         Effects.addPersistentEffect(ChickenPersistentEffect(EggSplat(rx, ry, renderer.radius, theme)))
