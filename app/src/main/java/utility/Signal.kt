@@ -12,6 +12,6 @@ class Signal<T> {
     }
 
     fun emit(value: T) {
-        listeners.toList().forEach { it(value) }
+        for (i in listeners.indices) listeners[i](value)
     }
 }

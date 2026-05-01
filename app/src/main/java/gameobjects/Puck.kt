@@ -26,6 +26,9 @@ class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circ
     var movement: Force = Force()
     var launch: Force = Force()
 
+    private val _scratchForce = Force()
+    private val _stepResult = Point()
+
     var impactPower: Float = 0.0f
         get() = (movement + launch).power
 
@@ -80,7 +83,9 @@ class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circ
 
     fun getNextDirection(): Point {
         val maxSpeed = if (launch.hasPower) Settings.maxPuckSpeed else Settings.maxPuckLaunchSpeed
-        val nextDirection = (movement + launch).step(maxSpeed)
+        _scratchForce.setFrom(movement)
+        _scratchForce.addForce(launch)
+        val nextDirection = _scratchForce.stepInto(_stepResult, maxSpeed)
         if (!bonusMovement) {
             movement.applyFriction()
         }

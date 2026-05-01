@@ -29,6 +29,9 @@ class Player(
     var previousPuckLocation = Point(0f, 0f)
     var fingerTargetLocation = Point(0f, 0f)
     var score = 0
+        set(value) { field = value; cachedScoreText = value.toString() }
+    var cachedScoreText = "0"
+        private set
     var launchTo = Point(0f,0f)
     var launchFrom = Point(0f, 0f)
     var motion = MotionStates.Free

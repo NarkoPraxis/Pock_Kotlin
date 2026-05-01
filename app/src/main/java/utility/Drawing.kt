@@ -153,7 +153,7 @@ object Drawing {
         paint.textSize = Settings.topGoalBottom * 0.85f
         val xMargin = Settings.screenRatio * 3f
         val yMargin = Settings.topGoalBottom * 0.2f
-        val scoreText = "${player.score}"
+        val scoreText = player.cachedScoreText
         val scoreX = xMargin + xOffset
         val scoreY = Settings.screenHeight - yMargin
         if (Settings.scorePopEnabled && !popTicker.finished) {

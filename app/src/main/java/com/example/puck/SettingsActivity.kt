@@ -18,6 +18,7 @@ import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import utility.Sounds
 import utility.Storage
+import androidx.core.content.edit
 
 class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -103,7 +104,7 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
                 }
                 "restore_defaults" -> {
                     val ctx = requireContext()
-                    PreferenceManager.getDefaultSharedPreferences(ctx).edit().clear().apply()
+                    PreferenceManager.getDefaultSharedPreferences(ctx).edit { clear() }
                     PreferenceManager.setDefaultValues(ctx, R.xml.gameplay_preferences, true)
                     PreferenceManager.setDefaultValues(ctx, R.xml.controls_preferences, true)
                     PreferenceManager.setDefaultValues(ctx, R.xml.visual_preferences, true)
