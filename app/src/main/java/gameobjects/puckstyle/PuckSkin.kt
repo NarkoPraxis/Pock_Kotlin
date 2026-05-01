@@ -23,7 +23,7 @@ interface PuckSkin {
     fun drawBody(canvas: Canvas)
 
     /** Frames between each firework burst during victory celebration. */
-    val explosionFrequency: Int get() = 30
+    val explosionFrequency: Int get() = 20
 
     /** Multiplier on the random scatter radius for victory fireworks (1.0 = full play area). */
     val scatterDensity: Float get() = 1f

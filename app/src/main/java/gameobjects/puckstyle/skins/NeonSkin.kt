@@ -46,15 +46,15 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
         Effects.addPersistentEffect(NeonRingScar(renderer.x, renderer.y, renderer.radius, theme.shield.primary))
     }
 
-    override val explosionFrequency get() = 25
-    override val scatterDensity get() = 1.2f
+    override val explosionFrequency get() = 10
+    override val scatterDensity get() = 1.3f
 
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(NeonRingCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, responsivePrimary))
+        Effects.addPersistentEffect(NeonRingCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, theme.main.primary))
     }
 
     override fun onVictory(x: Float, y: Float) {
-        Effects.addPersistentEffect(NeonRingCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true, responsivePrimary))
+        Effects.addPersistentEffect(NeonRingCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true, theme.main.primary))
     }
 
     private class NeonRingCelebration(
@@ -64,9 +64,10 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
         private val fullCircle: Boolean,
         private val color: Int
     ) : Effects.PersistentEffect {
-        private val maxDistance = radius * 3f
-        private val growthRate = maxDistance / 55f
-        private val emitEvery = 6
+        private val maxDistance = radius * 5f
+        private val growthRate = maxDistance / 78f
+        private val emitEvery = 20
+
         private val totalEmitFrames = 55
         private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
         private val rect = RectF()

@@ -5,8 +5,14 @@ import android.graphics.Color
 import android.graphics.Paint
 
 object Palette {
-    fun hsv(h: Float, s: Float, v: Float): Int =
-        Color.HSVToColor(floatArrayOf(((h % 360f) + 360f) % 360f, s, v))
+    private val hsvBuffer = FloatArray(3)
+
+    fun hsv(h: Float, s: Float, v: Float): Int {
+        hsvBuffer[0] = ((h % 360f) + 360f) % 360f
+        hsvBuffer[1] = s
+        hsvBuffer[2] = v
+        return Color.HSVToColor(hsvBuffer)
+    }
 
     fun cyclingHue(frame: Int, speed: Float = 4f): Int =
         hsv(frame * speed, THEME_SATURATION, THEME_VALUE)

@@ -618,7 +618,7 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
         startAnim(ChickenAnim.JustHit)
     }
 
-    override val explosionFrequency get() = 35
+    override val explosionFrequency get() = 20
 
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         val won = (renderer.isHigh && !highGoal) || (!renderer.isHigh && highGoal)
@@ -662,7 +662,7 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
             val angleOffset = if (fullCircle || highGoal) 0f else PI.toFloat()
             feathers = List(count) { i ->
                 val a = (i.toFloat() / count) * angleRange + angleOffset + Random.nextFloat() * 0.3f
-                val speed = radius * (0.045f + Random.nextFloat() * 0.045f)
+                val speed = radius * (0.045f + Random.nextFloat() * 0.1f)
                 Feather(cx, cy, cos(a) * speed, sin(a) * speed, Random.nextFloat() * 360f, (Random.nextFloat() - 0.5f) * 6f, Random.nextFloat())
             }
         }
@@ -671,7 +671,9 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
 
         override fun draw(canvas: Canvas) {
             for (f in feathers) {
-                f.x += f.vx; f.y += f.vy; f.angle += f.spin
+                f.x += f.vx;
+                f.y += f.vy;
+                f.angle += f.spin
                 val alpha = (220f * (1f - frame / 60f).coerceAtLeast(0f)).toInt()
                 if (alpha <= 0) continue
                 val c = Palette.lerpColor(primary, secondary, f.colorMix)
