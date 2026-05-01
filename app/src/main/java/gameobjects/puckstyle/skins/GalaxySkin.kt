@@ -38,6 +38,10 @@ class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
         Effects.addPersistentEffect(GalaxyScoreEffect(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, highGoal, fullCircle = false))
     }
 
+    override fun onVictory(x: Float, y: Float) {
+        Effects.addPersistentEffect(GalaxyScoreEffect(x, y, renderer.radius, responsivePrimary, responsiveSecondary, highGoal = true, fullCircle = true))
+    }
+
     private class GalaxyScoreEffect(
         private val cx: Float, private val cy: Float,
         private val radius: Float,

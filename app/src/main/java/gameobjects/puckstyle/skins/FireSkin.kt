@@ -37,7 +37,14 @@ class FireSkin( override val renderer: PuckRenderer) : PuckSkin {
         FireLaunch.spawnFireImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, theme.inert.secondary)
     }
 
+    override val explosionFrequency get() = 20
+    override val scatterDensity get() = 0.8f
+
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         FireLaunch.spawnFireCelebration(position.x, position.y, renderer.radius, responsiveSecondary, highGoal, fullCircle = false)
+    }
+
+    override fun onVictory(x: Float, y: Float) {
+        FireLaunch.spawnFireCelebration(x, y, renderer.radius, responsiveSecondary, highGoal = true, fullCircle = true)
     }
 }

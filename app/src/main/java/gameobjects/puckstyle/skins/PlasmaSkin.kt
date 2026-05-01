@@ -78,8 +78,14 @@ class PlasmaSkin(override val renderer: PuckRenderer) : CachedShaderSkin(rendere
         PlasmaLaunch.spawnLighting(renderer.x, renderer.y, renderer.radius, responsivePrimary, responsiveSecondary)
     }
 
+    override val explosionFrequency get() = 20
+
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         PlasmaLaunch.spawnCelebration(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, highGoal, fullCircle = false)
+    }
+
+    override fun onVictory(x: Float, y: Float) {
+        PlasmaLaunch.spawnCelebration(x, y, renderer.radius, responsivePrimary, responsiveSecondary, highGoal = true, fullCircle = true)
     }
 
     companion object {

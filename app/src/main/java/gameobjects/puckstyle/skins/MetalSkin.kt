@@ -49,8 +49,15 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, edgePaint)
     }
 
+    override val explosionFrequency get() = 15
+    override val scatterDensity get() = 0.7f
+
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(DynamiteCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false))
+    }
+
+    override fun onVictory(x: Float, y: Float) {
+        Effects.addPersistentEffect(DynamiteCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true))
     }
 
     private class DynamiteCelebration(

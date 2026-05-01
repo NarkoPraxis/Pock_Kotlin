@@ -94,9 +94,16 @@ class SpinnerSkin( override val renderer: PuckRenderer) : PuckSkin {
         Effects.addPersistentEffect(SpinnerResidual(renderer.x, renderer.y, renderer.radius, theme.main.primary, if (theme.isWarm) -1f else 1f))
     }
 
+    override val explosionFrequency get() = 45
+    override val scatterDensity get() = 1.3f
+
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         celebrationActive = true
         celebrationFrame = 0
+    }
+
+    override fun onVictory(x: Float, y: Float) {
+        Effects.addPersistentEffect(SpinnerResidual(x, y, renderer.radius, theme.main.primary, if (theme.isWarm) -1f else 1f))
     }
     class SpinnerResidual(
         private val cx: Float, private val cy: Float,

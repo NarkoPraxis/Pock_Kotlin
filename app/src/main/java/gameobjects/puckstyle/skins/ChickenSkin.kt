@@ -618,6 +618,8 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
         startAnim(ChickenAnim.JustHit)
     }
 
+    override val explosionFrequency get() = 35
+
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         val won = (renderer.isHigh && !highGoal) || (!renderer.isHigh && highGoal)
         if (won) {
@@ -626,7 +628,11 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
         } else {
             startAnim(ChickenAnim.JustHit)
         }
-        Effects.addPersistentEffect(FeatherCelebration(position.x, position.y, renderer.radius, highGoal, responsivePrimary, responsiveSecondary, fullCircle = false))
+        Effects.addPersistentEffect(FeatherCelebration(position.x, position.y, renderer.radius, highGoal, theme.main.primary, theme.main.secondary, fullCircle = false))
+    }
+
+    override fun onVictory(x: Float, y: Float) {
+        Effects.addPersistentEffect(FeatherCelebration(x, y, renderer.radius, highGoal = true, theme.main.primary, theme.main.secondary, fullCircle = true))
     }
 
     private class FeatherCelebration(

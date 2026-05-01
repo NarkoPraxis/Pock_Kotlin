@@ -24,6 +24,7 @@ import physics.Ticker
 import shapes.Circle
 import kotlin.math.hypot
 import kotlin.math.roundToInt
+import kotlin.random.Random
 import kotlin.reflect.KFunction5
 
 object Logic {
@@ -55,6 +56,7 @@ object Logic {
     private var lowPopupDragPointerId: Int = -1
 
     var winnerSoundHasBeenPlayed = false
+    private var victoryCelebrationFrame = 0
 
     private var highInDanger = false
     private var lowInDanger  = false
@@ -371,7 +373,9 @@ object Logic {
             winnerSoundHasBeenPlayed = true
             Sounds.playWeHaveAWinner()
             GameEvents.gameOver.emit(Unit)
+            startVictoryCelebration()
         }
+        updateVictoryCelebration()
         if (victoryTicker.tick) {
             winnerSoundHasBeenPlayed = false
             victoryTicker.reset()
@@ -407,6 +411,29 @@ object Logic {
             lowBallPopup.open()
         }
     }
+
+    fun startVictoryCelebration() {
+        victoryCelebrationFrame = 0
+    }
+
+    private fun updateVictoryCelebration() {
+        val winner = if (highPlayer.score >= Settings.pointsToWin) highPlayer else lowPlayer
+        if (victoryCelebrationFrame % winner.puck.renderer.skin.explosionFrequency == 0) {
+            val skin = winner.puck.renderer.skin
+            val baseMargin = Settings.screenRatio * 2f
+            val playWidth = Settings.screenWidth - 2 * baseMargin
+            val playHeight = Settings.bottomGoalTop - Settings.topGoalBottom - 2 * baseMargin
+            val cx = Settings.screenWidth / 2f
+            val cy = (Settings.topGoalBottom + Settings.bottomGoalTop) / 2f
+            val x = (cx + (Random.nextFloat() - 0.5f) * playWidth * skin.scatterDensity)
+                .coerceIn(baseMargin, Settings.screenWidth - baseMargin)
+            val y = (cy + (Random.nextFloat() - 0.5f) * playHeight * skin.scatterDensity)
+                .coerceIn(Settings.topGoalBottom + baseMargin, Settings.bottomGoalTop - baseMargin)
+            skin.onVictory(x, y)
+        }
+        victoryCelebrationFrame++
+    }
+
 
     fun calculateCollision() : Boolean {
         if (highPlayer.pucksIntersect(lowPlayer)) {

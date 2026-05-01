@@ -25,6 +25,10 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
         Effects.addPersistentEffect(ClassicScoreEffect(theme.main.primary, otherColor, position, Settings.screenRatio / 3f, highGoal))
     }
 
+    override fun onVictory(x: Float, y: Float) {
+        Effects.addPersistentEffect(ClassicScoreEffect(theme.main.primary, theme.main.secondary, Point(x, y), Settings.screenRatio / 3f, highGoal = true, fullCircle = true))
+    }
+
     override fun onCollisionWin(position: Point, speed: Float) {
         val radiusModifier = 3f * (speed / Settings.maxPuckSpeed)
         Effects.addPersistentEffect(ClassicCollisionEffect(theme.main.primary, position, Settings.screenRatio * radiusModifier))
@@ -39,7 +43,8 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
         scoredColor: Int,
         private val position: Point,
         private val radius: Float,
-        highGoal: Boolean
+        highGoal: Boolean,
+        fullCircle: Boolean = false
     ) : Effects.PersistentEffect {
         private val scoringPaint = Paint().apply {
             color = scoringColor; isAntiAlias = true; isDither = true
@@ -59,10 +64,17 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
         override val isDone get() = done
 
         init {
-            for (angle in listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, Math.PI)) {
-                val a = angle.toFloat()
-                if (highGoal) directions.add(Point(cos(a), sin(a)))
-                else directions.add(-Point(cos(a), sin(a)))
+            if (fullCircle) {
+                for (i in 0 until 12) {
+                    val a = (i * 2.0 * Math.PI / 12).toFloat()
+                    directions.add(Point(cos(a), sin(a)))
+                }
+            } else {
+                for (angle in listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, Math.PI)) {
+                    val a = angle.toFloat()
+                    if (highGoal) directions.add(Point(cos(a), sin(a)))
+                    else directions.add(-Point(cos(a), sin(a)))
+                }
             }
         }
 

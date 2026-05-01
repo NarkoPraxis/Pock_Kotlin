@@ -46,8 +46,15 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
         Effects.addPersistentEffect(NeonRingScar(renderer.x, renderer.y, renderer.radius, theme.shield.primary))
     }
 
+    override val explosionFrequency get() = 25
+    override val scatterDensity get() = 1.2f
+
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(NeonRingCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, responsivePrimary))
+    }
+
+    override fun onVictory(x: Float, y: Float) {
+        Effects.addPersistentEffect(NeonRingCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true, responsivePrimary))
     }
 
     private class NeonRingCelebration(

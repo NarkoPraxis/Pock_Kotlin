@@ -33,8 +33,15 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
     // Cache to avoid recomputing rimStroke.strokeWidth every frame.
     private var cachedRadius = -1f
 
+    override val explosionFrequency get() = 40
+    override val scatterDensity get() = 0.9f
+
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(IceScoreEffect(position.x, position.y, renderer.radius, highGoal, fullCircle = false, theme))
+    }
+
+    override fun onVictory(x: Float, y: Float) {
+        Effects.addPersistentEffect(IceScoreEffect(x, y, renderer.radius, highGoal = true, fullCircle = true, theme))
     }
 
     private class IceScoreEffect(

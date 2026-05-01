@@ -50,8 +50,15 @@ class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
         PixelLaunch.spawnSquare(renderer.x, renderer.y, renderer.radius, responsivePrimary, theme)
     }
 
+    override val explosionFrequency get() = 25
+    override val scatterDensity get() = 0.8f
+
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(PixelCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, responsivePrimary, theme.main.secondary))
+    }
+
+    override fun onVictory(x: Float, y: Float) {
+        Effects.addPersistentEffect(PixelCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true, responsivePrimary, theme.main.secondary))
     }
 
     private class PixelCelebration(
