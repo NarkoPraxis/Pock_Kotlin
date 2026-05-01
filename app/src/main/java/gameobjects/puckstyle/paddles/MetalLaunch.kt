@@ -25,7 +25,7 @@ import kotlin.math.PI
  * Dynamite stick. Fuse lights up when the sweet spot starts. On a sweet-spot release the strike
  * animation shows an explosion at the puck; on a missed release the stick just shoves into the puck.
  */
-class MetalLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val stick = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val fuse = Paint().apply {

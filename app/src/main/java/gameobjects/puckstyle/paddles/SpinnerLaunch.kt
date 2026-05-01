@@ -12,7 +12,7 @@ import gameobjects.puckstyle.skins.SpinnerSkin
 import utility.Effects
 
 
-class SpinnerLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class SpinnerLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val arm = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val fillPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }

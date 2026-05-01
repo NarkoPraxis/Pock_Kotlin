@@ -15,7 +15,7 @@ import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.random.Random
 
-class ChickenTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class ChickenTail( override val renderer: PuckRenderer) : TailRenderer {
 
     // ---- Layer 1: footsteps ----
     private class Footprint(val x: Float, val y: Float, val angle: Float, var alpha: Int = 180)
@@ -67,7 +67,7 @@ class ChickenTail(override val theme: ColorTheme, override val renderer: PuckRen
         ensureCache(r)
         val fw = cachedFw
         val fh = cachedFh
-        val colors = resolvedColors()
+        val colors = responsiveGroup
 
         var speed = 0f
         if (!prevX.isNaN()) {

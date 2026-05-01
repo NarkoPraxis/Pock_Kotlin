@@ -22,7 +22,7 @@ import kotlin.math.sqrt
  *
  * Subclasses override only the visual primitives; the kinematics stay fixed.
  */
-abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val renderer: PuckRenderer) : LaunchEffect {
+abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchEffect {
 
     override val zIndex: Int get() = 1
 
@@ -37,11 +37,14 @@ abstract class PaddleLaunchEffect(override val theme: ColorTheme, override val r
     protected var frame = 0
         private set
 
+    val theme: ColorTheme
+        get() = renderer.theme
+
     val responsivePrimary: Int
-        get() = if(phase == ChargePhase.Inert) theme.inert.primary else resolvedColors().primary
+        get() = if(phase == ChargePhase.Inert) renderer.theme.inert.primary else renderer.responsiveColorGroup.primary
 
     val responsiveSecondary: Int
-        get() = if (phase == ChargePhase.Inert) theme.inert.secondary else resolvedColors().secondary
+        get() = if (phase == ChargePhase.Inert) renderer.theme.inert.secondary else renderer.responsiveColorGroup.secondary
 
     // --- charge state (SSoT owned here) ---
     private var _currentCharge = 0f

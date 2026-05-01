@@ -10,7 +10,7 @@ import gameobjects.puckstyle.TailRenderer
 import kotlin.math.pow
 import shapes.DrawablePoint
 
-class MetalTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class MetalTail( override val renderer: PuckRenderer) : TailRenderer {
     private var points: MutableList<DrawablePoint>? = null
     private val grey = Color.rgb(140, 140, 150)
     private val metalLen = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
@@ -18,7 +18,7 @@ class MetalTail(override val theme: ColorTheme, override val renderer: PuckRende
     override fun render(canvas: Canvas) {
         if (points == null || points!!.size != metalLen) points = MutableList(metalLen) { DrawablePoint(renderer.x, renderer.y) }
         val points = points!!
-        val colors = resolvedColors()
+        val colors = responsiveGroup
         val lastIndex = (points.size - 1).coerceAtLeast(1)
         val useSimpleColor = renderer.isInert || renderer.shielded
         val simpleColor = if (useSimpleColor) colors.primary else 0

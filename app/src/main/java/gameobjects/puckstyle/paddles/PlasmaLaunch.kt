@@ -20,7 +20,7 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /** Mini plasma ball paddle: glowing core + animated lightning bolts; charge lerps background color. */
-class PlasmaLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 

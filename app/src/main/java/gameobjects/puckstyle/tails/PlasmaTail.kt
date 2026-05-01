@@ -10,7 +10,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.random.Random
 
-class PlasmaTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class PlasmaTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private class Pos(var x: Float = 0f, var y: Float = 0f)
     private var points: MutableList<Pos>? = null
@@ -51,7 +51,7 @@ class PlasmaTail(override val theme: ColorTheme, override val renderer: PuckRend
 
         ensureCache()
 
-        val stateColors = resolvedColors()
+        val stateColors = responsiveGroup
         val mid = stateColors.primary
         val edge = stateColors.secondary
         val n = points.size

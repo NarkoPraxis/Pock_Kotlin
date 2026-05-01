@@ -21,7 +21,7 @@ import kotlin.random.Random
  * the same motion but are capped at their respective orbitRadius from the puck center.
  * All three are always visible, even in Idle.
  */
-class GalaxyLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     // ── Drawing ──────────────────────────────────────────────────────────────
     private val starPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }

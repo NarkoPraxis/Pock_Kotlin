@@ -99,6 +99,11 @@ class TutorialView(context: Context, override var activity: AppCompatActivity) :
         Logic.checkScored()
     }
 
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        handle.removeCallbacksAndMessages(null)
+    }
+
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)

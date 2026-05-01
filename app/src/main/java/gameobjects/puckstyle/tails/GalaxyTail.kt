@@ -12,7 +12,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-class GalaxyTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class GalaxyTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private class Star(
         var x: Float, var y: Float,
@@ -70,7 +70,7 @@ class GalaxyTail(override val theme: ColorTheme, override val renderer: PuckRend
         }
         while (sparks.size > cap) pool.addLast(sparks.removeFirst())
 
-        val primaryColor = resolvedColors().primary
+        val primaryColor = responsivePrimary
         val frameF = renderer.frame.toFloat()
 
         // Index-based iteration avoids allocating an Iterator object each frame.

@@ -11,7 +11,7 @@ import gameobjects.puckstyle.paddles.RainbowLaunch
 import physics.Point
 import utility.Effects
 
-class RainbowSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
+class RainbowSkin( override val renderer: PuckRenderer) : PuckSkin {
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val stroke = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
     private val hueOffset = Palette.themeHue(theme)

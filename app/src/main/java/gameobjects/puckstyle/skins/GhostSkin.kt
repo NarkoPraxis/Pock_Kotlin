@@ -16,7 +16,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import utility.Effects
 
-class GhostSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
+class GhostSkin( override val renderer: PuckRenderer) : PuckSkin {
 
     private data class AuraRing(val baseMult: Float, val amp: Float, val phase: Float, val alpha: Int, val strokeMult: Float)
 

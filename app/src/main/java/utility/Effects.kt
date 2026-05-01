@@ -53,12 +53,11 @@ object Effects {
             if (e.isDone) persistIter.remove()
         }
 
-        val tempCollisions = collisions.toList()
-        for (collision in tempCollisions) {
-            collision.drawTo(canvas)
-            if (collision.finished) {
-                collisions.remove(collision)
-            }
+        val collIter = collisions.iterator()
+        while (collIter.hasNext()) {
+            val c = collIter.next()
+            c.drawTo(canvas)
+            if (c.finished) collIter.remove()
         }
     }
 

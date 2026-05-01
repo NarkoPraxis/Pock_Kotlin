@@ -13,7 +13,7 @@ import androidx.core.graphics.withTranslation
 import physics.Point
 import utility.Effects
 
-class MetalSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedShaderSkin(theme, renderer) {
+class MetalSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) {
 
     private val grey = Color.rgb(140, 140, 150)
     private val lightGrey = Color.rgb(220, 220, 230)

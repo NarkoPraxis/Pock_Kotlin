@@ -14,7 +14,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-class PixelSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
+class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
     private val fill = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
     private val stroke = Paint().apply { isAntiAlias = false; style = Paint.Style.STROKE }
 
@@ -27,33 +27,31 @@ class PixelSkin(override val theme: ColorTheme, override val renderer: PuckRende
     private fun ensureCache() {
         if (cachedRadius != renderer.radius) {
             cachedRadius = renderer.radius
-            cachedSide = renderer.radius * 1.7f
-            stroke.strokeWidth = renderer.strokePaint.strokeWidth
+            cachedSide = renderer.radius * .85f
         }
-        // x/y change every frame so recompute rect origin each call
-        cachedLeft = renderer.x - cachedSide / 2f
-        cachedTop  = renderer.y - cachedSide / 2f
+        stroke.strokeWidth = renderer.strokePaint.strokeWidth
+        cachedLeft = renderer.x - cachedSide
+        cachedTop  = renderer.y - cachedSide
     }
 
     override fun drawBody(canvas: Canvas) {
         ensureCache()
-        val colors = resolvedColors()
-        fill.color   = colors.primary
-        stroke.color = colors.secondary
-        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + cachedSide, cachedTop + cachedSide, fill)
-        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + cachedSide, cachedTop + cachedSide, stroke)
+        fill.color   = responsivePrimary
+        stroke.color = responsiveSecondary
+        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + 2 * cachedSide, cachedTop + 2 * cachedSide, fill)
+        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + 2 * cachedSide, cachedTop + 2 * cachedSide, stroke)
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {
-        PixelLaunch.spawnSquare(renderer.x, renderer.y, renderer.radius, resolvedColors().primary, theme)
+        PixelLaunch.spawnSquare(renderer.x, renderer.y, renderer.radius, responsivePrimary, theme)
     }
 
     override fun onShieldedCollision(position: Point) {
-        PixelLaunch.spawnSquare(renderer.x, renderer.y, renderer.radius, resolvedColors().primary, theme)
+        PixelLaunch.spawnSquare(renderer.x, renderer.y, renderer.radius, responsivePrimary, theme)
     }
 
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(PixelCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, resolvedColors().primary, theme.main.secondary))
+        Effects.addPersistentEffect(PixelCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, responsivePrimary, theme.main.secondary))
     }
 
     private class PixelCelebration(

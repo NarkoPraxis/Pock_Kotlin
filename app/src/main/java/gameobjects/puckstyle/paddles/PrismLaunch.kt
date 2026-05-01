@@ -18,7 +18,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /** Triangular prism. Sweet spot refracts rainbow streaks across the paddle. */
-class PrismLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class PrismLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 

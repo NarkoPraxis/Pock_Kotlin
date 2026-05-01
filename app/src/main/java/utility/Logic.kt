@@ -17,6 +17,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.PuckRenderer
 import physics.Force
 import physics.Point
 import physics.Ticker
@@ -57,6 +58,9 @@ object Logic {
 
     private var highInDanger = false
     private var lowInDanger  = false
+
+    var highStartX = 0f
+    var lowStartX = 0f
 
     enum class Result {
         High,
@@ -110,6 +114,9 @@ object Logic {
 
         Settings.topGoalBottom = Settings.screenRatio * Settings.scoreZoneHeight
         Settings.bottomGoalTop = Settings.screenHeight - Settings.topGoalBottom
+
+        highStartX = Settings.screenWidth / 4f
+        lowStartX = Settings.screenWidth * (3 / 4f)
     }
 
     fun initialize(activity: AppCompatActivity, gameView: GameView) {
@@ -123,23 +130,11 @@ object Logic {
         highPopupDragPointerId = -1
         lowPopupDragPointerId = -1
         Drawing.resetTipIndices()
-        val highStartX = Settings.screenWidth / 4f
-        val lowStartX = Settings.screenWidth * (3 / 4f)
-        highPlayer = Player(
-            Puck(Settings.ballRadius, highStartX, Settings.middleY, ColorTheme.Warm),
-            Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight / 5, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
-            true
-        )
-        highPlayer.resetLocation = Point(highStartX, Settings.middleY)
-        lowPlayer = Player(
-            Puck(Settings.ballRadius, lowStartX, Settings.middleY, ColorTheme.Cold),
-            Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight - Settings.screenHeight / 5, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor),
-            false
-        )
-        lowPlayer.resetLocation = Point(lowStartX, Settings.middleY)
-
         applyBallStyles()
         registerPhaseCallbacks()
+
+        highPlayer.resetLocation = Point(highStartX, Settings.middleY)
+        lowPlayer.resetLocation = Point(lowStartX, Settings.middleY)
 
         victoryTicker = Ticker(Settings.victoryThreshold)
 
@@ -154,6 +149,22 @@ object Logic {
         countPauseTouches = 0
         tempGameState = GameState.Play
     }
+
+    fun applyBallStyles() {
+        if (Settings.highBallType == BallType.Random) Settings.highRandomRoll = BallStyleFactory.rollRandom()
+        if (Settings.lowBallType == BallType.Random) Settings.lowRandomRoll = BallStyleFactory.rollRandom()
+        highPlayer = Player(
+            Puck(Settings.ballRadius, highStartX, Settings.middleY, BallStyleFactory.buildRenderer(Settings.highBallType, ColorTheme.getTheme(true), Settings.highRandomRoll)),
+            Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight / 5, PaintBucket.highBallColor, PaintBucket.highBallStrokeColor),
+            true
+        )
+        lowPlayer = Player(
+            Puck(Settings.ballRadius, lowStartX, Settings.middleY, BallStyleFactory.buildRenderer(Settings.lowBallType, ColorTheme.getTheme(false), Settings.lowRandomRoll)),
+            Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight - Settings.screenHeight / 5, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor),
+            false
+        )
+    }
+
 
     private fun interceptBallMenu(event: MotionEvent?, motionEvent: Int?): Boolean {
         if (event == null) return false
@@ -232,22 +243,7 @@ object Logic {
         return false
     }
 
-    fun applyBallStyles() {
-        if (Settings.highBallType == BallType.Random) {
-            val roll = highBallPopup.randomRoll
-            if (roll != null) BallStyleFactory.buildFromRoll(roll, ColorTheme.Warm, highPlayer.puck.renderer)
-            else BallStyleFactory.buildStyle(BallType.Random, ColorTheme.Warm, highPlayer.puck.renderer)
-        } else {
-            BallStyleFactory.buildStyle(Settings.highBallType, ColorTheme.Warm, highPlayer.puck.renderer)
-        }
-        if (Settings.lowBallType == BallType.Random) {
-            val roll = lowBallPopup.randomRoll
-            if (roll != null) BallStyleFactory.buildFromRoll(roll, ColorTheme.Cold, lowPlayer.puck.renderer)
-            else BallStyleFactory.buildStyle(BallType.Random, ColorTheme.Cold, lowPlayer.puck.renderer)
-        } else {
-            BallStyleFactory.buildStyle(Settings.lowBallType, ColorTheme.Cold, lowPlayer.puck.renderer)
-        }
-    }
+
 
     fun checkBallSelectionEnd() {
         if (highPlayer.charge > Settings.chargeStart && lowPlayer.charge > Settings.chargeStart) {
@@ -267,8 +263,8 @@ object Logic {
             val skin = player.puck.renderer.skin
             val tail = player.puck.renderer.tail
             effect.registerPhaseCallback { phase ->
-                skin?.onPhaseChanged(phase)
-                tail?.onPhaseChanged(phase)
+                skin.onPhaseChanged(phase)
+                tail.onPhaseChanged(phase)
                 if (phase == ChargePhase.Inert) player.fatigueInertLocked = true
                 if (phase == ChargePhase.Idle) player.fatigueInertLocked = false
             }
@@ -276,8 +272,8 @@ object Logic {
     }
 
     fun unregisterPhaseCallbacks() {
-        highPlayer.puck.renderer.effect?.unregisterAllPhaseCallbacks()
-        lowPlayer.puck.renderer.effect?.unregisterAllPhaseCallbacks()
+        highPlayer.puck.renderer.effect.unregisterAllPhaseCallbacks()
+        lowPlayer.puck.renderer.effect.unregisterAllPhaseCallbacks()
     }
 
     fun cancelChargesOnRelease() {
@@ -456,16 +452,16 @@ object Logic {
                     highPlayer.launch(Force(-direction, Settings.minLaunchPower))
                     lowPlayer.inertLocked = true
                     applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
-                    highPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
-                    lowPlayer.puck.renderer.skin?.onHit()
+                    highPlayer.puck.renderer.skin.onShieldedCollision(intersection)
+                    lowPlayer.puck.renderer.skin.onHit()
                 } else if (lowPlayer.shielded && !highPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPlayer.power))
                     lowPlayer.launch(Force(direction, Settings.minLaunchPower))
                     highPlayer.inertLocked = true
                     applyHitStun(highPlayer, highPlayer.puck.impactPower)
-                    lowPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
-                    highPlayer.puck.renderer.skin?.onHit()
+                    lowPlayer.puck.renderer.skin.onShieldedCollision(intersection)
+                    highPlayer.puck.renderer.skin.onHit()
                 } else if (lowPlayer.shielded && highPlayer.shielded) {
                     Sounds.playDoubleChargeCollision(collisionPoint.x)
                     val lowPower = lowPlayer.power
@@ -473,8 +469,8 @@ object Logic {
                     highPlayer.launch(Force(-direction, Settings.launchBonus + lowPower))
                     lowPlayer.launch(Force(direction, Settings.launchBonus + highPower))
                     // both shielded — no hit-stun for either
-                    highPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
-                    lowPlayer.puck.renderer.skin?.onShieldedCollision(intersection)
+                    highPlayer.puck.renderer.skin.onShieldedCollision(intersection)
+                    lowPlayer.puck.renderer.skin.onShieldedCollision(intersection)
                 } else {
                     val highPower = highPlayer.power
                     val lowPower = lowPlayer.power
@@ -501,14 +497,14 @@ object Logic {
                     val highSpeed = highPlayer.movementSpeed
                     val lowSpeed = lowPlayer.movementSpeed
                     if (highSpeed >= lowSpeed && highSpeed >= Settings.minLaunchPower) {
-                        highPlayer.puck.renderer.skin?.onCollisionWin(intersection, highSpeed)
-                        lowPlayer.puck.renderer.skin?.onHit()
+                        highPlayer.puck.renderer.skin.onCollisionWin(intersection, highSpeed)
+                        lowPlayer.puck.renderer.skin.onHit()
                     } else if (lowSpeed > highSpeed && lowSpeed >= Settings.minLaunchPower) {
-                        lowPlayer.puck.renderer.skin?.onCollisionWin(intersection, lowSpeed)
-                        highPlayer.puck.renderer.skin?.onHit()
+                        lowPlayer.puck.renderer.skin.onCollisionWin(intersection, lowSpeed)
+                        highPlayer.puck.renderer.skin.onHit()
                     } else {
-                        highPlayer.puck.renderer.skin?.onHit()
-                        lowPlayer.puck.renderer.skin?.onHit()
+                        highPlayer.puck.renderer.skin.onHit()
+                        lowPlayer.puck.renderer.skin.onHit()
                     }
                 }
                 resetTails(highPlayer, lowPlayer)
@@ -561,7 +557,7 @@ object Logic {
         val hadMovementPower = player.puck.movement.hasPower
         if(player.applyForces()) {
             Effects.addWallCollisionEffect(player.bounceDirection, player.puckFillColor, player.puck)
-            if (!player.shielded) player.puck.renderer.skin?.onHit()
+            if (!player.shielded) player.puck.renderer.skin.onHit()
         }
         if (hadLaunchPower && !player.puck.launch.hasPower) {
             GameEvents.cantScore.emit(Unit)
@@ -725,7 +721,7 @@ object Logic {
             Effects.signalScored()
             // Todo: refactor this so it's not "other" the effect spawned should match the puck entering the goal, not the other way around
             val goalPoint = Point(loser.px, if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop)
-            loser.puck.renderer.skin?.onScore(loser.puckFillColor, goalPoint, highGoal)
+            loser.puck.renderer.skin.onScore(loser.puckFillColor, goalPoint, highGoal)
             return true
         }
         return false

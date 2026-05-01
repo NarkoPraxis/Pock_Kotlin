@@ -21,7 +21,7 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /** Tethered fireball: a mini flame instead of a paddle bar. Sweet-spot leaves a persistent scorch. */
-class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val flamePaint = Paint().apply {
         isAntiAlias = true
@@ -38,9 +38,9 @@ class FireLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect
         var life: Float
     )
 
-    val SPAWN_JITTER = renderer.radius * 0.35f
-    val SPARK_BASE_SIZE = renderer.radius * .32f
-    val BASE_SIZE = renderer.radius * .6f
+    val SPAWN_JITTER get() = renderer.radius * 0.35f
+    val SPARK_BASE_SIZE get() = renderer.radius * .32f
+    val BASE_SIZE get() = renderer.radius * .6f
 
 
     private val tailSparks = ArrayDeque<Spark>()

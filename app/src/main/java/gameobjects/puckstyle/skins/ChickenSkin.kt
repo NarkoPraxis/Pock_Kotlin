@@ -25,7 +25,7 @@ import androidx.core.graphics.withTranslation
 import gameobjects.puckstyle.Palette
 import utility.Effects
 
-class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRenderer) : PuckSkin {
+class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
 
     private val paint         = Paint().apply { isAntiAlias = true }
     private val beakPath      = Path()
@@ -105,7 +105,7 @@ class ChickenSkin(override val theme: ColorTheme, override val renderer: PuckRen
 
     override fun drawBody(canvas: Canvas) {
         ensureCache()
-        frameColors = resolvedColors()
+        frameColors = responsiveGroup
         r        = cachedRadius
         val sw   = cachedStrokeWidth
         eyeR     = cachedEyeR

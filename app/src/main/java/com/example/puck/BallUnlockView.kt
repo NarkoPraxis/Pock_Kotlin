@@ -23,6 +23,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sin
 import androidx.core.graphics.withClip
+import gameobjects.Puck
 
 class BallUnlockView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -35,17 +36,13 @@ class BallUnlockView @JvmOverloads constructor(
     // Plan 03: lockFill circle removed — puck body is already solid black for locked balls
     private val lockPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; isAntiAlias = true; strokeCap = Paint.Cap.ROUND }
 
-    private val previewRenderer = PuckRenderer()
 
     // Plan 02: per-cell bounce state
     private var bouncingIndex: Int = -1
     private var bounceFrame: Int = 0
 
-    // Plan 01: per-slot skin+tail+effect instances; rebuilt when unlockProgress changes.
-    // Skins are cached so randomized seeds (e.g. GalaxySkin.starSeeds) don't re-roll each frame.
-    private var tails: Array<TailRenderer>? = null
-    private var skins: Array<PuckSkin>? = null
-    private var effects: Array<LaunchEffect>? = null
+    private var renderers: Array<PuckRenderer>? = null
+
     private var tailsBuiltForProgress: Int = -1
 
     private val animHandler = Handler(Looper.getMainLooper())
@@ -100,22 +97,22 @@ class BallUnlockView @JvmOverloads constructor(
         }
     }
 
-    // Plan 01: rebuild per-slot skin+tail arrays when unlockProgress changes (new unlock happened)
-    private fun ensureTails() {
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+
         val progress = Settings.unlockProgress
-        if (tails == null || tailsBuiltForProgress != progress) {
-            tails?.forEach { it.clear() }
+        if (renderers == null || tailsBuiltForProgress != progress) {
             val types = BallType.entries.toTypedArray()
-            val styles = Array(types.size) { i -> BallStyleFactory.buildStyle(types[i], themeForCell(i), previewRenderer) }
-            tails = Array(types.size) { i -> styles[i].tail }
-            skins = Array(types.size) { i -> styles[i].skin }
-            effects = Array(types.size) { i -> styles[i].effect }
+            renderers = Array(types.size) { i -> BallStyleFactory.buildRenderer(types[i], themeForCell(i)) }
             tailsBuiltForProgress = progress
         }
     }
 
+
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (renderers == null) return
         val savedRatio = Settings.screenRatio
         val savedStrokeWidth = Settings.strokeWidth
         Settings.screenRatio = ratio()
@@ -128,20 +125,15 @@ class BallUnlockView @JvmOverloads constructor(
         label.color = if (Storage.darkMode) Color.WHITE else Color.argb(230, 15, 15, 35)
         sublabel.color = if (Storage.darkMode) Color.argb(160, 255, 255, 255) else Color.argb(160, 20, 20, 50)
 
-        ensureTails()
-
         bounceFrame++
 
         val types = BallType.entries.toTypedArray()
         val pr = ratio() * 1.2f
 
-        previewRenderer.effectEnabled = false
-        // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
-        // is set by initializeSettings(), so the baked-in value is 0f.
-        previewRenderer.strokePaint.strokeWidth = ratio() / 4f
-        previewRenderer.chargePaint.strokeWidth = ratio() / 4f
+
 
         for (i in types.indices) {
+            val previewRenderer = renderers!![i]
             val b = cellBounds(i)
             if (b[3] < 0 || b[1] > height) continue
             val type = types[i]
@@ -162,16 +154,19 @@ class BallUnlockView @JvmOverloads constructor(
 
             // Configure previewRenderer for this slot
             val unlocked = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
+            previewRenderer.effectEnabled = false
+            // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
+            // is set by initializeSettings(), so the baked-in value is 0f.
+            previewRenderer.strokePaint.strokeWidth = ratio() / 4f
+            previewRenderer.chargePaint.strokeWidth = ratio() / 4f
             previewRenderer.x = cx
             previewRenderer.y = puckY
             previewRenderer.radius = pr
             previewRenderer.frame = bounceFrame
+            previewRenderer.theme = theme
             previewRenderer.fillColor = theme.main.primary
             previewRenderer.strokeColor = theme.main.secondary
             previewRenderer.baseFillColor = theme.main.primary
-            previewRenderer.skin = skins?.get(i)
-            previewRenderer.tail = tails?.get(i)
-            previewRenderer.effect = effects?.get(i)
             previewRenderer.preview = !unlocked
 
             // 2. Draw puck clipped to card bounds so tail can't escape into adjacent cells
@@ -248,17 +243,14 @@ class BallUnlockView @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 val wasDragging = dragging
                 dragging = false
-                // Plan 02: detect tap (minimal movement) and set the tapped cell as the bouncing one
                 if (wasDragging && dragDistance < ratio() * 0.5f) {
                     val types = BallType.entries.toTypedArray()
                     for (i in types.indices) {
                         val b = cellBounds(i)
                         if (downX >= b[0] && downX <= b[2] && downY >= b[1] && downY <= b[3]) {
                             warmFlags[i] = !warmFlags[i]
-                            tails?.getOrNull(i)?.clear()
-                            val toggledStyle = BallStyleFactory.buildStyle(types[i], themeForCell(i), previewRenderer)
-                            tails?.set(i, toggledStyle.tail)
-                            skins?.set(i, toggledStyle.skin)
+                            renderers!![i].tail.clear()
+                            renderers!![i] = BallStyleFactory.buildRenderer(types[i], themeForCell(i))
                             bouncingIndex = i
                             break
                         }
@@ -272,7 +264,7 @@ class BallUnlockView @JvmOverloads constructor(
 
     // Clear particle tails when the activity pauses to prevent stale particle accumulation
     fun clearTails() {
-        tails?.forEach { it.clear() }
+        renderers!!.forEach { it.tail.clear() }
         bouncingIndex = -1
         bounceFrame = 0
     }

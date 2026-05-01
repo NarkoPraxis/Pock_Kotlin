@@ -6,20 +6,25 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 
 interface TailRenderer {
-    val theme: ColorTheme
-
     val renderer: PuckRenderer
 
     /** Local z-index within a PuckRenderer composition. Default -1 (behind body). */
     val zIndex: Int get() = -1
 
-    /** Returns the ColorGroup this tail should use for the current frame based on renderer state. */
-    fun resolvedColors(): ColorGroup = renderer.resolveColorGroup(theme)
+    val theme: ColorTheme
+        get() = renderer.theme
+
     val responsivePrimary: Int
-        get() = resolvedColors().primary
+        get() = responsiveGroup.primary
 
     val responsiveSecondary: Int
-        get() = resolvedColors().secondary
+        get() = responsiveGroup.secondary
+
+    /** Returns the ColorGroup this tail should use for the current frame based on renderer state. */
+    val responsiveGroup: ColorGroup
+        get() = renderer.responsiveColorGroup
+
+
     fun render(canvas: Canvas)
     fun clear()
 
@@ -41,15 +46,20 @@ interface TailRenderer {
             render(canvas)
             return
         }
-        val cm = ColorMatrix(floatArrayOf(
-            0.12f, 0f,    0f,    0f, 0f,
-            0f,    0.12f, 0f,    0f, 0f,
-            0f,    0f,    0.12f, 0f, 0f,
-            0f,    0f,    0f,    1f, 0f
-        ))
         @Suppress("DEPRECATION")
-        canvas.saveLayer(null, Paint().apply { colorFilter = ColorMatrixColorFilter(cm) })
+        canvas.saveLayer(null, previewLayerPaint)
         render(canvas)
         canvas.restore()
+    }
+
+    companion object {
+        private val previewLayerPaint = Paint().apply {
+            colorFilter = ColorMatrixColorFilter(ColorMatrix(floatArrayOf(
+                0.12f, 0f,    0f,    0f, 0f,
+                0f,    0.12f, 0f,    0f, 0f,
+                0f,    0f,    0.12f, 0f, 0f,
+                0f,    0f,    0f,    1f, 0f
+            )))
+        }
     }
 }

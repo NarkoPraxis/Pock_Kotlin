@@ -16,7 +16,7 @@ import kotlin.math.sin
 import androidx.core.graphics.withRotation
 import kotlin.random.Random
 
-class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEffect(theme, renderer) {
+class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val eggPaint = Paint().apply { isAntiAlias = true }
 
@@ -36,8 +36,8 @@ class ChickenLaunch(theme: ColorTheme, renderer: PuckRenderer) : PaddleLaunchEff
         drawEgg(canvas, cx, cy, if (sweet || !fatigued) 1f else 0f, ph)
     }
 
-    val EGG_WIDTH = renderer.radius * .05f
-    val EGG_HEIGHT = renderer.radius * .07f
+    val EGG_WIDTH get() = renderer.radius * .05f
+    val EGG_HEIGHT get() = renderer.radius * .07f
 
     private fun drawEgg(canvas: Canvas, cx: Float, cy: Float, fillRatio: Float, ph: ChargePhase) {
 

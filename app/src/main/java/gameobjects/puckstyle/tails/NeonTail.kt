@@ -8,7 +8,7 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
-class NeonTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class NeonTail( override val renderer: PuckRenderer) : TailRenderer {
     private data class Ring(var x: Float = 0f, var y: Float = 0f)
     private var rings: MutableList<Ring>? = null
 
@@ -55,7 +55,7 @@ class NeonTail(override val theme: ColorTheme, override val renderer: PuckRender
         val len = tailLen
         if (rings == null || rings!!.size != len) rings = MutableList(len) { Ring(renderer.x, renderer.y) }
         val rings = rings!!
-        val color = resolvedColors().primary
+        val color = responsivePrimary
         val sw = renderer.strokePaint.strokeWidth
         val lastIndex = (rings.size - 1).coerceAtLeast(1)
 

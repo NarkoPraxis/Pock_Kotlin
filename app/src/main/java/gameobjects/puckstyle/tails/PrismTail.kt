@@ -10,7 +10,7 @@ import gameobjects.puckstyle.Palette.hsv
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
-class PrismTail(override val theme: ColorTheme, override val renderer: PuckRenderer) : TailRenderer {
+class PrismTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private class Frame {
         var x: Float = 0f

@@ -20,7 +20,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedShaderSkin(theme, renderer) {
+class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) {
 
     private var lastColors = theme.main
 
@@ -186,7 +186,7 @@ class IceSkin(theme: ColorTheme, override val renderer: PuckRenderer) : CachedSh
     }
 
     override fun drawBody(canvas: Canvas) {
-        val colors = resolvedColors()
+        val colors = responsiveGroup
         if (colors != lastColors) {
             lastColors = colors
             invalidateShader()
