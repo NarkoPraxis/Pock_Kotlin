@@ -83,7 +83,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         Drawing.drawPlayers(canvas)
         Drawing.drawWalls(canvas)
         Drawing.drawAimArrows(canvas)
-        Drawing.drawCanScoreWalls(canvas)
+        Drawing.drawArenaForeground(canvas)
 
         if (Settings.gameState != GameState.BallSelection) {
             Drawing.drawScoreFlash(canvas)
@@ -94,7 +94,6 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
             Logic.lowBallPopup.drawTo(canvas)
         }
 
-        Drawing.drawArenaForeground(canvas)
     }
 
     fun pauseGameLoop() {

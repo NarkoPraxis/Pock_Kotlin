@@ -47,9 +47,9 @@ object Drawing {
         val highPlayer = Logic.highPlayer
         val lowPlayer = Logic.lowPlayer
         val effectPaint = PaintBucket.canScoreWallPaint
-        val baseAlpha = 180
+        val baseAlpha = 255
 
-        for (x in 0 until wallWidthParticleCount) {
+        for (x in 0..wallWidthParticleCount) {
             val xPos = x * Settings.longParticleSide
             val xEnd = xPos + Settings.longParticleSide
 
@@ -99,12 +99,14 @@ object Drawing {
 
     fun drawArenaBackground(canvas: Canvas) {
         canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.screenHeight, PaintBucket.backgroundPaint)
-        canvas.drawRect(highScoreZone, PaintBucket.goalPaint)
-        canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
+
         drawTouchHighlights(canvas, Logic.highPlayer, Logic.lowPlayer)
     }
 
     fun drawArenaForeground(canvas: Canvas) {
+        canvas.drawRect(highScoreZone, PaintBucket.goalPaint)
+        canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
+        drawCanScoreWalls(canvas)
         drawGoalMenuHints(canvas)
     }
 

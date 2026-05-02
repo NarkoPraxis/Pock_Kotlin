@@ -232,9 +232,9 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 if (tailSize > 0) {
                     cx = renderer.x
                     cy = renderer.y
-                    // Drain tail from the front — shift left.
+                    // Drain from the tip (oldest entry) so the trail shortens toward the ball
+                    // rather than appearing to recede backward from the head.
                     tailSize--
-                    for (i in 0 until tailSize) { tailXs[i] = tailXs[i + 1]; tailYs[i] = tailYs[i + 1] }
                 } else {
                     _isDone = true
                     return

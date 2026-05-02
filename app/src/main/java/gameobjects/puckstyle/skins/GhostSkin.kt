@@ -10,10 +10,8 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.paddles.GhostLaunch
 import physics.Point
-import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.sqrt
 import utility.Effects
 
 class GhostSkin( override val renderer: PuckRenderer) : PuckSkin {
@@ -51,11 +49,11 @@ class GhostSkin( override val renderer: PuckRenderer) : PuckSkin {
     override val scatterDensity get() = 1.2f
 
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(SpiritCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, color = responsivePrimary, renderer = renderer))
+        Effects.addPersistentEffect(SpiritCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, color = theme.main.secondary))
     }
 
     override fun onVictory(x: Float, y: Float) {
-        Effects.addPersistentEffect(SpiritCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true, color = responsivePrimary, renderer = renderer))
+        Effects.addPersistentEffect(SpiritCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true, color = theme.main.secondary))
     }
 
     private class SpiritCelebration(
@@ -63,96 +61,89 @@ class GhostSkin( override val renderer: PuckRenderer) : PuckSkin {
         private val radius: Float,
         highGoal: Boolean,
         fullCircle: Boolean,
-        private val color: Int,
-        private val renderer: PuckRenderer
+        private val color: Int
     ) : Effects.PersistentEffect {
-        private enum class Phase { Expanding, Hovering, Returning }
 
-        private class Spirit(
-            var x: Float, var y: Float,
-            val dirX: Float, val dirY: Float,
-            val speed: Float,
-            val maxDist: Float,
-            val returnSpeed: Float
-        ) {
-            var phase = Phase.Expanding
-            var hoverFrame = 0
-            var done = false
-        }
+        private data class AuraConfig(val baseMult: Float, val amp: Float, val phase: Float, val alpha: Int, val strokeMult: Float)
+        private val auraRings = listOf(
+            AuraConfig(1.10f, 0.06f, 0.0f, 55, 1.6f),
+            AuraConfig(1.20f, 0.08f, 1.0f, 35, 1.2f),
+            AuraConfig(1.35f, 0.10f, 2.2f, 20, 2.0f)
+        )
 
-        private val spirits: List<Spirit>
+        private val directions = mutableListOf<Point>()
+        private val step = 10f
+        private var currentDistance = 0f
+        private var alphaF = 0f
+        private var fadingIn = true
+        private var frame = 0
+        private var done = false
+        override val isDone: Boolean get() = done
+
         private val bodyPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val glowPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
-        private val maxDistance = radius * 3f
-        private val HOVER_DURATION = 15
-        private var frame = 0
-        private var _isDone = false
-        override val isDone: Boolean get() = _isDone
-
-        // Cached constants for draw() — computed once, never change
-        private val spiritRadius = radius * 0.45f
-        private val spiritStrokeWidth = Settings.strokeWidth * 0.7f
-        private val spiritGlowRadius = spiritRadius * 1.2f
-        private val spiritStrokeGlow = spiritStrokeWidth * 1.4f
-        private val bodyWhite = Color.argb(120, 255, 255, 255)
-        private val strokeWhite = Color.argb(180, 255, 255, 255)
-        private val maxDistSq = maxDistance * maxDistance
+        private val baseSw = Settings.strokeWidth * 0.7f
+        private val orbR = radius * 0.7f
 
         init {
-            val baseAngles = listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, Math.PI)
-            val fullAngles = List(12) { i -> i * (2.0 * Math.PI / 12) }
-            val srcAngles = if (fullCircle) fullAngles else baseAngles
-            spirits = srcAngles.map { a ->
-                val adj = if (!fullCircle && !highGoal) a + Math.PI else a
-                Spirit(cx, cy, cos(adj.toFloat()), sin(adj.toFloat()), maxDistance / 45f, maxDistance, Settings.screenRatio * 0.15f)
-            }
-        }
-
-        override fun step() {
-            frame++
-            var allDone = true
-            for (s in spirits) {
-                if (s.done) continue
-                allDone = false
-                when (s.phase) {
-                    Phase.Expanding -> {
-                        s.x += s.dirX * s.speed; s.y += s.dirY * s.speed
-                        val dx = s.x - cx; val dy = s.y - cy
-                        // Use squared distance to avoid sqrt in the expansion check
-                        if (dx * dx + dy * dy >= maxDistSq) {
-                            s.x = cx + s.dirX * s.maxDist; s.y = cy + s.dirY * s.maxDist
-                            s.phase = Phase.Hovering
-                        }
-                    }
-                    Phase.Hovering -> {
-                        s.hoverFrame++
-                        if (s.hoverFrame >= HOVER_DURATION) s.phase = Phase.Returning
-                    }
-                    Phase.Returning -> {
-                        val tx = renderer.x; val ty = renderer.y
-                        val dx = tx - s.x; val dy = ty - s.y
-                        val dist = sqrt(dx * dx + dy * dy)
-                        if (dist < s.returnSpeed) { s.done = true } else {
-                            s.x += (dx / dist) * s.returnSpeed; s.y += (dy / dist) * s.returnSpeed
-                        }
-                    }
+            if (fullCircle) {
+                for (i in 0 until 12) {
+                    val a = (i * 2.0 * Math.PI / 12).toFloat()
+                    directions.add(Point(cos(a), sin(a)))
+                }
+            } else {
+                for (angle in listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, Math.PI)) {
+                    val a = angle.toFloat()
+                    if (highGoal) directions.add(Point(cos(a), sin(a)))
+                    else directions.add(-Point(cos(a), sin(a)))
                 }
             }
-            if (allDone) _isDone = true
         }
 
+        override fun step() {}
+
         override fun draw(canvas: Canvas) {
-            val glowAlpha = Palette.withAlpha(color, 55)
-            for (s in spirits) {
-                if (s.done) continue
-                glowPaint.color = glowAlpha
-                glowPaint.strokeWidth = spiritStrokeGlow
-                canvas.drawCircle(s.x, s.y, spiritGlowRadius, glowPaint)
-                bodyPaint.color = bodyWhite
-                canvas.drawCircle(s.x, s.y, spiritRadius, bodyPaint)
-                glowPaint.color = strokeWhite
-                glowPaint.strokeWidth = spiritStrokeWidth
-                canvas.drawCircle(s.x, s.y, spiritRadius, glowPaint)
+            if (done) return
+            frame++
+            if (fadingIn) {
+                currentDistance += step
+                alphaF = (alphaF + step).coerceAtMost(255f)
+                if (alphaF >= 255f) fadingIn = false
+            } else {
+                currentDistance += step / 2f
+                alphaF -= step
+                if (alphaF <= 0f) { done = true; return }
+            }
+
+            val a = alphaF / 255f
+            val frameF = frame.toFloat()
+            val pulse = 1f + 0.1f * sin(frameF * 0.3f)
+            val r = orbR * pulse
+            val sw = baseSw
+            val auraFramePhase = frameF * 0.04f
+
+            for (direction in directions) {
+                val ox = cx + direction.x * currentDistance
+                val oy = cy + direction.y * currentDistance
+
+                for (ring in auraRings) {
+                    val auraR = r * ring.baseMult + r * ring.amp * sin(auraFramePhase + ring.phase)
+                    glowPaint.color = Palette.withAlpha(color, (ring.alpha * a).toInt())
+                    glowPaint.strokeWidth = sw * ring.strokeMult
+                    canvas.drawCircle(ox, oy, auraR, glowPaint)
+                }
+
+                bodyPaint.color = Color.argb((120 * a).toInt(), 255, 255, 255)
+                canvas.drawCircle(ox, oy, r, bodyPaint)
+
+                glowPaint.color = Color.argb((200 * a).toInt(), 255, 255, 255)
+                glowPaint.strokeWidth = sw
+                canvas.drawCircle(ox, oy, r, glowPaint)
+
+                val innerR = r * 0.75f + r * 0.1f * sin(frameF * 0.025f + 5f)
+                glowPaint.strokeWidth = sw * 0.7f
+                glowPaint.color = Color.argb((160 * a).toInt(), 255, 255, 255)
+                canvas.drawCircle(ox, oy, innerR, glowPaint)
             }
         }
     }

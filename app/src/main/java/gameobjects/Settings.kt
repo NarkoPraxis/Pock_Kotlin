@@ -29,7 +29,7 @@ object Settings {
     val canScoreTopWallCenterY: Float get() = topGoalBottom - shortParticleSide / 2f
     val canScoreBottomWallCenterY: Float get() = bottomGoalTop + shortParticleSide / 2f
 
-    private val canScoreWallHalfThick: Float get() = shortParticleSide * (1f - canScoreWallProgress) / 2f
+    private val canScoreWallHalfThick: Float get() = shortParticleSide * (1f - canScoreWallProgress)
 
     val canScoreTopWallTop: Float get() = canScoreTopWallCenterY - canScoreWallHalfThick
     val canScoreTopWallBottom: Float get() = canScoreTopWallCenterY + canScoreWallHalfThick

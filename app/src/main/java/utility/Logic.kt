@@ -682,7 +682,7 @@ object Logic {
 
     fun updateCanScoreWall() {
         if (!this::highPlayer.isInitialized) return
-        val delta = 0.4f
+        val delta = 0.1f
         Settings.canScoreWallProgress = if (Settings.canScore)
             (Settings.canScoreWallProgress + delta).coerceAtMost(1f)
         else

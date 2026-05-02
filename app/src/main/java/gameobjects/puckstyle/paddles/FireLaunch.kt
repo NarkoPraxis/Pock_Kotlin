@@ -127,27 +127,25 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     companion object {
         fun spawnFireImpact(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int, grey: Int) {
             Effects.addPersistentEffect(FireScorch(cx, cy, radius, primary, grey))
-            Effects.addPersistentEffect(FireSparkBurst(cx, cy, radius, secondary, fullCircle = true))
+            Effects.addPersistentEffect(FireSparkBurst(cx, cy, radius, secondary))
         }
 
         fun spawnFireCelebration(cx: Float, cy: Float, radius: Float, secondary: Int, highGoal: Boolean, fullCircle: Boolean) {
-            Effects.addPersistentEffect(FireSparkBurst(cx, cy, radius, secondary, highGoal = highGoal, fullCircle = fullCircle))
+            Effects.addPersistentEffect(FireSparkBurst(cx, cy, radius, secondary))
         }
     }
 
     private class FireSparkBurst(
         private val cx: Float, private val cy: Float,
         private val radius: Float,
-        private val color: Int,
-        private val highGoal: Boolean = false,
-        private val fullCircle: Boolean = true
-    ) : Effects.PersistentEffect {
+        private val color: Int
+        ) : Effects.PersistentEffect {
         private class Spark(var x: Float, var y: Float, var vx: Float, var vy: Float, var life: Float)
 
         private val sparks: List<Spark>
         private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private var frame = 0
-        private val totalFrames = if (fullCircle) 42 else 60
+        private val totalFrames = 60
         private val invTotalFrames = 1f / totalFrames
         private val gravity = 0.04f * radius / Settings.screenRatio
         private val sparkBaseRadius = radius * 0.8f
@@ -155,13 +153,11 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             private set
 
         init {
-            val count = if (fullCircle) 28 else 14
-            val angleRange = if (fullCircle) 2f * PI.toFloat() else PI.toFloat()
-            val angleOffset = if (fullCircle || highGoal) 0f else PI.toFloat()
+            val count =  28
+            val angleRange =  2f * PI.toFloat()
             sparks = List(count) { i ->
-                val angle = (i.toFloat() / count) * angleRange + angleOffset + Random.nextFloat() * 0.4f
-                val speed = if (fullCircle) radius * (0.12f + Random.nextFloat() * 0.18f)
-                            else (radius * 3f) / totalFrames.toFloat() * (0.8f + Random.nextFloat() * 0.4f)
+                val angle = (i.toFloat() / count) * angleRange + Random.nextFloat() * 0.4f
+                val speed = radius * (0.12f + Random.nextFloat() * 0.18f)
                 Spark(cx, cy, cos(angle) * speed, sin(angle) * speed, 1f)
             }
         }
