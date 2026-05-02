@@ -132,21 +132,12 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         if (renderer.isInert) {
             return Pair(theme.inert.secondary, theme.inert.primary)
         }
-        if (ph == ChargePhase.SweetSpot) {
-            val t = sin(frame * 0.25f) * 0.5f + 0.5f
-            return Pair(
-                Palette.lerpColor(theme.shield.primary, theme.shield.secondary, t),
-                Palette.lerpColor(theme.shield.secondary, theme.shield.primary, t)
-            )
-        }
+
         if (ph == ChargePhase.Inert) {
             return Pair(theme.inert.secondary, theme.inert.primary)
         }
-        return if (chargeFillRatio > COLOR_THRESHOLDS[starIndex]) {
-            Pair(theme.shield.secondary, theme.shield.primary)
-        } else {
-            Pair(theme.main.secondary, theme.main.primary)
-        }
+        return Pair(theme.main.secondary, theme.main.primary)
+
     }
 
     override fun drawIdlePaddle(canvas: Canvas) {
@@ -158,18 +149,15 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val baseRot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
 
         val (stroke1, fill1) = resolveStarColors(1, phase)
-        buildStar(sx, sy, descs[1].starRadius, -baseRot)
-        starPaintFill.color = Palette.withAlpha(fill1, 255)
-        starPaint.color = Palette.withAlpha(stroke1, 255)
-        canvas.drawPath(starPath, starPaintFill)
+        buildStar(sx, sy, descs[0].starRadius * .8f, baseRot)
+        starPaint.color = fill1
         canvas.drawPath(starPath, starPaint)
 
-        val (stroke0, fill0) = resolveStarColors(0, phase)
-        buildStar(sx, sy, descs[0].starRadius, baseRot)
-        starPaint.color = Palette.withAlpha(stroke0, 255)
-        starPaintFill.color = Palette.withAlpha(fill0, 255)
-        canvas.drawPath(starPath, starPaintFill)
+        buildStar(sx, sy, descs[1].starRadius, -baseRot)
+        starPaint.color = stroke1
         canvas.drawPath(starPath, starPaint)
+
+
     }
 
 
@@ -264,13 +252,18 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         fun spawnStartImpact(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int) {
             Effects.addPersistentEffect(NebulaMark(cx, cy, radius, primary, secondary))
         }
+
+        fun spawnStarBurst(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int) {
+            Effects.addPersistentEffect(NebulaMark(cx, cy, radius, primary, secondary, true))
+        }
     }
 
     private class NebulaMark(
         private val cx: Float, private val cy: Float,
         private val radius: Float,
         private val colorA: Int,
-        private val colorB: Int
+        private val colorB: Int,
+        private val noStar: Boolean = false
     ) : Effects.PersistentEffect {
         private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val starPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
@@ -358,13 +351,15 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 }
             }
 
-            // Fading mini-star at center
-            val c = Palette.lerpColor(colorB, colorA, t)
-            starPaint.color = Palette.withAlpha(c, alpha)
-            val starR = radius * (1f - t * 0.3f).coerceAtLeast(0.5f)
-            starPaint.strokeWidth = radius * 0.2f
-            buildStar(path, cx, cy, starR, frame * 0.03f)
-            canvas.drawPath(path, starPaint)
+            if (!noStar) {
+                // Fading mini-star at center
+                val c = Palette.lerpColor(colorB, colorA, t)
+                starPaint.color = Palette.withAlpha(c, alpha)
+                val starR = radius * (1f - t * 0.3f).coerceAtLeast(0.5f)
+                starPaint.strokeWidth = radius * 0.2f
+                buildStar(path, cx, cy, starR, frame * 0.03f)
+                canvas.drawPath(path, starPaint)
+            }
         }
 
         private fun buildStar(dst: Path, cx: Float, cy: Float, outer: Float, rotation: Float) {
