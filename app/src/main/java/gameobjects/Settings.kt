@@ -31,11 +31,11 @@ object Settings {
 
     private val canScoreWallHalfThick: Float get() = shortParticleSide * (1f - canScoreWallProgress)
 
-    val canScoreTopWallTop: Float get() = canScoreTopWallCenterY - canScoreWallHalfThick
+    val canScoreTopWallTop: Float get() = canScoreTopWallCenterY - canScoreWallHalfThick * 9f
     val canScoreTopWallBottom: Float get() = canScoreTopWallCenterY + canScoreWallHalfThick
 
     val canScoreBottomWallTop: Float get() = canScoreBottomWallCenterY - canScoreWallHalfThick
-    val canScoreBottomWallBottom: Float get() = canScoreBottomWallCenterY + canScoreWallHalfThick
+    val canScoreBottomWallBottom: Float get() = canScoreBottomWallCenterY + canScoreWallHalfThick * 9f
     var refreshRate: Int = 16
     var unlockProgress = 0
     var pauseGame = false;

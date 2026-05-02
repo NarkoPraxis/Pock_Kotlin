@@ -142,14 +142,16 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val boltPaint = Paint().apply {
             isAntiAlias = true; style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
-            strokeWidth = Settings.strokeWidth * 0.55f   // constant across all instances
+            strokeWidth = Settings.strokeWidth * 0.7f   // constant across all instances
         }
         private val boltPath = Path()
         private var frame = 0
-        private val totalFrames = 55
+        private val totalFrames = 80
         private val totalFramesInv = 1f / totalFrames   // avoid per-frame division
 
         override val isDone: Boolean get() = !fullCircle && frame >= totalFrames
+
+
 
         private val anchors: Array<FloatArray>
         init {
@@ -161,7 +163,7 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                     floatArrayOf(cx + cos(angle) * dist, cy + sin(angle) * dist)
                 }
             } else {
-                val maxDist = radius * 3f
+                val maxDist = radius * 5f
                 val arcRange = PI.toFloat()
                 val arcOffset = if (highGoal) 0f else PI.toFloat()
                 Array(20) { i ->
@@ -190,18 +192,6 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 }
             }
 
-            // First-frame persistent bolts only in full-circle (residual) mode
-            if (fullCircle) {
-                val persistAlpha = alpha.coerceAtLeast(100)
-                val firstRand = Random(0L)
-                repeat(10) {
-                    val aIdx = firstRand.nextInt(anchors.size)
-                    val bIdx = (aIdx + 1 + firstRand.nextInt(anchors.size - 1)) % anchors.size
-                    val a = anchors[aIdx]; val b = anchors[bIdx]
-                    boltPaint.color = Palette.withAlpha(if (it % 2 == 0) primary else secondary, persistAlpha)
-                    drawBolt(canvas, a[0], a[1], b[0], b[1], firstRand)
-                }
-            }
 
             boltPaint.alpha = 255
         }
