@@ -112,7 +112,7 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         Effects.addPersistentEffect(BlastScorch(rx, ry, renderer.radius, theme.main.primary))
     }
 
-    private class BlastScorch(
+    internal class BlastScorch(
         private val cx: Float, private val cy: Float,
         private val radius: Float,
         private val primary: Int,

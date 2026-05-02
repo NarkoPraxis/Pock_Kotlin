@@ -18,13 +18,15 @@ object Effects {
 
     val collisions = MutableList(0) { Explosion() }
     private val persistentEffects = mutableListOf<PersistentEffect>()
+    private val pendingEffects = mutableListOf<PersistentEffect>()
 
     fun addPersistentEffect(effect: PersistentEffect) {
-        persistentEffects.add(effect)
+        pendingEffects.add(effect)
     }
 
     fun clearPersistentEffects() {
         persistentEffects.clear()
+        pendingEffects.clear()
     }
 
     /** Signals a goal was scored. Effects that return true from onScoreSignal() animate out on their own;
@@ -51,6 +53,10 @@ object Effects {
             e.step()
             e.draw(canvas)
             if (e.isDone) persistIter.remove()
+        }
+        if (pendingEffects.isNotEmpty()) {
+            persistentEffects.addAll(pendingEffects)
+            pendingEffects.clear()
         }
 
         val collIter = collisions.iterator()
