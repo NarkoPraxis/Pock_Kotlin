@@ -118,8 +118,8 @@ class PrismSkin( override val renderer: PuckRenderer) : PuckSkin {
         fullCircle: Boolean,
         private val baseHue: Float
     ) : Effects.PersistentEffect {
-        private val maxDistance = radius * 3f
-        private val speed = maxDistance / 55f
+        private val maxDistance = radius * 5f
+        private val speed = maxDistance / 40f
         private val hueOffsets = floatArrayOf(0f, 40f, -30f, 20f, 60f, -15f, 10f, -20f, 50f, -10f, 35f, -40f)
         private val fillPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val edgePaint = Paint().apply {
@@ -137,13 +137,13 @@ class PrismSkin( override val renderer: PuckRenderer) : PuckSkin {
         private val tris: List<Tri>
 
         init {
-            val baseAngles = listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, Math.PI)
-            val fullAngles = List(12) { i -> i * (2.0 * Math.PI / 12) }
+            val baseAngles = listOf(0.0, .523599, 1.0472, 2.0944, 2.61799, Math.PI)
+            val fullAngles = List(6) { i -> i * (2.0 * Math.PI / 6) }
             val srcAngles = if (fullCircle) fullAngles else baseAngles
             tris = srcAngles.mapIndexed { idx, a ->
                 val adj = if (!fullCircle && !highGoal) a + Math.PI else a
                 val af = adj.toFloat()
-                Tri(cos(af), sin(af), baseHue + hueOffsets[idx % hueOffsets.size], radius * 0.42f)
+                Tri(cos(af), sin(af), baseHue + hueOffsets[idx % hueOffsets.size], radius * 0.577f)
             }.also { list -> list.forEach { it.x = cx; it.y = cy } }
         }
 
@@ -169,9 +169,9 @@ class PrismSkin( override val renderer: PuckRenderer) : PuckSkin {
                 edgePaint.color = Palette.hsvHighlight(hue); edgePaint.alpha = t.alpha
                 val perpX = -t.dirY; val perpY = t.dirX; val s = t.size
                 path.reset()
-                path.moveTo(t.x + t.dirX * s, t.y + t.dirY * s)
-                path.lineTo(t.x + perpX * s * 0.65f - t.dirX * s * 0.5f, t.y + perpY * s * 0.65f - t.dirY * s * 0.5f)
-                path.lineTo(t.x - perpX * s * 0.65f - t.dirX * s * 0.5f, t.y - perpY * s * 0.65f - t.dirY * s * 0.5f)
+                path.moveTo(t.x - t.dirX * s, t.y - t.dirY * s)
+                path.lineTo(t.x + perpX * s * 0.866f + t.dirX * s * 0.5f, t.y + perpY * s * 0.866f + t.dirY * s * 0.5f)
+                path.lineTo(t.x - perpX * s * 0.866f + t.dirX * s * 0.5f, t.y - perpY * s * 0.866f + t.dirY * s * 0.5f)
                 path.close()
                 canvas.drawPath(path, fillPaint)
                 canvas.drawPath(path, edgePaint)
