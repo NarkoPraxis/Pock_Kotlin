@@ -77,8 +77,7 @@ object Logic {
         Settings.launchBonus = Storage.launchBonus
         Settings.chargeIncreaseRate = Storage.chargeSpeed
         Settings.refreshRate = Storage.gameSpeed
-        //Todo get from Storage.loadPointsToWin()
-        Settings.pointsToWin = 1
+        Settings.pointsToWin = Storage.loadPointsToWin()
         Settings.highBallType = Storage.loadHighBallType(Settings.highBallType)
         Settings.lowBallType = Storage.loadLowBallType(Settings.lowBallType)
         Settings.unlockProgress = Storage.unlockProgress

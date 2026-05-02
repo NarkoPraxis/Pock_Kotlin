@@ -23,19 +23,13 @@ object Settings {
     var canScoreWallProgress: Float = 0f
     var canScore: Boolean = false
 
-    // Wall sits inside the goal zone; its inner edge touches the play-area boundary.
-    // Center is half a thickness inside the goal. As progress goes 0→1 the thickness
-    // shrinks symmetrically to zero.
-    val canScoreTopWallCenterY: Float get() = topGoalBottom - shortParticleSide / 2f
-    val canScoreBottomWallCenterY: Float get() = bottomGoalTop + shortParticleSide / 2f
+    // Opening: anchored at screen edge, inner edge retreats outward (inner side clears first).
+    // Closing: anchored at inner (goal) edge, outer edge grows toward screen edge (goal boundary appears immediately).
+    val canScoreTopWallTop: Float get() = if (canScore) 0f else topGoalBottom * canScoreWallProgress
+    val canScoreTopWallBottom: Float get() = if (canScore) topGoalBottom * (1f - canScoreWallProgress) else topGoalBottom
 
-    private val canScoreWallHalfThick: Float get() = shortParticleSide * (1f - canScoreWallProgress)
-
-    val canScoreTopWallTop: Float get() = canScoreTopWallCenterY - canScoreWallHalfThick * 9f
-    val canScoreTopWallBottom: Float get() = canScoreTopWallCenterY + canScoreWallHalfThick
-
-    val canScoreBottomWallTop: Float get() = canScoreBottomWallCenterY - canScoreWallHalfThick
-    val canScoreBottomWallBottom: Float get() = canScoreBottomWallCenterY + canScoreWallHalfThick * 9f
+    val canScoreBottomWallTop: Float get() = if (canScore) screenHeight - (screenHeight - bottomGoalTop) * (1f - canScoreWallProgress) else bottomGoalTop
+    val canScoreBottomWallBottom: Float get() = if (canScore) screenHeight else screenHeight - (screenHeight - bottomGoalTop) * canScoreWallProgress
     var refreshRate: Int = 16
     var unlockProgress = 0
     var pauseGame = false;

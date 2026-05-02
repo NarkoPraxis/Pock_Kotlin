@@ -54,9 +54,8 @@ object Drawing {
             val xEnd = xPos + Settings.longParticleSide
 
             // Top canScore wall
-            val topCY = Settings.canScoreTopWallCenterY
-            val highDist = highPlayer.puck.distanceTo(xPos, topCY) - Settings.screenRatio
-            val lowDist  = lowPlayer.puck.distanceTo(xPos, topCY)  - Settings.screenRatio
+            val highDist = highPlayer.puck.distanceTo(xPos, Settings.topGoalBottom) - Settings.screenRatio
+            val lowDist  = lowPlayer.puck.distanceTo(xPos, Settings.topGoalBottom)  - Settings.screenRatio
             var wallColor = PaintBucket.canScoreWallColor
             var proximityAlpha = 0f
             if (highDist < minDistance) {
@@ -75,9 +74,8 @@ object Drawing {
             canvas.drawRect(xPos, Settings.canScoreTopWallTop, xEnd, Settings.canScoreTopWallBottom, effectPaint)
 
             // Bottom canScore wall
-            val botCY = Settings.canScoreBottomWallCenterY
-            val highDistB = highPlayer.puck.distanceTo(xPos, botCY) - Settings.screenRatio
-            val lowDistB  = lowPlayer.puck.distanceTo(xPos, botCY)  - Settings.screenRatio
+            val highDistB = highPlayer.puck.distanceTo(xPos, Settings.bottomGoalTop) - Settings.screenRatio
+            val lowDistB  = lowPlayer.puck.distanceTo(xPos, Settings.bottomGoalTop)  - Settings.screenRatio
             var wallColorB = PaintBucket.canScoreWallColor
             var proximityAlphaB = 0f
             if (highDistB < minDistance) {
