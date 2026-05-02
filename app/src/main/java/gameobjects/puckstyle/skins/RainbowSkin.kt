@@ -47,10 +47,10 @@ class RainbowSkin( override val renderer: PuckRenderer) : PuckSkin {
     override val explosionFrequency get() = 20
 
     override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(RainbowLaunch.spawnCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false))
+        Effects.addPersistentEffect(RainbowLaunch.spawnCelebration(position.x, position.y, renderer.radius))
     }
 
     override fun onVictory(x: Float, y: Float) {
-        Effects.addPersistentEffect(RainbowLaunch.spawnCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true))
+        Effects.addPersistentEffect(RainbowLaunch.spawnCelebration(x, y, renderer.radius))
     }
 }

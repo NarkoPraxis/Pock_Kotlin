@@ -2,7 +2,6 @@ package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.RectF
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -10,6 +9,7 @@ import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.Palette
 import utility.Effects
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.sin
 
@@ -68,8 +68,8 @@ class RainbowLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             Effects.addPersistentEffect(SpectralGleam(rx, ry, radius))
         }
 
-        fun spawnCelebration(cx: Float, cy: Float, radius: Float, highGoal: Boolean, fullCircle: Boolean): Effects.PersistentEffect {
-            return SpectralGleam(cx, cy, radius, celebrationMaxAlpha = 255, halfCircle = !fullCircle, highGoal = highGoal)
+        fun spawnCelebration(cx: Float, cy: Float, radius: Float): Effects.PersistentEffect {
+            return SpectralGleam(cx, cy, radius, celebrationMaxAlpha = 255, fadeOut = true)
         }
     }
 
@@ -266,19 +266,13 @@ class RainbowLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val cx: Float, private val cy: Float,
         private val radius: Float,
         private val celebrationMaxAlpha: Int = MAX_ALPHA,
-        private val halfCircle: Boolean = false,
-        private val highGoal: Boolean = false
+        private val fadeOut: Boolean = false
     ) : Effects.PersistentEffect {
         private val paint = Paint().apply {
             isAntiAlias = true; style = Paint.Style.STROKE
         }
-        private val rect = RectF()
         private var frame = 0
-        private val startAngle = if (halfCircle && !highGoal) 180f else 0f
-        private val sweepAngle = if (halfCircle) 180f else 360f
-        private val maxRadius = if (halfCircle) radius * 3f else radius * 2f
-
-        // strokeWidth is constant after construction — cache it.
+        private val maxRadius = radius * 3f
         private val fixedStrokeWidth = Settings.strokeWidth * (2f / 3f)
 
         private var _isDone = false
@@ -287,40 +281,48 @@ class RainbowLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         companion object {
             private const val NUM_RINGS = 6
             private const val GROW_FRAMES = 30
-            private const val RAMP_FRAMES = 60
-            private const val MAX_ALPHA = 50
+            private const val HOLD_FRAMES = 5
+            private const val FADE_FRAMES = 60
+            private const val MAX_ALPHA = 100
+            private const val PULSE_SPEED = 6 // frames per ring step; raise to 3, 4, 5… to slow further
         }
 
         override fun step() {
             frame++
-            if (halfCircle && frame > RAMP_FRAMES + GROW_FRAMES) _isDone = true
+            if (fadeOut && frame > GROW_FRAMES + HOLD_FRAMES + FADE_FRAMES) _isDone = true
         }
 
         override fun draw(canvas: Canvas) {
-            val growT = (frame.toFloat() / GROW_FRAMES).coerceIn(0f, 1f)
-            val alpha = if (halfCircle) {
-                val fadeFrames = RAMP_FRAMES
-                if (frame < fadeFrames) ((frame.toFloat() / fadeFrames) * celebrationMaxAlpha).toInt()
-                else (celebrationMaxAlpha - ((frame - fadeFrames).toFloat() / GROW_FRAMES) * celebrationMaxAlpha).toInt()
-            } else {
-                if (frame < RAMP_FRAMES) ((frame.toFloat() / RAMP_FRAMES) * MAX_ALPHA).toInt()
-                else MAX_ALPHA
+            val baseAlpha = when {
+                frame < GROW_FRAMES -> ((frame.toFloat() / GROW_FRAMES) * celebrationMaxAlpha).toInt()
+                !fadeOut -> celebrationMaxAlpha
+                frame < GROW_FRAMES + HOLD_FRAMES -> celebrationMaxAlpha
+                else -> {
+                    val fadeProgress = (frame - GROW_FRAMES - HOLD_FRAMES).toFloat() / FADE_FRAMES
+                    ((1f - fadeProgress) * celebrationMaxAlpha).toInt()
+                }
             }
-            if (alpha <= 0) return
+            if (baseAlpha <= 0) return
+
+            val growT = (frame.toFloat() / GROW_FRAMES).coerceIn(0f, 1f)
             paint.strokeWidth = fixedStrokeWidth
+
+            // Pulse wave: advances one ring every PULSE_SPEED frames, looping.
+            val wavePos = (frame / PULSE_SPEED) % (NUM_RINGS + 4)
+
             for (i in 0 until NUM_RINGS) {
                 val finalRingRadius = maxRadius - (NUM_RINGS - 1 - i) * fixedStrokeWidth
                 val ringRadius = finalRingRadius * growT
                 if (ringRadius <= 0f) continue
+
                 val hue = i * (360f / NUM_RINGS) + frame * 0.5f
                 paint.color = Palette.hsvThemed(hue)
-                paint.alpha = alpha.coerceIn(0, celebrationMaxAlpha)
-                if (halfCircle) {
-                    rect.set(cx - ringRadius, cy - ringRadius, cx + ringRadius, cy + ringRadius)
-                    canvas.drawArc(rect, startAngle, sweepAngle, false, paint)
-                } else {
-                    canvas.drawCircle(cx, cy, ringRadius, paint)
-                }
+
+                val dist = abs(i - wavePos)
+                val alphaBonus = when (dist) { 0 -> 50; 1 -> 30; 2 -> 15; 3 -> 5; else -> 0 }
+                paint.alpha = (baseAlpha + alphaBonus).coerceIn(0, 255)
+
+                canvas.drawCircle(cx, cy, ringRadius, paint)
             }
         }
     }
