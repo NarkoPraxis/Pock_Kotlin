@@ -2,24 +2,24 @@
         xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <SwitchPreferenceCompat
+            android:defaultValue="true"
             android:key="high_player_arrow"
-            android:title="High Player Arrow"
             android:summary="Show aim arrow while charging (top player)"
-            android:defaultValue="true" />
+            android:title="Red Player's Arrow" />
     <SwitchPreferenceCompat
+            android:defaultValue="true"
             android:key="low_player_arrow"
-            android:title="Low Player Arrow"
             android:summary="Show aim arrow while charging (bottom player)"
-            android:defaultValue="true" />
+            android:title="Blue Player's Arrow" />
     <SwitchPreferenceCompat
+            android:defaultValue="true"
             android:key="high_player_charge_fill"
-            android:title="High Player Charge Fill"
             android:summary="Show charge fill bar while charging (top player)"
-            android:defaultValue="true" />
+            android:title="Red Player's Charge Meter" />
     <SwitchPreferenceCompat
+            android:defaultValue="true"
             android:key="low_player_charge_fill"
-            android:title="Low Player Charge Fill"
             android:summary="Show charge fill bar while charging (bottom player)"
-            android:defaultValue="true" />
+            android:title="Blue Player's Charge Meter" />
 
 </PreferenceScreen>

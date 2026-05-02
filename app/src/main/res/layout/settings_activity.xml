@@ -9,13 +9,18 @@
     <com.google.android.material.appbar.AppBarLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@color/effectColor"
             android:fitsSystemWindows="true">
 
         <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/settings_toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                app:title="Settings" />
+                android:background="@color/effectColor"
+                app:title="Settings"
+                app:titleTextColor="@android:color/white"
+                app:navigationIconTint="@android:color/white"
+                app:iconTint="@android:color/white" />
 
     </com.google.android.material.appbar.AppBarLayout>
 

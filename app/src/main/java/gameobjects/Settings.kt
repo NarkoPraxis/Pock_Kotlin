@@ -65,7 +65,6 @@ object Settings {
     var minPuckSpeed: Float = 3f// TODO: set by screen ratio
     var maxPuckSpeed: Float = 15f// TODO: set by screen ratio
     var maxPuckLaunchSpeed: Float = 23f// TODO: set by screen ratio
-    var maxBonusTickerTime: Int = 200
     var chargeIncreaseRate: Float = 1f
     var sweetSpotWindowFrames: Int = 60
     var inertHoldFrames: Int = 60
@@ -79,7 +78,6 @@ object Settings {
         else -> 1.0f
     }
     var scoreZoneHeight: Float = 3f
-    var launchBonus: Float = 10f
     var pointsToWin: Int = 5
     var highPlayerArrow: Boolean = true
     var lowPlayerArrow: Boolean = true

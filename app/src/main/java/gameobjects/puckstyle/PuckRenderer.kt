@@ -156,7 +156,7 @@ class PuckRenderer(var theme: ColorTheme) {
                     if (preview) canvas.drawCircle(x, y, radius, PaintBucket.placeholderPaint)
                     else layer.drawBody(canvas)
                 }
-                is TailRenderer -> layer.renderWithPreview(canvas)
+                is TailRenderer -> if (Settings.tailLength != 0) layer.renderWithPreview(canvas)
                 is LaunchEffect -> {
                     if (effectEnabled || (layer is PaddleLaunchEffect && layer.alwaysVisible))
                         layer.draw(canvas)

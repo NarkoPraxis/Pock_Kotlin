@@ -89,36 +89,64 @@ object Sounds {
         cellHeight = height / 6f
     }
 
+    private val effectiveBackgroundVol: Float
+        get() {
+            if (Storage.soundMasterMuted || Storage.soundBackgroundMuted) return 0f
+            return (Storage.soundMasterVolume / 100f) * (Storage.soundBackgroundVolume / 100f)
+        }
+
+    private val effectiveSfxVol: Float
+        get() {
+            if (Storage.soundMasterMuted || Storage.soundSfxMuted) return 0f
+            return (Storage.soundMasterVolume / 100f) * (Storage.soundSfxVolume / 100f)
+        }
+
+    fun applyBackgroundVolume() {
+        val vol = effectiveBackgroundVol
+        try { primaryPlayer?.setVolume(vol, vol) } catch (e: Exception) {}
+        try { secondaryPlayer?.setVolume(vol, vol) } catch (e: Exception) {}
+    }
+
     fun playHighPlayerSound(x: Float) {
-        soundPool.play(highPlayerSoundId, 1f,1f,1,0, rates[getXRate(x)])
+        val v = effectiveSfxVol
+        soundPool.play(highPlayerSoundId, v, v, 1, 0, rates[getXRate(x)])
     }
 
     fun playLowPlayerSound(x: Float) {
-        soundPool.play(lowPlayerSoundId, 1f,1f,1,0, rates[getXRate(x)])
+        val v = effectiveSfxVol
+        soundPool.play(lowPlayerSoundId, v, v, 1, 0, rates[getXRate(x)])
     }
     fun playWallSound(y: Float) {
-        soundPool.play(wallSoundId, 1f,1f,1,0, rates[getYRate(y)])
+        val v = effectiveSfxVol
+        soundPool.play(wallSoundId, v, v, 1, 0, rates[getYRate(y)])
     }
     fun playGoalSound(y: Float) {
-        soundPool.play(goalSoundId, 1f,1f,1,0, rates[getYRate(y)])
+        val v = effectiveSfxVol
+        soundPool.play(goalSoundId, v, v, 1, 0, rates[getYRate(y)])
     }
     fun playScoreSound(y: Float) {
-        soundPool.play(scoreId, 1f,1f,1,0, rates[getYRate(y)])
+        val v = effectiveSfxVol
+        soundPool.play(scoreId, v, v, 1, 0, rates[getYRate(y)])
     }
     fun playChargeCollision(x: Float) {
-        soundPool.play(chargeCollisionId, 1f,1f,1,0, rates[getXRate(x)])
+        val v = effectiveSfxVol
+        soundPool.play(chargeCollisionId, v, v, 1, 0, rates[getXRate(x)])
     }
     fun playDoubleChargeCollision(x: Float) {
-        soundPool.play(twoChargeCollisionId, 1f,1f,1,0, rates[getXRate(x)])
+        val v = effectiveSfxVol
+        soundPool.play(twoChargeCollisionId, v, v, 1, 0, rates[getXRate(x)])
     }
     fun playChargeBlastOff(x: Float) {
-        soundPool.play(chargeBlastoffId, 1f,1f,1,0, rates[getXRate(x)])
+        val v = effectiveSfxVol
+        soundPool.play(chargeBlastoffId, v, v, 1, 0, rates[getXRate(x)])
     }
     fun playTeleportStart(y: Float) {
-        soundPool.play(teleportId, 1f,1f,1,0, rates[getYRate(y)])
+        val v = effectiveSfxVol
+        soundPool.play(teleportId, v, v, 1, 0, rates[getYRate(y)])
     }
     fun playTeleportFinish(x: Float) {
-        soundPool.play(teleportId, 1f,1f,1,0, rates[getXRate(x)])
+        val v = effectiveSfxVol
+        soundPool.play(teleportId, v, v, 1, 0, rates[getXRate(x)])
     }
 
     fun playGameAmbiance() {
@@ -171,7 +199,8 @@ object Sounds {
         fadePauseOffset = 0L
         ambienceRes = resId
         primaryPlayer = MediaPlayer.create(context, resId)?.also {
-            it.setVolume(1f, 1f)
+            val vol = effectiveBackgroundVol
+            it.setVolume(vol, vol)
             it.isLooping = false
             it.start()
         }
@@ -215,8 +244,9 @@ object Sounds {
                 val elapsed = fadePauseOffset + (System.currentTimeMillis() - fadeStartTime)
                 val t = (elapsed.toFloat() / CROSSFADE_MS).coerceIn(0f, 1f)
                 val smooth = t * t * (3f - 2f * t)   // smoothstep: ease-in on incoming, ease-out on outgoing
-                try { outgoing.setVolume(1f - smooth, 1f - smooth) } catch (e: Exception) { }
-                try { incoming.setVolume(smooth, smooth) } catch (e: Exception) { }
+                val bgVol = effectiveBackgroundVol
+                try { outgoing.setVolume((1f - smooth) * bgVol, (1f - smooth) * bgVol) } catch (e: Exception) { }
+                try { incoming.setVolume(smooth * bgVol, smooth * bgVol) } catch (e: Exception) { }
                 if (t < 1f) {
                     ambienceHandler.postDelayed(this, STEP_MS)
                 } else {
@@ -266,7 +296,8 @@ object Sounds {
     }
 
     fun playWeHaveAWinner() {
-        soundPool.play(weHaveAWinnerId, 1f, 1f, 1, 0, 1f)
+        val v = effectiveSfxVol
+        soundPool.play(weHaveAWinnerId, v, v, 1, 0, 1f)
     }
 
     private fun getXRate(x: Float) : Int {

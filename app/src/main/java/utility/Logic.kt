@@ -73,8 +73,6 @@ object Logic {
 
     fun initializeSettings(width: Int, height: Int) {
         Settings.tailLength = Storage.tailLength
-        Settings.maxBonusTickerTime = Storage.maxBonusTickerTime
-        Settings.launchBonus = Storage.launchBonus
         Settings.chargeIncreaseRate = Storage.chargeSpeed
         Settings.refreshRate = Storage.gameSpeed
         Settings.pointsToWin = Storage.loadPointsToWin()
@@ -454,28 +452,28 @@ object Logic {
                     highPlayer.launch(
                         Force(
                             -direction,
-                            Settings.launchBonus + Settings.sweetSpotMax
+                            10f +Settings.sweetSpotMax
                         )
                     )
-                    lowPlayer.launch(Force(direction, Settings.launchBonus + Settings.sweetSpotMax))
+                    lowPlayer.launch(Force(direction, 10f +Settings.sweetSpotMax))
                     applyHitStun(highPlayer, highPlayer.puck.impactPower)
                     applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
                 } else if (highPlayer.reappearing) {
                     Sounds.playTeleportFinish(highPlayer.px)
-                    lowPlayer.launch(Force(direction, Settings.launchBonus + Settings.sweetSpotMax))
+                    lowPlayer.launch(Force(direction, 10f +Settings.sweetSpotMax))
                     applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
                 } else if (lowPlayer.reappearing) {
                     Sounds.playTeleportFinish(lowPlayer.px)
                     highPlayer.launch(
                         Force(
                             -direction,
-                            Settings.launchBonus + Settings.sweetSpotMax
+                            10f +Settings.sweetSpotMax
                         )
                     )
                     applyHitStun(highPlayer, highPlayer.puck.impactPower)
                 } else if (highPlayer.shielded && !lowPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
-                    lowPlayer.launch(Force(direction, Settings.launchBonus + highPlayer.power))
+                    lowPlayer.launch(Force(direction, 10f +highPlayer.power))
                     highPlayer.launch(Force(-direction, Settings.minLaunchPower))
                     lowPlayer.inertLocked = true
                     applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
@@ -483,7 +481,7 @@ object Logic {
                     lowPlayer.puck.renderer.skin.onHit()
                 } else if (lowPlayer.shielded && !highPlayer.shielded) {
                     Sounds.playChargeCollision(collisionPoint.x)
-                    highPlayer.launch(Force(-direction, Settings.launchBonus + lowPlayer.power))
+                    highPlayer.launch(Force(-direction, 10f +lowPlayer.power))
                     lowPlayer.launch(Force(direction, Settings.minLaunchPower))
                     highPlayer.inertLocked = true
                     applyHitStun(highPlayer, highPlayer.puck.impactPower)
@@ -493,8 +491,8 @@ object Logic {
                     Sounds.playDoubleChargeCollision(collisionPoint.x)
                     val lowPower = lowPlayer.power
                     val highPower = highPlayer.power
-                    highPlayer.launch(Force(-direction, Settings.launchBonus + lowPower))
-                    lowPlayer.launch(Force(direction, Settings.launchBonus + highPower))
+                    highPlayer.launch(Force(-direction, 10f +lowPower))
+                    lowPlayer.launch(Force(direction, 10f +highPower))
                     // both shielded — no hit-stun for either
                     highPlayer.puck.renderer.skin.onShieldedCollision(intersection)
                     lowPlayer.puck.renderer.skin.onShieldedCollision(intersection)

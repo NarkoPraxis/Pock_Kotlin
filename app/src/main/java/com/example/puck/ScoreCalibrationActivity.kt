@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -16,7 +17,6 @@ import utility.Drawing
 import utility.Logic
 import utility.PaintBucket
 import utility.Storage
-import androidx.core.graphics.toColorInt
 
 class ScoreCalibrationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,7 +57,6 @@ class ScoreCalibrationView(context: Context) : View(context) {
         color = Color.argb(140, 0, 0, 0)
     }
     private val btnFillPaint = Paint().apply {
-        color = "#2E2C50".toColorInt()
         isAntiAlias = true
         style = Paint.Style.FILL
     }
@@ -86,6 +85,11 @@ class ScoreCalibrationView(context: Context) : View(context) {
         bgPaint.color = PaintBucket.backgroundPaint.color
         goalPaint.color = PaintBucket.goalColor
         wallPaint.color = PaintBucket.effectColor
+
+        val tv = TypedValue()
+        context.theme.resolveAttribute(com.google.android.material.R.attr.colorSecondary, tv, true)
+        btnFillPaint.color = tv.data
+
 
         // Save button: same proportions as main menu buttons (260dp × 56dp, 28dp radius)
         val density = resources.displayMetrics.density

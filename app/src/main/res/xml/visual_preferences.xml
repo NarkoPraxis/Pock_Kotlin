@@ -1,17 +1,41 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <SwitchPreference
-            android:defaultValue="false"
-            android:key="darkmode"
-            android:title="@string/darkmode_label" />
+    <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="high_player_arrow"
+            android:summary="Show aim arrow while charging (top player)"
+            android:title="Red Player's Arrow" />
+    <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="low_player_arrow"
+            android:summary="Show aim arrow while charging (bottom player)"
+            android:title="Blue Player's Arrow" />
+    <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="high_player_charge_fill"
+            android:summary="Show charge fill bar while charging (top player)"
+            android:title="Red Player's Charge Meter" />
+    <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="low_player_charge_fill"
+            android:summary="Show charge fill bar while charging (bottom player)"
+            android:title="Blue Player's Charge Meter" />
+
+    <ListPreference
+            android:summary="%s"
+            android:defaultValue="default"
+            android:entries="@array/tail_lengths"
+            android:entryValues="@array/tail_length_values"
+            android:key="tail_length"
+            android:title="Tail Length" />
     <Preference
             android:key="calibrate_score"
             android:title="Calibrate Score Position"
             app:layout="@layout/preference_button_calibrate" />
-    <Preference
-            android:title="Restore Defaults"
-            android:summary="Reset all settings and score positions"
-            android:key="restore_defaults" />
+    <SwitchPreference
+            android:defaultValue="false"
+            android:key="darkmode"
+            android:title="@string/darkmode_label" />
 
 </PreferenceScreen>

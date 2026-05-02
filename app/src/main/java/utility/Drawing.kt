@@ -517,14 +517,14 @@ object Drawing {
         val lowPage = tipPages[lowTipIndex]
         val textX = Settings.screenRatio * 2f
         val lineHeight = Settings.screenRatio * 1.8f
-        val startY = Settings.bottomGoalTop - Settings.screenRatio * 11f
+        val startY = Settings.bottomGoalTop - Settings.screenRatio * 12.2f
         val lineCount = maxOf(highPage.size, lowPage.size)
         for (i in 0 until lineCount) {
             val y = startY + i * lineHeight
             val paint = if (i == 0) PaintBucket.rulesTitlePaint else PaintBucket.rulesTextPaint
             mirrorText(canvas, highPage.getOrElse(i) { "" }, lowPage.getOrElse(i) { "" }, textX, y, paint)
         }
-        mirrorText(canvas, "Hold Here When Ready", textX, Settings.screenHeight / 2 +  lineHeight * 3f, PaintBucket.rulesTitlePaint)
+        mirrorText(canvas, "Hold Here When Ready", textX, Settings.screenHeight / 2 +  lineHeight * 2.5f, PaintBucket.rulesTitlePaint)
     }
 
     fun drawGoalMenuHints(canvas: Canvas) {

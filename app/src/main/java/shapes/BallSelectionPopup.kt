@@ -43,7 +43,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
     //private val slotTailTypes: Array<BallType?> = arrayOfNulls(BallType.entries.size)
 
     val w: Float get() = Settings.screenWidth
-    val h: Float get() = Settings.screenRatio * 3.8f
+    val h: Float get() = Settings.screenRatio * 5f
     val cx: Float get() = Settings.middleX
     val cy: Float get() = if (isHigh) Settings.topGoalBottom + h / 2f else Settings.bottomGoalTop - h / 2f
 
@@ -171,7 +171,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         if (!isOpen) return
 
         // Plan 00: re-apply light/dark colors each frame
-        bg.color = if (Storage.darkMode) Color.argb(230, 10, 10, 20) else Color.argb(230, 225, 225, 240)
+        bg.color = if (Storage.darkMode) Color.argb(230, 10, 10, 20) else Color.WHITE
 
         val halfW = w / 2f
         val halfH = h / 2f
@@ -206,12 +206,12 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
             if (isCenter) {
                 slotBgSel.color = Color.argb(90, Color.red(theme.main.primary), Color.green(theme.main.primary), Color.blue(theme.main.primary))
-                canvas.drawRoundRect(slotCenterX - slotW * 0.45f, cy - halfH + Settings.screenRatio * 0.4f,
-                    slotCenterX + slotW * 0.45f, cy + halfH - Settings.screenRatio * 0.4f,
+                canvas.drawRoundRect(slotCenterX - slotW * 0.45f, cy - halfH + Settings.screenRatio * 1.25f,
+                    slotCenterX + slotW * 0.45f, cy + halfH - Settings.screenRatio * 1.25f,
                     Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, slotBgSel)
             } else {
-                canvas.drawRoundRect(slotCenterX - slotW * 0.42f, cy - halfH + Settings.screenRatio * 0.5f,
-                    slotCenterX + slotW * 0.42f, cy + halfH - Settings.screenRatio * 0.5f,
+                canvas.drawRoundRect(slotCenterX - slotW * 0.42f, cy - halfH + Settings.screenRatio * 1.35f,
+                    slotCenterX + slotW * 0.42f, cy + halfH - Settings.screenRatio * 1.35f,
                     Settings.screenRatio * 0.25f, Settings.screenRatio * 0.25f, slotBg)
             }
 

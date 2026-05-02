@@ -13,45 +13,36 @@
         <item>Big</item>
     </string-array>
 
-    <string-array name="bonus_durations">
-        <item>Short</item>
-        <item>Default</item>
-        <item>Long</item>
-    </string-array>
-
-    <string-array name="charge_speeds">
+<string-array name="charge_speeds">
         <item>Slow</item>
         <item>Default</item>
         <item>Fast</item>
+        <item>Fastest</item>
+    </string-array>
+    <string-array name="charge_speed_values">
+        <item>small</item>
+        <item>default</item>
+        <item>large</item>
+        <item>fastest</item>
     </string-array>
 
     <string-array name="tail_lengths">
+        <item>None</item>
         <item>Short</item>
         <item>Default</item>
         <item>Long</item>
+    </string-array>
+    <string-array name="tail_length_values">
+        <item>none</item>
+        <item>small</item>
+        <item>default</item>
+        <item>large</item>
     </string-array>
 
     <string-array name="game_speeds">
         <item>Slow</item>
         <item>Default</item>
         <item>Fast</item>
-    </string-array>
-
-    <string-array name="bounce_bonuses">
-        <item>Small</item>
-        <item>Default</item>
-        <item>Large</item>
-    </string-array>
-
-    <string-array name="countdown_speeds">
-        <item>Slow</item>
-        <item>Fast</item>
-        <item>Fastest</item>
-    </string-array>
-    <string-array name="countdown_speed_values">
-        <item>slow</item>
-        <item>fast</item>
-        <item>fastest</item>
     </string-array>
 
     <string-array name="points_to_win_entries">

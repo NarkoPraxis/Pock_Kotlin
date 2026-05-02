@@ -25,9 +25,11 @@ object Storage {
     private const val scoreOffsetHighKey = "score_offset_high"
     private const val scoreOffsetLowKey = "score_offset_low"
 
+    private const val N = "none"
     private const val S = "small"
     private const val D = "default"
     private const val L = "large"
+    private const val F = "fastest"
 
     private const val MAX_ADS_PER_DAY = 5
     private const val HOURLY_COOLDOWN_MS = 60 * 60 * 1000L
@@ -137,33 +139,19 @@ object Storage {
     val ballSize: String? get() = settings.getString("ball_sizes", D)
     val tailLength: Int get() {
         return when (settings.getString("tail_length", D)) {
+            N -> 0
             S -> 10
             D -> 20
             L -> 40
             else -> 20
         }
     }
-    val maxBonusTickerTime: Int get() {
-        return when (settings.getString("bonus_duration", D)) {
-            S -> 100
-            D -> 200
-            L -> 400
-            else -> 200
-        }
-    }
-    val launchBonus: Float get() {
-        return when (settings.getString("bounce_bonus", D)) {
-            S -> 5f
-            D -> 10f
-            L -> 20f
-            else -> 10f
-        }
-    }
-    val chargeSpeed: Float get() {
+val chargeSpeed: Float get() {
         return when (settings.getString("charge_speed", D)) {
             S -> .3f
             D -> .7f
             L -> 1.2f
+            F -> 2f
             else -> .7f
         }
     }
@@ -180,18 +168,26 @@ object Storage {
         return settings.getString("points_to_win", "5")?.toIntOrNull() ?: 5
     }
 
-    val countdownFramesPerBeat: Int get() {
-        return when (settings.getString("countdown_speed", "slow")) {
-            "fast" -> 18
-            "fastest" -> 10
-            else -> 33
-        }
-    }
-
-    val highPlayerArrow: Boolean get() = settings.getBoolean("high_player_arrow", true)
+val highPlayerArrow: Boolean get() = settings.getBoolean("high_player_arrow", true)
     val lowPlayerArrow: Boolean get() = settings.getBoolean("low_player_arrow", true)
     val highPlayerChargeFill: Boolean get() = settings.getBoolean("high_player_charge_fill", true)
     val lowPlayerChargeFill: Boolean get() = settings.getBoolean("low_player_charge_fill", true)
+
+    // --- Sound volume settings ---
+
+    val soundMasterVolume: Int get() = settings.getInt("sound_master_volume", 100)
+    val soundBackgroundVolume: Int get() = settings.getInt("sound_background_volume", 100)
+    val soundSfxVolume: Int get() = settings.getInt("sound_sfx_volume", 100)
+    val soundMasterMuted: Boolean get() = settings.getBoolean("sound_master_muted", false)
+    val soundBackgroundMuted: Boolean get() = settings.getBoolean("sound_background_muted", false)
+    val soundSfxMuted: Boolean get() = settings.getBoolean("sound_sfx_muted", false)
+
+    fun saveSoundMasterVolume(v: Int) = settings.edit().putInt("sound_master_volume", v).apply()
+    fun saveSoundBackgroundVolume(v: Int) = settings.edit().putInt("sound_background_volume", v).apply()
+    fun saveSoundSfxVolume(v: Int) = settings.edit().putInt("sound_sfx_volume", v).apply()
+    fun saveSoundMasterMuted(m: Boolean) = settings.edit().putBoolean("sound_master_muted", m).apply()
+    fun saveSoundBackgroundMuted(m: Boolean) = settings.edit().putBoolean("sound_background_muted", m).apply()
+    fun saveSoundSfxMuted(m: Boolean) = settings.edit().putBoolean("sound_sfx_muted", m).apply()
 
     private fun readFile(context: Context, fileName: String): String {
         val sb = StringBuilder()
