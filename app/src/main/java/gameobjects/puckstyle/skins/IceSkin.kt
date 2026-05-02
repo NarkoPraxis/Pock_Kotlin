@@ -51,7 +51,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
         fullCircle: Boolean,
         private val theme: ColorTheme
     ) : Effects.PersistentEffect {
-        private val maxDistance = radius * 3f
+        private val maxDistance = radius * 5f
         private val crystalPath = Path()
         private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val stroke = Paint().apply {
@@ -79,9 +79,8 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
             var traveled = 0f
             var postMeltFrame = -1
             var done = false
-            val meltDuration = 25
+            val meltDuration = 18
             val fadeDuration = 25
-            var startT = 0f
         }
 
         private val crystals: List<Crystal>
@@ -92,7 +91,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
             val srcAngles = if (fullCircle) fullAngles else baseAngles
             crystals = srcAngles.map { a ->
                 val adj = if (!fullCircle && !highGoal) a + Math.PI else a
-                Crystal(cx, cy, cos(adj.toFloat()), sin(adj.toFloat()), maxDistance / 45f, maxDistance, radius * 0.55f)
+                Crystal(cx, cy, cos(adj.toFloat()), sin(adj.toFloat()), maxDistance / 45f, maxDistance, radius * 0.3f)
             }
         }
 
@@ -107,7 +106,6 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
                     c.traveled += c.speed
                     if (c.traveled >= c.maxDist) {
                         c.postMeltFrame = 0
-                        c.startT = (c.traveled / (c.maxDist * 1.4f)).coerceIn(0f, 1f)
                     }
                 } else {
                     c.postMeltFrame++
@@ -123,30 +121,29 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
             if (centralAlpha > 0) {
                 fill.color = theme.main.primary
                 fill.alpha = centralAlpha
-                canvas.drawCircle(cx, cy, radius * 2.5f * centralT + radius * 0.5f, fill)
+                canvas.drawCircle(cx, cy, radius * 2.5f * centralT + radius * centralT, fill)
             }
 
             for (c in crystals) {
                 if (c.done) continue
                 if (c.postMeltFrame < 0) {
-                    val progress = (c.traveled / c.maxDist).coerceIn(0f, 1f)
+                    val progress = (c.traveled / c.maxDist).coerceIn(0f, 2f)
+                    val crystalT = TRAVEL_T_START + progress * (TRAVEL_T_END - TRAVEL_T_START)
                     val puddleAlpha = (80 * progress).toInt().coerceIn(0, 120)
                     if (puddleAlpha > 0) {
                         fill.color = theme.main.primary; fill.alpha = puddleAlpha
                         canvas.drawCircle(c.x, c.y, c.radius * 1.5f * progress, fill)
                     }
-                    drawCrystalAt(canvas, c.x, c.y, progress * 0.25f, c.radius)
+                    drawCrystalAt(canvas, c.x, c.y, crystalT, c.radius)
                 } else {
-                    val crystalT = if (c.postMeltFrame < c.meltDuration)
-                        c.startT + (c.postMeltFrame.toFloat() / c.meltDuration) * (1f - c.startT)
-                    else 1f
-                    if (crystalT < 1f) drawCrystalAt(canvas, c.x, c.y, crystalT, c.radius)
-                    val growT = (c.postMeltFrame.toFloat() / (c.meltDuration + c.fadeDuration * 0.5f)).coerceIn(0f, 1f)
+                    val meltFraction = (c.postMeltFrame.toFloat() / c.meltDuration).coerceIn(0f, 1f)
+                    val crystalT = TRAVEL_T_END + meltFraction * (1.4f - TRAVEL_T_END)
+                    drawCrystalAt(canvas, c.x, c.y, crystalT, c.radius)
                     val fadeT = ((c.postMeltFrame - c.meltDuration).toFloat() / c.fadeDuration).coerceIn(0f, 1f)
                     val alpha = (120 * (1f - fadeT)).toInt().coerceIn(0, 255)
                     if (alpha > 0) {
                         fill.color = theme.main.primary; fill.alpha = alpha
-                        canvas.drawCircle(c.x, c.y, c.radius * growT * 1.5f, fill)
+                        canvas.drawCircle(c.x, c.y, c.radius * 1.5f * centralT, fill)
                     }
                 }
             }
@@ -171,8 +168,11 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
         }
 
         companion object {
-            // 8-point star angles shared across all IceScoreEffect instances.
             private val CRYSTAL_ANGLES = FloatArray(8) { i -> (i * 2.0 * PI / 8).toFloat() }
+            // Crystal shrink range: travel covers TRAVEL_T_START→TRAVEL_T_END, melt continues to 1.0.
+            // This ensures no size snap at the travel→melt boundary.
+            private const val TRAVEL_T_START = 0.1f
+            private const val TRAVEL_T_END = 0.35f
         }
     }
 
