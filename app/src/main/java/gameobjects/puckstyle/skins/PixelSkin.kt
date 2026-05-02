@@ -69,8 +69,8 @@ class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
         private val color: Int,
         private val secondaryColor: Int
     ) : Effects.PersistentEffect {
-        private val maxDistance = radius * 3f
-        private val halfSide = radius * 0.55f
+        private val maxDistance = radius * 5f
+        private val halfSide = radius * 0.4f
         private val fill = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
         private val ring = Paint().apply { isAntiAlias = false; style = Paint.Style.STROKE; strokeWidth = radius * 0.3f }
 
@@ -115,7 +115,7 @@ class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
                         p.rippling = true; p.rippleSize = p.halfSide * 1.8f; p.rippleAlpha = 200
                     }
                 } else {
-                    p.rippleSize += radius * 0.09f
+                    p.rippleSize += radius * 0.15f
                     p.rippleAlpha -= 12
                     if (p.rippleAlpha <= 0) {
                         p.rippleAlpha = 0
@@ -130,8 +130,8 @@ class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
             for (p in pixels) {
                 if (p.done) continue
                 if (!p.rippling) {
-                    fill.color = color
-                    canvas.drawRect(p.x - p.halfSide, p.y - p.halfSide, p.x + p.halfSide, p.y + p.halfSide, fill)
+                    ring.color = secondaryColor
+                    canvas.drawRect(p.x - p.halfSide, p.y - p.halfSide, p.x + p.halfSide, p.y + p.halfSide, ring)
                 } else {
                     val half = p.rippleSize / 2f
                     // rippleAlpha is already clamped to [0,255] by step()
