@@ -103,18 +103,27 @@ class SpinnerSkin( override val renderer: PuckRenderer) : PuckSkin {
     }
 
     override fun onVictory(x: Float, y: Float) {
-        Effects.addPersistentEffect(SpinnerResidual(x, y, renderer.radius, theme.main.primary, if (theme.isWarm) -1f else 1f))
+        celebrationActive = true
+        celebrationFrame = 0
+        Effects.addPersistentEffect(SpinnerResidual(x, y, renderer.radius, theme.main.primary, if (theme.isWarm) -1f else 1f, asVictory = true))
     }
     class SpinnerResidual(
         private val cx: Float, private val cy: Float,
         private val radius: Float,
         private val armColor: Int,
         private val spinDir: Float,
+        private val asVictory: Boolean = false,
     ) : Effects.PersistentEffect {
         private val arm = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val path = Path()
         private var frame = 0
-        override val isDone = false
+        private var victoryDone = false
+        override val isDone get() = victoryDone
+
+        private val V_GROW   = 40
+        private val V_HOLD   = 20
+        private val V_SHRINK = 50
+        private val V_TOTAL  = V_GROW + V_HOLD + V_SHRINK
 
         // Pre-computed arm angle step (4 arms, 360 / 4 = 90 degrees)
         private val armAngleStep = 360f / 4
@@ -127,20 +136,39 @@ class SpinnerSkin( override val renderer: PuckRenderer) : PuckSkin {
         private val innerTipX = radius * 0.7f
         private val innerHalf = radius * .3f
 
-        override fun step() { frame++ }
+        override fun step() {
+            frame++
+            if (asVictory && frame >= V_TOTAL) victoryDone = true
+        }
 
         override fun draw(canvas: Canvas) {
-            val t = (frame / 200f).coerceIn(0f, 1f)
-            val alpha = (255 - 155 * t).toInt().coerceIn(50, 255)
+            val alpha: Int
+            val scale: Float
+            if (asVictory) {
+                val t = when {
+                    frame <= V_GROW -> frame.toFloat() / V_GROW
+                    frame <= V_GROW + V_HOLD -> 1f
+                    else -> 1f - (frame - V_GROW - V_HOLD).toFloat() / V_SHRINK
+                }.coerceIn(0f, 1f)
+                // ease in-out for scale: 0 → 3× → 0
+                val eased = t * t * (3f - 2f * t)
+                scale = eased * 3f
+                alpha = (255 * eased).toInt().coerceIn(0, 255)
+            } else {
+                scale = 1f
+                val t = (frame / 200f).coerceIn(0f, 1f)
+                alpha = (255 - 155 * t).toInt().coerceIn(50, 255)
+            }
+
             arm.color = armColor
             arm.alpha = alpha
 
             canvas.save()
             canvas.translate(cx, cy)
+            if (asVictory) canvas.scale(scale, scale)
             canvas.rotate(frame * 2f * spinDir)
             val armCount = 4
 
-            // Merged loop: draw outer arm then inner arm for the same index
             for (i in 0 until armCount) {
                 canvas.save()
                 canvas.rotate(armAngleStep * i)
@@ -153,7 +181,7 @@ class SpinnerSkin( override val renderer: PuckRenderer) : PuckSkin {
                 path.close()
                 canvas.drawPath(path, arm)
 
-                // Inner arm (same color, no need to re-set arm.color)
+                // Inner arm
                 path.reset()
                 path.moveTo(0f, 0f)
                 path.quadTo(innerCtrl, innerHalf, innerTipX, 0f)
