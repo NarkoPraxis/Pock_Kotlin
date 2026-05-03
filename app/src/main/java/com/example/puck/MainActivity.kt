@@ -13,6 +13,7 @@ import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.OnUserEarnedRewardListener
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import gameobjects.BotConfig
 import gameobjects.Settings
 import com.example.puck.databinding.ActivityMainBinding
 import utility.ShareHelper
@@ -96,10 +97,31 @@ class MainActivity : AppCompatActivity() {
 
     fun goToGameView(view: View) {
         Settings.startWithTutorial = false
+        Settings.isSinglePlayer = false
         val intent = Intent(this, GameActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         Sounds.playGameAmbiance()
         startActivity(intent)
+    }
+
+    fun goToSinglePlayer(view: View) {
+        val options = arrayOf("Easy", "Medium", "Hard")
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Choose Difficulty")
+            .setItems(options) { _, which ->
+                Settings.botConfig = when (which) {
+                    0 -> BotConfig.Easy
+                    1 -> BotConfig.Medium
+                    else -> BotConfig.Hard
+                }
+                Settings.isSinglePlayer = true
+                Settings.startWithTutorial = false
+                val intent = Intent(this, GameActivity::class.java)
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                Sounds.playGameAmbiance()
+                startActivity(intent)
+            }
+            .show()
     }
 
     fun goToTutorial(view: View) {

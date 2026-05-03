@@ -3,7 +3,10 @@
     "allow": [
       "Bash(mv \"Plans/01-victory-condition-past-5.md\" \"Plans/✅01-victory-condition-past-5.md\")",
       "Bash(mv \"Plans/12-points-to-win-setting.md\" \"Plans/✅12-points-to-win-setting.md\")",
-      "Bash(mv \"Plans/09-score-screen-effect.md\" \"Plans/✅09-score-screen-effect.md\")"
+      "Bash(mv \"Plans/09-score-screen-effect.md\" \"Plans/✅09-score-screen-effect.md\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\zwery\\\\OneDrive\\\\Documents\\\\Android Studio\\\\Pock_Kotlin\" -Recurse -Filter \"*.kt\")",
+      "Bash(Select-Object -First 20)",
+      "Bash(Format-Table FullName)"
     ]
   }
 }

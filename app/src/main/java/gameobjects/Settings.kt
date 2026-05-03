@@ -90,4 +90,7 @@ object Settings {
     val hitStunMaxImpactPower: Float get() = maxPuckLaunchSpeed
     val hitStunMinSeconds: Float = 0.15f
     val hitStunMaxSeconds: Float = 0.5f
+
+    var isSinglePlayer: Boolean = false
+    var botConfig: BotConfig = BotConfig.Easy
 }

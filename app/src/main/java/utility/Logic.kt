@@ -22,6 +22,7 @@ import physics.Force
 import physics.Point
 import physics.Ticker
 import shapes.Circle
+import gameobjects.BotBrain
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -31,6 +32,7 @@ object Logic {
 
     lateinit var highPlayer: Player
     lateinit var lowPlayer: Player
+    var botBrain: BotBrain? = null
 
     lateinit var pauseMenu: PauseMenu
     lateinit var victoryTicker: Ticker
@@ -131,6 +133,7 @@ object Logic {
         lowPopupDragPointerId = -1
         Drawing.resetTipIndices()
         applyBallStyles()
+        botBrain = if (Settings.isSinglePlayer) BotBrain(highPlayer, lowPlayer, Settings.botConfig) else null
         registerPhaseCallbacks()
 
         highPlayer.resetLocation = Point(highStartX, Settings.middleY)
@@ -301,11 +304,13 @@ object Logic {
         when (masked) {
             MotionEvent.ACTION_DOWN -> {
                 if (actionY < Settings.middleY) {
-                    Drawing.cycleHighTip()
-                    highTouchedFirst = true
-                    if (highPlayer.lockedPointerId == -1) highPlayer.lockedPointerId = actionPointerId
-                    startFling(highPlayer, actionX, actionY)
-                    setSingleTouch(motionEvent, highPlayer)
+                    if (!Settings.isSinglePlayer) {
+                        Drawing.cycleHighTip()
+                        highTouchedFirst = true
+                        if (highPlayer.lockedPointerId == -1) highPlayer.lockedPointerId = actionPointerId
+                        startFling(highPlayer, actionX, actionY)
+                        setSingleTouch(motionEvent, highPlayer)
+                    }
                 } else {
                     Drawing.cycleLowTip()
                     highTouchedFirst = false
@@ -315,7 +320,7 @@ object Logic {
                 }
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
-                if (actionY < Settings.middleY && highPlayer.lockedPointerId == -1) {
+                if (actionY < Settings.middleY && highPlayer.lockedPointerId == -1 && !Settings.isSinglePlayer) {
                     Drawing.cycleHighTip()
                     highPlayer.lockedPointerId = actionPointerId
                     startFling(highPlayer, actionX, actionY)
@@ -600,21 +605,21 @@ object Logic {
         if (highTouchedFirst) {
             if (lowPlayer.notLocked()) {
                 when (motionEvent) {
-                    MotionEvent.ACTION_POINTER_2_DOWN -> setMultiTouch(TouchState.Down,lowPlayer)
+                    MotionEvent.ACTION_POINTER_2_DOWN -> setMultiTouch(TouchState.Down, lowPlayer)
                     MotionEvent.ACTION_POINTER_2_UP -> setMultiTouch(TouchState.Up, lowPlayer)
                 }
             }
-            if (highPlayer.notLocked()) {
+            if (!Settings.isSinglePlayer && highPlayer.notLocked()) {
                 when (motionEvent) {
-                    MotionEvent.ACTION_POINTER_DOWN -> setMultiTouch( TouchState.Down,highPlayer)
+                    MotionEvent.ACTION_POINTER_DOWN -> setMultiTouch(TouchState.Down, highPlayer)
                     MotionEvent.ACTION_POINTER_UP -> setMultiTouch(TouchState.Up, highPlayer)
                 }
             }
         } else {
-            if (highPlayer.notLocked()) {
+            if (!Settings.isSinglePlayer && highPlayer.notLocked()) {
                 when (motionEvent) {
-                    MotionEvent.ACTION_POINTER_2_DOWN -> setMultiTouch(TouchState.Down,  highPlayer  )
-                    MotionEvent.ACTION_POINTER_2_UP -> setMultiTouch( TouchState.Up,  highPlayer)
+                    MotionEvent.ACTION_POINTER_2_DOWN -> setMultiTouch(TouchState.Down, highPlayer)
+                    MotionEvent.ACTION_POINTER_2_UP -> setMultiTouch(TouchState.Up, highPlayer)
                 }
             }
             if (lowPlayer.notLocked()) {
@@ -741,6 +746,7 @@ object Logic {
             Settings.gameState = GameState.Scored
             Settings.canScore = false
             Settings.canScoreWallProgress = 0f
+            botBrain?.reset()
             Sounds.playScoreSound(loser.py)
             Effects.clearCollisionEffects()
             Effects.signalScored()
@@ -827,7 +833,7 @@ object Logic {
             val actionX = event.getX(actionIndex)
 
             if (maskedAction == MotionEvent.ACTION_POINTER_DOWN) {
-                if (actionY < Settings.middleY && highPlayer.lockedPointerId == -1) {
+                if (actionY < Settings.middleY && highPlayer.lockedPointerId == -1 && !Settings.isSinglePlayer) {
                     highPlayer.lockedPointerId = actionPointerId
                     startFling(highPlayer, actionX, actionY)
                 } else if (actionY > Settings.middleY && lowPlayer.lockedPointerId == -1) {
@@ -918,7 +924,7 @@ object Logic {
                         if (lowPlayer.lockedPointerId == -1) lowPlayer.lockedPointerId = pointerId
                         startFling(lowPlayer, x, y)
                         setSingleTouch(motionEvent, lowPlayer)
-                    } else {
+                    } else if (!Settings.isSinglePlayer) {
                         highTouchedFirst = true
                         if (highPlayer.lockedPointerId == -1) highPlayer.lockedPointerId = pointerId
                         startFling(highPlayer, x, y)

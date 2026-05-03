@@ -338,6 +338,24 @@ class Player(
         puck.movement.power = 0f
     }
 
+    fun beginBotCharge() {
+        clearCharge()
+        val cx = Settings.screenWidth / 2f
+        val cy = if (isHigh) Settings.screenHeight * 0.25f else Settings.screenHeight * 0.75f
+        flingStart.setLocation(cx, cy)
+        flingCurrent.setLocation(cx, cy)
+        isFlingHeld = true
+        touch = TouchState.Down
+    }
+
+    fun releaseBotShot(aimDir: physics.Point, power: Float) {
+        flingReleaseDir = aimDir
+        flingReleaseBasePower = power
+        isFlingHeld = false
+        touch = TouchState.Ready
+        shouldReleaseCharge = true
+    }
+
     fun increaseCharge() {
         if (isHitStunned) return
         puck.renderer.effect?.increaseCharge()

@@ -38,6 +38,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
     private fun startPlayers() {
         handle.removeCallbacksAndMessages(null)
         runnable = Runnable {
+            Logic.botBrain?.tick()
             Logic.updateCanScoreWall()
             when (Settings.gameState) {
                 GameState.BallSelection -> {
@@ -176,6 +177,7 @@ class GameActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         Logic.unregisterPhaseCallbacks()
+        Settings.isSinglePlayer = false
     }
 
 

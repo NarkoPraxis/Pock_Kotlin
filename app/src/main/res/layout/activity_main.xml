@@ -60,6 +60,21 @@
             app:layout_constraintTop_toBottomOf="@+id/Title" />
 
     <com.google.android.material.button.MaterialButton
+            android:id="@+id/playAloneButton"
+            android:layout_width="260dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:onClick="goToSinglePlayer"
+            android:text="Play Alone"
+            android:textSize="18sp"
+            android:textColor="?android:attr/textColorPrimary"
+            app:cornerRadius="28dp"
+            app:backgroundTint="?attr/colorSecondary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/playButton" />
+
+    <com.google.android.material.button.MaterialButton
             android:id="@+id/settingsButton"
             android:layout_width="260dp"
             android:layout_height="56dp"
@@ -72,7 +87,7 @@
             app:backgroundTint="?attr/colorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/playButton" />
+            app:layout_constraintTop_toBottomOf="@+id/playAloneButton" />
 
     <com.google.android.material.button.MaterialButton
             android:id="@+id/rewardedAdButton"
