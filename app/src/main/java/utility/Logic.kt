@@ -166,6 +166,8 @@ object Logic {
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight - Settings.screenHeight / 5, PaintBucket.lowBallColor, PaintBucket.lowBallStrokeColor),
             false
         )
+        botBrain?.updateReferences(highPlayer, lowPlayer)
+        registerPhaseCallbacks()
     }
 
 

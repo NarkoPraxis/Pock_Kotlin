@@ -338,6 +338,17 @@ class Player(
         puck.movement.power = 0f
     }
 
+    fun updateBotAimDirection(aimDir: physics.Point, power: Float = Settings.sweetSpotMax.toFloat()) {
+        if (!isFlingHeld) return
+        val powerRange = Settings.sweetSpotMax - Settings.chargeStart
+        val ratio = ((power - Settings.chargeStart) / powerRange).coerceIn(0f, 1f)
+        val aimOffset = ratio * Settings.screenRatio * 5f
+        flingCurrent.setLocation(
+            flingStart.x - aimDir.x * aimOffset,
+            flingStart.y - aimDir.y * aimOffset
+        )
+    }
+
     fun beginBotCharge() {
         clearCharge()
         val cx = Settings.screenWidth / 2f

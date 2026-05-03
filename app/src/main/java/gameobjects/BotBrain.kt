@@ -5,10 +5,9 @@ import enums.TouchState
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.sqrt
 import kotlin.random.Random
 
-class BotBrain(private val player: Player, private val opponent: Player, private val config: BotConfig) {
+class BotBrain(private var player: Player, private var opponent: Player, private val config: BotConfig) {
 
     private enum class BotState { Waiting, Charging, Released }
 
@@ -17,6 +16,7 @@ class BotBrain(private val player: Player, private val opponent: Player, private
     private var plannedAimDir = physics.Point(0f, 0f)
     private var plannedPower = 0f
     private var lastGameState = GameState.BallSelection
+    private var storedVarianceRad = 0f
 
     fun tick() {
         val currentState = Settings.gameState
@@ -25,10 +25,14 @@ class BotBrain(private val player: Player, private val opponent: Player, private
 
         when (currentState) {
             GameState.BallSelection -> {
-                player.flingStart.setLocation(player.puck.x, player.puck.y)
-                player.flingCurrent.setLocation(player.puck.x, player.puck.y)
-                player.isFlingHeld = true
-                player.touch = TouchState.Down
+                if (opponent.isFlingHeld) {
+                    if (!player.isFlingHeld) {
+                        player.flingStart.setLocation(player.puck.x, player.puck.y)
+                        player.flingCurrent.setLocation(player.puck.x, player.puck.y)
+                        player.isFlingHeld = true
+                    }
+                    player.touch = TouchState.Down
+                }
             }
             GameState.Play -> {
                 if (stateChanged) {
@@ -50,6 +54,7 @@ class BotBrain(private val player: Player, private val opponent: Player, private
             }
             BotState.Charging -> {
                 framesRemaining--
+                updateTracking()
                 if (framesRemaining <= 0) fireShot()
             }
             BotState.Released -> {
@@ -59,36 +64,48 @@ class BotBrain(private val player: Player, private val opponent: Player, private
         }
     }
 
-    private fun planAndStartShot() {
+    private fun updateTracking() {
+        plannedAimDir = currentAimDir()
+        player.updateBotAimDirection(plannedAimDir, plannedPower)
+    }
+
+    private fun currentAimDir(): physics.Point {
         val dx = opponent.puck.x - player.puck.x
         val dy = opponent.puck.y - player.puck.y
-        val dist = sqrt(dx * dx + dy * dy)
         val baseAngle = atan2(dy, dx)
+        val finalAngle = baseAngle + storedVarianceRad
+        return physics.Point(cos(finalAngle), sin(finalAngle))
+    }
 
-        val varianceDeg = Random.nextFloat() * 2 * config.accuracyVariance - config.accuracyVariance
-        val varianceRad = (varianceDeg * Math.PI / 180.0).toFloat()
-        val finalAngle = baseAngle + varianceRad
+    private fun planAndStartShot() {
+        val varianceDeg = kotlin.random.Random.nextFloat() * 2 * config.accuracyVariance - config.accuracyVariance
+        storedVarianceRad = (varianceDeg * Math.PI / 180.0).toFloat()
+        plannedAimDir = currentAimDir()
 
-        plannedAimDir = physics.Point(cos(finalAngle), sin(finalAngle))
+        // Frames needed for charge to reach sweetSpotMax (phase → SweetSpot), adjusted for charge rate.
+        val framesToSweetSpot = ((Settings.sweetSpotMax - Settings.chargeStart) / Settings.chargeIncreaseRate).toInt()
+        // Total frames until Draining begins (= sweet spot window end).
+        val totalFramesToDraining = framesToSweetSpot + Settings.sweetSpotWindowFrames
 
         val hitsSweetSpot = Random.nextInt(1, 101) <= config.sweetSpotChance
         val chargeFrames: Int
         if (hitsSweetSpot) {
-            plannedPower = ((Settings.sweetSpotMin + Settings.sweetSpotMax) / 2f)
-            chargeFrames = ((Settings.sweetSpotMin + Settings.sweetSpotMax) / 2)
+            // Fire mid-window so the bot is guaranteed in SweetSpot phase regardless of charge rate.
+            chargeFrames = framesToSweetSpot + Settings.sweetSpotWindowFrames / 2
+            plannedPower = Settings.sweetSpotMax.toFloat()
         } else {
-            plannedPower = (config.basePower + (Random.nextFloat() * 2f - 1f) * config.powerVariance)
-                .coerceIn(Settings.chargeStart, Settings.sweetSpotMax.toFloat())
-            val sweetSpotWindow = (Settings.sweetSpotMax - Settings.sweetSpotMin).coerceAtLeast(1)
-            chargeFrames = Settings.sweetSpotMin + Random.nextInt(0, sweetSpotWindow)
+            // basePower and powerVariance are on a 0–100 scale where 100 = Draining threshold.
+            // Values above 100 place the shot into Draining (weaker but organic overcharge).
+            val rawPercent = config.basePower + (Random.nextFloat() * 2f - 1f) * config.powerVariance
+            val clampedPercent = rawPercent.coerceIn(0f, 150f)
+            chargeFrames = ((clampedPercent / 100f) * totalFramesToDraining).toInt().coerceAtLeast(1)
+            // Map the clamped percentage to charge units for physics force and arrow display.
+            val powerFraction = (clampedPercent / 100f).coerceIn(0f, 1f)
+            plannedPower = Settings.chargeStart + powerFraction * (Settings.sweetSpotMax - Settings.chargeStart)
         }
 
         player.beginBotCharge()
-        val aimOffset = Settings.screenRatio * 2f
-        player.flingCurrent.setLocation(
-            player.flingStart.x - plannedAimDir.x * aimOffset,
-            player.flingStart.y - plannedAimDir.y * aimOffset
-        )
+        player.updateBotAimDirection(plannedAimDir, plannedPower)
         framesRemaining = chargeFrames
         state = BotState.Charging
     }
@@ -101,6 +118,11 @@ class BotBrain(private val player: Player, private val opponent: Player, private
     private fun nextShotInterval(): Int {
         val variance = Random.nextInt(-config.shotFrequencyVariance, config.shotFrequencyVariance + 1)
         return (config.baseShotFrequency + variance).coerceAtLeast(15)
+    }
+
+    fun updateReferences(player: Player, opponent: Player) {
+        this.player = player
+        this.opponent = opponent
     }
 
     fun reset() {
