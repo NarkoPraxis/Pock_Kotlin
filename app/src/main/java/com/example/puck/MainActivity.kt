@@ -11,6 +11,7 @@ import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.OnUserEarnedRewardListener
+import com.google.android.gms.ads.RequestConfiguration
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import gameobjects.BotConfig
@@ -44,6 +45,11 @@ class MainActivity : AppCompatActivity() {
         binding.unlockProgressBar.progress = Settings.unlockProgress
 
         if (Storage.unlockProgress < 100) {
+            MobileAds.setRequestConfiguration(
+                RequestConfiguration.Builder()
+                    .setTagForChildDirectedTreatment(RequestConfiguration.TAG_FOR_CHILD_DIRECTED_TREATMENT_TRUE)
+                    .build()
+            )
             MobileAds.initialize(this) {}
         }
 

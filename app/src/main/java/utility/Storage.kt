@@ -2,12 +2,11 @@ package utility
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.widget.Toast
+
 import androidx.preference.PreferenceManager
-import com.example.puck.R
 import enums.BallType
-import java.io.*
 import java.time.LocalDate
+import androidx.core.content.edit
 
 object Storage {
 
@@ -34,10 +33,7 @@ object Storage {
     private const val MAX_ADS_PER_DAY = 5
     private const val HOURLY_COOLDOWN_MS = 60 * 60 * 1000L
 
-    private lateinit var context: Context
-
     fun initialize(context: Context) {
-        this.context = context
         ad = context.getSharedPreferences(adPreferances, Context.MODE_PRIVATE)
         settings = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -77,24 +73,24 @@ object Storage {
         val today = LocalDate.now().toString()
         val lastDate = ad.getString(lastAdDateKey, "")
         val watchedToday = if (lastDate == today) ad.getInt(adsWatchedTodayKey, 0) else 0
-        ad.edit()
-            .putInt(unlockProgressKey, (unlockProgress + 2).coerceAtMost(100))
-            .putLong(lastAdTimestampKey, System.currentTimeMillis())
-            .putInt(adsWatchedTodayKey, watchedToday + 1)
-            .putString(lastAdDateKey, today)
-            .apply()
+        ad.edit {
+            putInt(unlockProgressKey, (unlockProgress + 2).coerceAtMost(100))
+                .putLong(lastAdTimestampKey, System.currentTimeMillis())
+                .putInt(adsWatchedTodayKey, watchedToday + 1)
+                .putString(lastAdDateKey, today)
+        }
     }
 
     /** Directly set unlock progress (e.g. after IAP purchase). */
     fun saveUnlockProgress(progress: Int) {
-        ad.edit().putInt(unlockProgressKey, progress.coerceIn(0, 100)).apply()
+        ad.edit { putInt(unlockProgressKey, progress.coerceIn(0, 100)) }
     }
 
     /** Add bonus unlock progress (e.g. share reward = +10%). */
     fun addBonusProgress(percent: Int) {
-        ad.edit()
-            .putInt(unlockProgressKey, (unlockProgress + percent).coerceAtMost(100))
-            .apply()
+        ad.edit {
+            putInt(unlockProgressKey, (unlockProgress + percent).coerceAtMost(100))
+        }
     }
 
     // --- Share reward ---
@@ -102,7 +98,7 @@ object Storage {
     val shareRewardClaimed: Boolean get() = ad.getBoolean(shareRewardClaimedKey, false)
 
     fun markShareRewardClaimed() {
-        ad.edit().putBoolean(shareRewardClaimedKey, true).apply()
+        ad.edit { putBoolean(shareRewardClaimedKey, true) }
     }
 
     // --- Ball type persistence ---
@@ -122,7 +118,7 @@ object Storage {
     fun saveScoreOffsetLow(offset: Int) = ad.edit().putInt(scoreOffsetLowKey, offset).apply()
 
     fun resetScoreOffsets() {
-        ad.edit().remove(scoreOffsetHighKey).remove(scoreOffsetLowKey).apply()
+        ad.edit { remove(scoreOffsetHighKey).remove(scoreOffsetLowKey) }
     }
 
     private fun readBallType(key: String, default: BallType): BallType {
@@ -187,25 +183,4 @@ val highPlayerArrow: Boolean get() = settings.getBoolean("high_player_arrow", tr
     fun saveSoundMasterMuted(m: Boolean) = settings.edit().putBoolean("sound_master_muted", m).apply()
     fun saveSoundBackgroundMuted(m: Boolean) = settings.edit().putBoolean("sound_background_muted", m).apply()
     fun saveSoundSfxMuted(m: Boolean) = settings.edit().putBoolean("sound_sfx_muted", m).apply()
-
-    private fun readFile(context: Context, fileName: String): String {
-        val sb = StringBuilder()
-        val inputStream = context.openFileInput(fileName)
-        val streamReader = InputStreamReader(inputStream)
-        val bufferedReader = BufferedReader(streamReader)
-        var text: String? = null
-        while ({ text = bufferedReader.readLine(); text }() != null) {
-            sb.append(text)
-        }
-        return sb.toString()
-    }
-
-    private fun writeFile(context: Context, fileName: String, data: String) {
-        try {
-            val outputStream = context.openFileOutput(fileName, Context.MODE_PRIVATE)
-            outputStream.write(data.toByteArray())
-        } catch (e: IOException) {
-            Toast.makeText(context, e.toString(), Toast.LENGTH_LONG).show()
-        }
-    }
 }

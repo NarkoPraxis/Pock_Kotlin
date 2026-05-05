@@ -179,10 +179,10 @@ object Drawing {
     private fun checkWinner(canvas: Canvas, winner: Player, other: Player) {
         if (Settings.gameState == GameState.GameOver) {
             if (winner.score >= 5 && other.score != 5) {
-                canvas.drawText("You Win!", Settings.screenWidth / 2f, Settings.screenHeight / 3f, PaintBucket.textPaint)
+               // canvas.drawText("You Win!", Settings.screenWidth / 2f, Settings.screenHeight / 3f, PaintBucket.textPaint)
             }
             if (winner.score == 5 && other.score == 5) {
-                canvas.drawText("It's a Tie!", Settings.screenWidth / 2f, Settings.screenHeight / 3f, PaintBucket.textPaint)
+              //  canvas.drawText("It's a Tie!", Settings.screenWidth / 2f, Settings.screenHeight / 3f, PaintBucket.textPaint)
             }
         }
     }
