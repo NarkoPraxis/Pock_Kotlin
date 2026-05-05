@@ -40,10 +40,12 @@ class MainActivity : AppCompatActivity() {
         PreferenceManager.setDefaultValues(this, R.xml.controls_preferences, false)
         PreferenceManager.setDefaultValues(this, R.xml.visual_preferences, false)
 
-        MobileAds.initialize(this) {}
-
         Settings.unlockProgress = Storage.unlockProgress
         binding.unlockProgressBar.progress = Settings.unlockProgress
+
+        if (Storage.unlockProgress < 100) {
+            MobileAds.initialize(this) {}
+        }
 
         if (Storage.shareRewardClaimed) {
             binding.shareButton.text = "Share"
@@ -88,7 +90,7 @@ class MainActivity : AppCompatActivity() {
         Settings.unlockProgress = Storage.unlockProgress
         binding.unlockProgressBar.progress = Settings.unlockProgress
         updateAdButton()
-        if (rewardedAd == null && Storage.canWatchAdNow()) loadAd()
+        if (rewardedAd == null && Storage.unlockProgress < 100 && Storage.canWatchAdNow()) loadAd()
         pendingShareToast?.let {
             Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
             pendingShareToast = null

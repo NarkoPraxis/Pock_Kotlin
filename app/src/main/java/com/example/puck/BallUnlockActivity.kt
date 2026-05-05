@@ -38,10 +38,12 @@ class BallUnlockActivity : AppCompatActivity() {
         view = findViewById(R.id.ballUnlockView)
         val back = findViewById<Button>(R.id.backButton)
 
-        MobileAds.initialize(this) {}
-
         Settings.unlockProgress = Storage.unlockProgress
         progressBar.progress = Settings.unlockProgress
+
+        if (Storage.unlockProgress < 100) {
+            MobileAds.initialize(this) {}
+        }
 
         back.setOnClickListener { finish() }
         watchAdButton.setOnClickListener { showAd() }
@@ -55,7 +57,7 @@ class BallUnlockActivity : AppCompatActivity() {
         PurchaseManager.initialize(this) { refreshUI() }
 
         refreshUI()
-        if (canLoadAdNow()) loadAd()
+        if (Storage.unlockProgress < 100 && canLoadAdNow()) loadAd()
     }
 
     override fun onResume() {
@@ -63,7 +65,7 @@ class BallUnlockActivity : AppCompatActivity() {
         Settings.unlockProgress = Storage.unlockProgress
         progressBar.progress = Settings.unlockProgress
         refreshUI()
-        if (rewardedAd == null && canLoadAdNow()) loadAd()
+        if (rewardedAd == null && Storage.unlockProgress < 100 && canLoadAdNow()) loadAd()
     }
 
     private fun canLoadAdNow(): Boolean {
@@ -130,22 +132,7 @@ class BallUnlockActivity : AppCompatActivity() {
             progressBar.visibility = View.GONE
             unlockAllButton.visibility = View.GONE
             restoreButton.visibility = View.GONE
-            watchAdButton.visibility = View.VISIBLE
-            val watchedToday = Storage.adsWatchedToday()
-            if (watchedToday >= 5) {
-                watchAdButton.text = "Come back tomorrow"
-                watchAdButton.isEnabled = false
-                return
-            }
-            val mins = Storage.minutesUntilNextAd()
-            if (mins > 0) {
-                val timeText = if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m"
-                watchAdButton.text = "Next ad in $timeText"
-                watchAdButton.isEnabled = false
-                return
-            }
-            watchAdButton.isEnabled = rewardedAd != null
-            watchAdButton.text = "Support Me?"
+            watchAdButton.visibility = View.GONE
             return
         }
 
