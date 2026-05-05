@@ -4,6 +4,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import gameobjects.Settings
+import gameobjects.puckstyle.TailRenderer.Companion.previewLayerPaint
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -304,6 +305,16 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
 
     protected open fun drawIdlePaddle(canvas: Canvas) {
         // noop
+    }
+
+    fun renderWithPreview(canvas: Canvas) {
+        if (!renderer.preview) {
+            draw(canvas)
+            return
+        }
+        canvas.saveLayer(null, previewLayerPaint)
+        draw(canvas)
+        canvas.restore()
     }
 
     /**

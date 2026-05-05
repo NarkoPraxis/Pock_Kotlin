@@ -157,9 +157,9 @@ class PuckRenderer(var theme: ColorTheme) {
                     else layer.drawBody(canvas)
                 }
                 is TailRenderer -> if (Settings.tailLength != 0) layer.renderWithPreview(canvas)
-                is LaunchEffect -> {
-                    if (effectEnabled || (layer is PaddleLaunchEffect && layer.alwaysVisible))
-                        layer.draw(canvas)
+                is PaddleLaunchEffect -> {
+                    if (effectEnabled || layer.alwaysVisible)
+                        layer.renderWithPreview(canvas)
                 }
             }
         }

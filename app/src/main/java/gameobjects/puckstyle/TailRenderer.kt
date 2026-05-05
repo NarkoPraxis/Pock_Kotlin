@@ -46,14 +46,13 @@ interface TailRenderer {
             render(canvas)
             return
         }
-        @Suppress("DEPRECATION")
         canvas.saveLayer(null, previewLayerPaint)
         render(canvas)
         canvas.restore()
     }
 
     companion object {
-        private val previewLayerPaint = Paint().apply {
+        val previewLayerPaint = Paint().apply {
             colorFilter = ColorMatrixColorFilter(ColorMatrix(floatArrayOf(
                 0.12f, 0f,    0f,    0f, 0f,
                 0f,    0.12f, 0f,    0f, 0f,
