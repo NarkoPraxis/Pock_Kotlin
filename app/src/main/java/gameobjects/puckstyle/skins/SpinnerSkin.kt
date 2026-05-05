@@ -97,7 +97,7 @@ class SpinnerSkin( override val renderer: PuckRenderer) : PuckSkin {
     override val explosionFrequency get() = 45
     override val scatterDensity get() = 1.3f
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         celebrationActive = true
         celebrationFrame = 0
     }

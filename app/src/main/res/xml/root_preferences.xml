@@ -1,80 +1,80 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory app:title="Gameplay">
+    <PreferenceCategory app:title="@string/pref_category_gameplay">
         <ListPreference
                 android:summary="%s"
                 android:defaultValue="default"
                 android:entries="@array/ball_sizes"
                 android:entryValues="@array/game_values"
                 android:key="ball_sizes"
-                android:title="Ball Size" />
+                android:title="@string/pref_ball_size_title" />
         <ListPreference
                 android:summary="%s"
                 android:defaultValue="default"
                 android:entries="@array/tail_lengths"
                 android:entryValues="@array/game_values"
                 android:key="tail_length"
-                android:title="Tail Length" />
-<ListPreference
+                android:title="@string/pref_tail_length_title" />
+        <ListPreference
                 android:summary="%s"
                 android:defaultValue="default"
                 android:entries="@array/charge_speeds"
                 android:entryValues="@array/game_values"
                 android:key="charge_speed"
-                android:title="Charge Speed" />
+                android:title="@string/pref_charge_speed_title" />
         <ListPreference
                 android:summary="%s"
                 android:defaultValue="default"
                 android:entries="@array/game_speeds"
                 android:entryValues="@array/game_values"
                 android:key="game_speed"
-                android:title="Game Speed" />
-<ListPreference
+                android:title="@string/pref_game_speed_title" />
+        <ListPreference
                 app:key="points_to_win"
-                app:title="Points to Win"
+                app:title="@string/pref_points_to_win_title"
                 app:summary="%s"
                 app:entries="@array/points_to_win_entries"
                 app:entryValues="@array/points_to_win_values"
                 app:defaultValue="5" />
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="Controls">
+    <PreferenceCategory app:title="@string/pref_category_controls">
         <SwitchPreferenceCompat
                 android:key="high_player_arrow"
-                android:title="High Player Arrow"
-                android:summary="Show aim arrow while charging (top player)"
+                android:title="@string/pref_high_player_arrow_title"
+                android:summary="@string/pref_high_player_arrow_summary"
                 android:defaultValue="true" />
         <SwitchPreferenceCompat
                 android:key="low_player_arrow"
-                android:title="Low Player Arrow"
-                android:summary="Show aim arrow while charging (bottom player)"
+                android:title="@string/pref_low_player_arrow_title"
+                android:summary="@string/pref_low_player_arrow_summary"
                 android:defaultValue="true" />
         <SwitchPreferenceCompat
                 android:key="high_player_charge_fill"
-                android:title="High Player Charge Fill"
-                android:summary="Show charge fill bar while charging (top player)"
+                android:title="@string/pref_high_player_charge_fill_title"
+                android:summary="@string/pref_high_player_charge_fill_summary"
                 android:defaultValue="true" />
         <SwitchPreferenceCompat
                 android:key="low_player_charge_fill"
-                android:title="Low Player Charge Fill"
-                android:summary="Show charge fill bar while charging (bottom player)"
+                android:title="@string/pref_low_player_charge_fill_title"
+                android:summary="@string/pref_low_player_charge_fill_summary"
                 android:defaultValue="true" />
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="Visual">
+    <PreferenceCategory app:title="@string/pref_category_visual">
         <SwitchPreference
                 android:defaultValue="false"
                 android:key="darkmode"
                 android:title="@string/darkmode_label" />
         <Preference
                 android:key="calibrate_score"
-                android:title="Calibrate Score Position"
+                android:title="@string/pref_calibrate_score_title"
                 app:layout="@layout/preference_button_calibrate" />
     </PreferenceCategory>
 
-    <Preference android:title="Restore Defaults"
-            android:summary="Reset all settings and score positions"
+    <Preference android:title="@string/pref_restore_defaults_title"
+            android:summary="@string/pref_restore_defaults_summary"
             android:key="restore_defaults"/>
 
 </PreferenceScreen>

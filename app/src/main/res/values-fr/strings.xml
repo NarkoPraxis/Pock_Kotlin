@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PockPock</string>
+    <string name="gameViewDescription">L\'écran qui exécute et affiche le jeu</string>
+    <string name="title_activity_settings">Paramètres</string>
+    <string name="darkmode_label">Mode sombre</string>
+
+    <!-- Main menu -->
+    <string name="menu_play">Jouer</string>
+    <string name="menu_play_alone">Jouer seul</string>
+    <string name="menu_settings">Paramètres</string>
+    <string name="menu_balls">Balles</string>
+    <string name="menu_share">Partager</string>
+    <string name="menu_watch_ad">Regarder une pub pour débloquer</string>
+    <string name="menu_come_back_tomorrow">Reviens demain</string>
+    <string name="menu_next_ad_in">Prochaine pub dans %s</string>
+    <string name="menu_share_thanks">Merci d\'avoir partagé ! Progression de déblocage +10%.</string>
+    <string name="menu_share_already_claimed">Merci de partager à nouveau ! La récompense a déjà été réclamée.</string>
+    <string name="difficulty_choose">Choisir la difficulté</string>
+    <string name="difficulty_easy">Facile</string>
+    <string name="difficulty_medium">Moyen</string>
+    <string name="difficulty_hard">Difficile</string>
+
+    <!-- Ball unlock screen -->
+    <string name="ball_unlock_title">Débloquer les balles</string>
+    <string name="ball_unlock_back">Retour</string>
+    <string name="ball_unlock_purchase">Acheter</string>
+    <string name="ball_unlock_restore">Restaurer</string>
+
+    <!-- Tips shown during finger selection -->
+    <string-array name="tip_scoring">
+        <item>Score :</item>
+        <item>   Frappez votre adversaire</item>
+        <item>   dans une zone violette</item>
+        <item>   pour marquer un point.</item>
+    </string-array>
+    <string-array name="tip_charging">
+        <item>Chargement :</item>
+        <item>   Maintenez pour accumuler la puissance.</item>
+        <item>   Relâchez quand c\'est violet</item>
+        <item>   Obtenez un bouclier !</item>
+    </string-array>
+    <string-array name="tip_shields">
+        <item>Boucliers violets :</item>
+        <item>   Un Pock protégé</item>
+        <item>   gagne chaque rebond</item>
+        <item>   alors choisissez le bon moment !</item>
+    </string-array>
+    <string-array name="tip_overcharge">
+        <item>Surcharge :</item>
+        <item>   Charger trop longtemps</item>
+        <item>   réinitialise votre puissance.</item>
+        <item>   Ne retenez pas indéfiniment !</item>
+    </string-array>
+    <string-array name="tip_grey">
+        <item>Gris :</item>
+        <item>   Si votre Pock devient gris</item>
+        <item>   vous ne pouvez pas le frapper</item>
+        <item>   sauf si vous choisissez le bon moment !</item>
+    </string-array>
+
+    <!-- Settings strings -->
+    <string name="settings_title">Paramètres</string>
+    <string name="pref_category_gameplay">Gameplay</string>
+    <string name="pref_category_controls">Contrôles</string>
+    <string name="pref_category_visual">Visuel</string>
+    <string name="pref_ball_size_title">Taille de la balle</string>
+    <string name="pref_tail_length_title">Longueur de la traînée</string>
+    <string name="pref_charge_speed_title">Vitesse de charge</string>
+    <string name="pref_game_speed_title">Vitesse du jeu</string>
+    <string name="pref_points_to_win_title">Points pour gagner</string>
+    <string name="pref_high_player_arrow_title">Flèche du joueur du haut</string>
+    <string name="pref_low_player_arrow_title">Flèche du joueur du bas</string>
+    <string name="pref_high_player_arrow_summary">Afficher la flèche de visée pendant la charge (haut)</string>
+    <string name="pref_low_player_arrow_summary">Afficher la flèche de visée pendant la charge (bas)</string>
+    <string name="pref_high_player_charge_fill_title">Jauge de charge du joueur du haut</string>
+    <string name="pref_low_player_charge_fill_title">Jauge de charge du joueur du bas</string>
+    <string name="pref_high_player_charge_fill_summary">Afficher la barre de charge pendant la charge (haut)</string>
+    <string name="pref_low_player_charge_fill_summary">Afficher la barre de charge pendant la charge (bas)</string>
+    <string name="pref_red_player_arrow_title">Flèche du joueur rouge</string>
+    <string name="pref_blue_player_arrow_title">Flèche du joueur bleu</string>
+    <string name="pref_red_player_charge_meter_title">Jauge de charge du joueur rouge</string>
+    <string name="pref_blue_player_charge_meter_title">Jauge de charge du joueur bleu</string>
+    <string name="pref_calibrate_score_title">Calibrer la position du score</string>
+    <string name="pref_restore_defaults_title">Rétablir les valeurs par défaut</string>
+    <string name="pref_restore_defaults_summary">Réinitialiser tous les paramètres et positions de score</string>
+    <string name="pref_sound_master">Principal</string>
+    <string name="pref_sound_background">Fond</string>
+    <string name="pref_sound_sfx">Effets sonores</string>
+    <string name="pref_sound_mute">Muet</string>
+
+    <!-- Settings option arrays -->
+    <string-array name="ball_sizes">
+        <item>Petit</item>
+        <item>Défaut</item>
+        <item>Grand</item>
+    </string-array>
+    <string-array name="charge_speeds">
+        <item>Lent</item>
+        <item>Défaut</item>
+        <item>Rapide</item>
+        <item>Le plus rapide</item>
+    </string-array>
+    <string-array name="tail_lengths">
+        <item>Aucune</item>
+        <item>Courte</item>
+        <item>Défaut</item>
+        <item>Longue</item>
+    </string-array>
+    <string-array name="game_speeds">
+        <item>Lent</item>
+        <item>Défaut</item>
+        <item>Rapide</item>
+    </string-array>
+    <string-array name="points_to_win_entries">
+        <item>3 points</item>
+        <item>5 points</item>
+        <item>7 points</item>
+        <item>10 points</item>
+        <item>12 points</item>
+        <item>15 points</item>
+        <item>18 points</item>
+        <item>20 points</item>
+    </string-array>
+</resources>

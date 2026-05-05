@@ -77,7 +77,7 @@ class ScoreCalibrationView(context: Context) : View(context) {
             Logic.initializeSettings(w, h)
         }
         PaintBucket.initialize(resources)
-        Drawing.initialize()
+        Drawing.initialize(resources)
 
         scorePaint.textSize = Settings.topGoalBottom * 0.85f
         hintPaint.textSize = Settings.screenRatio * 0.85f

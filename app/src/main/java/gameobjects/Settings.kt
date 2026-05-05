@@ -59,7 +59,7 @@ object Settings {
     var screenWidth = 0f
     var screenHeight = 0f
     var shortParticleSide = 0f
-    var chargeStart = 10f
+    var chargeStart = 0f
     var sweetSpotMin = 40
     var sweetSpotMax = 50
     var minLaunchPower = 10f

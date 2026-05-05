@@ -55,7 +55,7 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer
     override val explosionFrequency get() = 15
     override val scatterDensity get() = 0.7f
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         val clip = if (highGoal)
             Path().also { p -> p.addRect(position.x - renderer.radius * 20f, position.y, position.x + renderer.radius * 20f, position.y + renderer.radius * 20f, Path.Direction.CW) }
         else

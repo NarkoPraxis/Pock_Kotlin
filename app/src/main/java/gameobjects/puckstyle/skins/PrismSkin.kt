@@ -103,7 +103,7 @@ class PrismSkin( override val renderer: PuckRenderer) : PuckSkin {
     override val explosionFrequency get() = 25
     override val scatterDensity get() = 1.1f
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(PrismTriangleCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, baseHue))
     }
 

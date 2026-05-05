@@ -7,7 +7,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.puck.R
 import utility.PaintBucket
-import utility.Tutorial
 
 
 class PauseMenu(activity: AppCompatActivity) {

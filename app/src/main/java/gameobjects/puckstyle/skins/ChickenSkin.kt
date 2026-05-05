@@ -24,6 +24,7 @@ import androidx.core.graphics.withRotation
 import androidx.core.graphics.withTranslation
 import gameobjects.puckstyle.Palette
 import utility.Effects
+import androidx.core.graphics.withScale
 
 class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
 
@@ -268,7 +269,7 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
 
     private fun drawBeakForState(canvas: Canvas) {
         when {
-            currentAnim == ChickenAnim.AlmostHit   && animFrame >= DELAY_BEAK -> drawBeakSnap(canvas)
+            currentAnim == ChickenAnim.AlmostHit   && animFrame >= DELAY_BEAK -> drawBeakGape(canvas)
             currentAnim == ChickenAnim.JustHit                                -> drawBeakGrimace(canvas)
             currentAnim == ChickenAnim.Celebration && animFrame >= DELAY_BEAK -> drawBeakGape(canvas)
             currentAnim == ChickenAnim.Taunt       && animFrame >= DELAY_BEAK -> drawBeakYawn(canvas)
@@ -488,10 +489,9 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
     private fun drawBeakGrimace(canvas: Canvas) {
         val t = easeIn(animFrame.toFloat(), 6f)
         val beakCenterY = beakTopY + (r * 0.58f - beakTopY) / 2f
-        canvas.save()
-        canvas.scale(lerp(1f, 0.6f, t), lerp(1f, 1.4f, t), 0f, beakCenterY)
-        drawBeak(canvas)
-        canvas.restore()
+        canvas.withScale(lerp(1f, 0.6f, t), lerp(1f, 1.4f, t), 0f, beakCenterY) {
+            drawBeak(this)
+        }
     }
 
     // ── wings ──────────────────────────────────────────────────────────────────
@@ -499,30 +499,29 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
     private fun drawWing(canvas: Canvas, left: Boolean, angle: Float, scale: Float = 1f) {
         val s     = if (left) -1f else 1f
         val pivot = s * r * 0.72f
-        canvas.save()
-        canvas.rotate(s * -angle, pivot, 0f)
-        if (scale != 1f) canvas.scale(scale, scale, pivot, 0f)
+        canvas.withRotation(s * -angle, pivot, 0f) {
+            if (scale != 1f) scale(scale, scale, pivot, 0f)
 
-        paint.style = Paint.Style.FILL
-        wingSecondary.reset()
-        wingSecondary.moveTo(s * r * 0.72f, -r * 0.13f)
-        wingSecondary.quadTo(s * r * 1.22f, -r * 0.55f, s * r * 1.65f, -r * 0.27f)
-        wingSecondary.quadTo(s * r * 1.58f,  r * 0.06f, s * r * 1.22f,  r * 0.33f)
-        wingSecondary.quadTo(s * r * 0.92f,  r * 0.38f, s * r * 0.72f,  r * 0.13f)
-        wingSecondary.close()
-        paint.color = frameColors.secondary
-        canvas.drawPath(wingSecondary, paint)
+            paint.style = Paint.Style.FILL
+            wingSecondary.reset()
+            wingSecondary.moveTo(s * r * 0.72f, -r * 0.13f)
+            wingSecondary.quadTo(s * r * 1.22f, -r * 0.55f, s * r * 1.65f, -r * 0.27f)
+            wingSecondary.quadTo(s * r * 1.58f, r * 0.06f, s * r * 1.22f, r * 0.33f)
+            wingSecondary.quadTo(s * r * 0.92f, r * 0.38f, s * r * 0.72f, r * 0.13f)
+            wingSecondary.close()
+            paint.color = frameColors.secondary
+            drawPath(wingSecondary, paint)
 
-        wingPrimary.reset()
-        wingPrimary.moveTo(s * r * 0.50f, -r * 0.10f)
-        wingPrimary.quadTo(s * r * 1.18f, -r * 0.48f, s * r * 1.57f, -r * 0.27f)
-        wingPrimary.quadTo(s * r * 1.50f,  r * 0.04f, s * r * 1.16f,  r * 0.27f)
-        wingPrimary.quadTo(s * r * 0.90f,  r * 0.33f, s * r * 0.50f,  r * 0.10f)
-        wingPrimary.close()
-        paint.color = frameColors.primary
-        canvas.drawPath(wingPrimary, paint)
+            wingPrimary.reset()
+            wingPrimary.moveTo(s * r * 0.50f, -r * 0.10f)
+            wingPrimary.quadTo(s * r * 1.18f, -r * 0.48f, s * r * 1.57f, -r * 0.27f)
+            wingPrimary.quadTo(s * r * 1.50f, r * 0.04f, s * r * 1.16f, r * 0.27f)
+            wingPrimary.quadTo(s * r * 0.90f, r * 0.33f, s * r * 0.50f, r * 0.10f)
+            wingPrimary.close()
+            paint.color = frameColors.primary
+            drawPath(wingPrimary, paint)
 
-        canvas.restore()
+        }
     }
 
     // ── head feathers ──────────────────────────────────────────────────────────
@@ -530,39 +529,36 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
     private fun drawHeadFeather(canvas: Canvas, attachX: Float, attachY: Float, rotDeg: Float, scale: Float) {
         val fw = r * 0.18f * scale
         val fh = r * 0.46f * scale
-        canvas.save()
-        canvas.rotate(rotDeg, attachX, attachY)
-        wingSecondary.reset()
-        wingSecondary.moveTo(attachX - fw * 0.7f,  attachY)
-        wingSecondary.quadTo(attachX - fw,          attachY - fh * 0.55f, attachX,             attachY - fh)
-        wingSecondary.quadTo(attachX + fw,          attachY - fh * 0.55f, attachX + fw * 0.7f, attachY)
-        wingSecondary.close()
-        paint.style = Paint.Style.FILL
-        paint.color = frameColors.secondary
-        canvas.drawPath(wingSecondary, paint)
-        wingPrimary.reset()
-        wingPrimary.moveTo(attachX - fw * 0.42f, attachY + fh * 0.18f)
-        wingPrimary.quadTo(attachX - fw * 0.75f, attachY - fh * 0.48f, attachX,              attachY - fh * 0.88f)
-        wingPrimary.quadTo(attachX + fw * 0.75f, attachY - fh * 0.48f, attachX + fw * 0.42f, attachY + fh * 0.18f)
-        wingPrimary.close()
-        paint.color = frameColors.primary
-        canvas.drawPath(wingPrimary, paint)
-        canvas.restore()
+        canvas.withRotation(rotDeg, attachX, attachY) {
+            wingSecondary.reset()
+            wingSecondary.moveTo(attachX - fw * 0.7f, attachY)
+            wingSecondary.quadTo(attachX - fw, attachY - fh * 0.55f, attachX, attachY - fh)
+            wingSecondary.quadTo(attachX + fw, attachY - fh * 0.55f, attachX + fw * 0.7f, attachY)
+            wingSecondary.close()
+            paint.style = Paint.Style.FILL
+            paint.color = frameColors.secondary
+            drawPath(wingSecondary, paint)
+            wingPrimary.reset()
+            wingPrimary.moveTo(attachX - fw * 0.42f, attachY + fh * 0.18f)
+            wingPrimary.quadTo(attachX - fw * 0.75f, attachY - fh * 0.48f, attachX, attachY - fh * 0.88f)
+            wingPrimary.quadTo(attachX + fw * 0.75f, attachY - fh * 0.48f, attachX + fw * 0.42f, attachY + fh * 0.18f)
+            wingPrimary.close()
+            paint.color = frameColors.primary
+            drawPath(wingPrimary, paint)
+        }
     }
 
     private fun drawHeadFeatherFlared(canvas: Canvas, attachX: Float, attachY: Float, rotDeg: Float, scale: Float, t: Float) {
-        canvas.save()
-        canvas.scale(1f, lerp(1f, 1.25f, t), attachX, attachY)
-        drawHeadFeather(canvas, attachX, attachY, rotDeg, scale + 0.15f * t)
-        canvas.restore()
+        canvas.withScale(1f, lerp(1f, 1.25f, t), attachX, attachY) {
+            drawHeadFeather(this, attachX, attachY, rotDeg, scale + 0.15f * t)
+        }
     }
 
     private fun drawHeadFeatherDroopy(canvas: Canvas, attachX: Float, attachY: Float, rotDeg: Float, scale: Float, t: Float) {
         val spreadAngle = lerp(rotDeg, rotDeg * 1.36f, t)
-        canvas.save()
-        canvas.scale(1f, lerp(1f, 0.75f, t), attachX, attachY)
-        drawHeadFeather(canvas, attachX, attachY, spreadAngle, scale)
-        canvas.restore()
+        canvas.withScale(1f, lerp(1f, 0.75f, t), attachX, attachY) {
+            drawHeadFeather(this, attachX, attachY, spreadAngle, scale)
+        }
     }
 
     // ── PuckSkin hooks ─────────────────────────────────────────────────────────
@@ -620,18 +616,18 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
 
     override val explosionFrequency get() = 20
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        val won = (renderer.isHigh && !highGoal) || (!renderer.isHigh && highGoal)
-        if (won) {
-            animLoop = Settings.gameOver
-            startAnim(ChickenAnim.Celebration)
-        } else {
-            startAnim(ChickenAnim.JustHit)
-        }
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
+        startAnim(ChickenAnim.Taunt)
         Effects.addPersistentEffect(FeatherCelebration(position.x, position.y, renderer.radius, highGoal, theme.main.primary, theme.main.secondary, fullCircle = false))
     }
 
+    override fun onScored() {
+        startAnim(ChickenAnim.Celebration)
+    }
+
     override fun onVictory(x: Float, y: Float) {
+        animLoop = true
+        startAnim(ChickenAnim.Celebration)
         Effects.addPersistentEffect(FeatherCelebration(x, y, renderer.radius, highGoal = true, theme.main.primary, theme.main.secondary, fullCircle = true))
     }
 

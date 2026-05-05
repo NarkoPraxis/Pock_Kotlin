@@ -7,24 +7,24 @@
             android:entries="@array/ball_sizes"
             android:entryValues="@array/game_values"
             android:key="ball_sizes"
-            android:title="Ball Size" />
+            android:title="@string/pref_ball_size_title" />
     <ListPreference
             android:summary="%s"
             android:defaultValue="default"
             android:entries="@array/charge_speeds"
             android:entryValues="@array/charge_speed_values"
             android:key="charge_speed"
-            android:title="Charge Speed" />
+            android:title="@string/pref_charge_speed_title" />
     <ListPreference
             android:summary="%s"
             android:defaultValue="default"
             android:entries="@array/game_speeds"
             android:entryValues="@array/game_values"
             android:key="game_speed"
-            android:title="Game Speed" />
-<ListPreference
+            android:title="@string/pref_game_speed_title" />
+    <ListPreference
             app:key="points_to_win"
-            app:title="Points to Win"
+            app:title="@string/pref_points_to_win_title"
             app:summary="%s"
             app:entries="@array/points_to_win_entries"
             app:entryValues="@array/points_to_win_values"

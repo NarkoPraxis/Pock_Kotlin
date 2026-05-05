@@ -36,8 +36,8 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         drawEgg(canvas, cx, cy, if (sweet || !fatigued) 1f else 0f, ph)
     }
 
-    val EGG_WIDTH get() = renderer.radius * .05f
-    val EGG_HEIGHT get() = renderer.radius * .07f
+    val EGG_WIDTH get() = renderer.radius * .5f
+    val EGG_HEIGHT get() = renderer.radius * .7f
 
     private fun drawEgg(canvas: Canvas, cx: Float, cy: Float, fillRatio: Float, ph: ChargePhase) {
 

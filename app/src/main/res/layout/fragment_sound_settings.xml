@@ -30,7 +30,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Master"
+                    android:text="@string/pref_sound_master"
                     android:textAppearance="?android:attr/textAppearanceListItem" />
 
                 <TextView
@@ -62,7 +62,7 @@
                     android:layout_width="80dp"
                     android:layout_height="36dp"
                     android:layout_marginStart="12dp"
-                    android:text="Mute"
+                    android:text="@string/pref_sound_mute"
                     android:textSize="12sp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp" />
@@ -95,7 +95,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Background"
+                    android:text="@string/pref_sound_background"
                     android:textAppearance="?android:attr/textAppearanceListItem" />
 
                 <TextView
@@ -127,7 +127,7 @@
                     android:layout_width="80dp"
                     android:layout_height="36dp"
                     android:layout_marginStart="12dp"
-                    android:text="Mute"
+                    android:text="@string/pref_sound_mute"
                     android:textSize="12sp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp" />
@@ -160,7 +160,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="SFX"
+                    android:text="@string/pref_sound_sfx"
                     android:textAppearance="?android:attr/textAppearanceListItem" />
 
                 <TextView
@@ -192,7 +192,7 @@
                     android:layout_width="80dp"
                     android:layout_height="36dp"
                     android:layout_marginStart="12dp"
-                    android:text="Mute"
+                    android:text="@string/pref_sound_mute"
                     android:textSize="12sp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp" />

@@ -48,7 +48,7 @@ class GhostSkin( override val renderer: PuckRenderer) : PuckSkin {
     override val explosionFrequency get() = 35
     override val scatterDensity get() = 1.2f
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(SpiritCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, color = theme.main.secondary))
     }
 

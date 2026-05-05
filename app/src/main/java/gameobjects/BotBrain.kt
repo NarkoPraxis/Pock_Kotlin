@@ -97,7 +97,7 @@ class BotBrain(private var player: Player, private var opponent: Player, private
             // basePower and powerVariance are on a 0–100 scale where 100 = Draining threshold.
             // Values above 100 place the shot into Draining (weaker but organic overcharge).
             val rawPercent = config.basePower + (Random.nextFloat() * 2f - 1f) * config.powerVariance
-            val clampedPercent = rawPercent.coerceIn(0f, 150f)
+            val clampedPercent = rawPercent.coerceIn(30f, 150f)
             chargeFrames = ((clampedPercent / 100f) * totalFramesToDraining).toInt().coerceAtLeast(1)
             // Map the clamped percentage to charge units for physics force and arrow display.
             val powerFraction = (clampedPercent / 100f).coerceIn(0f, 1f)

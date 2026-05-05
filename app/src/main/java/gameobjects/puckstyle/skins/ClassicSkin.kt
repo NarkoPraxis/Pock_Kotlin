@@ -21,7 +21,7 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
         canvas.drawCircle(renderer.x, renderer.y, renderer.radius, renderer.strokePaint)
     }
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(ClassicScoreEffect(theme.main.primary, otherColor, position, Settings.screenRatio / 3f, highGoal))
     }
 

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PockPock</string>
+    <string name="gameViewDescription">ゲームを実行・表示する画面</string>
+    <string name="title_activity_settings">設定</string>
+    <string name="darkmode_label">ダークモード</string>
+
+    <!-- Main menu -->
+    <string name="menu_play">プレイ</string>
+    <string name="menu_play_alone">1人でプレイ</string>
+    <string name="menu_settings">設定</string>
+    <string name="menu_balls">ボール</string>
+    <string name="menu_share">シェア</string>
+    <string name="menu_watch_ad">広告を見てアンロック</string>
+    <string name="menu_come_back_tomorrow">明日また来てね</string>
+    <string name="menu_next_ad_in">次の広告まで%s</string>
+    <string name="menu_share_thanks">シェアありがとう！アンロック進捗+10%。</string>
+    <string name="menu_share_already_claimed">また共有してくれてありがとう！報酬はすでに受け取られています。</string>
+    <string name="difficulty_choose">難易度を選択</string>
+    <string name="difficulty_easy">かんたん</string>
+    <string name="difficulty_medium">ふつう</string>
+    <string name="difficulty_hard">むずかしい</string>
+
+    <!-- Ball unlock screen -->
+    <string name="ball_unlock_title">ボールをアンロック</string>
+    <string name="ball_unlock_back">戻る</string>
+    <string name="ball_unlock_purchase">購入</string>
+    <string name="ball_unlock_restore">復元</string>
+
+    <!-- Tips shown during finger selection -->
+    <string-array name="tip_scoring">
+        <item>得点：</item>
+        <item>　相手を</item>
+        <item>　紫のゾーンに打ち込もう</item>
+        <item>　で得点。</item>
+    </string-array>
+    <string-array name="tip_charging">
+        <item>チャージ：</item>
+        <item>　押し続けてパワーを溜めよう。</item>
+        <item>　紫になったら離す</item>
+        <item>　シールドをゲット！</item>
+    </string-array>
+    <string-array name="tip_shields">
+        <item>紫のシールド：</item>
+        <item>　シールドのあるPockは</item>
+        <item>　全ての衝突で勝つ</item>
+        <item>　タイミングを見極めよう！</item>
+    </string-array>
+    <string-array name="tip_overcharge">
+        <item>オーバーチャージ：</item>
+        <item>　長すぎるチャージは</item>
+        <item>　パワーをリセットする。</item>
+        <item>　ずっと押し続けないで！</item>
+    </string-array>
+    <string-array name="tip_grey">
+        <item>グレー：</item>
+        <item>　Pockがグレーになったら</item>
+        <item>　打てなくなる</item>
+        <item>　タイミングが合えば別だが！</item>
+    </string-array>
+
+    <!-- Settings strings -->
+    <string name="settings_title">設定</string>
+    <string name="pref_category_gameplay">ゲームプレイ</string>
+    <string name="pref_category_controls">コントロール</string>
+    <string name="pref_category_visual">ビジュアル</string>
+    <string name="pref_ball_size_title">ボールのサイズ</string>
+    <string name="pref_tail_length_title">尾の長さ</string>
+    <string name="pref_charge_speed_title">チャージ速度</string>
+    <string name="pref_game_speed_title">ゲーム速度</string>
+    <string name="pref_points_to_win_title">勝利ポイント</string>
+    <string name="pref_high_player_arrow_title">上プレイヤーの矢印</string>
+    <string name="pref_low_player_arrow_title">下プレイヤーの矢印</string>
+    <string name="pref_high_player_arrow_summary">チャージ中に狙い矢印を表示（上）</string>
+    <string name="pref_low_player_arrow_summary">チャージ中に狙い矢印を表示（下）</string>
+    <string name="pref_high_player_charge_fill_title">上プレイヤーのチャージゲージ</string>
+    <string name="pref_low_player_charge_fill_title">下プレイヤーのチャージゲージ</string>
+    <string name="pref_high_player_charge_fill_summary">チャージ中にゲージを表示（上）</string>
+    <string name="pref_low_player_charge_fill_summary">チャージ中にゲージを表示（下）</string>
+    <string name="pref_red_player_arrow_title">赤プレイヤーの矢印</string>
+    <string name="pref_blue_player_arrow_title">青プレイヤーの矢印</string>
+    <string name="pref_red_player_charge_meter_title">赤プレイヤーのチャージメーター</string>
+    <string name="pref_blue_player_charge_meter_title">青プレイヤーのチャージメーター</string>
+    <string name="pref_calibrate_score_title">スコア位置を調整</string>
+    <string name="pref_restore_defaults_title">デフォルトに戻す</string>
+    <string name="pref_restore_defaults_summary">すべての設定とスコア位置をリセット</string>
+    <string name="pref_sound_master">マスター</string>
+    <string name="pref_sound_background">BGM</string>
+    <string name="pref_sound_sfx">効果音</string>
+    <string name="pref_sound_mute">ミュート</string>
+
+    <!-- Settings option arrays -->
+    <string-array name="ball_sizes">
+        <item>小さい</item>
+        <item>デフォルト</item>
+        <item>大きい</item>
+    </string-array>
+    <string-array name="charge_speeds">
+        <item>遅い</item>
+        <item>デフォルト</item>
+        <item>速い</item>
+        <item>最速</item>
+    </string-array>
+    <string-array name="tail_lengths">
+        <item>なし</item>
+        <item>短い</item>
+        <item>デフォルト</item>
+        <item>長い</item>
+    </string-array>
+    <string-array name="game_speeds">
+        <item>遅い</item>
+        <item>デフォルト</item>
+        <item>速い</item>
+    </string-array>
+    <string-array name="points_to_win_entries">
+        <item>3ポイント</item>
+        <item>5ポイント</item>
+        <item>7ポイント</item>
+        <item>10ポイント</item>
+        <item>12ポイント</item>
+        <item>15ポイント</item>
+        <item>18ポイント</item>
+        <item>20ポイント</item>
+    </string-array>
+</resources>

@@ -40,7 +40,7 @@ class FireSkin( override val renderer: PuckRenderer) : PuckSkin {
     override val explosionFrequency get() = 20
     override val scatterDensity get() = 0.8f
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         FireLaunch.spawnFireCelebration(position.x, position.y, renderer.radius, theme.main.secondary, highGoal, fullCircle = false)
     }
 

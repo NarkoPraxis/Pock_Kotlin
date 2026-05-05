@@ -81,7 +81,7 @@ class PlasmaSkin(override val renderer: PuckRenderer) : CachedShaderSkin(rendere
     override val explosionFrequency get() = 10
     override val scatterDensity get() = 1.2f
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         PlasmaLaunch.spawnCelebration(position.x, position.y, renderer.radius, theme.main.primary, theme.main.secondary, highGoal, fullCircle = false)
     }
 

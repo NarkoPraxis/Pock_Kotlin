@@ -36,7 +36,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
     override val explosionFrequency get() = 40
     override val scatterDensity get() = 0.9f
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(IceScoreEffect(position.x, position.y, renderer.radius, highGoal, fullCircle = false, theme))
     }
 

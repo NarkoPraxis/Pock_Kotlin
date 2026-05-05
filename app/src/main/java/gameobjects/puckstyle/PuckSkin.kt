@@ -28,7 +28,9 @@ interface PuckSkin {
     /** Multiplier on the random scatter radius for victory fireworks (1.0 = full play area). */
     val scatterDensity: Float get() = 1f
 
-    fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {}
+    fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {}
+
+    fun onScored() {}
     fun onVictory(x: Float, y: Float) {}
     fun onCollisionWin(position: Point, speed: Float) {}
     fun onShieldedCollision(position: Point) {}

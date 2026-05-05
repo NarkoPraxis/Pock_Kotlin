@@ -1,10 +1,12 @@
 package utility
 
+import android.content.res.Resources
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import com.example.puck.R
 import enums.GameState
 import gameobjects.Player
 import gameobjects.Settings
@@ -25,9 +27,16 @@ object Drawing {
     private var canScoreListener: ((Unit) -> Unit)? = null
     private var cantScoreListener: ((Unit) -> Unit)? = null
 
-    fun initialize() {
+    fun initialize(resources: Resources) {
         highScoreZone = RectF(0f, 0f, Settings.screenWidth, Settings.topGoalBottom)
         lowScoreZone = RectF(0f, Settings.bottomGoalTop, Settings.screenWidth, Settings.screenHeight)
+        tipPages = listOf(
+            resources.getStringArray(R.array.tip_scoring).toList(),
+            resources.getStringArray(R.array.tip_charging).toList(),
+            resources.getStringArray(R.array.tip_shields).toList(),
+            resources.getStringArray(R.array.tip_overcharge).toList(),
+            resources.getStringArray(R.array.tip_grey).toList()
+        )
         wallHeightParticleCount = (Settings.screenHeight.toInt() - Settings.topGoalBottom.toInt() * 2) / Settings.longParticleSide.toInt()
         wallWidthParticleCount = Settings.screenWidth.toInt() / Settings.longParticleSide.toInt()
 
@@ -474,13 +483,7 @@ object Drawing {
         canvas.drawText(bottomText, x, y, textPaint) //bottom score
     }
 
-    private val tipPages: List<List<String>> = listOf(
-        listOf("Scoring:", "   Hit your opponent", "   into either purple zone", "   to score a point."),
-        listOf("Charging:", "   Hold to build power.", "   Release when purple", "   Gain a shield!"),
-        listOf("Purple Shields:", "   A shielded Pock", "   wins every bounce", "   so time your release!"),
-        listOf("Overcharge:", "   Charging too long", "   resets your power.", "   Don't hold forever!"),
-        listOf("Grey:", "   If your Pock turns grey", "   you can't strike it", "   unless timed correctly!")
-    )
+    private var tipPages: List<List<String>> = emptyList()
 
     var highTipIndex: Int = 0
         private set

@@ -34,7 +34,7 @@ class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
         GalaxyLaunch.spawnStartImpact(renderer.x, renderer.y, renderer.radius, responsivePrimary, responsiveSecondary)
     }
 
-    override fun onScore(otherColor: Int, position: Point, highGoal: Boolean) {
+    override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(GalaxyScoreEffect(position.x, position.y, renderer.radius, theme.main.primary, theme.main.secondary, highGoal, fullCircle = false))
         GalaxyLaunch.spawnStarBurst(position.x, position.y,  renderer.radius, theme.main.primary, theme.main.secondary)
     }

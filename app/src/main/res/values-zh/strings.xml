@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PockPock</string>
+    <string name="gameViewDescription">运行并显示游戏的屏幕</string>
+    <string name="title_activity_settings">设置</string>
+    <string name="darkmode_label">深色模式</string>
+
+    <!-- Main menu -->
+    <string name="menu_play">游玩</string>
+    <string name="menu_play_alone">单人游玩</string>
+    <string name="menu_settings">设置</string>
+    <string name="menu_balls">球</string>
+    <string name="menu_share">分享</string>
+    <string name="menu_watch_ad">观看广告解锁</string>
+    <string name="menu_come_back_tomorrow">明天再来</string>
+    <string name="menu_next_ad_in">%s后可看广告</string>
+    <string name="menu_share_thanks">感谢分享！解锁进度+10%。</string>
+    <string name="menu_share_already_claimed">感谢再次分享！奖励已被领取。</string>
+    <string name="difficulty_choose">选择难度</string>
+    <string name="difficulty_easy">简单</string>
+    <string name="difficulty_medium">中等</string>
+    <string name="difficulty_hard">困难</string>
+
+    <!-- Ball unlock screen -->
+    <string name="ball_unlock_title">解锁球</string>
+    <string name="ball_unlock_back">返回</string>
+    <string name="ball_unlock_purchase">购买</string>
+    <string name="ball_unlock_restore">恢复</string>
+
+    <!-- Tips shown during finger selection -->
+    <string-array name="tip_scoring">
+        <item>得分：</item>
+        <item>   将对手</item>
+        <item>   打入紫色区域</item>
+        <item>   即可得分。</item>
+    </string-array>
+    <string-array name="tip_charging">
+        <item>蓄力：</item>
+        <item>   按住蓄力。</item>
+        <item>   变紫时松手</item>
+        <item>   获得护盾！</item>
+    </string-array>
+    <string-array name="tip_shields">
+        <item>紫色护盾：</item>
+        <item>   有护盾的Pock</item>
+        <item>   赢得每次碰撞</item>
+        <item>   把握好时机！</item>
+    </string-array>
+    <string-array name="tip_overcharge">
+        <item>过充：</item>
+        <item>   蓄力太久</item>
+        <item>   会重置力量。</item>
+        <item>   别一直按着！</item>
+    </string-array>
+    <string-array name="tip_grey">
+        <item>灰色：</item>
+        <item>   如果你的Pock变灰</item>
+        <item>   就无法击打</item>
+        <item>   除非时机恰好！</item>
+    </string-array>
+
+    <!-- Settings strings -->
+    <string name="settings_title">设置</string>
+    <string name="pref_category_gameplay">玩法</string>
+    <string name="pref_category_controls">控制</string>
+    <string name="pref_category_visual">视觉</string>
+    <string name="pref_ball_size_title">球的大小</string>
+    <string name="pref_tail_length_title">尾迹长度</string>
+    <string name="pref_charge_speed_title">蓄力速度</string>
+    <string name="pref_game_speed_title">游戏速度</string>
+    <string name="pref_points_to_win_title">获胜所需分数</string>
+    <string name="pref_high_player_arrow_title">上方玩家箭头</string>
+    <string name="pref_low_player_arrow_title">下方玩家箭头</string>
+    <string name="pref_high_player_arrow_summary">蓄力时显示瞄准箭头（上方）</string>
+    <string name="pref_low_player_arrow_summary">蓄力时显示瞄准箭头（下方）</string>
+    <string name="pref_high_player_charge_fill_title">上方玩家蓄力条</string>
+    <string name="pref_low_player_charge_fill_title">下方玩家蓄力条</string>
+    <string name="pref_high_player_charge_fill_summary">蓄力时显示蓄力条（上方）</string>
+    <string name="pref_low_player_charge_fill_summary">蓄力时显示蓄力条（下方）</string>
+    <string name="pref_red_player_arrow_title">红方玩家箭头</string>
+    <string name="pref_blue_player_arrow_title">蓝方玩家箭头</string>
+    <string name="pref_red_player_charge_meter_title">红方玩家蓄力表</string>
+    <string name="pref_blue_player_charge_meter_title">蓝方玩家蓄力表</string>
+    <string name="pref_calibrate_score_title">校准得分位置</string>
+    <string name="pref_restore_defaults_title">恢复默认设置</string>
+    <string name="pref_restore_defaults_summary">重置所有设置和得分位置</string>
+    <string name="pref_sound_master">总音量</string>
+    <string name="pref_sound_background">背景音乐</string>
+    <string name="pref_sound_sfx">音效</string>
+    <string name="pref_sound_mute">静音</string>
+
+    <!-- Settings option arrays -->
+    <string-array name="ball_sizes">
+        <item>小</item>
+        <item>默认</item>
+        <item>大</item>
+    </string-array>
+    <string-array name="charge_speeds">
+        <item>慢</item>
+        <item>默认</item>
+        <item>快</item>
+        <item>最快</item>
+    </string-array>
+    <string-array name="tail_lengths">
+        <item>无</item>
+        <item>短</item>
+        <item>默认</item>
+        <item>长</item>
+    </string-array>
+    <string-array name="game_speeds">
+        <item>慢</item>
+        <item>默认</item>
+        <item>快</item>
+    </string-array>
+    <string-array name="points_to_win_entries">
+        <item>3分</item>
+        <item>5分</item>
+        <item>7分</item>
+        <item>10分</item>
+        <item>12分</item>
+        <item>15分</item>
+        <item>18分</item>
+        <item>20分</item>
+    </string-array>
+</resources>

@@ -31,7 +31,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         PaintBucket.initialize(resources)
         Logic.initialize(activity, this)
         Sounds.initializeGame()
-        Drawing.initialize()
+        Drawing.initialize(resources)
         startPlayers()
     }
 

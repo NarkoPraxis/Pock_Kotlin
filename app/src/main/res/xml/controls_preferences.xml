@@ -4,22 +4,22 @@
     <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="high_player_arrow"
-            android:summary="Show aim arrow while charging (top player)"
-            android:title="Red Player's Arrow" />
+            android:summary="@string/pref_high_player_arrow_summary"
+            android:title="@string/pref_red_player_arrow_title" />
     <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="low_player_arrow"
-            android:summary="Show aim arrow while charging (bottom player)"
-            android:title="Blue Player's Arrow" />
+            android:summary="@string/pref_low_player_arrow_summary"
+            android:title="@string/pref_blue_player_arrow_title" />
     <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="high_player_charge_fill"
-            android:summary="Show charge fill bar while charging (top player)"
-            android:title="Red Player's Charge Meter" />
+            android:summary="@string/pref_high_player_charge_fill_summary"
+            android:title="@string/pref_red_player_charge_meter_title" />
     <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="low_player_charge_fill"
-            android:summary="Show charge fill bar while charging (bottom player)"
-            android:title="Blue Player's Charge Meter" />
+            android:summary="@string/pref_low_player_charge_fill_summary"
+            android:title="@string/pref_blue_player_charge_meter_title" />
 
 </PreferenceScreen>

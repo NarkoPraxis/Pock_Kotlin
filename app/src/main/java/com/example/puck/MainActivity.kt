@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (Storage.shareRewardClaimed) {
-            binding.shareButton.text = "Share"
+            binding.shareButton.text = getString(R.string.menu_share)
         }
         binding.shareButton.setOnClickListener { shareAndReward() }
         binding.rewardedAdButton.setOnClickListener { showAd() }
@@ -69,14 +69,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun grantShareReward() {
         if (Storage.shareRewardClaimed) {
-            pendingShareToast = "Thanks for sharing again! The reward has already been claimed."
+            pendingShareToast = getString(R.string.menu_share_already_claimed)
             return
         }
         Storage.markShareRewardClaimed()
         Storage.addBonusProgress(10)
         Settings.unlockProgress = Storage.unlockProgress
         binding.unlockProgressBar.progress = Settings.unlockProgress
-        pendingShareToast = "Thanks for sharing! Unlock progress +10%."
+        pendingShareToast = getString(R.string.menu_share_thanks)
     }
 
     override fun onPause() {
@@ -113,9 +113,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun goToSinglePlayer(view: View) {
-        val options = arrayOf("Easy", "Medium", "Hard")
+        val options = arrayOf(getString(R.string.difficulty_easy), getString(R.string.difficulty_medium), getString(R.string.difficulty_hard))
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Choose Difficulty")
+            .setTitle(getString(R.string.difficulty_choose))
             .setItems(options) { _, which ->
                 Settings.botConfig = when (which) {
                     0 -> BotConfig.Easy
@@ -130,13 +130,6 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
             }
             .show()
-    }
-
-    fun goToTutorial(view: View) {
-        Settings.startWithTutorial = true
-        val intent = Intent(this, tutorial::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        startActivity(intent)
     }
 
     fun goToSettings(view: View) {
@@ -198,18 +191,18 @@ class MainActivity : AppCompatActivity() {
         binding.rewardedAdButton.visibility = View.VISIBLE
         val watchedToday = Storage.adsWatchedToday()
         if (watchedToday >= 5) {
-            binding.rewardedAdButton.text = "Come back tomorrow"
+            binding.rewardedAdButton.text = getString(R.string.menu_come_back_tomorrow)
             binding.rewardedAdButton.isEnabled = false
             return
         }
         val mins = Storage.minutesUntilNextAd()
         if (mins > 0) {
             val timeText = if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m"
-            binding.rewardedAdButton.text = "Next ad in $timeText"
+            binding.rewardedAdButton.text = getString(R.string.menu_next_ad_in, timeText)
             binding.rewardedAdButton.isEnabled = false
             return
         }
         binding.rewardedAdButton.isEnabled = rewardedAd != null
-        binding.rewardedAdButton.text = "Watch Ad to Unlock"
+        binding.rewardedAdButton.text = getString(R.string.menu_watch_ad)
     }
 }

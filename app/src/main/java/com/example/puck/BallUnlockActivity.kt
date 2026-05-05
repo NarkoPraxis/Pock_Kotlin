@@ -143,7 +143,7 @@ class BallUnlockActivity : AppCompatActivity() {
         val watchedToday = Storage.adsWatchedToday()
         if (watchedToday >= 5) {
             watchAdButton.visibility = View.VISIBLE
-            watchAdButton.text = "Come back tomorrow"
+            watchAdButton.text = getString(R.string.menu_come_back_tomorrow)
             watchAdButton.isEnabled = false
             return
         }
@@ -151,12 +151,12 @@ class BallUnlockActivity : AppCompatActivity() {
         if (mins > 0) {
             val timeText = if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m"
             watchAdButton.visibility = View.VISIBLE
-            watchAdButton.text = "Next ad in $timeText"
+            watchAdButton.text = getString(R.string.menu_next_ad_in, timeText)
             watchAdButton.isEnabled = false
             return
         }
         watchAdButton.visibility = View.VISIBLE
         watchAdButton.isEnabled = rewardedAd != null
-        watchAdButton.text = "Watch Ad to Unlock"
+        watchAdButton.text = getString(R.string.menu_watch_ad)
     }
 }

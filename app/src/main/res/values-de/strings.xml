@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PockPock</string>
+    <string name="gameViewDescription">Der Bildschirm, der das Spiel ausführt und anzeigt</string>
+    <string name="title_activity_settings">Einstellungen</string>
+    <string name="darkmode_label">Dunkelmodus</string>
+
+    <!-- Main menu -->
+    <string name="menu_play">Spielen</string>
+    <string name="menu_play_alone">Alleine spielen</string>
+    <string name="menu_settings">Einstellungen</string>
+    <string name="menu_balls">Bälle</string>
+    <string name="menu_share">Teilen</string>
+    <string name="menu_watch_ad">Werbung ansehen zum Freischalten</string>
+    <string name="menu_come_back_tomorrow">Komm morgen wieder</string>
+    <string name="menu_next_ad_in">Nächste Werbung in %s</string>
+    <string name="menu_share_thanks">Danke fürs Teilen! Fortschritt +10%.</string>
+    <string name="menu_share_already_claimed">Danke fürs erneute Teilen! Die Belohnung wurde bereits beansprucht.</string>
+    <string name="difficulty_choose">Schwierigkeit wählen</string>
+    <string name="difficulty_easy">Leicht</string>
+    <string name="difficulty_medium">Mittel</string>
+    <string name="difficulty_hard">Schwer</string>
+
+    <!-- Ball unlock screen -->
+    <string name="ball_unlock_title">Bälle freischalten</string>
+    <string name="ball_unlock_back">Zurück</string>
+    <string name="ball_unlock_purchase">Kaufen</string>
+    <string name="ball_unlock_restore">Wiederherstellen</string>
+
+    <!-- Tips shown during finger selection -->
+    <string-array name="tip_scoring">
+        <item>Punkte:</item>
+        <item>   Triff deinen Gegner</item>
+        <item>   in eine der lila Zonen</item>
+        <item>   um einen Punkt zu machen.</item>
+    </string-array>
+    <string-array name="tip_charging">
+        <item>Aufladen:</item>
+        <item>   Halten zum Aufladen.</item>
+        <item>   Loslassen wenn lila</item>
+        <item>   Erhalte ein Schild!</item>
+    </string-array>
+    <string-array name="tip_shields">
+        <item>Lila Schilde:</item>
+        <item>   Ein geschützter Pock</item>
+        <item>   gewinnt jeden Aufprall</item>
+        <item>   also wähle den Moment!</item>
+    </string-array>
+    <string-array name="tip_overcharge">
+        <item>Überladen:</item>
+        <item>   Zu langes Aufladen</item>
+        <item>   setzt deine Kraft zurück.</item>
+        <item>   Nicht ewig halten!</item>
+    </string-array>
+    <string-array name="tip_grey">
+        <item>Grau:</item>
+        <item>   Wenn dein Pock grau wird</item>
+        <item>   kannst du nicht zuschlagen</item>
+        <item>   außer du wählst den richtigen Moment!</item>
+    </string-array>
+
+    <!-- Settings strings -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="pref_category_gameplay">Spielmodus</string>
+    <string name="pref_category_controls">Steuerung</string>
+    <string name="pref_category_visual">Visuelle</string>
+    <string name="pref_ball_size_title">Ballgröße</string>
+    <string name="pref_tail_length_title">Schweiflänge</string>
+    <string name="pref_charge_speed_title">Ladegeschwindigkeit</string>
+    <string name="pref_game_speed_title">Spielgeschwindigkeit</string>
+    <string name="pref_points_to_win_title">Punkte zum Gewinnen</string>
+    <string name="pref_high_player_arrow_title">Pfeil des oberen Spielers</string>
+    <string name="pref_low_player_arrow_title">Pfeil des unteren Spielers</string>
+    <string name="pref_high_player_arrow_summary">Zielanzeige beim Laden anzeigen (oben)</string>
+    <string name="pref_low_player_arrow_summary">Zielanzeige beim Laden anzeigen (unten)</string>
+    <string name="pref_high_player_charge_fill_title">Ladebalken des oberen Spielers</string>
+    <string name="pref_low_player_charge_fill_title">Ladebalken des unteren Spielers</string>
+    <string name="pref_high_player_charge_fill_summary">Ladebalken beim Laden anzeigen (oben)</string>
+    <string name="pref_low_player_charge_fill_summary">Ladebalken beim Laden anzeigen (unten)</string>
+    <string name="pref_red_player_arrow_title">Pfeil des roten Spielers</string>
+    <string name="pref_blue_player_arrow_title">Pfeil des blauen Spielers</string>
+    <string name="pref_red_player_charge_meter_title">Lademeter des roten Spielers</string>
+    <string name="pref_blue_player_charge_meter_title">Lademeter des blauen Spielers</string>
+    <string name="pref_calibrate_score_title">Punktposition kalibrieren</string>
+    <string name="pref_restore_defaults_title">Standardwerte wiederherstellen</string>
+    <string name="pref_restore_defaults_summary">Alle Einstellungen und Punktpositionen zurücksetzen</string>
+    <string name="pref_sound_master">Hauptlautstärke</string>
+    <string name="pref_sound_background">Hintergrundmusik</string>
+    <string name="pref_sound_sfx">Soundeffekte</string>
+    <string name="pref_sound_mute">Stumm</string>
+
+    <!-- Settings option arrays -->
+    <string-array name="ball_sizes">
+        <item>Klein</item>
+        <item>Standard</item>
+        <item>Groß</item>
+    </string-array>
+    <string-array name="charge_speeds">
+        <item>Langsam</item>
+        <item>Standard</item>
+        <item>Schnell</item>
+        <item>Am schnellsten</item>
+    </string-array>
+    <string-array name="tail_lengths">
+        <item>Kein</item>
+        <item>Kurz</item>
+        <item>Standard</item>
+        <item>Lang</item>
+    </string-array>
+    <string-array name="game_speeds">
+        <item>Langsam</item>
+        <item>Standard</item>
+        <item>Schnell</item>
+    </string-array>
+    <string-array name="points_to_win_entries">
+        <item>3 Punkte</item>
+        <item>5 Punkte</item>
+        <item>7 Punkte</item>
+        <item>10 Punkte</item>
+        <item>12 Punkte</item>
+        <item>15 Punkte</item>
+        <item>18 Punkte</item>
+        <item>20 Punkte</item>
+    </string-array>
+</resources>
