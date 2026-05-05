@@ -40,6 +40,10 @@ object Sounds {
     var twoChargeCollisionId = 0
     var chargeBlastoffId = 0
     var teleportId = 0
+
+    var sweetSpotSoundId = 0
+
+    var gameStartSoundId = 0
     var scoreId = 0
     var trappedId = 0
     var menuAmbienceId: Int = 0
@@ -80,6 +84,8 @@ object Sounds {
         twoChargeCollisionId = load(R.raw.sheilded_collision)
         teleportId = load(R.raw.charge_activated)
         scoreId = load(R.raw.goal)
+        sweetSpotSoundId = load(R.raw.sweet_spot)
+        gameStartSoundId = load(R.raw.game_start)
     }
 
     fun initializeGame() {
@@ -108,13 +114,23 @@ object Sounds {
     }
 
     fun playHighPlayerSound(x: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(highPlayerSoundId, v, v, 1, 0, rates[getXRate(x)])
+        soundPool.play(highPlayerSoundId, effectiveSfxVol, effectiveSfxVol, 1, 0, rates[getXRate(x)])
     }
 
     fun playLowPlayerSound(x: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(lowPlayerSoundId, v, v, 1, 0, rates[getXRate(x)])
+        soundPool.play(lowPlayerSoundId, effectiveSfxVol, effectiveSfxVol, 1, 0, rates[getXRate(x)])
+    }
+
+    fun playLowPlayerSweetSpotSound(x: Float) {
+        soundPool.play(sweetSpotSoundId, effectiveSfxVol * .9f, effectiveSfxVol * .9f, 1, 0, rates[2])
+    }
+
+    fun playHighPlayerSweetSpotSound(y: Float) {
+        soundPool.play(sweetSpotSoundId, effectiveSfxVol * .9f, effectiveSfxVol * .9f, 1, 0, rates[0])
+    }
+
+    fun playGameStart() {
+        //soundPool.play(gameStartSoundId, effectiveSfxVol, effectiveSfxVol, 1, 0, rates[getYRate(Settings.middleY)])
     }
     fun playWallSound(y: Float) {
         val v = effectiveSfxVol
@@ -301,16 +317,11 @@ object Sounds {
     }
 
     private fun getXRate(x: Float) : Int {
-        val index = (x / cellWidth).toInt()
-        return if (index < 0 || index > 5) 5 else index
+        return (x / cellWidth).toInt().coerceIn(0, 5)
     }
 
     private fun getYRate(y: Float) : Int {
-        var test = (y / cellHeight).toInt()
-        if (test < 0 || test > 5) {
-            test = 5
-        }
-        return test
+        return (y / cellHeight).toInt().coerceIn(0,5)
     }
 
     private fun load(id: Int) : Int {

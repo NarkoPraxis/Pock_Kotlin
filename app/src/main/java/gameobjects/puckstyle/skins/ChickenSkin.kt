@@ -4,7 +4,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.RectF
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorGroup
@@ -32,7 +31,6 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
     private val beakPath      = Path()
     private val wingSecondary = Path()
     private val wingPrimary   = Path()
-    private val mouthRect     = RectF()
     // Avoids List allocation inside eye-drawing loops
     private val eyeSides      = floatArrayOf(0f, 0f)
 
@@ -272,7 +270,7 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
             currentAnim == ChickenAnim.AlmostHit   && animFrame >= DELAY_BEAK -> drawBeakGape(canvas)
             currentAnim == ChickenAnim.JustHit                                -> drawBeakGrimace(canvas)
             currentAnim == ChickenAnim.Celebration && animFrame >= DELAY_BEAK -> drawBeakGape(canvas)
-            currentAnim == ChickenAnim.Taunt       && animFrame >= DELAY_BEAK -> drawBeakYawn(canvas)
+            currentAnim == ChickenAnim.Taunt       && animFrame >= DELAY_BEAK -> drawBeakGape(canvas)
             else                                                               -> drawBeak(canvas)
         }
     }
@@ -467,29 +465,55 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
     }
 
     private fun drawBeakGape(canvas: Canvas) {
-        val lf   = (animFrame - DELAY_BEAK).coerceAtLeast(0)
+        val lf    = (animFrame - DELAY_BEAK).coerceAtLeast(0)
         val gapeT = easeIn(lf.toFloat(), 5f)
-        val tipY  = lerp(r * 0.58f, r * 0.72f, gapeT)
+
+        val closedTipY = r * 0.58f
+        val growth     = r * 0.10f * gapeT
+
+        // Bottom two triangles grow evenly together
+        val lowerTipY = closedTipY + growth
+        val mouthTipY = closedTipY + growth
+
+        // Upper jaw shrinks — base stays at beakTopY, tip retracts toward face
+        val upperTipY = lerp(closedTipY, beakTopY + (closedTipY - beakTopY) * 0.40f, gapeT)
+
+        paint.style = Paint.Style.FILL
+
+        // Layer 1 (behind): lower jaw — secondary, full beak width
         beakPath.reset()
         beakPath.moveTo(-r * 0.24f, beakTopY)
         beakPath.lineTo( r * 0.24f, beakTopY)
-        beakPath.lineTo(0f,          tipY)
+        beakPath.lineTo(0f, lowerTipY)
         beakPath.close()
-        paint.style = Paint.Style.FILL
         paint.color = frameColors.secondary
         canvas.drawPath(beakPath, paint)
-        // Interior mouth void
-        val mouthH = r * 0.12f * gapeT
-        mouthRect.set(-r * 0.14f, beakTopY + r * 0.04f, r * 0.14f, beakTopY + r * 0.04f + mouthH)
+
+        // Layer 2 (middle): mouth interior — black, narrower than the jaws
+        beakPath.reset()
+        beakPath.moveTo(-r * 0.14f, beakTopY)
+        beakPath.lineTo( r * 0.14f, beakTopY)
+        beakPath.lineTo(0f, mouthTipY)
+        beakPath.close()
         paint.color = Color.BLACK
-        canvas.drawOval(mouthRect, paint)
+        canvas.drawPath(beakPath, paint)
+
+        // Layer 3 (front): upper jaw — secondary, full width, gets shorter as gapeT increases
+        beakPath.reset()
+        beakPath.moveTo(-r * 0.24f, beakTopY)
+        beakPath.lineTo( r * 0.24f, beakTopY)
+        beakPath.lineTo(0f, upperTipY)
+        beakPath.close()
+        paint.color = frameColors.secondary
+        canvas.drawPath(beakPath, paint)
+
         drawNostrils(canvas)
     }
 
     private fun drawBeakGrimace(canvas: Canvas) {
         val t = easeIn(animFrame.toFloat(), 6f)
         val beakCenterY = beakTopY + (r * 0.58f - beakTopY) / 2f
-        canvas.withScale(lerp(1f, 0.6f, t), lerp(1f, 1.4f, t), 0f, beakCenterY) {
+        canvas.withScale(lerp(1f, 0.8f, t), lerp(1f, 1.2f, t), 0f, beakCenterY) {
             drawBeak(this)
         }
     }

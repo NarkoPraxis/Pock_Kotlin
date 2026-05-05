@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import gameobjects.Settings
 import utility.PaintBucket
+import utility.Sounds
 
 /** Which theme ColorGroup to use this frame — computed once in draw(), read by all components. */
 enum class ColorKey { Main, Shield, Inert }
@@ -130,7 +131,13 @@ class PuckRenderer(var theme: ColorTheme) {
         effect.reset()
     }
 
-
+    fun playSweetSpotSound() {
+        if (isHigh) {
+            Sounds.playHighPlayerSweetSpotSound(y)
+        } else {
+            Sounds.playLowPlayerSweetSpotSound(x)
+        }
+    }
 
     // Launch effect state forwarded from Player so effect.draw needs no Player reference
     var chargePowerLocked: Boolean = false

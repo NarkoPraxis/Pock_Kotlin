@@ -237,6 +237,7 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
                         _currentCharge = Settings.sweetSpotMax.toFloat()
                         _sweetSpotFramesRemaining = Settings.sweetSpotWindowFrames
                         _phase = ChargePhase.SweetSpot
+                        renderer.playSweetSpotSound()
                     }
                 }
                 ChargePhase.SweetSpot -> {

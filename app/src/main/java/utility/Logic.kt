@@ -258,6 +258,7 @@ object Logic {
             lowPopupDragPointerId = -1
             canCollide = true
             Settings.gameState = GameState.Play
+            Sounds.playGameStart()
         }
     }
 
