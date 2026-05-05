@@ -236,14 +236,14 @@ object PaintBucket {
 
         rulesTextPaint = Paint().apply {
             color = if (Storage.darkMode) backgroundColor else Color.BLACK
-            textSize = Settings.screenRatio * 1.4f
+            textSize = Settings.screenHeightRatio
             style = Paint.Style.FILL
             isAntiAlias = true
         }
 
         rulesTitlePaint = Paint().apply {
             color = if (Storage.darkMode) backgroundColor else Color.BLACK
-            textSize = Settings.screenRatio * 1.4f
+            textSize = Settings.screenHeightRatio
             style = Paint.Style.FILL
             isAntiAlias = true
             typeface = android.graphics.Typeface.DEFAULT_BOLD

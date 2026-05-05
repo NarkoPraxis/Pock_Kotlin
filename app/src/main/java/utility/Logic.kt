@@ -92,7 +92,8 @@ object Logic {
         Settings.screenHeight = height.toFloat()
         Settings.middleX = Settings.screenWidth / 2f
         Settings.middleY = Settings.screenHeight / 2f
-        Settings.screenRatio = if(Settings.screenWidth < Settings.screenHeight) Settings.screenWidth / 20 else Settings.screenHeight / 20
+        Settings.screenRatio = (Settings.screenWidth / 20).coerceIn(0f, 54f)
+        Settings.screenHeightRatio = (Settings.screenHeight / 40).coerceIn(0f, 54f)
 
         val ballSizeSettings =  when (Storage.ballSize) {
             "small" -> .5f

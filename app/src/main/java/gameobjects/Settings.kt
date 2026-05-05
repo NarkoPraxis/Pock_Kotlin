@@ -44,6 +44,7 @@ object Settings {
     var prepareTeleportTickerTime = 100
     var teleportTickerTime = 10
     var screenRatio = 0f
+    var screenHeightRatio = 0f
     var ballRadius = 0f
     var middleX = 0f
     var middleY = 0f

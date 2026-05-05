@@ -113,12 +113,12 @@ class BallUnlockView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (renderers == null) return
-        val savedRatio = Settings.screenRatio
-        val savedStrokeWidth = Settings.strokeWidth
+//        val savedRatio = Settings.screenRatio
+ //       val savedStrokeWidth = Settings.strokeWidth
         Settings.screenRatio = ratio()
         Settings.strokeWidth = ratio() / 4f
         ensurePaints()
-        if (!paintsReady) { Settings.screenRatio = savedRatio; Settings.strokeWidth = savedStrokeWidth; return }
+       // DELETE MAYBE? if (!paintsReady) { Settings.screenRatio = savedRatio; Settings.strokeWidth = savedStrokeWidth; return }
 
         // re-apply light/dark colors each frame
         cardBg.color = if (Storage.darkMode) Color.argb(220, 22, 22, 34) else Color.argb(220, 232, 232, 248)
@@ -184,9 +184,6 @@ class BallUnlockView @JvmOverloads constructor(
             val status = if (unlocked) "Unlocked" else unlockHint(type)
             canvas.drawText(status, cx, b[3] - ratio() * 0.3f, sublabel)
         }
-
-        Settings.screenRatio = savedRatio
-        Settings.strokeWidth = savedStrokeWidth
     }
 
     private fun unlockHint(type: BallType): String {
