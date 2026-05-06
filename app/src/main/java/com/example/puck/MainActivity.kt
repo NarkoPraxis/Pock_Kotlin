@@ -76,13 +76,16 @@ class MainActivity : AppCompatActivity() {
             "fr" -> "🇫🇷"
             "ja" -> "🇯🇵"
             "zh" -> "🇨🇳"
-            else -> "🇬🇧"
+            else -> englishFlag()
         }
     }
 
+    private fun englishFlag(): String =
+        if (java.util.Locale.getDefault().country == "US") "🇺🇸" else "🇬🇧"
+
     private fun showLanguagePicker() {
         val languages = listOf(
-            "🇬🇧  English" to "",
+            "${englishFlag()}  English" to "",
             "🇩🇪  Deutsch" to "de",
             "🇪🇸  Español" to "es",
             "🇫🇷  Français" to "fr",
