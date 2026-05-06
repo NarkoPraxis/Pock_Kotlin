@@ -28,6 +28,14 @@
     <string name="ball_unlock_restore">Restaurar</string>
 
     <!-- Tips shown during finger selection -->
+    <string name="tip_title">Mantén Aquí Cuando Estés Listo</string>
+    <string name="tip_controls">Toca la pantalla y arrastra el dedo hacia atrás para lanzar tu pock hacia adelante.</string>
+    <string name="tip_scoring">Golpea a tu oponente en una de las zonas de gol moradas para anotar puntos y ganar.</string>
+    <string name="tip_charging">Mantén tu disparo para cargar poder. ¡Suelta cuando esté morado para obtener un escudo!</string>
+    <string name="tip_shields">¡Un puck morado está protegido y gana cada colisión!</string>
+    <string name="tip_overcharge">¡Si te golpean mientras cargas, perderás el control, no seas imprudente!</string>
+    <string name="tip_grey">¡Si tu pock se vuelve gris, no puedes lanzarlo a menos que esté completamente cargado!</string>
+
     <string-array name="tip_scoring">
         <item>Puntuación:</item>
         <item>   Golpea a tu oponente</item>

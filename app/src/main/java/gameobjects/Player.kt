@@ -124,6 +124,9 @@ class Player(
         get() = puck.y
         set(value) { puck.y = value }
 
+    val isCharging
+        get() = puck.renderer.effect.phase == ChargePhase.Building || puck.renderer.effect.phase == ChargePhase.SweetSpot
+
     var pRadius: Float
         get() = puck.radius
         set(value) { puck.radius = value }
@@ -265,6 +268,7 @@ class Player(
         if (score < Settings.pointsToWin) score++
     }
 
+
     fun clearPower() {
         puck.clearForces()
         inertLocked = false
@@ -393,7 +397,7 @@ class Player(
         shouldReleaseCharge = false
         shielded = false
         val effect = puck.renderer.effect
-        val phaseAtRelease = effect?.phase ?: ChargePhase.Idle
+        val phaseAtRelease = effect.phase ?: ChargePhase.Idle
 
         if (phaseAtRelease == ChargePhase.SweetSpot) {
             shielded = true
@@ -410,9 +414,9 @@ class Player(
         pendingLaunchDir = direction
         pendingLaunchPower = power
         puck.shrinkTicker.reset()
-        effect?.registerStrikeCallback { applyPendingLaunch() }
-        effect?.onRelease(puck.x, puck.y, puck.radius, shielded)
-        effect?.clearCharge()
+        effect.registerStrikeCallback { applyPendingLaunch() }
+        effect.onRelease(puck.x, puck.y, puck.radius, shielded)
+        effect.clearCharge()
 
         if (phaseAtRelease == ChargePhase.Inert) {
             pendingLaunchDir = null

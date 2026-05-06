@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import com.example.puck.R
 import enums.GameState
 import gameobjects.Player
 import gameobjects.Settings
@@ -30,13 +29,6 @@ object Drawing {
     fun initialize(resources: Resources) {
         highScoreZone = RectF(0f, 0f, Settings.screenWidth, Settings.topGoalBottom)
         lowScoreZone = RectF(0f, Settings.bottomGoalTop, Settings.screenWidth, Settings.screenHeight)
-        tipPages = listOf(
-            resources.getStringArray(R.array.tip_scoring).toList(),
-            resources.getStringArray(R.array.tip_charging).toList(),
-            resources.getStringArray(R.array.tip_shields).toList(),
-            resources.getStringArray(R.array.tip_overcharge).toList(),
-            resources.getStringArray(R.array.tip_grey).toList()
-        )
         wallHeightParticleCount = (Settings.screenHeight.toInt() - Settings.topGoalBottom.toInt() * 2) / Settings.longParticleSide.toInt()
         wallWidthParticleCount = Settings.screenWidth.toInt() / Settings.longParticleSide.toInt()
 
@@ -481,8 +473,6 @@ object Drawing {
         canvas.drawText(bottomText, x, y, textPaint) //bottom score
     }
 
-    private var tipPages: List<List<String>> = emptyList()
-
     var highTipIndex: Int = 0
         private set
     var lowTipIndex: Int = 0
@@ -494,38 +484,11 @@ object Drawing {
     }
 
     fun cycleHighTip() {
-        highTipIndex = pickNewTipIndex(highTipIndex)
+        highTipIndex = (highTipIndex + 1) % 5
     }
 
     fun cycleLowTip() {
-        lowTipIndex = pickNewTipIndex(lowTipIndex)
-    }
-
-    private fun pickNewTipIndex(current: Int): Int {
-        val size = tipPages.size
-        if (size <= 1) return current
-        val newIndex = current + 1
-        if (newIndex >= size) {
-            return 0
-        }
-        return newIndex
-        //val choices = (0 until size).filter { it != current }
-        //return choices.random()
-    }
-
-    fun drawRules(canvas: Canvas) {
-        val highPage = tipPages[highTipIndex]
-        val lowPage = tipPages[lowTipIndex]
-        val textX = Settings.screenRatio * 2f
-        val lineHeight = Settings.screenHeightRatio * 1.1f
-        val startY = Settings.screenHeight / 2 +  lineHeight * 3
-        val lineCount = maxOf(highPage.size, lowPage.size)
-        mirrorText(canvas, "Hold Here When Ready", Settings.screenWidth / 4, startY , PaintBucket.rulesTitlePaint)
-        for (i in 0 until lineCount) {
-            val y = startY + (i+ 2) * lineHeight
-            val paint = if (i == 0) PaintBucket.rulesTitlePaint else PaintBucket.rulesTextPaint
-            mirrorText(canvas, highPage.getOrElse(i) { "" }, lowPage.getOrElse(i) { "" }, textX, y, paint)
-        }
+        lowTipIndex = (lowTipIndex + 1) % 5
     }
 
     fun drawGoalMenuHints(canvas: Canvas) {

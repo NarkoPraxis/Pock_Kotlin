@@ -76,7 +76,8 @@ class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circ
         renderer.radius = radius
         renderer.movementDirX = movement.direction.x
         renderer.movementDirY = movement.direction.y
-        renderer.movementPower = movement.power
+        renderer.movementPower = impactPower
+
         // fillColor, strokeColor, frame, currentCharge, shielded, launched, baseFillColor,
         // and all effect state are set by Player before calling drawTo()
     }

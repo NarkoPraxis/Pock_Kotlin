@@ -28,6 +28,14 @@
     <string name="ball_unlock_restore">復元</string>
 
     <!-- Tips shown during finger selection -->
+    <string name="tip_title">準備できたらここを押してください</string>
+    <string name="tip_controls">画面をタッチして指を引き、パックを前方に弾き飛ばしましょう。</string>
+    <string name="tip_scoring">相手を紫のゴールゾーンのどちらかに打ち込んでポイントを獲得し、勝利を目指しましょう。</string>
+    <string name="tip_charging">押し続けてパワーをチャージ。紫になったら放してシールドを得よう！</string>
+    <string name="tip_shields">紫のパックはシールドされており、すべての衝突に勝ちます！</string>
+    <string name="tip_overcharge">チャージ中に当たると制御を失います、無謀にならないで！</string>
+    <string name="tip_grey">パックが灰色になったら、完全にチャージしない限り打ち出せません！</string>
+
     <string-array name="tip_scoring">
         <item>得点：</item>
         <item>　相手を</item>

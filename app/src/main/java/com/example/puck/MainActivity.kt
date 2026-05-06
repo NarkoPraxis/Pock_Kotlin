@@ -5,6 +5,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.preference.PreferenceManager
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -61,6 +63,44 @@ class MainActivity : AppCompatActivity() {
 
         updateAdButton()
         if (Storage.canWatchAdNow()) loadAd()
+
+        binding.languageButton.text = currentLanguageFlag()
+        binding.languageButton.setOnClickListener { showLanguagePicker() }
+    }
+
+    private fun currentLanguageFlag(): String {
+        val locale = AppCompatDelegate.getApplicationLocales()[0]
+        return when (locale?.language) {
+            "de" -> "🇩🇪"
+            "es" -> "🇪🇸"
+            "fr" -> "🇫🇷"
+            "ja" -> "🇯🇵"
+            "zh" -> "🇨🇳"
+            else -> "🇬🇧"
+        }
+    }
+
+    private fun showLanguagePicker() {
+        val languages = listOf(
+            "🇬🇧  English" to "",
+            "🇩🇪  Deutsch" to "de",
+            "🇪🇸  Español" to "es",
+            "🇫🇷  Français" to "fr",
+            "🇯🇵  日本語" to "ja",
+            "🇨🇳  中文" to "zh"
+        )
+        val labels = languages.map { it.first }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setItems(labels) { _, which ->
+                val code = languages[which].second
+                val localeList = if (code.isEmpty()) {
+                    LocaleListCompat.getEmptyLocaleList()
+                } else {
+                    LocaleListCompat.forLanguageTags(code)
+                }
+                AppCompatDelegate.setApplicationLocales(localeList)
+            }
+            .show()
     }
 
     private fun shareAndReward() {
@@ -97,6 +137,7 @@ class MainActivity : AppCompatActivity() {
         binding.unlockProgressBar.progress = Settings.unlockProgress
         updateAdButton()
         if (rewardedAd == null && Storage.unlockProgress < 100 && Storage.canWatchAdNow()) loadAd()
+        binding.languageButton.text = currentLanguageFlag()
         pendingShareToast?.let {
             Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
             pendingShareToast = null

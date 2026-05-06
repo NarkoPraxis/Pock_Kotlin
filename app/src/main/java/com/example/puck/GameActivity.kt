@@ -20,6 +20,9 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
     var handle: Handler = Handler()
     var runnable: Runnable = Runnable {}
     private var gameLoopPaused = false
+    private var tipOverlayVisible = false
+    private var lastHighTipIndex = -1
+    private var lastLowTipIndex = -1
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         doOnSizeChange(width, height, oldWidth, oldHeight)
@@ -32,6 +35,9 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         Logic.initialize(activity, this)
         Sounds.initializeGame()
         Drawing.initialize(resources)
+        (activity as? GameActivity)?.positionTipOverlays(
+            width, height, Settings.topGoalBottom, Settings.bottomGoalTop
+        )
         startPlayers()
     }
 
@@ -56,6 +62,15 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
                     Logic.gameOver()
                 }
                 GameState.Temp -> { }
+            }
+            val inSelection = Settings.gameState == GameState.BallSelection
+            val needsTipUpdate = inSelection != tipOverlayVisible
+                    || (inSelection && (Drawing.highTipIndex != lastHighTipIndex || Drawing.lowTipIndex != lastLowTipIndex))
+            if (needsTipUpdate) {
+                tipOverlayVisible = inSelection
+                lastHighTipIndex = Drawing.highTipIndex
+                lastLowTipIndex = Drawing.lowTipIndex
+                (activity as? GameActivity)?.updateTipOverlay(Drawing.highTipIndex, Drawing.lowTipIndex, inSelection)
             }
             invalidate()
             handle.postDelayed(runnable, Settings.refreshRate.toLong())
@@ -90,7 +105,6 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
             Drawing.drawScoreFlash(canvas)
             Drawing.drawScores(canvas, Logic.highPlayer, Logic.lowPlayer)
         } else {
-            Drawing.drawRules(canvas)
             Logic.highBallPopup.drawTo(canvas)
             Logic.lowBallPopup.drawTo(canvas)
         }
@@ -123,14 +137,74 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
 
 class GameActivity : AppCompatActivity() {
     lateinit var playView: PlayView
+    private lateinit var lowTipOverlay: android.view.View
+    private lateinit var highTipOverlay: android.view.View
+
+    private val tipStringIds = intArrayOf(
+        R.string.tip_controls,
+        R.string.tip_scoring,
+        R.string.tip_charging,
+        R.string.tip_shields,
+        R.string.tip_overcharge,
+        R.string.tip_grey
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val root = android.widget.FrameLayout(this)
+
         playView = PlayView(this, this)
         playView.contentDescription = getString(R.string.gameViewDescription)
-        setContentView(playView)
+        root.addView(playView, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+
+        lowTipOverlay = layoutInflater.inflate(R.layout.tip_overlay, root, false)
+        highTipOverlay = layoutInflater.inflate(R.layout.tip_overlay, root, false)
+        highTipOverlay.rotation = 180f
+        lowTipOverlay.visibility = View.GONE
+        highTipOverlay.visibility = View.GONE
+
+        root.addView(lowTipOverlay, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+        ))
+        root.addView(highTipOverlay, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+        ))
+
+        setContentView(root)
         hideSystemUI()
+    }
+
+    fun positionTipOverlays(width: Int, height: Int, topGoalBottom: Float, bottomGoalTop: Float) {
+        val padding = (height * 0.02f).toInt()
+        val carouselHeight = (gameobjects.Settings.screenRatio * 5f).toInt()
+
+        (lowTipOverlay.layoutParams as android.widget.FrameLayout.LayoutParams).apply {
+            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+            bottomMargin = (height - bottomGoalTop).toInt() + carouselHeight + padding
+        }
+        lowTipOverlay.requestLayout()
+
+        (highTipOverlay.layoutParams as android.widget.FrameLayout.LayoutParams).apply {
+            gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
+            topMargin = topGoalBottom.toInt() + carouselHeight + padding
+        }
+        highTipOverlay.requestLayout()
+    }
+
+    fun updateTipOverlay(highIndex: Int, lowIndex: Int, visible: Boolean) {
+        val vis = if (visible) View.VISIBLE else View.GONE
+        lowTipOverlay.visibility = vis
+        highTipOverlay.visibility = vis
+        if (visible) {
+            lowTipOverlay.findViewById<android.widget.TextView>(R.id.tipText).setText(tipStringIds[lowIndex])
+            highTipOverlay.findViewById<android.widget.TextView>(R.id.tipText).setText(tipStringIds[highIndex])
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

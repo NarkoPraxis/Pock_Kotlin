@@ -28,6 +28,14 @@
     <string name="ball_unlock_restore">Restaurer</string>
 
     <!-- Tips shown during finger selection -->
+    <string name="tip_title">Restez Ici Quand Vous Êtes Prêt</string>
+    <string name="tip_controls">Touchez l\'écran et tirez votre doigt en arrière pour propulser votre pock vers l\'avant.</string>
+    <string name="tip_scoring">Frappez votre adversaire dans une zone de but violette et marquez des points pour gagner.</string>
+    <string name="tip_charging">Maintenez votre tir pour charger la puissance. Relâchez quand c\'est violet pour obtenir un bouclier!</string>
+    <string name="tip_shields">Un puck violet est protégé et gagne chaque collision!</string>
+    <string name="tip_overcharge">Si vous êtes touché pendant la charge, vous perdrez le contrôle, ne soyez pas imprudent!</string>
+    <string name="tip_grey">Si votre pock devient gris, vous ne pouvez pas le lancer sauf s\'il est complètement chargé!</string>
+
     <string-array name="tip_scoring">
         <item>Score :</item>
         <item>   Frappez votre adversaire</item>

@@ -10,7 +10,6 @@ import android.graphics.RectF
 import android.graphics.Shader
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
@@ -18,7 +17,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 import androidx.core.graphics.withSave
-import gameobjects.puckstyle.paddles.MetalLaunch.MetalScorch.Spark
 import kotlin.math.PI
 
 /**

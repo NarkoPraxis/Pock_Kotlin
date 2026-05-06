@@ -70,8 +70,8 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer
 
     override fun onVictory(x: Float, y: Float) {
         Effects.addPersistentEffect(DynamiteExplosion(
-            x, y, renderer.radius,
-            theme.main.secondary, theme.main.primary, theme.main.secondary,
+            x, y, renderer.radius * 1.5f,
+            theme.main.secondary, theme.main.secondary, theme.main.primary,
             leaveScorch = false
         ))
     }
@@ -79,7 +79,7 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer
     override fun onShieldedCollision(position: Point) {
         Effects.addPersistentEffect(DynamiteExplosion(
             position.x, position.y, renderer.radius,
-            theme.main.secondary, theme.main.primary, theme.shield.primary,
+            theme.shield.secondary, theme.shield.secondary, theme.shield.primary,
             leaveScorch = true
         ))
     }
@@ -87,7 +87,7 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer
     override fun onCollisionWin(position: Point, speed: Float) {
         Effects.addPersistentEffect(DynamiteExplosion(
             position.x, position.y, renderer.radius,
-            theme.main.secondary, theme.main.primary, theme.shield.primary,
+            theme.main.secondary, theme.main.secondary, theme.main.primary,
             leaveScorch = true
         ))
     }

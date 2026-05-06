@@ -22,6 +22,7 @@ import physics.Point
 import physics.Ticker
 import shapes.Circle
 import gameobjects.BotBrain
+import kotlin.math.absoluteValue
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -422,19 +423,29 @@ object Logic {
         victoryCelebrationFrame = 0
     }
 
+    var previousAngle = 0f
+
     private fun updateVictoryCelebration() {
         val winner = if (highPlayer.score >= Settings.pointsToWin) highPlayer else lowPlayer
         if (victoryCelebrationFrame % winner.puck.renderer.skin.explosionFrequency == 0) {
             val skin = winner.puck.renderer.skin
             val baseMargin = Settings.screenRatio * 2f
-            val playWidth = Settings.screenWidth - 2 * baseMargin
-            val playHeight = Settings.bottomGoalTop - Settings.topGoalBottom - 2 * baseMargin
-            val cx = Settings.screenWidth / 2f
-            val cy = (Settings.topGoalBottom + Settings.bottomGoalTop) / 2f
-            val x = (cx + (Random.nextFloat() - 0.5f) * playWidth * skin.scatterDensity)
-                .coerceIn(baseMargin, Settings.screenWidth - baseMargin)
-            val y = (cy + (Random.nextFloat() - 0.5f) * playHeight * skin.scatterDensity)
-                .coerceIn(Settings.topGoalBottom + baseMargin, Settings.bottomGoalTop - baseMargin)
+            val maxDist = winner.puck.renderer.radius * 5f * skin.scatterDensity
+            var angle = Random.nextFloat() * 2f * Math.PI.toFloat()
+            if ((angle - previousAngle).absoluteValue < 60f) angle += 60f
+            val dist = Random.nextFloat() * maxDist
+            val cx = winner.puck.x
+            val cy = winner.puck.y
+            var x = cx + kotlin.math.cos(angle) * dist
+            var y = cy + kotlin.math.sin(angle) * dist
+            val xMin = baseMargin
+            val xMax = Settings.screenWidth - baseMargin
+            val yMin = Settings.topGoalBottom + baseMargin
+            val yMax = Settings.bottomGoalTop - baseMargin
+            if (x < xMin) x = 2f * cx - x
+            if (x > xMax) x = 2f * cx - x
+            x = x.coerceIn(xMin, xMax)
+            y = y.coerceIn(yMin, yMax)
             skin.onVictory(x, y)
         }
         victoryCelebrationFrame++
@@ -448,6 +459,9 @@ object Logic {
 
             highPlayer.launchFrom = Point(highPlayer.px, highPlayer.py)
             lowPlayer.launchFrom = Point(lowPlayer.px, lowPlayer.py)
+
+            val lowPower = lowPlayer.power
+            val highPower = highPlayer.power
 
             highPlayer.bonusCountdown = 0f
             lowPlayer.bonusCountdown = 0f
@@ -480,7 +494,8 @@ object Logic {
                 applyHitStun(highPlayer, highPlayer.puck.impactPower)
             } else if (highPlayer.shielded && !lowPlayer.shielded) {
                 Sounds.playChargeCollision(collisionPoint.x)
-                lowPlayer.launch(Force(direction, 10f +highPlayer.power))
+                val bonusPower = if (lowPlayer.isCharging) 20f else 10f
+                lowPlayer.launch(Force(direction, bonusPower +highPlayer.power))
                 highPlayer.launch(Force(-direction, Settings.minLaunchPower))
                 lowPlayer.inertLocked = true
                 applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
@@ -488,7 +503,8 @@ object Logic {
                 lowPlayer.puck.renderer.skin.onHit()
             } else if (lowPlayer.shielded && !highPlayer.shielded) {
                 Sounds.playChargeCollision(collisionPoint.x)
-                highPlayer.launch(Force(-direction, 10f +lowPlayer.power))
+                val bonusPower = if (highPlayer.isCharging) 20f else 10f
+                highPlayer.launch(Force(-direction, bonusPower +lowPlayer.power))
                 lowPlayer.launch(Force(direction, Settings.minLaunchPower))
                 highPlayer.inertLocked = true
                 applyHitStun(highPlayer, highPlayer.puck.impactPower)
@@ -496,16 +512,43 @@ object Logic {
                 highPlayer.puck.renderer.skin.onHit()
             } else if (lowPlayer.shielded && highPlayer.shielded) {
                 Sounds.playDoubleChargeCollision(collisionPoint.x)
-                val lowPower = lowPlayer.power
-                val highPower = highPlayer.power
                 highPlayer.launch(Force(-direction, 10f +lowPower))
                 lowPlayer.launch(Force(direction, 10f +highPower))
                 // both shielded — no hit-stun for either
                 highPlayer.puck.renderer.skin.onShieldedCollision(intersection)
                 lowPlayer.puck.renderer.skin.onShieldedCollision(intersection)
+            } else if (highPlayer.isCharging && lowPlayer.isCharging) {
+                Sounds.playDoubleChargeCollision(collisionPoint.x)
+
+                highPlayer.launch(Force(-direction, 10f + lowPower))
+                lowPlayer.launch(Force(direction, 10f + highPower))
+                highPlayer.inertLocked = true
+                lowPlayer.inertLocked = true
+                highPlayer.clearCharge()
+                lowPlayer.clearCharge()
+                applyHitStun(highPlayer, highPlayer.puck.impactPower)
+                applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
+                highPlayer.puck.renderer.skin.onHit()
+                lowPlayer.puck.renderer.skin.onHit()
+            } else if (highPlayer.isCharging) {
+                Sounds.playChargeCollision(collisionPoint.x)
+                highPlayer.launch(Force(-direction, 10f + lowPower))
+                lowPlayer.launch(Force(direction, if (highPower < Settings.minLaunchPower) Settings.minLaunchPower else highPower))
+                highPlayer.inertLocked = true
+                highPlayer.clearCharge()
+                applyHitStun(highPlayer, highPlayer.puck.impactPower)
+                highPlayer.puck.renderer.skin.onHit()
+                lowPlayer.puck.renderer.skin.onCollisionWin(intersection, lowPlayer.movementSpeed)
+            } else if (lowPlayer.isCharging) {
+                Sounds.playChargeCollision(collisionPoint.x)
+                lowPlayer.launch(Force(direction, 10f + highPower))
+                highPlayer.launch(Force(-direction, if (lowPower < Settings.minLaunchPower) Settings.minLaunchPower else lowPower))
+                lowPlayer.inertLocked = true
+                lowPlayer.clearCharge()
+                applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
+                lowPlayer.puck.renderer.skin.onHit()
+                highPlayer.puck.renderer.skin.onCollisionWin(intersection, highPlayer.movementSpeed)
             } else {
-                val highPower = highPlayer.power
-                val lowPower = lowPlayer.power
                 highPlayer.launch(
                     Force(
                         -direction,

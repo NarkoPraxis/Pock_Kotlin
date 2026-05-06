@@ -4,7 +4,7 @@
     <string name="title_activity_settings">Settings</string>
 
     <!-- Color Theme Preferences -->
-    <string name="darkmode_label">Dark Modes</string>
+    <string name="darkmode_label">Dark Mode</string>
 
     <!-- Main menu -->
     <string name="menu_play">Play</string>
@@ -29,36 +29,13 @@
     <string name="ball_unlock_restore">Restore</string>
 
     <!-- Tips shown during finger selection -->
-    <string-array name="tip_scoring">
-        <item>Scoring:</item>
-        <item>   Hit your opponent</item>
-        <item>   into either purple zone</item>
-        <item>   to score a point.</item>
-    </string-array>
-    <string-array name="tip_charging">
-        <item>Charging:</item>
-        <item>   Hold to build power.</item>
-        <item>   Release when purple</item>
-        <item>   Gain a shield!</item>
-    </string-array>
-    <string-array name="tip_shields">
-        <item>Purple Shields:</item>
-        <item>   A shielded Pock</item>
-        <item>   wins every bounce</item>
-        <item>   so time your release!</item>
-    </string-array>
-    <string-array name="tip_overcharge">
-        <item>Overcharge:</item>
-        <item>   Charging too long</item>
-        <item>   resets your power.</item>
-        <item>   Don\'t hold forever!</item>
-    </string-array>
-    <string-array name="tip_grey">
-        <item>Grey:</item>
-        <item>   If your Pock turns grey</item>
-        <item>   you can\'t strike it</item>
-        <item>   unless timed correctly!</item>
-    </string-array>
+    <string name="tip_title">Hold Here When Ready</string>
+    <string name="tip_controls">Touch the screen and pull back your finger to slingshot your pock forwards.</string>
+    <string name="tip_scoring">Hit your opponent into the either purple goal zones and score points to win.</string>
+    <string name="tip_charging">Hold your shot to charge power. Release when purple to gain a shield!</string>
+    <string name="tip_shields">A purple puck is shielded and wins every collision!</string>
+    <string name="tip_overcharge">If hit while charging you will lose control, don\'t be reckless!</string>
+    <string name="tip_grey">If your pock turns grey, you can\'t slingshot it unless fully charged!</string>
 
     <!-- Settings screen title -->
     <string name="settings_title">Settings</string>

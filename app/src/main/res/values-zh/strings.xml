@@ -28,6 +28,14 @@
     <string name="ball_unlock_restore">恢复</string>
 
     <!-- Tips shown during finger selection -->
+    <string name="tip_title">准备好后按住此处</string>
+    <string name="tip_controls">触摸屏幕并向后拉手指，将你的冰球弹射向前。</string>
+    <string name="tip_scoring">将对手打入任一紫色球门区域并得分以赢得比赛。</string>
+    <string name="tip_charging">按住射击以积蓄力量。变成紫色时松开可获得护盾！</string>
+    <string name="tip_shields">紫色冰球受到保护，赢得每次碰撞！</string>
+    <string name="tip_overcharge">充能时被击中将失去控制，不要鲁莽！</string>
+    <string name="tip_grey">如果你的冰球变成灰色，除非完全充能否则无法弹射！</string>
+
     <string-array name="tip_scoring">
         <item>得分：</item>
         <item>   将对手</item>
