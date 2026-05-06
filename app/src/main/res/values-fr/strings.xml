@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">PockPock</string>
+    <string name="app_name">Pock Pock</string>
     <string name="gameViewDescription">L\'écran qui exécute et affiche le jeu</string>
     <string name="title_activity_settings">Paramètres</string>
     <string name="darkmode_label">Mode sombre</string>
