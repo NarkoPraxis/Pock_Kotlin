@@ -9,8 +9,10 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.mutableIntStateOf
 import enums.*
 import gameobjects.*
 import utility.*
@@ -133,76 +135,21 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
 }
 
 class GameActivity : AppCompatActivity() {
-    lateinit var playView: PlayView
-    private lateinit var lowTipOverlay: android.view.View
-    private lateinit var highTipOverlay: android.view.View
-
-    private val tipStringIds = intArrayOf(
-        R.string.tip_controls,
-        R.string.tip_scoring,
-        R.string.tip_charging,
-        R.string.tip_shields,
-        R.string.tip_overcharge,
-        R.string.tip_grey
+    private val tickState = mutableIntStateOf(0)
+    private val gameLoop = GameLoop(
+        intervalMs = { Settings.refreshRate.toLong() },
+        onTick = { tickState.intValue++ }
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val root = android.widget.FrameLayout(this)
-
-        playView = PlayView(this, this)
-        playView.contentDescription = getString(R.string.gameViewDescription)
-        root.addView(playView, android.widget.FrameLayout.LayoutParams(
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
-        ))
-
-        lowTipOverlay = layoutInflater.inflate(R.layout.tip_overlay, root, false)
-        highTipOverlay = layoutInflater.inflate(R.layout.tip_overlay, root, false)
-        highTipOverlay.rotation = 180f
-        lowTipOverlay.visibility = View.GONE
-        highTipOverlay.visibility = View.GONE
-
-        root.addView(lowTipOverlay, android.widget.FrameLayout.LayoutParams(
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
-        ))
-        root.addView(highTipOverlay, android.widget.FrameLayout.LayoutParams(
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
-        ))
-
-        setContentView(root)
+        setContent { GameScreen(gameLoopTick = tickState) }
         hideSystemUI()
     }
 
-    fun positionTipOverlays(width: Int, height: Int, topGoalBottom: Float, bottomGoalTop: Float) {
-        val padding = (height * 0.02f).toInt()
-        val carouselHeight = (gameobjects.Settings.screenRatio * 5f).toInt()
-
-        (lowTipOverlay.layoutParams as android.widget.FrameLayout.LayoutParams).apply {
-            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
-            bottomMargin = (height - bottomGoalTop).toInt() + carouselHeight + padding
-        }
-        lowTipOverlay.requestLayout()
-
-        (highTipOverlay.layoutParams as android.widget.FrameLayout.LayoutParams).apply {
-            gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
-            topMargin = topGoalBottom.toInt() + carouselHeight + padding
-        }
-        highTipOverlay.requestLayout()
-    }
-
-    fun updateTipOverlay(highIndex: Int, lowIndex: Int, visible: Boolean) {
-        val vis = if (visible) View.VISIBLE else View.GONE
-        lowTipOverlay.visibility = vis
-        highTipOverlay.visibility = vis
-        if (visible) {
-            lowTipOverlay.findViewById<android.widget.TextView>(R.id.tipText).setText(tipStringIds[lowIndex])
-            highTipOverlay.findViewById<android.widget.TextView>(R.id.tipText).setText(tipStringIds[highIndex])
-        }
-    }
+    // Stubs retained so PlayView (kept as fallback) continues to compile
+    fun positionTipOverlays(width: Int, height: Int, topGoalBottom: Float, bottomGoalTop: Float) {}
+    fun updateTipOverlay(highIndex: Int, lowIndex: Int, visible: Boolean) {}
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
@@ -211,19 +158,15 @@ class GameActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        if (Logic.leaving) {
-            Sounds.autoPauseSfx()
-        } else {
-            Sounds.pauseAll()
-        }
-        playView.pauseGameLoop()
+        if (Logic.leaving) Sounds.autoPauseSfx() else Sounds.pauseAll()
+        gameLoop.stop()
     }
 
     override fun onResume() {
         super.onResume()
         hideSystemUI()
         Sounds.resumeAll()
-        playView.resumeGameLoop()
+        gameLoop.start()
     }
 
     private fun hideSystemUI() {
@@ -250,6 +193,4 @@ class GameActivity : AppCompatActivity() {
         Logic.unregisterPhaseCallbacks()
         Settings.isSinglePlayer = false
     }
-
-
 }
