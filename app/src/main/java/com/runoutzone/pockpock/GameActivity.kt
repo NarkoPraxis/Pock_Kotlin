@@ -5,7 +5,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
@@ -17,12 +16,14 @@ import gameobjects.*
 import utility.*
 
 open class PlayView(context: Context, override var activity: AppCompatActivity) : GameView(context, activity) {
-    var handle: Handler = Handler()
-    var runnable: Runnable = Runnable {}
-    private var gameLoopPaused = false
     private var tipOverlayVisible = false
     private var lastHighTipIndex = -1
     private var lastLowTipIndex = -1
+
+    private val gameLoop = GameLoop(
+        intervalMs = { Settings.refreshRate.toLong() },
+        onTick = { tick() }
+    )
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         doOnSizeChange(width, height, oldWidth, oldHeight)
@@ -42,40 +43,40 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
     }
 
     private fun startPlayers() {
-        handle.removeCallbacksAndMessages(null)
-        runnable = Runnable {
-            Logic.botBrain?.tick()
-            Logic.updateCanScoreWall()
-            when (Settings.gameState) {
-                GameState.BallSelection -> {
-                    Logic.checkCharge()
-                    Logic.cancelChargesOnRelease()
-                    Logic.checkBallSelectionEnd()
-                }
-                GameState.CountDown -> { /* dead state */ }
-                GameState.Tutorial -> { }
-                GameState.Play -> playGame()
-                GameState.Scored -> {
-                    Logic.scored()
-                }
-                GameState.GameOver -> {
-                    Logic.gameOver()
-                }
-                GameState.Temp -> { }
+        gameLoop.stop()
+        gameLoop.start()
+    }
+
+    private fun tick() {
+        Logic.botBrain?.tick()
+        Logic.updateCanScoreWall()
+        when (Settings.gameState) {
+            GameState.BallSelection -> {
+                Logic.checkCharge()
+                Logic.cancelChargesOnRelease()
+                Logic.checkBallSelectionEnd()
             }
-            val inSelection = Settings.gameState == GameState.BallSelection
-            val needsTipUpdate = inSelection != tipOverlayVisible
-                    || (inSelection && (Drawing.highTipIndex != lastHighTipIndex || Drawing.lowTipIndex != lastLowTipIndex))
-            if (needsTipUpdate) {
-                tipOverlayVisible = inSelection
-                lastHighTipIndex = Drawing.highTipIndex
-                lastLowTipIndex = Drawing.lowTipIndex
-                (activity as? GameActivity)?.updateTipOverlay(Drawing.highTipIndex, Drawing.lowTipIndex, inSelection)
+            GameState.CountDown -> { /* dead state */ }
+            GameState.Tutorial -> { }
+            GameState.Play -> playGame()
+            GameState.Scored -> {
+                Logic.scored()
             }
-            invalidate()
-            handle.postDelayed(runnable, Settings.refreshRate.toLong())
+            GameState.GameOver -> {
+                Logic.gameOver()
+            }
+            GameState.Temp -> { }
         }
-        handle.post(runnable)
+        val inSelection = Settings.gameState == GameState.BallSelection
+        val needsTipUpdate = inSelection != tipOverlayVisible
+                || (inSelection && (Drawing.highTipIndex != lastHighTipIndex || Drawing.lowTipIndex != lastLowTipIndex))
+        if (needsTipUpdate) {
+            tipOverlayVisible = inSelection
+            lastHighTipIndex = Drawing.highTipIndex
+            lastLowTipIndex = Drawing.lowTipIndex
+            (activity as? GameActivity)?.updateTipOverlay(Drawing.highTipIndex, Drawing.lowTipIndex, inSelection)
+        }
+        invalidate()
     }
 
     private fun playGame() {
@@ -112,20 +113,16 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
     }
 
     fun pauseGameLoop() {
-        handle.removeCallbacksAndMessages(null)
-        gameLoopPaused = true
+        gameLoop.stop()
     }
 
     fun resumeGameLoop() {
-        if (gameLoopPaused) {
-            gameLoopPaused = false
-            handle.post(runnable)
-        }
+        gameLoop.start()
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        handle.removeCallbacksAndMessages(null)
+        gameLoop.stop()
     }
 
     @SuppressLint("ClickableViewAccessibility")
