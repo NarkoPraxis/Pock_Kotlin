@@ -6,6 +6,7 @@ import android.graphics.Paint
 import gameobjects.Settings
 import utility.PaintBucket
 import utility.Sounds
+import utility.placeholderPaint
 
 /** Which theme ColorGroup to use this frame — computed once in draw(), read by all components. */
 enum class ColorKey { Main, Shield, Inert }

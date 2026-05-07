@@ -12,6 +12,7 @@ import physics.Point
 import physics.Ticker
 import shapes.Circle
 import utility.PaintBucket
+import utility.placeholderPaint
 
 class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circle(radius, x, y, renderer.theme.main.primary, renderer.theme.main.secondary) {
 

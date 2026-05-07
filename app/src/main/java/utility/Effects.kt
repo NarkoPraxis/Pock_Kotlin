@@ -1,6 +1,7 @@
 package utility
 
 import android.graphics.Canvas
+import androidx.compose.ui.graphics.toArgb
 import enums.Direction
 import gameobjects.Settings
 import physics.Point
@@ -68,11 +69,13 @@ object Effects {
     }
 
     fun addWallCollisionEffect(bounceDirection: Direction, fillColor: Int, puckPosition: Point) {
+        val effectInt = PaintBucket.effectColor.toArgb()
+        val bgInt = PaintBucket.backgroundColor.toArgb()
         when(bounceDirection) {
-            Direction.LEFT -> collisions.add(Explosion(PaintBucket.effectColor, fillColor, PaintBucket.backgroundColor, Point(Settings.shortParticleSide, puckPosition.y), Settings.ballRadius * 1.5f, false, Direction.LEFT))
-            Direction.RIGHT -> collisions.add(Explosion(PaintBucket.effectColor, fillColor, PaintBucket.backgroundColor, Point(Settings.screenWidth - Settings.shortParticleSide, puckPosition.y), Settings.ballRadius * 1.5f, false, Direction.RIGHT))
-            Direction.TOP -> collisions.add(Explosion(PaintBucket.effectColor, fillColor, PaintBucket.backgroundColor, Point(puckPosition.x, Settings.topGoalBottom), Settings.ballRadius * 1.5f, false, Direction.TOP))
-            Direction.BOTTOM -> collisions.add(Explosion(PaintBucket.effectColor, fillColor, PaintBucket.backgroundColor, Point(puckPosition.x, Settings.bottomGoalTop), Settings.ballRadius * 1.5f, false, Direction.BOTTOM))
+            Direction.LEFT -> collisions.add(Explosion(effectInt, fillColor, bgInt, Point(Settings.shortParticleSide, puckPosition.y), Settings.ballRadius * 1.5f, false, Direction.LEFT))
+            Direction.RIGHT -> collisions.add(Explosion(effectInt, fillColor, bgInt, Point(Settings.screenWidth - Settings.shortParticleSide, puckPosition.y), Settings.ballRadius * 1.5f, false, Direction.RIGHT))
+            Direction.TOP -> collisions.add(Explosion(effectInt, fillColor, bgInt, Point(puckPosition.x, Settings.topGoalBottom), Settings.ballRadius * 1.5f, false, Direction.TOP))
+            Direction.BOTTOM -> collisions.add(Explosion(effectInt, fillColor, bgInt, Point(puckPosition.x, Settings.bottomGoalTop), Settings.ballRadius * 1.5f, false, Direction.BOTTOM))
             else -> {}
         }
     }

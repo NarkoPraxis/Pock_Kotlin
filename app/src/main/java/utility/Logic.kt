@@ -51,7 +51,10 @@ object Logic {
     var leaving = false
     var canCollide = true;
 
-    lateinit var gameView: GameView
+    var gameView: GameView? = null
+
+    /** Called instead of doOnSizeChange when running under Compose (no GameView). */
+    var composeReinitCallback: (() -> Unit)? = null
 
     // Tracks which pointer is driving each popup's drag so multi-touch routes correctly
     private var highPopupDragPointerId: Int = -1
@@ -122,7 +125,7 @@ object Logic {
         lowStartX = Settings.screenWidth * (3 / 4f)
     }
 
-    fun initialize(activity: AppCompatActivity, gameView: GameView) {
+    fun initialize(activity: AppCompatActivity, gameView: GameView? = null) {
         this.activity = activity
         this.gameView = gameView
         leaving = false
@@ -1037,7 +1040,12 @@ object Logic {
         Settings.highPlayerChargeFill = Storage.highPlayerChargeFill
         Settings.lowPlayerChargeFill = Storage.lowPlayerChargeFill
         Settings.pauseGame = false
-        sizeChanged(gameView, Settings.screenWidth.toInt(), Settings.screenHeight.toInt(),Settings.screenWidth.toInt(), Settings.screenHeight.toInt())
+        val gv = gameView
+        if (gv != null) {
+            sizeChanged(gv, Settings.screenWidth.toInt(), Settings.screenHeight.toInt(), Settings.screenWidth.toInt(), Settings.screenHeight.toInt())
+        } else {
+            composeReinitCallback?.invoke()
+        }
         Settings.gameState = GameState.BallSelection
         Settings.gameOver = false
         Settings.playerPaused = false

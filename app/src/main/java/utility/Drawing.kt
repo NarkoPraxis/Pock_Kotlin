@@ -1,24 +1,25 @@
 package utility
 
-import android.content.res.Resources
-import android.graphics.Canvas
-import android.graphics.Color
+import android.graphics.Color as AndroidColor
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RectF
-import enums.GameState
 import gameobjects.Player
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
-import physics.Ticker
 import kotlin.math.sin
 import kotlin.math.sqrt
-import androidx.core.graphics.withScale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.toArgb
 
 object Drawing {
-
-    lateinit var highScoreZone: RectF
-    lateinit var lowScoreZone: RectF
 
     var wallWidthParticleCount = 0
     var wallHeightParticleCount = 0
@@ -26,9 +27,7 @@ object Drawing {
     private var canScoreListener: ((Unit) -> Unit)? = null
     private var cantScoreListener: ((Unit) -> Unit)? = null
 
-    fun initialize(resources: Resources) {
-        highScoreZone = RectF(0f, 0f, Settings.screenWidth, Settings.topGoalBottom)
-        lowScoreZone = RectF(0f, Settings.bottomGoalTop, Settings.screenWidth, Settings.screenHeight)
+    fun initialize() {
         wallHeightParticleCount = (Settings.screenHeight.toInt() - Settings.topGoalBottom.toInt() * 2) / Settings.longParticleSide.toInt()
         wallWidthParticleCount = Settings.screenWidth.toInt() / Settings.longParticleSide.toInt()
 
@@ -42,201 +41,343 @@ object Drawing {
         Effects.clearCollisionEffects()
     }
 
-    fun drawCanScoreWalls(canvas: Canvas) {
+    // Score zone geometry (computed from Settings)
+    private val highZoneLeft   get() = 0f
+    private val highZoneTop    get() = 0f
+    private val highZoneRight  get() = Settings.screenWidth
+    private val highZoneBottom get() = Settings.topGoalBottom
+
+    private val lowZoneLeft   get() = 0f
+    private val lowZoneTop    get() = Settings.bottomGoalTop
+    private val lowZoneRight  get() = Settings.screenWidth
+    private val lowZoneBottom get() = Settings.screenHeight
+
+    // -------------------------------------------------------------------------
+    // Entry point
+    // -------------------------------------------------------------------------
+
+    fun DrawScope.drawFrame() {
+        drawArenaBackground()
+        drawChargeFill()
+        drawIntoCanvas { nativeCanvas ->
+            Effects.drawEffects(nativeCanvas.nativeCanvas)
+        }
+        drawPlayersCompose()
+        drawWalls()
+        drawAimArrows()
+        drawArenaForeground()
+        drawScoreFlash()
+        drawScores(Logic.highPlayer, Logic.lowPlayer)
+    }
+
+    // -------------------------------------------------------------------------
+    // Arena background
+    // -------------------------------------------------------------------------
+
+    fun DrawScope.drawArenaBackground() {
+        drawRect(
+            color = androidIntToComposeColor(PaintBucket.backgroundPaint.color),
+            topLeft = Offset.Zero,
+            size = Size(Settings.screenWidth, Settings.screenHeight)
+        )
+        drawTouchHighlights(Logic.highPlayer, Logic.lowPlayer)
+    }
+
+    fun DrawScope.drawTouchHighlights(highPlayer: Player, lowPlayer: Player) {
+        if (highPlayer.isTouching) {
+            val c = androidIntToComposeColor(PaintBucket.highPlayerHighlightPaint.color)
+                .copy(alpha = PaintBucket.highPlayerHighlightPaint.alpha / 255f)
+            drawRect(
+                color = c,
+                topLeft = Offset(0f, 0f),
+                size = Size(Settings.screenWidth, Settings.middleY)
+            )
+        }
+        if (lowPlayer.isTouching) {
+            val c = androidIntToComposeColor(PaintBucket.lowPlayerHighlightPaint.color)
+                .copy(alpha = PaintBucket.lowPlayerHighlightPaint.alpha / 255f)
+            drawRect(
+                color = c,
+                topLeft = Offset(0f, Settings.middleY),
+                size = Size(Settings.screenWidth, Settings.screenHeight - Settings.middleY)
+            )
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Arena foreground (goal zones + canScore walls)
+    // -------------------------------------------------------------------------
+
+    fun DrawScope.drawArenaForeground() {
+        val goalColor = androidIntToComposeColor(PaintBucket.goalPaint.color)
+        // High goal zone
+        drawRect(
+            color = goalColor,
+            topLeft = Offset(highZoneLeft, highZoneTop),
+            size = Size(highZoneRight - highZoneLeft, highZoneBottom - highZoneTop)
+        )
+        // Low goal zone
+        drawRect(
+            color = goalColor,
+            topLeft = Offset(lowZoneLeft, lowZoneTop),
+            size = Size(lowZoneRight - lowZoneLeft, lowZoneBottom - lowZoneTop)
+        )
+        drawCanScoreWalls()
+        drawGoalMenuHints()
+    }
+
+    fun DrawScope.drawCanScoreWalls() {
         val minDistance = Settings.screenRatio * 6f
         fun getAlpha(location: Float) = (1 - (location / minDistance)) * 200
         val highPlayer = Logic.highPlayer
         val lowPlayer = Logic.lowPlayer
-        val effectPaint = PaintBucket.canScoreWallPaint
         val baseAlpha = 255
+        val defaultColorInt = PaintBucket.canScoreWallColor.toArgb()
 
         for (x in 0..wallWidthParticleCount) {
             val xPos = x * Settings.longParticleSide
-            val xEnd = xPos + Settings.longParticleSide
 
             // Top canScore wall
             val highDist = highPlayer.puck.distanceTo(xPos, Settings.topGoalBottom) - Settings.screenRatio
             val lowDist  = lowPlayer.puck.distanceTo(xPos, Settings.topGoalBottom)  - Settings.screenRatio
-            var wallColor = PaintBucket.canScoreWallColor
+            var wallColorInt = defaultColorInt
             var proximityAlpha = 0f
             if (highDist < minDistance) {
                 proximityAlpha = getAlpha(highDist)
-                wallColor = if (lowDist < highDist) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+                wallColorInt = if (lowDist < highDist) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
             }
             if (lowDist < minDistance) {
                 val a = getAlpha(lowDist)
                 if (a > proximityAlpha) {
                     proximityAlpha = a
-                    wallColor = if (highDist < lowDist) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                    wallColorInt = if (highDist < lowDist) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
                 }
             }
-            effectPaint.color = if (proximityAlpha > baseAlpha) wallColor else PaintBucket.canScoreWallColor
-            effectPaint.alpha = maxOf(baseAlpha, proximityAlpha.toInt())
-            canvas.drawRect(xPos, Settings.canScoreTopWallTop, xEnd, Settings.canScoreTopWallBottom, effectPaint)
+            val topAlpha = maxOf(baseAlpha, proximityAlpha.toInt())
+            val resolvedTop = if (proximityAlpha > baseAlpha) wallColorInt else defaultColorInt
+            val topColor = androidIntToComposeColor(resolvedTop).copy(alpha = topAlpha.coerceIn(0, 255) / 255f)
+            drawRect(
+                color = topColor,
+                topLeft = Offset(xPos, Settings.canScoreTopWallTop),
+                size = Size(Settings.longParticleSide, Settings.canScoreTopWallBottom - Settings.canScoreTopWallTop)
+            )
 
             // Bottom canScore wall
             val highDistB = highPlayer.puck.distanceTo(xPos, Settings.bottomGoalTop) - Settings.screenRatio
             val lowDistB  = lowPlayer.puck.distanceTo(xPos, Settings.bottomGoalTop)  - Settings.screenRatio
-            var wallColorB = PaintBucket.canScoreWallColor
+            var wallColorIntB = defaultColorInt
             var proximityAlphaB = 0f
             if (highDistB < minDistance) {
                 proximityAlphaB = getAlpha(highDistB)
-                wallColorB = if (lowDistB < highDistB) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+                wallColorIntB = if (lowDistB < highDistB) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
             }
             if (lowDistB < minDistance) {
                 val a = getAlpha(lowDistB)
                 if (a > proximityAlphaB) {
                     proximityAlphaB = a
-                    wallColorB = if (highDistB < lowDistB) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                    wallColorIntB = if (highDistB < lowDistB) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
                 }
             }
-            effectPaint.color = if (proximityAlphaB > baseAlpha) wallColorB else PaintBucket.canScoreWallColor
-            effectPaint.alpha = maxOf(baseAlpha, proximityAlphaB.toInt())
-            canvas.drawRect(xPos, Settings.canScoreBottomWallTop, xEnd, Settings.canScoreBottomWallBottom, effectPaint)
+            val botAlpha = maxOf(baseAlpha, proximityAlphaB.toInt())
+            val resolvedBot = if (proximityAlphaB > baseAlpha) wallColorIntB else defaultColorInt
+            val botColor = androidIntToComposeColor(resolvedBot).copy(alpha = botAlpha.coerceIn(0, 255) / 255f)
+            drawRect(
+                color = botColor,
+                topLeft = Offset(xPos, Settings.canScoreBottomWallTop),
+                size = Size(Settings.longParticleSide, Settings.canScoreBottomWallBottom - Settings.canScoreBottomWallTop)
+            )
         }
     }
 
-    fun drawArenaBackground(canvas: Canvas) {
-        canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.screenHeight, PaintBucket.backgroundPaint)
-
-        drawTouchHighlights(canvas, Logic.highPlayer, Logic.lowPlayer)
-    }
-
-    fun drawArenaForeground(canvas: Canvas) {
-        canvas.drawRect(highScoreZone, PaintBucket.goalPaint)
-        canvas.drawRect(lowScoreZone, PaintBucket.goalPaint)
-        drawCanScoreWalls(canvas)
-        drawGoalMenuHints(canvas)
-    }
+    // -------------------------------------------------------------------------
+    // Charge fill
+    // -------------------------------------------------------------------------
 
     private var chargeFillFrame = 0
 
-    fun drawChargeFill(canvas: Canvas) {
+    fun DrawScope.drawChargeFill() {
         chargeFillFrame++
-        if (Settings.highPlayerChargeFill) drawPlayerChargeFill(canvas, Logic.highPlayer, isHigh = true)
-        if (Settings.lowPlayerChargeFill) drawPlayerChargeFill(canvas, Logic.lowPlayer, isHigh = false)
+        if (Settings.highPlayerChargeFill) drawPlayerChargeFill(Logic.highPlayer, isHigh = true)
+        if (Settings.lowPlayerChargeFill) drawPlayerChargeFill(Logic.lowPlayer, isHigh = false)
     }
 
-    private fun drawPlayerChargeFill(canvas: Canvas, player: Player, isHigh: Boolean) {
+    private fun DrawScope.drawPlayerChargeFill(player: Player, isHigh: Boolean) {
         val effect = player.puck.renderer.effect ?: return
         val ph = effect.phase
         if (ph == ChargePhase.Idle || ph == ChargePhase.Inert) return
         val ratio = effect.chargeFillRatio
         if (ratio <= 0f) return
         val theme = effect.theme
-        val paint = if (isHigh) PaintBucket.chargeFillHighPaint else PaintBucket.chargeFillLowPaint
-        val color = when (ph) {
+        val rawColor = when (ph) {
             ChargePhase.Building, ChargePhase.Draining -> theme.main.primary
             ChargePhase.SweetSpot -> theme.shield.primary
             else -> return
         }
         val alpha = when (ph) {
-            ChargePhase.Building, ChargePhase.Draining -> 128
+            ChargePhase.Building, ChargePhase.Draining -> 128 / 255f
             ChargePhase.SweetSpot -> {
                 val pulse = 0.7f + 0.3f * sin(chargeFillFrame * 0.35f)
-                (pulse * 255).toInt().coerceIn(0, 255)
+                (pulse).coerceIn(0f, 1f)
             }
             else -> return
         }
-        paint.color = color
-        paint.alpha = alpha
+        val color = androidIntToComposeColor(rawColor).copy(alpha = alpha)
         if (isHigh) {
             val bottom = Settings.topGoalBottom + ratio * (Settings.middleY - Settings.topGoalBottom)
-            canvas.drawRect(0f, Settings.topGoalBottom, Settings.screenWidth, bottom, paint)
+            drawRect(
+                color = color,
+                topLeft = Offset(0f, Settings.topGoalBottom),
+                size = Size(Settings.screenWidth, bottom - Settings.topGoalBottom)
+            )
         } else {
             val top = Settings.bottomGoalTop - ratio * (Settings.bottomGoalTop - Settings.middleY)
-            canvas.drawRect(0f, top, Settings.screenWidth, Settings.bottomGoalTop, paint)
+            drawRect(
+                color = color,
+                topLeft = Offset(0f, top),
+                size = Size(Settings.screenWidth, Settings.bottomGoalTop - top)
+            )
         }
     }
 
-    private fun drawScore(canvas: Canvas, player: Player, popTicker: Ticker, xOffset: Float = 0f) {
-        val paint = PaintBucket.alwaysBlackTextPaint
-        paint.textSize = Settings.topGoalBottom * 0.85f
-        val xMargin = Settings.screenRatio * 3f
-        val yMargin = Settings.topGoalBottom * 0.2f
-        val scoreText = player.cachedScoreText
-        val scoreX = xMargin + xOffset
-        val scoreY = Settings.screenHeight - yMargin
-        if (Settings.scorePopEnabled && !popTicker.finished) {
-            popTicker.tick
-            val scale = 1f + sin(popTicker.ratio * Math.PI.toFloat())
-            canvas.save()
-            canvas.scale(scale, scale, scoreX, scoreY)
-            canvas.drawText(scoreText, scoreX, scoreY, paint)
-            canvas.restore()
-        } else {
-            canvas.drawText(scoreText, scoreX, scoreY, paint)
+    // -------------------------------------------------------------------------
+    // Players — must use Android Canvas because Player.drawTo() takes Canvas
+    // -------------------------------------------------------------------------
+
+    fun DrawScope.drawPlayersCompose() {
+        drawIntoCanvas { canvas ->
+            Logic.highPlayer.drawTo(canvas.nativeCanvas)
+            Logic.lowPlayer.drawTo(canvas.nativeCanvas)
         }
     }
 
-    fun drawScoreFlash(canvas: Canvas) {
-        if (!Settings.scoreFlashEnabled || Settings.scoreFlashAlpha <= 0f) return
-        PaintBucket.scoreFlashPaint.color = Settings.scoreFlashColor
-        PaintBucket.scoreFlashPaint.alpha = Settings.scoreFlashAlpha.toInt().coerceIn(0, 255)
-        canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.screenHeight, PaintBucket.scoreFlashPaint)
-        Settings.scoreFlashAlpha -= 8f
-    }
+    // -------------------------------------------------------------------------
+    // Walls
+    // -------------------------------------------------------------------------
 
-    private fun checkWinner(canvas: Canvas, winner: Player, other: Player) {
-        if (Settings.gameState == GameState.GameOver) {
-            if (winner.score >= 5 && other.score != 5) {
-               // canvas.drawText("You Win!", Settings.screenWidth / 2f, Settings.screenHeight / 3f, PaintBucket.textPaint)
+    fun DrawScope.drawWalls() {
+        val minDistance = Settings.screenRatio * 6f
+        fun getAlpha(location: Float) = (1 - (location / minDistance)) * 200
+        val highPlayer = Logic.highPlayer
+        val lowPlayer = Logic.lowPlayer
+
+        for (x in 0 until wallWidthParticleCount) {
+            val position = x * Settings.longParticleSide
+            val highDistanceToHigh = highPlayer.puck.distanceTo(position, Settings.topGoalBottom - Settings.shortParticleSide) - Settings.screenRatio
+            val lowDistanceToHigh  = lowPlayer.puck.distanceTo(position, Settings.topGoalBottom - Settings.longParticleSide)  - Settings.screenRatio
+
+            var wallColorInt = 0
+            var particleAlpha = 0f
+            if (highDistanceToHigh < minDistance) {
+                particleAlpha = getAlpha(highDistanceToHigh)
+                wallColorInt = if (lowDistanceToHigh < highDistanceToHigh) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
             }
-            if (winner.score == 5 && other.score == 5) {
-              //  canvas.drawText("It's a Tie!", Settings.screenWidth / 2f, Settings.screenHeight / 3f, PaintBucket.textPaint)
+            if (lowDistanceToHigh < minDistance) {
+                val tempAlpha = getAlpha(lowDistanceToHigh)
+                if (tempAlpha > particleAlpha) {
+                    particleAlpha = tempAlpha
+                    wallColorInt = if (highDistanceToHigh < lowDistanceToHigh) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                }
             }
+            val topWallColor = androidIntToComposeColor(wallColorInt).copy(alpha = (particleAlpha / 255f).coerceIn(0f, 1f))
+            drawRect(
+                color = topWallColor,
+                topLeft = Offset(position, 0f),
+                size = Size(Settings.longParticleSide, Settings.topGoalBottom)
+            )
+
+            particleAlpha = 0f
+
+            val highDistanceToLow = highPlayer.puck.distanceTo(position, Settings.bottomGoalTop + Settings.longParticleSide) - Settings.screenRatio
+            val lowDistanceToLow  = lowPlayer.puck.distanceTo(position, Settings.bottomGoalTop + Settings.longParticleSide)  - Settings.screenRatio
+            if (highDistanceToLow < minDistance) {
+                particleAlpha = getAlpha(highDistanceToLow)
+                wallColorInt = if (lowDistanceToLow < highDistanceToLow) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+            }
+            if (lowDistanceToLow < minDistance) {
+                val tempAlpha = getAlpha(lowDistanceToLow)
+                if (tempAlpha > particleAlpha) {
+                    particleAlpha = tempAlpha
+                    wallColorInt = if (highDistanceToLow < lowDistanceToLow) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                }
+            }
+            val botWallColor = androidIntToComposeColor(wallColorInt).copy(alpha = (particleAlpha / 255f).coerceIn(0f, 1f))
+            drawRect(
+                color = botWallColor,
+                topLeft = Offset(position, Settings.bottomGoalTop),
+                size = Size(Settings.longParticleSide, Settings.screenHeight - Settings.bottomGoalTop)
+            )
+        }
+
+        for (y in 0 until (wallHeightParticleCount + 1)) {
+            val position = y * Settings.longParticleSide + Settings.topGoalBottom
+            if (position < Settings.topGoalBottom || position > Settings.bottomGoalTop) continue
+
+            // Left wall
+            val highDistLeft = highPlayer.puck.distanceTo(Settings.shortParticleSide, position) - Settings.screenRatio
+            val lowDistLeft  = lowPlayer.puck.distanceTo(Settings.shortParticleSide, position)  - Settings.screenRatio
+            var wallColorInt = 0
+            var particleAlpha = 0f
+            if (highDistLeft < minDistance) {
+                particleAlpha = getAlpha(highDistLeft)
+                wallColorInt = if (lowDistLeft < highDistLeft) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+            }
+            if (lowDistLeft < minDistance) {
+                val tempAlpha = getAlpha(lowDistLeft)
+                if (tempAlpha > particleAlpha) {
+                    particleAlpha = tempAlpha
+                    wallColorInt = if (highDistLeft < lowDistLeft) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                }
+            }
+            val leftColor = androidIntToComposeColor(wallColorInt).copy(alpha = (particleAlpha / 255f).coerceIn(0f, 1f))
+            val leftBottom = if (y < wallHeightParticleCount) position + Settings.longParticleSide else Settings.bottomGoalTop
+            drawRect(
+                color = leftColor,
+                topLeft = Offset(0f, position),
+                size = Size(Settings.shortParticleSide, leftBottom - position)
+            )
+
+            particleAlpha = 0f
+
+            // Right wall
+            val highDistRight = highPlayer.puck.distanceTo(Settings.screenWidth - Settings.shortParticleSide, position) - Settings.screenRatio
+            val lowDistRight  = lowPlayer.puck.distanceTo(Settings.screenWidth - Settings.shortParticleSide, position)  - Settings.screenRatio
+            if (highDistRight < minDistance) {
+                particleAlpha = getAlpha(highDistRight)
+                wallColorInt = if (lowDistRight < highDistRight) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+            }
+            if (lowDistRight < minDistance) {
+                val tempAlpha = getAlpha(lowDistRight)
+                if (tempAlpha > particleAlpha) {
+                    particleAlpha = tempAlpha
+                    wallColorInt = if (highDistRight < lowDistRight) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                }
+            }
+            val rightColor = androidIntToComposeColor(wallColorInt).copy(alpha = (particleAlpha / 255f).coerceIn(0f, 1f))
+            val rightBottom = if (y < wallHeightParticleCount) position + Settings.longParticleSide else Settings.bottomGoalTop
+            drawRect(
+                color = rightColor,
+                topLeft = Offset(Settings.screenWidth - Settings.shortParticleSide, position),
+                size = Size(Settings.shortParticleSide, rightBottom - position)
+            )
         }
     }
 
-    fun drawScores(canvas: Canvas, highPlayer: Player, lowPlayer: Player) {
-        canvas.withScale(-1f, -1f, Settings.screenWidth / 2f, Settings.screenHeight / 2f) {
-            drawScore(this, highPlayer, Settings.highScorePopTicker, Settings.scoreOffsetHigh)
-            checkWinner(this, highPlayer, lowPlayer)
-        }
+    // -------------------------------------------------------------------------
+    // Aim arrows
+    // -------------------------------------------------------------------------
 
-        drawScore(canvas, lowPlayer, Settings.lowScorePopTicker, Settings.scoreOffsetLow)
-        checkWinner(canvas, lowPlayer, highPlayer)
-    }
-
-    fun drawTouchHighlights(canvas: Canvas, highPlayer: Player, lowPlayer: Player) {
-        if (highPlayer.isTouching) {
-            canvas.drawRect(0f, 0f, Settings.screenWidth, Settings.middleY,
-                PaintBucket.highPlayerHighlightPaint)
-        }
-        if (lowPlayer.isTouching) {
-            canvas.drawRect(0f, Settings.middleY, Settings.screenWidth, Settings.screenHeight,
-                PaintBucket.lowPlayerHighlightPaint)
-        }
-    }
-
-    fun drawPlayers(canvas: Canvas) {
-        Logic.highPlayer.drawTo(canvas)
-        Logic.lowPlayer.drawTo(canvas)
-    }
-
-    private val aimArrowLinePaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-    }
-    private val aimArrowFillPaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.FILL
-    }
     private val aimArrowPath = Path()
     private var aimArrowFrame = 0
 
-    fun drawAimArrows(canvas: Canvas) {
+    fun DrawScope.drawAimArrows() {
         aimArrowFrame++
-        if (Settings.lowPlayerArrow) drawAimArrow(canvas, Logic.lowPlayer, isHigh = false)
-        if (Settings.highPlayerArrow) drawAimArrow(canvas, Logic.highPlayer, isHigh = true)
+        if (Settings.lowPlayerArrow) drawAimArrow(Logic.lowPlayer, isHigh = false)
+        if (Settings.highPlayerArrow) drawAimArrow(Logic.highPlayer, isHigh = true)
     }
 
-    private fun drawAimArrow(canvas: Canvas, player: Player, isHigh: Boolean) {
+    private fun DrawScope.drawAimArrow(player: Player, isHigh: Boolean) {
         if (!player.isFlingHeld) return
 
-        // Tail = current finger position. Head/tip = touch-down position (launch direction).
         val tailX = player.flingCurrent.x
         val tailY = player.flingCurrent.y
         val headX = player.flingStart.x
@@ -246,10 +387,9 @@ object Drawing {
         val dist = sqrt(dx * dx + dy * dy)
         if (dist < Settings.screenRatio * 0.3f) return
 
-        val themeColor = if (isHigh) PaintBucket.highBallStrokeColor else PaintBucket.lowBallStrokeColor
+        val themeColor = if (isHigh) PaintBucket.highBallStroke else PaintBucket.lowBallStroke
         val chargeColor = PaintBucket.effectColor
 
-        // Fill reaches 100% when sweet spot begins, not when it ends.
         val range = (Settings.sweetSpotMin - Settings.chargeStart).toFloat()
         val ratio = ((player.charge - Settings.chargeStart) / range).coerceIn(0f, 1f)
         val inSweetSpot = player.charge >= Settings.sweetSpotMin && player.charge <= Settings.sweetSpotMax
@@ -258,20 +398,19 @@ object Drawing {
         val ux = dx / dist
         val uy = dy / dist
 
-        // Clamp visual arrow length to 1/3 screen width; head stays fixed, tail moves inward
         val maxArrowLength = Settings.screenWidth / 3f
         val visualDist = dist.coerceAtMost(maxArrowLength)
         val visualTailX = headX - ux * visualDist
         val visualTailY = headY - uy * visualDist
 
-        var themeAlpha = 255
-        var chargeAlpha = 255
+        var themeAlpha = 1f
+        var chargeAlpha = 1f
         var fillLen = visualDist * ratio
         var fillColor = chargeColor
 
         if (inSweetSpot) {
             val pulse = 0.7f + 0.3f * sin(aimArrowFrame * 0.35f)
-            chargeAlpha = (255 * pulse).toInt().coerceIn(0, 255)
+            chargeAlpha = pulse.coerceIn(0f, 1f)
             themeAlpha = chargeAlpha
             fillLen = visualDist
         }
@@ -280,198 +419,139 @@ object Drawing {
             fillColor = lerpColor(chargeColor, themeColor, fade)
         }
 
-        aimArrowLinePaint.strokeWidth = Settings.strokeWidth * 1.3f
+        val strokeWidth = Settings.strokeWidth * 1.3f
 
         val fillEndX = visualTailX + ux * fillLen
         val fillEndY = visualTailY + uy * fillLen
 
         if (fillLen < visualDist) {
-            aimArrowLinePaint.color = themeColor
-            aimArrowLinePaint.alpha = themeAlpha
-            canvas.drawLine(fillEndX, fillEndY, headX, headY, aimArrowLinePaint)
+            drawLine(
+                color = themeColor.copy(alpha = themeAlpha),
+                start = Offset(fillEndX, fillEndY),
+                end = Offset(headX, headY),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
         }
         if (fillLen > 0f) {
-            aimArrowLinePaint.color = fillColor
-            aimArrowLinePaint.alpha = chargeAlpha
-            canvas.drawLine(visualTailX, visualTailY, fillEndX, fillEndY, aimArrowLinePaint)
+            drawLine(
+                color = fillColor.copy(alpha = chargeAlpha),
+                start = Offset(visualTailX, visualTailY),
+                end = Offset(fillEndX, fillEndY),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
         }
 
         val headFilled = fillLen >= visualDist
-        val headColor = if (headFilled) fillColor else themeColor
-        val headAlpha = if (headFilled) chargeAlpha else themeAlpha
-        aimArrowFillPaint.color = headColor
-        aimArrowFillPaint.alpha = headAlpha
+        val headColor = (if (headFilled) fillColor else themeColor)
+            .copy(alpha = if (headFilled) chargeAlpha else themeAlpha)
         val headSize = Settings.screenRatio * 0.8f
         val perpX = -uy
         val perpY = ux
         aimArrowPath.reset()
         aimArrowPath.moveTo(headX + ux * headSize, headY + uy * headSize)
-        aimArrowPath.lineTo(headX - ux * headSize * 0.2f + perpX * headSize * 0.75f,
-                            headY - uy * headSize * 0.2f + perpY * headSize * 0.75f)
-        aimArrowPath.lineTo(headX - ux * headSize * 0.2f - perpX * headSize * 0.75f,
-                            headY - uy * headSize * 0.2f - perpY * headSize * 0.75f)
+        aimArrowPath.lineTo(
+            headX - ux * headSize * 0.2f + perpX * headSize * 0.75f,
+            headY - uy * headSize * 0.2f + perpY * headSize * 0.75f
+        )
+        aimArrowPath.lineTo(
+            headX - ux * headSize * 0.2f - perpX * headSize * 0.75f,
+            headY - uy * headSize * 0.2f - perpY * headSize * 0.75f
+        )
         aimArrowPath.close()
-        canvas.drawPath(aimArrowPath, aimArrowFillPaint)
+        drawPath(aimArrowPath, color = headColor, style = Fill)
     }
 
-    private fun lerpColor(from: Int, to: Int, t: Float): Int {
-        val r = (Color.red(from) + (Color.red(to) - Color.red(from)) * t).toInt()
-        val g = (Color.green(from) + (Color.green(to) - Color.green(from)) * t).toInt()
-        val b = (Color.blue(from) + (Color.blue(to) - Color.blue(from)) * t).toInt()
-        return Color.rgb(r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
+    private fun lerpColor(from: Color, to: Color, t: Float): Color {
+        return Color(
+            red   = from.red   + (to.red   - from.red)   * t,
+            green = from.green + (to.green - from.green) * t,
+            blue  = from.blue  + (to.blue  - from.blue)  * t,
+            alpha = 1f
+        )
     }
 
-    fun drawWalls(canvas: Canvas) {
-        val minDistance = Settings.screenRatio * 6f
-        fun getAlpha(location: Float) = (1 - (location / minDistance)) * 200
-        var highPlayer = Logic.highPlayer
-        var lowPlayer = Logic.lowPlayer
-        var effectPaint = PaintBucket.wallPaint
-        for (x in 0 until wallWidthParticleCount) {
-            val position = x * Settings.longParticleSide
-            val highDistanceToHigh = highPlayer.puck.distanceTo(position, Settings.topGoalBottom - Settings.shortParticleSide) - Settings.screenRatio
-            val lowDistanceToHigh = lowPlayer.puck.distanceTo(position, Settings.topGoalBottom - Settings.longParticleSide) - Settings.screenRatio
+    // -------------------------------------------------------------------------
+    // Scores
+    // -------------------------------------------------------------------------
 
-            var wallColor = 0
-            var particleAlpha = 0f
-            if (highDistanceToHigh < minDistance) {
-                particleAlpha = getAlpha(highDistanceToHigh)
-                wallColor = if (lowDistanceToHigh < highDistanceToHigh) {
-                    lowPlayer.puck.strokeColor
-                }else {
-                    highPlayer.puck.strokeColor
+    private val scoreTextPaint = Paint().apply {
+        color = AndroidColor.BLACK
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+
+    fun DrawScope.drawScores(highPlayer: Player, lowPlayer: Player) {
+        scoreTextPaint.textSize = Settings.topGoalBottom * 0.85f
+        val xMargin = Settings.screenRatio * 3f
+        val yMargin = Settings.topGoalBottom * 0.2f
+        val scoreY = Settings.screenHeight - yMargin
+
+        // High player — mirrored
+        val highX = xMargin + Settings.scoreOffsetHigh
+        val midX = Settings.screenWidth / 2f
+        val midY = Settings.screenHeight / 2f
+        val highPop = Settings.highScorePopTicker
+        withTransform({ scale(-1f, -1f, pivot = Offset(midX, midY)) }) {
+            if (Settings.scorePopEnabled && !highPop.finished) {
+                highPop.tick
+                val scale = 1f + sin(highPop.ratio * Math.PI.toFloat())
+                withTransform({ scale(scale, scale, pivot = Offset(highX, scoreY)) }) {
+                    drawIntoCanvas { c -> c.nativeCanvas.drawText(highPlayer.cachedScoreText, highX, scoreY, scoreTextPaint) }
                 }
-            }
-            if (lowDistanceToHigh < minDistance) {
-                val tempAlpha = getAlpha(lowDistanceToHigh)
-                particleAlpha = if (tempAlpha > particleAlpha) tempAlpha else particleAlpha
-                wallColor = if (highDistanceToHigh < lowDistanceToHigh) {
-                    highPlayer.puck.strokeColor
-                } else {
-                    lowPlayer.puck.strokeColor
-                }
-            }
-
-            effectPaint.apply {
-                color = wallColor
-            }
-            effectPaint.alpha = particleAlpha.toInt()
-
-            canvas.drawRect(position, 0f, position + Settings.longParticleSide, Settings.topGoalBottom, effectPaint)
-
-            particleAlpha = 0f
-
-            val highDistanceToLow = highPlayer.puck.distanceTo(position,Settings.bottomGoalTop + Settings.longParticleSide) - Settings.screenRatio
-            val lowDistanceToLow = lowPlayer.puck.distanceTo(position,Settings.bottomGoalTop + Settings.longParticleSide) - Settings.screenRatio
-            if (highDistanceToLow < minDistance) {
-                particleAlpha = getAlpha(highDistanceToLow)
-                wallColor = if (lowDistanceToLow < highDistanceToLow) {
-                    lowPlayer.puck.strokeColor
-                }else {
-                    highPlayer.puck.strokeColor
-                }
-            }
-            if (lowDistanceToLow < minDistance) {
-                val tempAlpha = getAlpha(lowDistanceToLow)
-                particleAlpha = if (tempAlpha > particleAlpha) tempAlpha else particleAlpha
-                wallColor = if (highDistanceToLow < lowDistanceToLow) {
-                    highPlayer.puck.strokeColor
-                } else {
-                    lowPlayer.puck.strokeColor
-                }
-
-            }
-            effectPaint.apply {
-                color = wallColor
-            }
-            effectPaint.alpha = particleAlpha.toInt()
-//                canvas.drawRect(position, Settings.bottomGoalTop + Settings.shortParticleSide, position + Settings.longParticleSide, Settings.bottomGoalTop, particleColor)
-            canvas.drawRect(position, Settings.bottomGoalTop, position + Settings.longParticleSide, Settings.screenHeight, effectPaint)
-        }
-        for (y in 0 until (wallHeightParticleCount + 1)) {
-            val position = (y * Settings.longParticleSide + Settings.topGoalBottom)
-            if (position < Settings.topGoalBottom || position > Settings.bottomGoalTop) continue
-            val highDistanceToLeft = highPlayer.puck.distanceTo(Settings.shortParticleSide, position) - Settings.screenRatio
-            val lowDistanceToLeft = lowPlayer.puck.distanceTo(Settings.shortParticleSide, position) - Settings.screenRatio
-            var wallColor = 0
-            var particleAlpha = 0f
-            if (highDistanceToLeft < minDistance) {
-                particleAlpha = getAlpha(highDistanceToLeft)
-                wallColor = if (lowDistanceToLeft < highDistanceToLeft) {
-                    lowPlayer.puck.strokeColor
-                }else {
-                    highPlayer.puck.strokeColor
-                }
-            }
-            if (lowDistanceToLeft < minDistance) {
-                val tempAlpha = getAlpha(lowDistanceToLeft)
-                particleAlpha = if (tempAlpha > particleAlpha) tempAlpha else particleAlpha
-                wallColor = if (highDistanceToLeft < lowDistanceToLeft) {
-                    highPlayer.puck.strokeColor
-                } else {
-                    lowPlayer.puck.strokeColor
-                }
-            }
-
-            effectPaint.apply {
-                color = wallColor
-            }
-            effectPaint.alpha = particleAlpha.toInt()
-
-            if( y < wallHeightParticleCount) {
-                canvas.drawRect(0f, position, Settings.shortParticleSide, position + Settings.longParticleSide, effectPaint)
-            }else {
-                canvas.drawRect(0f, position, Settings.shortParticleSide, Settings.bottomGoalTop, effectPaint)
-            }
-            particleAlpha = 0f
-
-            val highDistanceToRight = highPlayer.puck.distanceTo(Settings.screenWidth - Settings.shortParticleSide, position) - Settings.screenRatio
-            val lowDistanceToRight = lowPlayer.puck.distanceTo(Settings.screenWidth - Settings.shortParticleSide, position) - Settings.screenRatio
-
-            if (highDistanceToRight < minDistance) {
-                particleAlpha = getAlpha(highDistanceToRight)
-                wallColor = if (lowDistanceToRight < highDistanceToRight) {
-                    lowPlayer.puck.strokeColor
-                }else {
-                    highPlayer.puck.strokeColor
-                }
-            }
-            if (lowDistanceToRight < minDistance) {
-                val tempAlpha = getAlpha(lowDistanceToRight)
-                particleAlpha = if (tempAlpha > particleAlpha) tempAlpha else particleAlpha
-                wallColor = if (highDistanceToRight < lowDistanceToRight) {
-                    highPlayer.puck.strokeColor
-                } else {
-                    lowPlayer.puck.strokeColor
-                }
-            }
-
-            effectPaint.apply {
-                color = wallColor
-            }
-            effectPaint.alpha = particleAlpha.toInt()
-
-            if (y < wallHeightParticleCount) {
-                canvas.drawRect(Settings.screenWidth - Settings.shortParticleSide, position, Settings.screenWidth, position + Settings.longParticleSide, effectPaint)
             } else {
-                canvas.drawRect(Settings.screenWidth - Settings.shortParticleSide, position, Settings.screenWidth, Settings.bottomGoalTop, effectPaint)
+                drawIntoCanvas { c -> c.nativeCanvas.drawText(highPlayer.cachedScoreText, highX, scoreY, scoreTextPaint) }
             }
         }
+
+        // Low player — normal
+        val lowX = xMargin + Settings.scoreOffsetLow
+        val lowPop = Settings.lowScorePopTicker
+        if (Settings.scorePopEnabled && !lowPop.finished) {
+            lowPop.tick
+            val scale = 1f + sin(lowPop.ratio * Math.PI.toFloat())
+            withTransform({ scale(scale, scale, pivot = Offset(lowX, scoreY)) }) {
+                drawIntoCanvas { c -> c.nativeCanvas.drawText(lowPlayer.cachedScoreText, lowX, scoreY, scoreTextPaint) }
+            }
+        } else {
+            drawIntoCanvas { c -> c.nativeCanvas.drawText(lowPlayer.cachedScoreText, lowX, scoreY, scoreTextPaint) }
+        }
     }
 
-    fun mirrorText(canvas: Canvas, text: String, x: Float, y: Float, textPaint: Paint) {
-        canvas.withScale(-1f, -1f, Settings.screenWidth / 2, Settings.screenHeight / 2) {
-            drawText(text, x, y, textPaint)
-        }
-        canvas.drawText(text, x, y, textPaint) //bottom score
+    fun DrawScope.drawScoreFlash() {
+        if (!Settings.scoreFlashEnabled || Settings.scoreFlashAlpha <= 0f) return
+        val flashColor = androidIntToComposeColor(Settings.scoreFlashColor)
+            .copy(alpha = (Settings.scoreFlashAlpha / 255f).coerceIn(0f, 1f))
+        drawRect(
+            color = flashColor,
+            topLeft = Offset.Zero,
+            size = Size(Settings.screenWidth, Settings.screenHeight)
+        )
+        Settings.scoreFlashAlpha -= 8f
     }
 
-    fun mirrorText(canvas: Canvas, topText: String, bottomText: String, x: Float, y: Float, textPaint: Paint) {
-        canvas.withScale(-1f, -1f, Settings.screenWidth / 2, Settings.screenHeight / 2) {
-            drawText(topText, x, y, textPaint)
+    // -------------------------------------------------------------------------
+    // Mirror text helpers (kept for callers in PlayView / TutorialView)
+    // -------------------------------------------------------------------------
+
+    fun DrawScope.mirrorText(text: String, x: Float, y: Float, textPaint: Paint) {
+        withTransform({ scale(-1f, -1f, pivot = Offset(Settings.screenWidth / 2f, Settings.screenHeight / 2f)) }) {
+            drawIntoCanvas { c -> c.nativeCanvas.drawText(text, x, y, textPaint) }
         }
-        canvas.drawText(bottomText, x, y, textPaint) //bottom score
+        drawIntoCanvas { c -> c.nativeCanvas.drawText(text, x, y, textPaint) }
     }
+
+    fun DrawScope.mirrorText(topText: String, bottomText: String, x: Float, y: Float, textPaint: Paint) {
+        withTransform({ scale(-1f, -1f, pivot = Offset(Settings.screenWidth / 2f, Settings.screenHeight / 2f)) }) {
+            drawIntoCanvas { c -> c.nativeCanvas.drawText(topText, x, y, textPaint) }
+        }
+        drawIntoCanvas { c -> c.nativeCanvas.drawText(bottomText, x, y, textPaint) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Tip / hint UI
+    // -------------------------------------------------------------------------
 
     var highTipIndex: Int = 0
         private set
@@ -483,35 +563,21 @@ object Drawing {
         lowTipIndex = 0
     }
 
-    fun cycleHighTip() {
-        highTipIndex = (highTipIndex + 1) % 5
+    fun cycleHighTip() { highTipIndex = (highTipIndex + 1) % 5 }
+    fun cycleLowTip()  { lowTipIndex  = (lowTipIndex  + 1) % 5 }
+
+    fun DrawScope.drawGoalMenuHints() { /* placeholder */ }
+
+    // -------------------------------------------------------------------------
+    // Utility
+    // -------------------------------------------------------------------------
+
+    private fun androidIntToComposeColor(color: Int): Color {
+        return Color(
+            red   = AndroidColor.red(color)   / 255f,
+            green = AndroidColor.green(color) / 255f,
+            blue  = AndroidColor.blue(color)  / 255f,
+            alpha = AndroidColor.alpha(color) / 255f
+        )
     }
-
-    fun cycleLowTip() {
-        lowTipIndex = (lowTipIndex + 1) % 5
-    }
-
-    fun drawGoalMenuHints(canvas: Canvas) {
-    }
-
-    fun showDebugInfo(canvas: Canvas) {
-//        canvas.drawText("high Y: ${highPlayer.puck.y}", 300f, 200f, debugText)
-//        canvas.drawText("low Y: ${lowPlayer.puck.y}", 300f, 250f, debugText)
-//        canvas.drawText("scoreRange: ${Settings.topGoalBottom + highPlayer.pRadius}", 300f, 300f, debugText)
-//        canvas.drawText("low T: ${Settings.bottomGoalTop - highPlayer.pRadius}", 300f, 350f, debugText)
-//        canvas.drawText("can score: ${Settings.canScore}", 300f, 400f, debugText)
-//        canvas.drawText("both: ${bothMovingCollisions}", 300f, 500f, debugText)
-//        canvas.drawText("bottomRight: ${bottomRight}", screenWidth - 300, 550f, debugText)
-//        canvas.drawText("bottomLeft: ${bottomLeft}", screenWidth - 300, 600f, debugText)
-//        canvas.drawText("p: ${fingerSelectionProgress}", screenWidth - 300, 650f, debugText)
-//        canvas.drawText("down1: ${down1}", screenWidth - 300, 700f, debugText)
-//        canvas.drawText("up2: ${up2}", screenWidth - 300, 750f, debugText)
-//        canvas.drawText("down2: ${down2}", screenWidth - 300, 800f, debugText)
-//        canvas.drawText("up3: ${up3}", screenWidth - 300, 850f, debugText)
-//        canvas.drawText("down3: ${down3}", screenWidth - 300, 900f, debugText)
-//        canvas.drawText(if (highTouchedFirst) "HIGH" else "LOW", 300f, 950f, debugText)
-    }
-
-
-
 }

@@ -37,7 +37,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         PaintBucket.initialize(resources)
         Logic.initialize(activity, this)
         Sounds.initializeGame()
-        Drawing.initialize(resources)
+        Drawing.initialize()
         (activity as? GameActivity)?.positionTipOverlays(
             width, height, Settings.topGoalBottom, Settings.bottomGoalTop
         )
@@ -89,29 +89,10 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         Logic.checkDanger()
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
+    // onDraw is unused — GameActivity renders via Compose Canvas (drawGameFrame).
+    // Retained for compilation; PlayView is not shown when GameActivity uses setContent.
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (Logic.leaving) {
-            return
-        }
-
-        Drawing.drawArenaBackground(canvas)
-        Drawing.drawChargeFill(canvas)
-        Effects.drawEffects(canvas)
-        Drawing.drawPlayers(canvas)
-        Drawing.drawWalls(canvas)
-        Drawing.drawAimArrows(canvas)
-        Drawing.drawArenaForeground(canvas)
-
-        if (Settings.gameState != GameState.BallSelection) {
-            Drawing.drawScoreFlash(canvas)
-            Drawing.drawScores(canvas, Logic.highPlayer, Logic.lowPlayer)
-        } else {
-            Logic.highBallPopup.drawTo(canvas)
-            Logic.lowBallPopup.drawTo(canvas)
-        }
-
     }
 
     fun pauseGameLoop() {
@@ -138,13 +119,51 @@ class GameActivity : AppCompatActivity() {
     private val tickState = mutableIntStateOf(0)
     private val gameLoop = GameLoop(
         intervalMs = { Settings.refreshRate.toLong() },
-        onTick = { tickState.intValue++ }
+        onTick = {
+            if (Settings.screenWidth > 0f) {
+                Logic.botBrain?.tick()
+                Logic.updateCanScoreWall()
+                when (Settings.gameState) {
+                    GameState.BallSelection -> {
+                        Logic.checkCharge()
+                        Logic.cancelChargesOnRelease()
+                        Logic.checkBallSelectionEnd()
+                    }
+                    GameState.Play -> {
+                        Logic.adjustPlayerPositions()
+                        Logic.checkCharge()
+                        Logic.calculateCollision()
+                        Logic.checkScored()
+                        Logic.checkDanger()
+                    }
+                    GameState.Scored -> Logic.scored()
+                    GameState.GameOver -> Logic.gameOver()
+                    else -> {}
+                }
+            }
+            tickState.intValue++
+        }
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { GameScreen(gameLoopTick = tickState) }
+        setContent {
+            GameScreen(
+                gameLoopTick = tickState,
+                onSizeKnown = { w, h -> initGame(w, h) }
+            )
+        }
         hideSystemUI()
+    }
+
+    private fun initGame(width: Float, height: Float) {
+        Logic.initializeSettings(width.toInt(), height.toInt())
+        PaintBucket.initialize(resources)
+        Logic.initialize(this)
+        Sounds.initializeGame()
+        Drawing.initialize()
+        Logic.composeReinitCallback = { initGame(width, height) }
+        gameLoop.start()
     }
 
     // Stubs retained so PlayView (kept as fallback) continues to compile

@@ -4,9 +4,11 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.drawable.Drawable
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
 import com.runoutzone.pockpock.R
 import utility.PaintBucket
+import utility.tutorialStrokePaint
 
 
 class PauseMenu(activity: AppCompatActivity) {
@@ -33,7 +35,7 @@ class PauseMenu(activity: AppCompatActivity) {
     val rightXRight = (5f * Settings.screenWidth / 6f + iconHalf).toInt()
 
     private val debug = Paint().apply {
-        color = PaintBucket.effectColor
+        color = PaintBucket.effectColor.toArgb()
         isAntiAlias = true
         isDither = true
         style = Paint.Style.FILL

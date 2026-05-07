@@ -13,6 +13,7 @@ import physics.Point
 import physics.Ticker
 import shapes.Circle
 import shapes.DrawablePoint
+import androidx.compose.ui.graphics.toArgb
 import utility.GameEvents
 import utility.PaintBucket
 import utility.Sounds
@@ -99,7 +100,7 @@ class Player(
     }
 
     val teleportPaint = Paint().apply {
-        color = PaintBucket.effectColor
+        color = PaintBucket.effectColor.toArgb()
         isAntiAlias = true
         isDither = true
         style = Paint.Style.STROKE

@@ -2,6 +2,7 @@ package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.compose.ui.graphics.toArgb
 import enums.Direction
 import gameobjects.Settings
 import gameobjects.puckstyle.ColorTheme
@@ -104,7 +105,7 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
         color: Int, position: Point, radius: Float
     ) : Effects.PersistentEffect {
         private val explosion = Explosion(
-            PaintBucket.effectColor, color, color,
+            PaintBucket.effectColor.toArgb(), color, color,
             position, radius, true, Direction.FULL, 100
         )
         override val isDone get() = explosion.finished

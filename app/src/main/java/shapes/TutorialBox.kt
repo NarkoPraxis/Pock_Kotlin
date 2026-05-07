@@ -6,6 +6,10 @@ import gameobjects.Settings
 import physics.TutorialTicker
 import utility.Logic
 import utility.PaintBucket
+import utility.backgroundPaint
+import utility.lowBallStrokePaint
+import utility.paintBucketResources
+import utility.tutorialTextPaint
 
 
 class TutorialBox(bottomMessageId: Int, private val nextBox: TutorialBox? = null, var topMessageId: Int = -1) {
@@ -38,7 +42,7 @@ class TutorialBox(bottomMessageId: Int, private val nextBox: TutorialBox? = null
     init {
         leftBoarder = Settings.screenRatio
         rightBoarder = Settings.screenWidth - leftBoarder *3
-        size = PaintBucket.resources.getDimensionPixelSize(R.dimen.tutorial_text_size)
+        size = paintBucketResources.getDimensionPixelSize(R.dimen.tutorial_text_size)
         width = (rightBoarder - leftBoarder)
 
         bottomTextHeight = ExtractLines(bottomMessage, bottomTextList)
