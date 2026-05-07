@@ -14,7 +14,7 @@
 
     </androidx.drawerlayout.widget.DrawerLayout>
 
-    <com.example.puck.PlayView
+    <com.runoutzone.pockpock.PlayView
             android:id="@+id/gameView2"
             android:layout_width="0dp"
             android:layout_height="0dp"

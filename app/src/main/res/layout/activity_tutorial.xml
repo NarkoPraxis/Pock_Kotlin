@@ -6,7 +6,7 @@
         android:layout_height="match_parent"
         tools:context=".tutorial">
 
-    <com.example.puck.GameView
+    <com.runoutzone.pockpock.GameView
             android:id="@+id/gameView"
             android:layout_width="290dp"
             android:layout_height="499dp"

@@ -36,37 +36,6 @@
     <string name="tip_overcharge">充能时被击中将失去控制，不要鲁莽！</string>
     <string name="tip_grey">如果你的冰球变成灰色，除非完全充能否则无法弹射！</string>
 
-    <string-array name="tip_scoring">
-        <item>得分：</item>
-        <item>   将对手</item>
-        <item>   打入紫色区域</item>
-        <item>   即可得分。</item>
-    </string-array>
-    <string-array name="tip_charging">
-        <item>蓄力：</item>
-        <item>   按住蓄力。</item>
-        <item>   变紫时松手</item>
-        <item>   获得护盾！</item>
-    </string-array>
-    <string-array name="tip_shields">
-        <item>紫色护盾：</item>
-        <item>   有护盾的Pock</item>
-        <item>   赢得每次碰撞</item>
-        <item>   把握好时机！</item>
-    </string-array>
-    <string-array name="tip_overcharge">
-        <item>过充：</item>
-        <item>   蓄力太久</item>
-        <item>   会重置力量。</item>
-        <item>   别一直按着！</item>
-    </string-array>
-    <string-array name="tip_grey">
-        <item>灰色：</item>
-        <item>   如果你的Pock变灰</item>
-        <item>   就无法击打</item>
-        <item>   除非时机恰好！</item>
-    </string-array>
-
     <!-- Settings strings -->
     <string name="settings_title">设置</string>
     <string name="pref_category_gameplay">玩法</string>

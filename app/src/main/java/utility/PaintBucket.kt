@@ -4,7 +4,7 @@ import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.Paint
 import androidx.core.content.res.ResourcesCompat
-import com.example.puck.R
+import com.runoutzone.pockpock.R
 import gameobjects.Settings
 
 object PaintBucket {

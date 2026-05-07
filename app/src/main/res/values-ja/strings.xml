@@ -36,37 +36,6 @@
     <string name="tip_overcharge">チャージ中に当たると制御を失います、無謀にならないで！</string>
     <string name="tip_grey">パックが灰色になったら、完全にチャージしない限り打ち出せません！</string>
 
-    <string-array name="tip_scoring">
-        <item>得点：</item>
-        <item>　相手を</item>
-        <item>　紫のゾーンに打ち込もう</item>
-        <item>　で得点。</item>
-    </string-array>
-    <string-array name="tip_charging">
-        <item>チャージ：</item>
-        <item>　押し続けてパワーを溜めよう。</item>
-        <item>　紫になったら離す</item>
-        <item>　シールドをゲット！</item>
-    </string-array>
-    <string-array name="tip_shields">
-        <item>紫のシールド：</item>
-        <item>　シールドのあるPockは</item>
-        <item>　全ての衝突で勝つ</item>
-        <item>　タイミングを見極めよう！</item>
-    </string-array>
-    <string-array name="tip_overcharge">
-        <item>オーバーチャージ：</item>
-        <item>　長すぎるチャージは</item>
-        <item>　パワーをリセットする。</item>
-        <item>　ずっと押し続けないで！</item>
-    </string-array>
-    <string-array name="tip_grey">
-        <item>グレー：</item>
-        <item>　Pockがグレーになったら</item>
-        <item>　打てなくなる</item>
-        <item>　タイミングが合えば別だが！</item>
-    </string-array>
-
     <!-- Settings strings -->
     <string name="settings_title">設定</string>
     <string name="pref_category_gameplay">ゲームプレイ</string>

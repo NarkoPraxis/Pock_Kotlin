@@ -18,7 +18,7 @@ Plans are stored in `Plans/`. When a plan is completed, **prepend `✅` to the f
 
 | Package | Purpose |
 |---|---|
-| `com.example.puck` | Activities (`MainActivity`, `PlayView`, `GameActivity`, `TutorialView`, `BallUnlockActivity`) + `GameView` base class |
+| `com.runoutzone.pockpock` | Activities (`MainActivity`, `PlayView`, `GameActivity`, `TutorialView`, `BallUnlockActivity`) + `GameView` base class |
 | `enums` | All state enums (GameState, FingerState, TouchState, MotionStates, Direction, MenuSelection, TutorialState) |
 | `gameobjects` | `Player`, `Puck`, `Settings` (global config singleton), `PauseMenu` |
 | `gameobjects/puckstyle` | Ball-style composition: `PuckSkin`, `TailRenderer`, `BallStyleFactory`, `ColorTheme`, `Palette`; `skins/` and `tails/` subpackages (one file per ball type) |
@@ -124,14 +124,13 @@ Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Ho
 
 ### Critical (Play Store blockers)
 
-1. **`applicationId "com.example.puck"`** — Must be changed to a real reverse-domain ID before Play Store submission. This changes the identity of the app permanently.
-2. **All ad unit IDs are test IDs** — Replace before launch:
+1. **All ad unit IDs are test IDs** — Replace before launch:
    - `MainActivity.kt` — rewarded ad test ID (TODO comment already there); verify live ID `ca-app-pub-1111532606958888/6682727846`
    - `GameActivity.kt` — interstitial test ID
    - `strings.xml` — `interstitial_ad_unit_id` is test ID
-3. **AdMob Application ID** — `AndroidManifest.xml` has `ca-app-pub-1111532606958888~7923000787`; verify this is the real production app ID.
-4. **`kotlin-android-extensions` is deprecated** — Currently kept to compile; must migrate to `viewBinding` before Kotlin 2.0 upgrade. Files using synthetics: `MainActivity.kt` (AdRatioText, rewardedAdButton), `Ads.kt` (next_level_button, level).
-5. **Google Ads SDK 19.3.0 is very old** — `InterstitialAd` constructor-form API and `RewardedAd`/`RewardedAdCallback` were replaced in SDK 20.0. Migration is required; new API uses static `InterstitialAd.load()` with callbacks. See `Plans/14-update-admob-sdk.md`.
+2. **AdMob Application ID** — `AndroidManifest.xml` has `ca-app-pub-1111532606958888~7923000787`; verify this is the real production app ID.
+3. **`kotlin-android-extensions` is deprecated** — Currently kept to compile; must migrate to `viewBinding` before Kotlin 2.0 upgrade. Files using synthetics: `MainActivity.kt` (AdRatioText, rewardedAdButton), `Ads.kt` (next_level_button, level).
+4. **Google Ads SDK 19.3.0 is very old** — `InterstitialAd` constructor-form API and `RewardedAd`/`RewardedAdCallback` were replaced in SDK 20.0. Migration is required; new API uses static `InterstitialAd.load()` with callbacks. See `Plans/14-update-admob-sdk.md`.
 
 ### Bugs
 

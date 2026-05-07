@@ -1,7 +1,7 @@
 package shapes
 
 import android.graphics.Canvas
-import com.example.puck.R
+import com.runoutzone.pockpock.R
 import gameobjects.Settings
 import physics.TutorialTicker
 import utility.Logic

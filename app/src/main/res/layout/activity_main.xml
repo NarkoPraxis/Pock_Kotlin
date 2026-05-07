@@ -8,7 +8,7 @@
         android:fitsSystemWindows="true"
         tools:context=".MainActivity">
 
-    <com.example.puck.UnlockProgressBar
+    <com.runoutzone.pockpock.UnlockProgressBar
             android:id="@+id/unlockProgressBar"
             android:layout_width="0dp"
             android:layout_height="52dp"
@@ -40,7 +40,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/appIcon">
 
-        <com.example.puck.StrokedTextView
+        <com.runoutzone.pockpock.StrokedTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Pock"
@@ -50,7 +50,7 @@
                 app:fillColor="@color/highPlayerLight"
                 app:strokeColor="@color/highPlayerDark" />
 
-        <com.example.puck.StrokedTextView
+        <com.runoutzone.pockpock.StrokedTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Pock"

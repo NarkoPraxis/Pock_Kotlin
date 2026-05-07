@@ -6,7 +6,7 @@
         android:background="?android:attr/colorBackground"
         android:fitsSystemWindows="true">
 
-    <com.example.puck.UnlockProgressBar
+    <com.runoutzone.pockpock.UnlockProgressBar
             android:id="@+id/unlockProgressBar"
             android:layout_width="0dp"
             android:layout_height="52dp"
@@ -42,7 +42,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/unlockProgressBar" />
 
-    <com.example.puck.BallUnlockView
+    <com.runoutzone.pockpock.BallUnlockView
             android:id="@+id/ballUnlockView"
             android:layout_width="0dp"
             android:layout_height="0dp"

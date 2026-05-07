@@ -38,7 +38,7 @@ object ShareHelper {
 
         if (onTargetSelected != null) {
             // Use a unique action so concurrent share intents don't collide.
-            val action = "com.example.puck.SHARE_TARGET_SELECTED_${System.currentTimeMillis()}"
+            val action = "com.runoutzone.pockpock.SHARE_TARGET_SELECTED_${System.currentTimeMillis()}"
 
             // One-shot receiver: fires when the user selects a target app from the chooser.
             // This is the closest Android's standard share sheet lets us get to "user completed

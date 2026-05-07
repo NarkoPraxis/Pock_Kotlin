@@ -5,7 +5,7 @@ import android.graphics.Paint
 import android.graphics.drawable.Drawable
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.example.puck.R
+import com.runoutzone.pockpock.R
 import utility.PaintBucket
 
 

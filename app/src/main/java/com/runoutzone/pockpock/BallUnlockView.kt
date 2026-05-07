@@ -1,4 +1,4 @@
-package com.example.puck
+package com.runoutzone.pockpock
 
 import android.content.Context
 import android.graphics.Canvas

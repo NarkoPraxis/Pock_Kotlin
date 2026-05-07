@@ -8,7 +8,7 @@ import android.media.MediaPlayer
 import android.media.SoundPool
 import android.os.Handler
 import android.os.Looper
-import com.example.puck.R
+import com.runoutzone.pockpock.R
 import gameobjects.Settings
 
 object Sounds {

@@ -36,37 +36,6 @@
     <string name="tip_overcharge">¡Si te golpean mientras cargas, perderás el control, no seas imprudente!</string>
     <string name="tip_grey">¡Si tu pock se vuelve gris, no puedes lanzarlo a menos que esté completamente cargado!</string>
 
-    <string-array name="tip_scoring">
-        <item>Puntuación:</item>
-        <item>   Golpea a tu oponente</item>
-        <item>   en cualquier zona morada</item>
-        <item>   para anotar un punto.</item>
-    </string-array>
-    <string-array name="tip_charging">
-        <item>Carga:</item>
-        <item>   Mantén para acumular poder.</item>
-        <item>   Suelta cuando sea morado</item>
-        <item>   ¡Obtén un escudo!</item>
-    </string-array>
-    <string-array name="tip_shields">
-        <item>Escudos morados:</item>
-        <item>   Un Pock con escudo</item>
-        <item>   gana cada rebote</item>
-        <item>   ¡así que calcula tu lanzamiento!</item>
-    </string-array>
-    <string-array name="tip_overcharge">
-        <item>Sobrecarga:</item>
-        <item>   Cargar demasiado tiempo</item>
-        <item>   resetea tu poder.</item>
-        <item>   ¡No aguantes para siempre!</item>
-    </string-array>
-    <string-array name="tip_grey">
-        <item>Gris:</item>
-        <item>   Si tu Pock se vuelve gris</item>
-        <item>   no puedes golpearlo</item>
-        <item>   ¡a menos que lo hagas a tiempo!</item>
-    </string-array>
-
     <!-- Settings strings -->
     <string name="settings_title">Ajustes</string>
     <string name="pref_category_gameplay">Jugabilidad</string>

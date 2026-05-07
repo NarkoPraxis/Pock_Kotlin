@@ -152,7 +152,7 @@ val chargeSpeed: Float get() {
     }
     val gameSpeed: Int get() {
         return when (settings.getString("game_speed", D)) {
-            S -> 32
+            S -> 24
             D -> 16
             L -> 8
             else -> 16

@@ -6,9 +6,9 @@ import android.os.Bundle
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.example.puck.GameView
-import com.example.puck.MainActivity
-import com.example.puck.SettingsActivity
+import com.runoutzone.pockpock.GameView
+import com.runoutzone.pockpock.MainActivity
+import com.runoutzone.pockpock.SettingsActivity
 import enums.*
 import gameobjects.PauseMenu
 import gameobjects.Player

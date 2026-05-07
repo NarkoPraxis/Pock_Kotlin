@@ -1,12 +1,13 @@
 apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
+apply plugin: 'org.jetbrains.kotlin.multiplatform'
+apply plugin: 'org.jetbrains.compose'
 apply plugin: 'kotlin-kapt'
 
 android {
-    namespace 'com.example.puck'
+    namespace 'com.runoutzone.pockpock'
     compileSdk 35
     defaultConfig {
-        applicationId "com.example.puck"
+        applicationId "com.runoutzone.pockpock"
         minSdk 26
         targetSdk 35
         versionCode 1
@@ -23,18 +24,40 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = '17'
-    }
     buildFeatures {
         dataBinding true
         viewBinding true
     }
 }
 
+kotlin {
+    applyDefaultHierarchyTemplate()
+
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = '17'
+            }
+        }
+    }
+
+    iosArm64()
+    iosSimulatorArm64()
+    iosX64()
+
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation "org.jetbrains.compose.runtime:runtime:1.6.11"
+                implementation "org.jetbrains.compose.foundation:foundation:1.6.11"
+                implementation "org.jetbrains.compose.ui:ui:1.6.11"
+            }
+        }
+    }
+}
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
@@ -47,4 +70,13 @@ dependencies {
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
     implementation 'com.android.billingclient:billing-ktx:7.1.1'
+}
+
+// KMP remaps the AGP main source set dirs to src/androidMain/ after evaluation.
+// afterEvaluate pins them back to the existing src/main/ layout so no files need moving yet.
+afterEvaluate {
+    android.sourceSets['main'].manifest.srcFile('src/main/AndroidManifest.xml')
+    android.sourceSets['main'].java.srcDirs(['src/main/java'])
+    android.sourceSets['main'].res.srcDirs(['src/main/res'])
+    android.sourceSets['main'].assets.srcDirs(['src/main/assets'])
 }

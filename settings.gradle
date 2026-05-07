@@ -1,1 +1,2 @@
 include ':app'
+// include ':iosApp'  // stub — uncomment in step 15 when iosApp module is created

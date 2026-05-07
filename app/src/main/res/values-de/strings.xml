@@ -36,37 +36,6 @@
     <string name="tip_overcharge">Wenn du beim Aufladen getroffen wirst, verlierst du die Kontrolle – sei nicht leichtsinnig!</string>
     <string name="tip_grey">Wenn dein Pock grau wird, kannst du ihn nicht schleudern, außer er ist voll aufgeladen!</string>
 
-    <string-array name="tip_scoring">
-        <item>Punkte:</item>
-        <item>   Triff deinen Gegner</item>
-        <item>   in eine der lila Zonen</item>
-        <item>   um einen Punkt zu machen.</item>
-    </string-array>
-    <string-array name="tip_charging">
-        <item>Aufladen:</item>
-        <item>   Halten zum Aufladen.</item>
-        <item>   Loslassen wenn lila</item>
-        <item>   Erhalte ein Schild!</item>
-    </string-array>
-    <string-array name="tip_shields">
-        <item>Lila Schilde:</item>
-        <item>   Ein geschützter Pock</item>
-        <item>   gewinnt jeden Aufprall</item>
-        <item>   also wähle den Moment!</item>
-    </string-array>
-    <string-array name="tip_overcharge">
-        <item>Überladen:</item>
-        <item>   Zu langes Aufladen</item>
-        <item>   setzt deine Kraft zurück.</item>
-        <item>   Nicht ewig halten!</item>
-    </string-array>
-    <string-array name="tip_grey">
-        <item>Grau:</item>
-        <item>   Wenn dein Pock grau wird</item>
-        <item>   kannst du nicht zuschlagen</item>
-        <item>   außer du wählst den richtigen Moment!</item>
-    </string-array>
-
     <!-- Settings strings -->
     <string name="settings_title">Einstellungen</string>
     <string name="pref_category_gameplay">Spielmodus</string>

@@ -36,37 +36,6 @@
     <string name="tip_overcharge">Si vous êtes touché pendant la charge, vous perdrez le contrôle, ne soyez pas imprudent!</string>
     <string name="tip_grey">Si votre pock devient gris, vous ne pouvez pas le lancer sauf s\'il est complètement chargé!</string>
 
-    <string-array name="tip_scoring">
-        <item>Score :</item>
-        <item>   Frappez votre adversaire</item>
-        <item>   dans une zone violette</item>
-        <item>   pour marquer un point.</item>
-    </string-array>
-    <string-array name="tip_charging">
-        <item>Chargement :</item>
-        <item>   Maintenez pour accumuler la puissance.</item>
-        <item>   Relâchez quand c\'est violet</item>
-        <item>   Obtenez un bouclier !</item>
-    </string-array>
-    <string-array name="tip_shields">
-        <item>Boucliers violets :</item>
-        <item>   Un Pock protégé</item>
-        <item>   gagne chaque rebond</item>
-        <item>   alors choisissez le bon moment !</item>
-    </string-array>
-    <string-array name="tip_overcharge">
-        <item>Surcharge :</item>
-        <item>   Charger trop longtemps</item>
-        <item>   réinitialise votre puissance.</item>
-        <item>   Ne retenez pas indéfiniment !</item>
-    </string-array>
-    <string-array name="tip_grey">
-        <item>Gris :</item>
-        <item>   Si votre Pock devient gris</item>
-        <item>   vous ne pouvez pas le frapper</item>
-        <item>   sauf si vous choisissez le bon moment !</item>
-    </string-array>
-
     <!-- Settings strings -->
     <string name="settings_title">Paramètres</string>
     <string name="pref_category_gameplay">Gameplay</string>

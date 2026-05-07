@@ -1,4 +1,4 @@
-package com.example.puck
+package com.runoutzone.pockpock
 
 import android.app.Activity
 import android.os.Bundle

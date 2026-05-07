@@ -1,4 +1,4 @@
-package com.example.puck
+package com.runoutzone.pockpock
 
 import android.app.Activity
 import android.content.Intent
@@ -18,7 +18,7 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import gameobjects.BotConfig
 import gameobjects.Settings
-import com.example.puck.databinding.ActivityMainBinding
+import com.runoutzone.pockpock.databinding.ActivityMainBinding
 import utility.ShareHelper
 import utility.Sounds
 import utility.Storage
