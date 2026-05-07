@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
             recreate()
             return
         }
-        Sounds.soundPool.autoResume()
+        Sounds.autoResumeSfx()
         Sounds.playMenuAmbiance()
         // Re-check ad availability each time the screen comes back into view.
         Settings.unlockProgress = Storage.unlockProgress

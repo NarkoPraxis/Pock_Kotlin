@@ -83,9 +83,9 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
                         PreferenceManager.setDefaultValues(this, R.xml.gameplay_preferences, true)
                         PreferenceManager.setDefaultValues(this, R.xml.visual_preferences, true)
                         prefs.edit {
-                            putInt("sound_master_volume", 100)
+                            putInt("sound_master_volume", 70)
                             putInt("sound_background_volume", 100)
-                            putInt("sound_sfx_volume", 100)
+                            putInt("sound_sfx_volume", 70)
                             putBoolean("sound_master_muted", false)
                             putBoolean("sound_background_muted", false)
                             putBoolean("sound_sfx_muted", false)

@@ -152,9 +152,9 @@ object Storage {
 
     // --- Sound volume settings ---
 
-    val soundMasterVolume: Int get() = PlatformStorage.getInt(SETTINGS, "sound_master_volume", 100)
+    val soundMasterVolume: Int get() = PlatformStorage.getInt(SETTINGS, "sound_master_volume", 70)
     val soundBackgroundVolume: Int get() = PlatformStorage.getInt(SETTINGS, "sound_background_volume", 100)
-    val soundSfxVolume: Int get() = PlatformStorage.getInt(SETTINGS, "sound_sfx_volume", 100)
+    val soundSfxVolume: Int get() = PlatformStorage.getInt(SETTINGS, "sound_sfx_volume", 70)
     val soundMasterMuted: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "sound_master_muted", false)
     val soundBackgroundMuted: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "sound_background_muted", false)
     val soundSfxMuted: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "sound_sfx_muted", false)

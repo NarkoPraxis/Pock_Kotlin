@@ -215,7 +215,7 @@ class GameActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         if (Logic.leaving) {
-            Sounds.soundPool.autoPause()
+            Sounds.autoPauseSfx()
         } else {
             Sounds.pauseAll()
         }

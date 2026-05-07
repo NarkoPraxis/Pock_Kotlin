@@ -1,0 +1,28 @@
+package utility
+
+expect object Sounds {
+    fun initialize(context: Any?)
+    fun initializeGame()
+    fun playHighPlayerSound(x: Float)
+    fun playLowPlayerSound(x: Float)
+    fun playLowPlayerSweetSpotSound(x: Float)
+    fun playHighPlayerSweetSpotSound(y: Float)
+    fun playGameStart()
+    fun playWallSound(y: Float)
+    fun playGoalSound(y: Float)
+    fun playScoreSound(y: Float)
+    fun playChargeCollision(x: Float)
+    fun playDoubleChargeCollision(x: Float)
+    fun playChargeBlastOff(x: Float)
+    fun playTeleportStart(y: Float)
+    fun playTeleportFinish(x: Float)
+    fun playGameAmbiance()
+    fun playMenuAmbiance()
+    fun pauseAll()
+    fun resumeAll()
+    fun autoPauseSfx()
+    fun autoResumeSfx()
+    fun applyBackgroundVolume()
+    fun playWeHaveAWinner()
+    fun abandonAudioFocus()
+}
