@@ -7,8 +7,6 @@ import gameobjects.puckstyle.tails.*
 
 data class BallStyle(val skin: PuckSkin, val tail: TailRenderer, val effect: PaddleLaunchEffect)
 
-data class RandomRoll(val skinType: BallType, val tailType: BallType, val effectType: BallType, val tailZIndex: Int)
-
 object BallStyleFactory {
 
 
