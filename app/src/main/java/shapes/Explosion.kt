@@ -2,6 +2,9 @@ package shapes
 
 import android.graphics.*
 import android.os.Build
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import enums.Direction
 import physics.Point
 import physics.Ticker
@@ -201,6 +204,8 @@ class Explosion(var firstColor: Int, var secondColor: Int, var backgroundColor: 
 //            spacer2--
 //        }
 //    }
+
+    fun DrawScope.drawTo() = drawIntoCanvas { drawTo(it.nativeCanvas) }
 
     fun implode() {
         firstTicker.accending = false

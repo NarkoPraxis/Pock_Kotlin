@@ -1,26 +1,24 @@
 package shapes
 
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.view.MotionEvent
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import enums.BallType
 import gameobjects.Settings
-import gameobjects.puckstyle.BallStyle
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.RandomRoll
 import gameobjects.puckstyle.PuckRenderer
-import gameobjects.puckstyle.PuckSkin
-import gameobjects.puckstyle.TailRenderer
 import utility.Storage
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import androidx.core.graphics.withClip
 
 class BallSelectionPopup(val isHigh: Boolean) {
-
 
     var isOpen: Boolean = false
     var randomRoll: RandomRoll? = null
@@ -30,17 +28,14 @@ class BallSelectionPopup(val isHigh: Boolean) {
     private val slotBg = Paint().apply { color = Color.argb(60, 255, 255, 255); style = Paint.Style.FILL; isAntiAlias = true }
     private val slotBgSel = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
     private val lockPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; isAntiAlias = true; strokeCap = Paint.Cap.ROUND }
-
+    private val stubFillPaint = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
+    private val stubStrokePaint = Paint().apply { style = Paint.Style.STROKE; isAntiAlias = true }
 
     private var snapIndex: Int = 0
 
-    // Per-slot skins+tails — one per BallType, skin cached so randomized seeds don't re-roll each frame
-
-    private val renderers: Array<PuckRenderer> = Array(BallType.entries.size) { i -> BallStyleFactory.buildRenderer(BallType.entries.toTypedArray()[i], ColorTheme.getTheme(isHigh))}
-//    private val slotTails: Array<TailRenderer?> = arrayOfNulls(BallType.entries.size)
-  //  private val slotSkins: Array<PuckSkin?> = arrayOfNulls(BallType.entries.size)
-    //private val slotStyles: Array<BallStyle?> = arrayOfNulls(BallType.entries.size)
-    //private val slotTailTypes: Array<BallType?> = arrayOfNulls(BallType.entries.size)
+    private val renderers: Array<PuckRenderer> = Array(BallType.entries.size) { i ->
+        BallStyleFactory.buildRenderer(BallType.entries.toTypedArray()[i], ColorTheme.getTheme(isHigh))
+    }
 
     val w: Float get() = Settings.screenWidth
     val h: Float get() = Settings.screenRatio * 5f
@@ -56,7 +51,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
     private var lastLogicalX: Float = 0f
     private var dragDistance: Float = 0f
 
-    // Plan 04: expose the ball nearest to center for live card label update while scrolling
     val previewType: BallType get() {
         val idx = (scrollX / slotW).roundToInt().coerceIn(0, BallType.values().size - 1)
         return BallType.entries[idx]
@@ -68,7 +62,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
         scrollX = current.ordinal * slotW
         snapIndex = current.ordinal
         dragging = false
-        renderers[snapIndex].tail.clear()   // reseed selected tail from current puck position on open
+        renderers[snapIndex].tail.clear()
 
         if (current == BallType.Random) {
             utility.Logic.applyBallStyles()
@@ -84,7 +78,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
 
     private fun isUnlocked(type: BallType): Boolean = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
 
-    // Plan 04: select ball in-place without closing popup; snap/drag both call this
     private fun trySelect(type: BallType): Boolean {
         if (!isUnlocked(type)) return false
         if (isHigh) {
@@ -134,7 +127,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
                 if (!dragging) return true
                 dragging = false
                 if (dragDistance < Settings.screenRatio * 0.6f) {
-                    // Tap: snap to tapped slot, select if unlocked — popup stays open
                     val slotLogicalX = logicalX - (cx - scrollX)
                     val index = (slotLogicalX / slotW).roundToInt().coerceIn(0, types.size - 1)
                     scrollX = index * slotW
@@ -144,7 +136,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
                     }
                     trySelect(types[index])
                 } else {
-                    // Drag release: snap to nearest, auto-select if unlocked
                     val snap = (scrollX / slotW).roundToInt().coerceIn(0, types.size - 1)
                     scrollX = snap * slotW
                     if (snap != snapIndex) {
@@ -165,14 +156,10 @@ class BallSelectionPopup(val isHigh: Boolean) {
         if (scrollX > max) scrollX = max
     }
 
-
-
-    fun drawTo(canvas: Canvas) {
+    fun DrawScope.drawTo() {
         if (!isOpen) return
 
-        // Plan 00: re-apply light/dark colors each frame
-        bg.color = if (Storage.darkMode) Color.argb(230, 10, 10, 20) else Color.WHITE
-
+        val bgArgb = if (Storage.darkMode) Color.argb(230, 10, 10, 20) else Color.WHITE
         val halfW = w / 2f
         val halfH = h / 2f
         val theme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
@@ -180,88 +167,101 @@ class BallSelectionPopup(val isHigh: Boolean) {
         val pr = Settings.ballRadius
         val centerIndex = scrollX / slotW
 
-        canvas.save()
-        if (isHigh) canvas.scale(-1f, -1f, cx, cy)
+        drawIntoCanvas { outerCanvas ->
+            val canvas = outerCanvas.nativeCanvas
 
-        // Popup background + border
-        canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, bg)
-        border.color = theme.main.primary
-        border.strokeWidth = Settings.screenRatio * 0.25f  // Plan 06: thicker border
-        canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, border)
+            canvas.save()
+            if (isHigh) canvas.scale(-1f, -1f, cx, cy)
 
-        canvas.save()
-        canvas.clipRect(
-            cx - halfW + Settings.screenRatio * 0.2f, cy - halfH + Settings.screenRatio * 0.2f,
-            cx + halfW - Settings.screenRatio * 0.2f, cy + halfH - Settings.screenRatio * 0.2f
-        )
+            // Background
+            bg.color = bgArgb
+            canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, bg)
 
-        for (i in types.indices) {
-            val previewRenderer = renderers[i]
-            val slotCenterX = cx - scrollX + i * slotW
-            if (slotCenterX < cx - halfW - slotW || slotCenterX > cx + halfW + slotW) continue
+            // Border
+            border.color = theme.main.primary
+            border.strokeWidth = Settings.screenRatio * 0.25f
+            canvas.drawRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH, border)
 
-            val dist = abs(i - centerIndex)
-            val isCenter = dist < 0.5f
-            val type = types[i]
+            canvas.save()
+            canvas.clipRect(
+                cx - halfW + Settings.screenRatio * 0.2f,
+                cy - halfH + Settings.screenRatio * 0.2f,
+                cx + halfW - Settings.screenRatio * 0.2f,
+                cy + halfH - Settings.screenRatio * 0.2f
+            )
 
-            if (isCenter) {
-                slotBgSel.color = Color.argb(90, Color.red(theme.main.primary), Color.green(theme.main.primary), Color.blue(theme.main.primary))
-                canvas.drawRoundRect(slotCenterX - slotW * 0.45f, cy - halfH + Settings.screenRatio * 1.25f,
-                    slotCenterX + slotW * 0.45f, cy + halfH - Settings.screenRatio * 1.25f,
-                    Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, slotBgSel)
-            } else {
-                canvas.drawRoundRect(slotCenterX - slotW * 0.42f, cy - halfH + Settings.screenRatio * 1.35f,
-                    slotCenterX + slotW * 0.42f, cy + halfH - Settings.screenRatio * 1.35f,
-                    Settings.screenRatio * 0.25f, Settings.screenRatio * 0.25f, slotBg)
+            for (i in types.indices) {
+                val previewRenderer = renderers[i]
+                val slotCenterX = cx - scrollX + i * slotW
+                if (slotCenterX < cx - halfW - slotW || slotCenterX > cx + halfW + slotW) continue
+
+                val dist = abs(i - centerIndex)
+                val isCenter = dist < 0.5f
+                val type = types[i]
+
+                if (isCenter) {
+                    slotBgSel.color = Color.argb(90, Color.red(theme.main.primary), Color.green(theme.main.primary), Color.blue(theme.main.primary))
+                    canvas.drawRoundRect(
+                        RectF(slotCenterX - slotW * 0.45f, cy - halfH + Settings.screenRatio * 1.25f,
+                            slotCenterX + slotW * 0.45f, cy + halfH - Settings.screenRatio * 1.25f),
+                        Settings.screenRatio * 0.3f, Settings.screenRatio * 0.3f, slotBgSel
+                    )
+                } else {
+                    canvas.drawRoundRect(
+                        RectF(slotCenterX - slotW * 0.42f, cy - halfH + Settings.screenRatio * 1.35f,
+                            slotCenterX + slotW * 0.42f, cy + halfH - Settings.screenRatio * 1.35f),
+                        Settings.screenRatio * 0.25f, Settings.screenRatio * 0.25f, slotBg
+                    )
+                }
+
+                previewRenderer.frame++
+                previewRenderer.effectEnabled = false
+                previewRenderer.radius = pr
+                previewRenderer.strokePaint.strokeWidth = Settings.strokeWidth
+                previewRenderer.chargePaint.strokeWidth = Settings.strokeWidth
+
+                val amplitude = if (isCenter) Settings.screenRatio * 0.9f else Settings.screenRatio * 0.45f
+                val phase = i * 0.7f
+                val puckY = cy + amplitude * sin(2 * Math.PI.toFloat() * previewRenderer.frame / 80f + phase)
+
+                canvas.save()
+                canvas.clipRect(
+                    slotCenterX - slotW / 2f,
+                    cy - halfH + Settings.screenRatio * 0.15f,
+                    slotCenterX + slotW / 2f,
+                    cy + halfH - Settings.screenRatio * 0.15f
+                )
+
+                // Step 10 stub: solid-color circle until skins are migrated in step 11
+                stubFillPaint.color = theme.main.primary
+                stubStrokePaint.color = theme.main.secondary
+                stubStrokePaint.strokeWidth = Settings.strokeWidth
+                canvas.drawCircle(slotCenterX, puckY, pr, stubFillPaint)
+                canvas.drawCircle(slotCenterX, puckY, pr, stubStrokePaint)
+
+                if (!isUnlocked(type)) drawLock(canvas, slotCenterX, puckY, pr)
+                canvas.restore()
             }
 
-            previewRenderer.frame++
-
-            // Shared renderer config: effects gated by effectEnabled=false; alwaysVisible paddles still draw.
-            // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
-            // is set by initializeSettings(), so the baked-in value is 0f.
-            previewRenderer.effectEnabled = false
-            previewRenderer.radius = pr
-            previewRenderer.strokePaint.strokeWidth = Settings.strokeWidth
-            previewRenderer.chargePaint.strokeWidth = Settings.strokeWidth
-
-            val amplitude = if (isCenter) Settings.screenRatio * 0.9f else Settings.screenRatio * 0.45f
-            val phase = i * 0.7f
-            val puckY = cy + amplitude * sin(2 * Math.PI.toFloat() * previewRenderer.frame / 80f + phase)
-
-            canvas.withClip(
-                slotCenterX - slotW / 2f, cy - halfH + Settings.screenRatio * 0.15f,
-                slotCenterX + slotW / 2f, cy + halfH - Settings.screenRatio * 0.15f
-            ) {
-                previewRenderer.x = slotCenterX
-                previewRenderer.y = puckY
-                previewRenderer.theme = theme
-                previewRenderer.fillColor = theme.main.primary
-                previewRenderer.strokeColor = theme.main.secondary
-                previewRenderer.baseFillColor = theme.main.primary
-                previewRenderer.preview = !isUnlocked(type)
-
-                previewRenderer.draw(this)
-                if (!isUnlocked(type)) drawLock(this, slotCenterX, puckY, pr)
-            }
+            canvas.restore()
+            canvas.restore()
         }
-
-        canvas.restore()  // end global clip
-
-        canvas.restore()
     }
 
-    // Plan 03: removed semi-transparent circle overlay — puck body is already a solid silhouette
-    private fun drawLock(canvas: Canvas, lx: Float, ly: Float, radius: Float) {
+    private fun drawLock(canvas: android.graphics.Canvas, lx: Float, ly: Float, radius: Float) {
         lockPaint.strokeWidth = Settings.screenRatio * 0.2f
         val bodyW = radius * 0.8f
         val bodyH = radius * 0.7f
         lockPaint.style = Paint.Style.FILL
-        canvas.drawRoundRect(lx - bodyW / 2f, ly - bodyH / 4f, lx + bodyW / 2f, ly + bodyH * 0.75f,
-            Settings.screenRatio * 0.12f, Settings.screenRatio * 0.12f, lockPaint)
+        canvas.drawRoundRect(
+            RectF(lx - bodyW / 2f, ly - bodyH / 4f, lx + bodyW / 2f, ly + bodyH * 0.75f),
+            Settings.screenRatio * 0.12f, Settings.screenRatio * 0.12f, lockPaint
+        )
         lockPaint.style = Paint.Style.STROKE
         val shackleR = bodyW / 2.6f
-        canvas.drawArc(lx - shackleR, ly - bodyH * 0.85f, lx + shackleR, ly - bodyH * 0.1f,
-            180f, 180f, false, lockPaint)
+        canvas.drawArc(
+            RectF(lx - shackleR, ly - bodyH * 0.85f, lx + shackleR, ly - bodyH * 0.1f),
+            180f, 180f, false, lockPaint
+        )
     }
 }

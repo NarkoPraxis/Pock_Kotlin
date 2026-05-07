@@ -2,6 +2,9 @@ package shapes
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import physics.Point
 import physics.Ticker
 
@@ -52,9 +55,9 @@ class Collision(val collision: Point, val direction: Point, lineColor: Int) : Sh
         }
     }
 
+    fun DrawScope.drawTo() = drawIntoCanvas { drawTo(it.nativeCanvas) }
+
     override fun intersects(circle: Circle): Boolean {
         throw Exception("Collision animation should not be checking for collision with circles")
     }
-
-
 }

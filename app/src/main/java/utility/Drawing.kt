@@ -59,15 +59,19 @@ object Drawing {
     fun DrawScope.drawFrame() {
         drawArenaBackground()
         drawChargeFill()
-        drawIntoCanvas { nativeCanvas ->
-            Effects.drawEffects(nativeCanvas.nativeCanvas)
-        }
+        with(Effects) { drawEffects() }
         drawPlayersCompose()
         drawWalls()
         drawAimArrows()
         drawArenaForeground()
+        drawBallPopups()
         drawScoreFlash()
         drawScores(Logic.highPlayer, Logic.lowPlayer)
+    }
+
+    fun DrawScope.drawBallPopups() {
+        with(Logic.highBallPopup) { drawTo() }
+        with(Logic.lowBallPopup) { drawTo() }
     }
 
     // -------------------------------------------------------------------------

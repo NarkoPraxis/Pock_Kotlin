@@ -1,6 +1,9 @@
 package utility
 
 import android.graphics.Canvas
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import enums.Direction
 import gameobjects.Settings
@@ -13,7 +16,6 @@ object Effects {
         fun draw(canvas: Canvas)
         fun step()
         val isDone: Boolean
-        /** Return true to handle own removal; false to be cleared immediately. Default: false. */
         fun onScoreSignal(): Boolean = false
     }
 
@@ -30,8 +32,6 @@ object Effects {
         pendingEffects.clear()
     }
 
-    /** Signals a goal was scored. Effects that return true from onScoreSignal() animate out on their own;
-     *  all others are removed immediately. */
     fun signalScored() {
         val iter = persistentEffects.iterator()
         while (iter.hasNext()) {
@@ -47,23 +47,27 @@ object Effects {
         }
     }
 
-    fun drawEffects(canvas: Canvas) {
-        val persistIter = persistentEffects.iterator()
-        while (persistIter.hasNext()) {
-            val e = persistIter.next()
-            e.step()
-            e.draw(canvas)
-            if (e.isDone) persistIter.remove()
-        }
-        if (pendingEffects.isNotEmpty()) {
-            persistentEffects.addAll(pendingEffects)
-            pendingEffects.clear()
+    fun DrawScope.drawEffects() {
+        // Persistent effects still use Android Canvas internally (PersistentEffect.draw not yet migrated)
+        drawIntoCanvas { outerCanvas ->
+            val nativeCanvas = outerCanvas.nativeCanvas
+            val persistIter = persistentEffects.iterator()
+            while (persistIter.hasNext()) {
+                val e = persistIter.next()
+                e.step()
+                e.draw(nativeCanvas)
+                if (e.isDone) persistIter.remove()
+            }
+            if (pendingEffects.isNotEmpty()) {
+                persistentEffects.addAll(pendingEffects)
+                pendingEffects.clear()
+            }
         }
 
         val collIter = collisions.iterator()
         while (collIter.hasNext()) {
             val c = collIter.next()
-            c.drawTo(canvas)
+            with(c) { drawTo() }
             if (c.finished) collIter.remove()
         }
     }
@@ -71,7 +75,7 @@ object Effects {
     fun addWallCollisionEffect(bounceDirection: Direction, fillColor: Int, puckPosition: Point) {
         val effectInt = PaintBucket.effectColor.toArgb()
         val bgInt = PaintBucket.backgroundColor.toArgb()
-        when(bounceDirection) {
+        when (bounceDirection) {
             Direction.LEFT -> collisions.add(Explosion(effectInt, fillColor, bgInt, Point(Settings.shortParticleSide, puckPosition.y), Settings.ballRadius * 1.5f, false, Direction.LEFT))
             Direction.RIGHT -> collisions.add(Explosion(effectInt, fillColor, bgInt, Point(Settings.screenWidth - Settings.shortParticleSide, puckPosition.y), Settings.ballRadius * 1.5f, false, Direction.RIGHT))
             Direction.TOP -> collisions.add(Explosion(effectInt, fillColor, bgInt, Point(puckPosition.x, Settings.topGoalBottom), Settings.ballRadius * 1.5f, false, Direction.TOP))

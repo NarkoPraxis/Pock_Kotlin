@@ -3,6 +3,9 @@ package shapes
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 
 open class DrawablePoint(x: Float, y: Float, var pointColor: Int = Color.BLACK, var size: Float = 10f) : Shape(x,y) {
 
@@ -28,6 +31,8 @@ open class DrawablePoint(x: Float, y: Float, var pointColor: Int = Color.BLACK, 
     override fun drawTo(canvas: Canvas) {
         canvas.drawCircle(x, y, size, paint)
     }
+
+    fun DrawScope.drawTo() = drawIntoCanvas { drawTo(it.nativeCanvas) }
 
     override fun intersects(circle: Circle) : Boolean {
         return distanceTo(circle) < circle.radius

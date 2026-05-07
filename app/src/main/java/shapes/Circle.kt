@@ -3,6 +3,9 @@ package shapes
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import gameobjects.Settings
 import physics.Point
 
@@ -55,6 +58,9 @@ constructor() : this(0f, 0f, 0f, Color.BLACK, Color.BLACK)
 //        canvas.drawCircle(x, y, radius-strokePaint.strokeWidth/5, strokePaint)
         canvas.drawCircle(x, y, radius, strokePaint)
     }
+
+    fun DrawScope.drawTo() = drawIntoCanvas { drawTo(it.nativeCanvas) }
+    fun DrawScope.drawTo(r: Float) = drawIntoCanvas { drawTo(r, it.nativeCanvas) }
 
     open fun setStroke(stroke: Int) {
         strokeColor = stroke
