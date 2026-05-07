@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        package="com.runoutzone.pockpock">
+    <!-- Include required permissions for Google Mobile Ads to run. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+
+    <application
+            android:allowBackup="true"
+            android:icon="@mipmap/ic_launcher_chicken"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_chicken_round"
+            android:supportsRtl="true"
+            android:theme="@style/LightMode"
+            android:localeConfig="@xml/locales_config">
+        <activity
+                android:name=".SettingsActivity"
+                android:exported="false"
+                android:label="@string/title_activity_settings"
+                android:screenOrientation="portrait" />
+        <activity
+                android:name=".ScoreCalibrationActivity"
+                android:exported="false"
+                android:screenOrientation="portrait" />
+
+        <meta-data
+                android:name="com.google.android.gms.ads.APPLICATION_ID"
+                android:value="ca-app-pub-1111532606958888~7923000787" />
+
+<activity
+                android:name=".BallUnlockActivity"
+                android:exported="false"
+                android:screenOrientation="portrait" />
+        <activity
+                android:name="com.google.android.gms.ads.AdActivity"
+                android:exported="false"
+                android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
+                android:theme="@android:style/Theme.Translucent" />
+        <activity
+                android:name=".GameActivity"
+                android:exported="false"
+                android:screenOrientation="portrait" />
+        <activity
+                android:name=".MainActivity"
+                android:exported="true"
+                android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

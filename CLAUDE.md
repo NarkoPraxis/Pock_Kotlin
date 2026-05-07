@@ -129,8 +129,6 @@ Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Ho
    - `GameActivity.kt` — interstitial test ID
    - `strings.xml` — `interstitial_ad_unit_id` is test ID
 2. **AdMob Application ID** — `AndroidManifest.xml` has `ca-app-pub-1111532606958888~7923000787`; verify this is the real production app ID.
-3. **`kotlin-android-extensions` is deprecated** — Currently kept to compile; must migrate to `viewBinding` before Kotlin 2.0 upgrade. Files using synthetics: `MainActivity.kt` (AdRatioText, rewardedAdButton), `Ads.kt` (next_level_button, level).
-4. **Google Ads SDK 19.3.0 is very old** — `InterstitialAd` constructor-form API and `RewardedAd`/`RewardedAdCallback` were replaced in SDK 20.0. Migration is required; new API uses static `InterstitialAd.load()` with callbacks. See `Plans/14-update-admob-sdk.md`.
 
 ### Bugs
 
@@ -167,14 +165,14 @@ Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Ho
 
 | Tool | Version |
 |---|---|
-| Gradle Wrapper | 8.9 |
-| Android Gradle Plugin | 8.7.3 |
-| Kotlin | 1.9.24 |
+| Gradle Wrapper | 8.13 |
+| Android Gradle Plugin | 8.9.1 |
+| Kotlin | 2.1.21 |
 | compileSdk | 35 |
 | minSdk | 26 (Android 8.0) |
 | targetSdk | 35 |
 | Java | 17 |
-| play-services-ads | 19.3.0 (old API — see blocker #5) |
+| play-services-ads | 23.6.0 |
 
 ## File Naming
 
