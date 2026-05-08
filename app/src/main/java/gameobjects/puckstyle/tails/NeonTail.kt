@@ -1,23 +1,20 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
-import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
-class NeonTail( override val renderer: PuckRenderer) : TailRenderer {
+class NeonTail(override val renderer: PuckRenderer) : TailRenderer {
     private data class Ring(var x: Float = 0f, var y: Float = 0f)
     private var rings: MutableList<Ring>? = null
 
     // Tail length is fixed — compute once at construction, never changes after setup
     private val tailLen = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
-
-    private val paint = Paint().apply {
-        isAntiAlias = true; isDither = true; style = Paint.Style.STROKE
-    }
 
     /**
      * Three-zone alpha curve: flat head → slow middle fade → sharp tail drop, smoothed at boundaries.
@@ -51,7 +48,7 @@ class NeonTail( override val renderer: PuckRenderer) : TailRenderer {
         return blended.toInt().coerceIn(0, 255)
     }
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         val len = tailLen
         if (rings == null || rings!!.size != len) rings = MutableList(len) { Ring(renderer.x, renderer.y) }
         val rings = rings!!
@@ -59,15 +56,17 @@ class NeonTail( override val renderer: PuckRenderer) : TailRenderer {
         val sw = renderer.strokePaint.strokeWidth
         val lastIndex = (rings.size - 1).coerceAtLeast(1)
 
-        paint.strokeWidth = sw
-
         for (i in rings.size - 1 downTo 0) {
             if (i - 1 >= 0) { rings[i].x = rings[i - 1].x; rings[i].y = rings[i - 1].y }
             else             { rings[i].x = renderer.x;     rings[i].y = renderer.y     }
 
             val ratio = i.toFloat() / lastIndex
-            paint.color = Palette.withAlpha(color, neonAlpha(ratio))
-            canvas.drawCircle(rings[i].x, rings[i].y, renderer.radius, paint)
+            scope.drawCircle(
+                color = Color(Palette.withAlpha(color, neonAlpha(ratio))),
+                radius = renderer.radius,
+                center = Offset(rings[i].x, rings[i].y),
+                style = Stroke(sw)
+            )
         }
     }
 

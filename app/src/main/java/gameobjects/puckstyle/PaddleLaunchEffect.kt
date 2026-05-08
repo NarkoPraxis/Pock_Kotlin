@@ -1,13 +1,20 @@
 package gameobjects.puckstyle
 
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.unit.LayoutDirection
 import gameobjects.Settings
 import gameobjects.puckstyle.TailRenderer.Companion.previewLayerPaint
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+import androidx.compose.ui.graphics.Color as ComposeColor
 
 /**
  * Base class for the tethered-paddle launch visual shared by every ball type.
@@ -144,7 +151,7 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
     // ----- strike callback -----
     private var strikeCallback: (() -> Unit)? = null
 
-    // ----- paint scratch -----
+    // ----- paint scratch (kept for subclasses that draw via drawIntoCanvas) -----
     protected val paddlePaint = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.STROKE
@@ -156,7 +163,7 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
         strikeCallback = onStrike
     }
 
-    override fun draw(canvas: Canvas) {
+    override fun draw(scope: DrawScope) {
         frame++
         updateState()
 
@@ -164,7 +171,7 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
             val t = 1f - (releaseFrames.toFloat() / RELEASE_DURATION)
             val cx = lerp(releaseFromX, renderer.x, t)
             val cy = lerp(releaseFromY, renderer.y, t)
-            drawStrikingPaddle(canvas, cx, cy, releaseAimX, releaseAimY, releaseSweet, releaseFatigued, t)
+            drawStrikingPaddle(scope, cx, cy, releaseAimX, releaseAimY, releaseSweet, releaseFatigued, t)
             releaseFrames--
             if (releaseFrames == 0) {
                 strikeCallback?.invoke()
@@ -175,9 +182,9 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
                 _phaseAfterClear?.let { _phase = it; _phaseAfterClear = null }
             }
         } else if (_phase != ChargePhase.Idle) {
-            drawChargingPaddle(canvas)
+            drawChargingPaddle(scope)
         } else if (phase == ChargePhase.Idle) {
-            drawIdlePaddle(canvas)
+            drawIdlePaddle(scope)
         }
     }
 
@@ -285,13 +292,13 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
     // ---------- drawing primitives (overridable) ----------
 
     /** Called each frame during Building / SweetSpot / Draining / Inert. */
-    protected open fun drawChargingPaddle(canvas: Canvas) {
-        drawPaddleBar(canvas, paddleX, paddleY, aimX, aimY, _chargeFillRatio, _phase, false)
+    protected open fun drawChargingPaddle(scope: DrawScope) {
+        drawPaddleBar(scope, paddleX, paddleY, aimX, aimY, _chargeFillRatio, _phase, false)
     }
 
     /** Called each frame during the release-strike animation. */
     protected open fun drawStrikingPaddle(
-        canvas: Canvas,
+        scope: DrawScope,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
@@ -301,21 +308,27 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
             fatigued -> ChargePhase.Inert
             else     -> ChargePhase.Building
         }
-        drawPaddleBar(canvas, cx, cy, aX, aY, fill, fakePhase, true)
+        drawPaddleBar(scope, cx, cy, aX, aY, fill, fakePhase, true)
     }
 
-    protected open fun drawIdlePaddle(canvas: Canvas) {
+    protected open fun drawIdlePaddle(scope: DrawScope) {
         // noop
     }
 
-    fun renderWithPreview(canvas: Canvas) {
+    fun renderWithPreview(scope: DrawScope) {
         if (!renderer.preview) {
-            draw(canvas)
+            draw(scope)
             return
         }
-        canvas.saveLayer(null, previewLayerPaint)
-        draw(canvas)
-        canvas.restore()
+        val self = this
+        scope.drawIntoCanvas { composeCanvas ->
+            val nativeCanvas = composeCanvas.nativeCanvas
+            nativeCanvas.saveLayer(null, previewLayerPaint)
+            helperScope.draw(scope, scope.layoutDirection, composeCanvas, scope.size) {
+                self.draw(this)
+            }
+            nativeCanvas.restore()
+        }
     }
 
     /**
@@ -324,7 +337,7 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
      * [drawChargingPaddle] / [drawStrikingPaddle] overrides.
      */
     protected fun drawPaddleBar(
-        canvas: Canvas,
+        scope: DrawScope,
         cx: Float, cy: Float, aX: Float, aY: Float,
         fillRatio: Float, ph: ChargePhase, striking: Boolean
     ) {
@@ -351,24 +364,22 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
             theme.shield.primary
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
 
-        paddlePaint.strokeWidth = thickness
-
-        paddlePaint.color = baseColor
-        paddlePaint.alpha = 255
-        canvas.drawLine(
-            cx - perpX * half, cy - perpY * half,
-            cx + perpX * half, cy + perpY * half,
-            paddlePaint
+        scope.drawLine(
+            color = ComposeColor(baseColor),
+            start = Offset(cx - perpX * half, cy - perpY * half),
+            end = Offset(cx + perpX * half, cy + perpY * half),
+            strokeWidth = thickness,
+            cap = StrokeCap.Round
         )
 
         if (fillRatio > 0f && !isInert) {
             val fillHalf = half * fillRatio
-            paddlePaint.color = chargeColor
-            paddlePaint.alpha = (255 * pulse).toInt().coerceIn(0, 255)
-            canvas.drawLine(
-                cx - perpX * fillHalf, cy - perpY * fillHalf,
-                cx + perpX * fillHalf, cy + perpY * fillHalf,
-                paddlePaint
+            scope.drawLine(
+                color = ComposeColor(Palette.withAlpha(chargeColor, (255 * pulse).toInt().coerceIn(0, 255))),
+                start = Offset(cx - perpX * fillHalf, cy - perpY * fillHalf),
+                end = Offset(cx + perpX * fillHalf, cy + perpY * fillHalf),
+                strokeWidth = thickness,
+                cap = StrokeCap.Round
             )
         }
     }
@@ -399,5 +410,6 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
 
     companion object {
         const val RELEASE_DURATION = 5
+        private val helperScope = CanvasDrawScope()
     }
 }

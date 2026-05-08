@@ -8,16 +8,19 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.core.graphics.withSave
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
-import androidx.core.graphics.withSave
-import kotlin.math.PI
 
 /**
  * Dynamite stick. Fuse lights up when the sweet spot starts. On a sweet-spot release the strike
@@ -34,76 +37,80 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private val spark = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val rect = RectF()
 
-    // Constant colors used in drawExplosion — cached to avoid Color.rgb() per frame
     private val explosionOuter = Color.rgb(255, 180, 40)
     private val explosionInner = Color.rgb(255, 240, 150)
 
-    override fun drawChargingPaddle(canvas: Canvas) {
-        drawStick(canvas, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
+    override fun drawChargingPaddle(scope: DrawScope) {
+        drawStick(scope, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
     }
 
     override fun drawStrikingPaddle(
-        canvas: Canvas,
+        scope: DrawScope,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
         if (sweet) {
-            drawExplosion(canvas, progress)
+            drawExplosion(scope, progress)
         } else {
             val ph = if (fatigued) ChargePhase.Inert else ChargePhase.Building
-            drawStick(canvas, cx, cy, aX, aY, ph, if (fatigued) 0f else 1f)
+            drawStick(scope, cx, cy, aX, aY, ph, if (fatigued) 0f else 1f)
         }
     }
 
     private fun drawStick(
-        canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
+        scope: DrawScope, cx: Float, cy: Float, aX: Float, aY: Float,
         ph: ChargePhase, fill: Float
     ) {
-        canvas.withSave {
-            val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
-            rotate(angle + 90f, cx, cy)
+        scope.drawIntoCanvas { c ->
+            c.nativeCanvas.withSave {
+                val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
+                rotate(angle + 90f, cx, cy)
 
-            val halfLen = paddleHalfLength() * 0.8f
-            val halfThick = renderer.radius * 0.25f
+                val halfLen = paddleHalfLength() * 0.8f
+                val halfThick = renderer.radius * 0.25f
 
-            stick.color = if (ph == ChargePhase.Inert) responsivePrimary else responsiveSecondary
-            rect.set(cx - halfLen, cy - halfThick, cx + halfLen, cy + halfThick)
-            drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
+                stick.color = if (ph == ChargePhase.Inert) responsivePrimary else responsiveSecondary
+                rect.set(cx - halfLen, cy - halfThick, cx + halfLen, cy + halfThick)
+                drawRoundRect(rect, halfThick * 0.4f, halfThick * 0.4f, stick)
 
-            if (fill > 0f) {
-                stick.color = theme.shield.primary
-                val bandHalf = (halfLen * fill).coerceAtMost(halfLen - halfLen * .1f)
-                rect.set(cx - bandHalf, cy - halfThick * 0.6f, cx + bandHalf, cy + halfThick * 0.6f)
-                drawRoundRect(rect, halfThick, halfThick, stick)
-            }
+                if (fill > 0f) {
+                    stick.color = theme.shield.primary
+                    val bandHalf = (halfLen * fill).coerceAtMost(halfLen - halfLen * .1f)
+                    rect.set(cx - bandHalf, cy - halfThick * 0.6f, cx + bandHalf, cy + halfThick * 0.6f)
+                    drawRoundRect(rect, halfThick, halfThick, stick)
+                }
 
-            val fuseBaseX = cx + halfLen
-            val fuseBaseY = cy
-            val fuseTipX = fuseBaseX + halfThick * 1.4f
-            val fuseTipY = cy - halfThick * -1.2f
-            drawLine(fuseBaseX, fuseBaseY, fuseTipX, fuseTipY, fuse)
+                val fuseBaseX = cx + halfLen
+                val fuseBaseY = cy
+                val fuseTipX = fuseBaseX + halfThick * 1.4f
+                val fuseTipY = cy - halfThick * -1.2f
+                drawLine(fuseBaseX, fuseBaseY, fuseTipX, fuseTipY, fuse)
 
-            if (ph == ChargePhase.SweetSpot) {
-                val flicker = 0.6f + 0.4f * sin(frame * 0.9f)
-                spark.color = responsivePrimary
-                spark.alpha = (255 * flicker).toInt().coerceIn(0, 255)
-                drawCircle(fuseTipX, fuseTipY, halfThick , spark)
-                spark.alpha = 255
+                if (ph == ChargePhase.SweetSpot) {
+                    val flicker = 0.6f + 0.4f * sin(frame * 0.9f)
+                    spark.color = responsivePrimary
+                    spark.alpha = (255 * flicker).toInt().coerceIn(0, 255)
+                    drawCircle(fuseTipX, fuseTipY, halfThick, spark)
+                    spark.alpha = 255
+                }
             }
         }
     }
 
-    private fun drawExplosion(canvas: Canvas, progress: Float) {
-        val cx = renderer.x
-        val cy = renderer.y
-        val r = renderer.radius * (1f + progress * 5f)
-        spark.color = explosionOuter
-        spark.alpha = (255 * (1f - progress)).toInt().coerceIn(0, 255)
-        canvas.drawCircle(cx, cy, r, spark)
-        spark.color = explosionInner
-        spark.alpha = (220 * (1f - progress)).toInt().coerceIn(0, 255)
-        canvas.drawCircle(cx, cy, r * 0.55f, spark)
-        spark.alpha = 255
+    private fun drawExplosion(scope: DrawScope, progress: Float) {
+        scope.drawIntoCanvas { c ->
+            val canvas = c.nativeCanvas
+            val cx = renderer.x
+            val cy = renderer.y
+            val r = renderer.radius * (1f + progress * 5f)
+            spark.color = explosionOuter
+            spark.alpha = (255 * (1f - progress)).toInt().coerceIn(0, 255)
+            canvas.drawCircle(cx, cy, r, spark)
+            spark.color = explosionInner
+            spark.alpha = (220 * (1f - progress)).toInt().coerceIn(0, 255)
+            canvas.drawCircle(cx, cy, r * 0.55f, spark)
+            spark.alpha = 255
+        }
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
@@ -119,9 +126,7 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private class Spark(val dx: Float, val dy: Float, var alpha: Float, val fadeRate: Float)
         private val sparks: List<Spark>
         private val spikePaths: List<Path>
-        // Dedicated paint for ember dots — no shader, no blur
         private val emberPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-        // Dedicated paint for spike paths — carries the blur mask and the pre-built gradient shader
         private val spikePaint = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.FILL
@@ -134,20 +139,14 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         init {
             val rng = Random(cx.toInt() xor cy.toInt())
 
-            // Build starburst: 12 thin triangular spikes radiating from center.
-            // Each spike is a narrow triangle: two base points very close to center
-            // at ±halfWidth from the spike axis, tip at the outer radius.
             val spikeCount = 12
-            // Pre-computed irregular length multipliers so the silhouette is organic.
-            // Lengths alternate between longer and shorter with added per-spike noise.
             val lengthPattern = floatArrayOf(
                 1.50f, 0.72f, 1.60f, 0.60f, 1.2f, 0.85f, 1.70f, 0.55f,
                 1.90f, 0.68f, 1.2f, 0.78f
             )
             spikePaths = List(spikeCount) { i ->
-                val baseAngle = (i.toFloat() / spikeCount) * 2f * PI.toFloat() +  (rng.nextFloat() - 0.5f) * (2f * PI.toFloat() / spikeCount) * 1f
+                val baseAngle = (i.toFloat() / spikeCount) * 2f * PI.toFloat() + (rng.nextFloat() - 0.5f) * (2f * PI.toFloat() / spikeCount) * 1f
                 val len = radius * lengthPattern[i] * (0.90f + rng.nextFloat() * 0.40f)
-                // Half-angle of the spike's triangular cross-section — very narrow
                 val halfWidth = radius * (0.1f + rng.nextFloat())
                 val perpAngle = baseAngle + (PI / 2f).toFloat()
 
@@ -176,7 +175,6 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 )
             }
 
-            // Build the starburst gradient once — it is fully constant after construction
             spikePaint.shader = RadialGradient(
                 cx, cy,
                 radius * 2f,
@@ -196,8 +194,6 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 canvas.drawCircle(cx + s.dx, cy + s.dy, radius * 0.09f, emberPaint)
             }
 
-            // Starburst char mark: radial gradient from opaque black center to transparent tip.
-            // The gradient + blur together ensure no hard edges anywhere on the spikes.
             for (path in spikePaths) {
                 canvas.drawPath(path, spikePaint)
             }
@@ -240,9 +236,7 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
 
         override fun draw(canvas: Canvas) {
-            // Dark scorch mark persists
             canvas.drawCircle(cx, cy, radius * 1.1f, scorchPaint)
-            // Metallic sparks wink out
             for (s in sparks) {
                 if (s.alpha <= 0f) continue
                 sparkPaint.alpha = s.alpha.toInt().coerceIn(0, 255)

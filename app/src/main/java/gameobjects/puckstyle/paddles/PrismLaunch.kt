@@ -4,6 +4,12 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -30,21 +36,21 @@ class PrismLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
     private val path = Path()
 
-    override fun drawChargingPaddle(canvas: Canvas) =
-        drawPrism(canvas, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
+    override fun drawChargingPaddle(scope: DrawScope) =
+        drawPrism(scope, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
 
     override fun drawStrikingPaddle(
-        canvas: Canvas,
+        scope: DrawScope,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
         val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
-        drawPrism(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
-        if (sweet) drawRefraction(canvas, cx, cy, aX, aY, progress)
+        drawPrism(scope, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
+        if (sweet) drawRefraction(scope, cx, cy, aX, aY, progress)
     }
 
     private fun drawPrism(
-        canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
+        scope: DrawScope, cx: Float, cy: Float, aX: Float, aY: Float,
         ph: ChargePhase, ratio: Float
     ) {
         val half = paddleHalfLength() * 0.85f
@@ -57,38 +63,41 @@ class PrismLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         path.lineTo(cx - aX * depth, cy - aY * depth)
         path.close()
 
-        fill.color = if (ph == ChargePhase.Inert) theme.inert.primary else Color.WHITE
-        fill.alpha = 200
-        canvas.drawPath(path, fill)
-        if (ratio > 0f) {
-            fill.color = Palette.cyclingHue(frame, 4f)
-            fill.alpha = (180 * ratio).toInt().coerceIn(0, 255)
+        scope.drawIntoCanvas { c ->
+            val canvas = c.nativeCanvas
+            fill.color = if (ph == ChargePhase.Inert) theme.inert.primary else Color.WHITE
+            fill.alpha = 200
             canvas.drawPath(path, fill)
+            if (ratio > 0f) {
+                fill.color = Palette.cyclingHue(frame, 4f)
+                fill.alpha = (180 * ratio).toInt().coerceIn(0, 255)
+                canvas.drawPath(path, fill)
+            }
+            fill.alpha = 255
+            edge.color = if (renderer.isInert || ph == ChargePhase.Inert) theme.inert.secondary else responsivePrimary
+            canvas.drawPath(path, edge)
         }
-        fill.alpha = 255
-        edge.color = if (renderer.isInert || ph == ChargePhase.Inert) theme.inert.secondary else responsivePrimary
-        canvas.drawPath(path, edge)
     }
 
-    private fun drawRefraction(canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float, progress: Float) {
+    private fun drawRefraction(scope: DrawScope, cx: Float, cy: Float, aX: Float, aY: Float, progress: Float) {
         val pX = -aY
         val pY = aX
         val half = paddleHalfLength()
         val px = renderer.x
         val py = renderer.y
+        val alpha = (200 * (1f - progress)).toInt().coerceIn(0, 255)
+        val strokeW = renderer.radius
         for (i in 0 until 6) {
             val offset = (i - 2.5f) / 2.5f * half
-            edge.color = Palette.hsv(i * 60f + frame * 3f, THEME_SATURATION, THEME_VALUE)
-            edge.alpha = (200 * (1f - progress)).toInt().coerceIn(0, 255)
-            edge.strokeWidth = renderer.radius
-            canvas.drawLine(
-                cx + pX * offset, cy + pY * offset,
-                px + pX * offset * 0.6f, py + pY * offset * 0.6f,
-                edge
+            val hue = i * 60f + frame * 3f
+            scope.drawLine(
+                color = ComposeColor(Palette.withAlpha(Palette.hsv(hue, THEME_SATURATION, THEME_VALUE), alpha)),
+                start = Offset(cx + pX * offset, cy + pY * offset),
+                end = Offset(px + pX * offset * 0.6f, py + pY * offset * 0.6f),
+                strokeWidth = strokeW,
+                cap = StrokeCap.Round
             )
-            edge.strokeWidth = defaultStrokeWidth
         }
-        edge.alpha = 255
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {

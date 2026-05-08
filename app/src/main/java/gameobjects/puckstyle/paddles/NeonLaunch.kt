@@ -2,6 +2,10 @@ package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -13,32 +17,27 @@ import kotlin.math.sin
 
 /** Glow-stick: paddle bar with an outer halo glow. Sweet spot flickers at a distinct frequency. */
 class NeonLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
-    private val halo = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-    }
 
     // Cache stroke-width multiples — Settings.strokeWidth is fixed after setup
     private val haloStrokeOuter = Settings.strokeWidth * 3.2f
     private val haloStrokeInner = Settings.strokeWidth * 2.0f
 
-    override fun drawChargingPaddle(canvas: Canvas) {
-        drawHalo(canvas, paddleX, paddleY, aimX, aimY, phase)
-        super.drawChargingPaddle(canvas)
+    override fun drawChargingPaddle(scope: DrawScope) {
+        drawHalo(scope, paddleX, paddleY, aimX, aimY, phase)
+        super.drawChargingPaddle(scope)
     }
 
     override fun drawStrikingPaddle(
-        canvas: Canvas,
+        scope: DrawScope,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
         val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
-        drawHalo(canvas, cx, cy, aX, aY, ph)
-        super.drawStrikingPaddle(canvas, cx, cy, aX, aY, sweet, fatigued, progress)
+        drawHalo(scope, cx, cy, aX, aY, ph)
+        super.drawStrikingPaddle(scope, cx, cy, aX, aY, sweet, fatigued, progress)
     }
 
-    private fun drawHalo(canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase) {
+    private fun drawHalo(scope: DrawScope, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase) {
         val half = paddleHalfLength()
         val perpX = -aY
         val perpY = aX
@@ -47,7 +46,6 @@ class NeonLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val outerAlpha: Int
         val innerAlpha: Int
         if (ph == ChargePhase.SweetSpot) {
-            // Rapid flicker at a distinct frequency — neon tube effect
             val flicker = 0.5f + 0.5f * sin(frame * 0.8f)
             outerAlpha = (70 + 60 * flicker).toInt().coerceIn(0, 255)
             innerAlpha = (100 + 80 * flicker).toInt().coerceIn(0, 255)
@@ -56,18 +54,25 @@ class NeonLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             innerAlpha = 130
         }
 
-        // Compute line endpoints once and reuse for both draw calls
         val x0 = cx - perpX * half
         val y0 = cy - perpY * half
         val x1 = cx + perpX * half
         val y1 = cy + perpY * half
 
-        halo.color = Palette.withAlpha(glowColor, outerAlpha)
-        halo.strokeWidth = haloStrokeOuter
-        canvas.drawLine(x0, y0, x1, y1, halo)
-        halo.color = Palette.withAlpha(glowColor, innerAlpha)
-        halo.strokeWidth = haloStrokeInner
-        canvas.drawLine(x0, y0, x1, y1, halo)
+        scope.drawLine(
+            color = Color(Palette.withAlpha(glowColor, outerAlpha)),
+            start = Offset(x0, y0),
+            end = Offset(x1, y1),
+            strokeWidth = haloStrokeOuter,
+            cap = StrokeCap.Round
+        )
+        scope.drawLine(
+            color = Color(Palette.withAlpha(glowColor, innerAlpha)),
+            start = Offset(x0, y0),
+            end = Offset(x1, y1),
+            strokeWidth = haloStrokeInner,
+            cap = StrokeCap.Round
+        )
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {

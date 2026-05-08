@@ -1,15 +1,17 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
-import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.math.exp
 
-class PixelTail( override val renderer: PuckRenderer) : TailRenderer {
+class PixelTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private class Block(var x: Float = 0f, var y: Float = 0f)
     private class Ring(val x: Float, val y: Float, var size: Float, var alpha: Int, val isFront: Boolean, val growRate: Float, val color: Int)
@@ -19,8 +21,6 @@ class PixelTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private var blocks: MutableList<Block>? = null
     private val rings = mutableListOf<Ring>()
-    private val paint     = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
-    private val ringPaint = Paint().apply { isAntiAlias = false; style = Paint.Style.STROKE }
 
     private var wasLaunched  = false
     private var wasShielded  = false
@@ -40,14 +40,13 @@ class PixelTail( override val renderer: PuckRenderer) : TailRenderer {
         cachedRadius   = renderer.radius
         cachedStrokeW  = renderer.radius * 0.3f
         cachedGrowRate = renderer.radius * 0.09f
-        ringPaint.strokeWidth = cachedStrokeW
         for (i in 0 until len) {
             cachedSizes[i]  = renderer.radius * (0.95f + 0.85f * exp(-i.toFloat() * 0.3f))
             cachedAlphas[i] = computeAlpha(i, len)
         }
     }
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         ensureCache()
 
         val justHit      = renderer.launched && !wasLaunched
@@ -94,6 +93,7 @@ class PixelTail( override val renderer: PuckRenderer) : TailRenderer {
         }
 
         // rings drawn first — behind all blocks; index-based loop avoids iterator allocation
+        val strokeW = cachedStrokeW
         var ri = 0
         while (ri < rings.size) {
             val r = rings[ri]
@@ -104,8 +104,12 @@ class PixelTail( override val renderer: PuckRenderer) : TailRenderer {
                 // don't advance ri — the next element shifted into this slot
             } else {
                 val half = r.size / 2f
-                ringPaint.color = Palette.withAlpha(r.color, r.alpha)
-                canvas.drawRect(r.x - half, r.y - half, r.x + half, r.y + half, ringPaint)
+                scope.drawRect(
+                    color = Color(Palette.withAlpha(r.color, r.alpha)),
+                    topLeft = Offset(r.x - half, r.y - half),
+                    size = Size(r.size, r.size),
+                    style = Stroke(strokeW)
+                )
                 ri++
             }
         }
@@ -118,8 +122,11 @@ class PixelTail( override val renderer: PuckRenderer) : TailRenderer {
             val baseSize = cachedSizes[i]
             val side     = baseSize + localPulseFade * 0.25f * baseSize
             val half     = side / 2f
-            paint.color  = Palette.withAlpha(colors.primary, cachedAlphas[i])
-            canvas.drawRect(blocks[i].x - half, blocks[i].y - half, blocks[i].x + half, blocks[i].y + half, paint)
+            scope.drawRect(
+                color = Color(Palette.withAlpha(colors.primary, cachedAlphas[i])),
+                topLeft = Offset(blocks[i].x - half, blocks[i].y - half),
+                size = Size(side, side)
+            )
         }
     }
 

@@ -1,10 +1,11 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
@@ -12,7 +13,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-class GalaxyTail( override val renderer: PuckRenderer) : TailRenderer {
+class GalaxyTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private class Star(
         var x: Float, var y: Float,
@@ -41,19 +42,7 @@ class GalaxyTail( override val renderer: PuckRenderer) : TailRenderer {
         return s
     }
 
-    private fun drawStar(canvas: Canvas, cx: Float, cy: Float, outerR: Float, innerR: Float) {
-        starPath.reset()
-        for (i in 0 until 8) {
-            val r = if (i % 2 == 0) outerR else innerR
-            val px = cx + cos(STAR_ANGLES[i]) * r
-            val py = cy + sin(STAR_ANGLES[i]) * r
-            if (i == 0) starPath.moveTo(px, py) else starPath.lineTo(px, py)
-        }
-        starPath.close()
-        canvas.drawPath(starPath, paint)
-    }
-
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         val spawn = if (renderer.launched) 4 else 2
         repeat(spawn) {
             val angle = Random.nextFloat() * TAU
@@ -91,9 +80,24 @@ class GalaxyTail( override val renderer: PuckRenderer) : TailRenderer {
             }
             // s.twinkleSeed already holds twinkleSeed * TAU (pre-multiplied at acquire time)
             val twinkle = 0.75f + 0.25f * sin(frameF * s.twinkleSpeed + s.twinkleSeed)
-            paint.color = Palette.withAlpha(primaryColor, (255f * s.life).toInt())
+            val alpha = (255f * s.life).toInt()
+            val color = Palette.withAlpha(primaryColor, alpha)
             val outerR = outerRBase * s.life * twinkle
-            drawStar(canvas, s.x, s.y, outerR, outerR * 0.38f)
+            val innerR = outerR * 0.38f
+            val sx = s.x
+            val sy = s.y
+            scope.drawIntoCanvas { c ->
+                paint.color = color
+                starPath.reset()
+                for (k in 0 until 8) {
+                    val r = if (k % 2 == 0) outerR else innerR
+                    val px = sx + cos(STAR_ANGLES[k]) * r
+                    val py = sy + sin(STAR_ANGLES[k]) * r
+                    if (k == 0) starPath.moveTo(px, py) else starPath.lineTo(px, py)
+                }
+                starPath.close()
+                c.nativeCanvas.drawPath(starPath, paint)
+            }
             i++
         }
     }

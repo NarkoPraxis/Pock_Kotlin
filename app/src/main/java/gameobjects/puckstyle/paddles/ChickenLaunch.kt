@@ -2,6 +2,10 @@ package gameobjects.puckstyle.paddles
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.core.graphics.withRotation
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.EggSplat
@@ -13,19 +17,18 @@ import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.core.graphics.withRotation
 import kotlin.random.Random
 
 class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val eggPaint = Paint().apply { isAntiAlias = true }
 
-    override fun drawChargingPaddle(canvas: Canvas) {
-        drawEgg(canvas, paddleX, paddleY, chargeFillRatio, phase)
+    override fun drawChargingPaddle(scope: DrawScope) {
+        drawEgg(scope, paddleX, paddleY, chargeFillRatio, phase)
     }
 
     override fun drawStrikingPaddle(
-        canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
+        scope: DrawScope, cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
         val ph = when {
@@ -33,30 +36,30 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             fatigued -> ChargePhase.Inert
             else        -> ChargePhase.Building
         }
-        drawEgg(canvas, cx, cy, if (sweet || !fatigued) 1f else 0f, ph)
+        drawEgg(scope, cx, cy, if (sweet || !fatigued) 1f else 0f, ph)
     }
 
     val EGG_WIDTH get() = renderer.radius * .5f
     val EGG_HEIGHT get() = renderer.radius * .7f
 
-    private fun drawEgg(canvas: Canvas, cx: Float, cy: Float, fillRatio: Float, ph: ChargePhase) {
-
+    private fun drawEgg(scope: DrawScope, cx: Float, cy: Float, fillRatio: Float, ph: ChargePhase) {
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
-
         val angle = Math.toDegrees(atan2(aimY.toDouble(), aimX.toDouble())).toFloat()
-        canvas.withRotation(angle + 90f, cx, cy) {
-            eggPaint.style = Paint.Style.FILL
-            eggPaint.color = if (renderer.isInert) responsivePrimary else android.graphics.Color.WHITE
-            drawOval(cx - EGG_WIDTH, cy - EGG_HEIGHT, cx + EGG_WIDTH, cy + EGG_HEIGHT, eggPaint)
 
-            if (fillRatio > 0f && ph != ChargePhase.Inert) {
-                eggPaint.color = Palette.withAlpha(theme.shield.primary, (220 * pulse).toInt())
-                drawOval(
-                    cx - EGG_WIDTH * fillRatio, cy - EGG_HEIGHT * fillRatio,
-                    cx + EGG_WIDTH * fillRatio, cy + EGG_HEIGHT * fillRatio, eggPaint
-                )
+        scope.drawIntoCanvas { c ->
+            c.nativeCanvas.withRotation(angle + 90f, cx, cy) {
+                eggPaint.style = Paint.Style.FILL
+                eggPaint.color = if (renderer.isInert) responsivePrimary else android.graphics.Color.WHITE
+                drawOval(cx - EGG_WIDTH, cy - EGG_HEIGHT, cx + EGG_WIDTH, cy + EGG_HEIGHT, eggPaint)
+
+                if (fillRatio > 0f && ph != ChargePhase.Inert) {
+                    eggPaint.color = Palette.withAlpha(theme.shield.primary, (220 * pulse).toInt())
+                    drawOval(
+                        cx - EGG_WIDTH * fillRatio, cy - EGG_HEIGHT * fillRatio,
+                        cx + EGG_WIDTH * fillRatio, cy + EGG_HEIGHT * fillRatio, eggPaint
+                    )
+                }
             }
-
         }
     }
 
@@ -126,7 +129,6 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val fw = radius * 0.2f
         val fh = radius * 0.55f
         override fun draw(canvas: Canvas) {
-
             for (f in feathers) {
                 f.x += f.vx
                 f.y += f.vy

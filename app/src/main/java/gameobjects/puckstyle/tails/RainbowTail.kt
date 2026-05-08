@@ -1,15 +1,14 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.Palette.hsv
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import shapes.DrawablePoint
 
-class RainbowTail( override val renderer: PuckRenderer) : TailRenderer {
+class RainbowTail(override val renderer: PuckRenderer) : TailRenderer {
     private var points: MutableList<DrawablePoint>? = null
     private val hueOffset = Palette.themeHue(theme)
     private val shieldHue = Palette.colorHue(theme.shield.primary)
@@ -33,7 +32,7 @@ class RainbowTail( override val renderer: PuckRenderer) : TailRenderer {
         }
     }
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         ensureCache()
         if (points == null || points!!.size != rainbowLen) {
             points = MutableList(rainbowLen) { DrawablePoint(renderer.x, renderer.y) }
@@ -53,14 +52,14 @@ class RainbowTail( override val renderer: PuckRenderer) : TailRenderer {
             val ratio = i.toFloat() / sizeMinusOneF
             val cycleHue = frameHue - i * 15f
             val color = when {
-                isInert   -> hsv(cycleHue, 0.10f, 0.90f)
+                isInert    -> hsv(cycleHue, 0.10f, 0.90f)
                 isShielded -> Palette.hsvThemed(shieldHue + shieldOsc - i * 15f)
                 else       -> Palette.hsvThemed(cycleHue)
             }
             pts[i].setColor(color)
             pts[i].size = baseSize - renderer.radius * ((i - 1).coerceAtLeast(0).toFloat() / sizeMinusOneF)
             pts[i].setAlpha((255f * (1 - ratio)).toInt())
-            pts[i].drawTo(canvas)
+            pts[i].drawTo(scope)
         }
     }
 

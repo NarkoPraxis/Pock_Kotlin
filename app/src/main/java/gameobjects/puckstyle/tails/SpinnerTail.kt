@@ -1,9 +1,10 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
-import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
@@ -11,16 +12,13 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 
-class SpinnerTail( override val renderer: PuckRenderer) : TailRenderer {
+class SpinnerTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private data class Pos(var x: Float = 0f, var y: Float = 0f)
 
     private var history: MutableList<Pos>? = null
     private var tailRotation = 0f
     private val spinDir = if (theme.isWarm) -1f else 1f
-
-    private val centerPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
-    private val tipPaint    = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
 
     // Cached constant: tail length is fixed — tailLengthMultiplier never changes after setup
     private val tailLen = (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
@@ -30,7 +28,7 @@ class SpinnerTail( override val renderer: PuckRenderer) : TailRenderer {
     private val angleStep  = 18f * piF / 180f   // per-segment rotation step in radians
     private val degToRad   = piF / 180f
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         if (history == null || history!!.size != tailLen) history = MutableList(tailLen) { Pos(renderer.x, renderer.y) }
         val history = history!!
 
@@ -50,8 +48,8 @@ class SpinnerTail( override val renderer: PuckRenderer) : TailRenderer {
         val color  = colors.primary
         val hilite = colors.secondary
 
-        tipPaint.strokeWidth    = sw * 3f
-        centerPaint.strokeWidth = sw * 2f
+        val tipSW    = sw * 3f
+        val centerSW = sw * 2f
 
         val holdCount = 5
         // Hoist the fade denominator — constant for the entire render call
@@ -73,17 +71,32 @@ class SpinnerTail( override val renderer: PuckRenderer) : TailRenderer {
             val cy  = history[i].y
             val ca  = cos(ang)
             val sa  = sin(ang)
-            val caHalf    = ca * halfLen
-            val saHalf    = sa * halfLen
-            val caTip     = ca * (halfLen - tipLen)
-            val saTip     = sa * (halfLen - tipLen)
+            val caHalf = ca * halfLen
+            val saHalf = sa * halfLen
+            val caTip  = ca * (halfLen - tipLen)
+            val saTip  = sa * (halfLen - tipLen)
 
-            tipPaint.color    = Palette.withAlpha(hilite, alpha)
-            canvas.drawLine(cx - caHalf, cy - saHalf, cx - caTip, cy - saTip, tipPaint)
-            canvas.drawLine(cx + caHalf, cy + saHalf, cx + caTip, cy + saTip, tipPaint)
-
-            centerPaint.color = Palette.withAlpha(color, alpha)
-            canvas.drawLine(cx - caHalf, cy - saHalf, cx + caHalf, cy + saHalf, centerPaint)
+            scope.drawLine(
+                color = Color(Palette.withAlpha(hilite, alpha)),
+                start = Offset(cx - caHalf, cy - saHalf),
+                end = Offset(cx - caTip, cy - saTip),
+                strokeWidth = tipSW,
+                cap = StrokeCap.Round
+            )
+            scope.drawLine(
+                color = Color(Palette.withAlpha(hilite, alpha)),
+                start = Offset(cx + caHalf, cy + saHalf),
+                end = Offset(cx + caTip, cy + saTip),
+                strokeWidth = tipSW,
+                cap = StrokeCap.Round
+            )
+            scope.drawLine(
+                color = Color(Palette.withAlpha(color, alpha)),
+                start = Offset(cx - caHalf, cy - saHalf),
+                end = Offset(cx + caHalf, cy + saHalf),
+                strokeWidth = centerSW,
+                cap = StrokeCap.Round
+            )
         }
     }
 

@@ -1,15 +1,15 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
-import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.random.Random
 
-class FireTail( override val renderer: PuckRenderer) : TailRenderer {
+class FireTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private class Spark(
         var x: Float, var y: Float,
@@ -21,10 +21,8 @@ class FireTail( override val renderer: PuckRenderer) : TailRenderer {
     val SPAWN_RADIUS get() = renderer.radius * .04f
     val PARTICLE_BASE_SIZE get() = renderer.radius * .6f
 
-
     private val sparks = ArrayDeque<Spark>()
     private val maxSparks = 80
-    private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 
     // Constants cached at construction — Settings.tailLengthMultiplier and screenRatio
     // do not change after initialization.
@@ -34,7 +32,7 @@ class FireTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private val twoPi = (Math.PI * 2).toFloat()
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         val spawn = if (renderer.launched) 5 else 3
         val halfRadius = renderer.radius * 0.5f
         repeat(spawn) {
@@ -47,7 +45,7 @@ class FireTail( override val renderer: PuckRenderer) : TailRenderer {
                 renderer.x + dx,
                 renderer.y + dy,
                 kotlin.math.cos(angle) * speed,
-                kotlin.math.sin(angle) * speed - 0.4f,
+                kotlin.math.sin(angle) * speed,
                 1f,
                 isCore
             ))
@@ -71,9 +69,12 @@ class FireTail( override val renderer: PuckRenderer) : TailRenderer {
             }
             val t = 1f - s.life
             val c = Palette.lerpColor(cSecondary, cPrimary, t)
-            paint.color = Palette.withAlpha(c, (255f * s.life).toInt())
             val size = PARTICLE_BASE_SIZE * s.life + baseParticleSize
-            canvas.drawCircle(s.x, s.y, size, paint)
+            scope.drawCircle(
+                color = Color(Palette.withAlpha(c, (255f * s.life).toInt())),
+                radius = size,
+                center = Offset(s.x, s.y)
+            )
             i++
         }
     }

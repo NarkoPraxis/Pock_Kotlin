@@ -1,20 +1,19 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import shapes.DrawablePoint
 
-class ClassicTail( override val renderer: PuckRenderer) : TailRenderer {
+class ClassicTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private var points: MutableList<DrawablePoint>? = null
 
     override val zIndex: Int
         get() = 2
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         val length = (20 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != length) {
             points = MutableList(length) { DrawablePoint(renderer.x, renderer.y) }
@@ -35,7 +34,7 @@ class ClassicTail( override val renderer: PuckRenderer) : TailRenderer {
             val baseSize = renderer.radius * 1.1f
             points[i].size = baseSize - Settings.strokeWidth - renderer.radius * ratio(i - 1)
             points[i].setAlpha((255f * (1 - ratio(i))).toInt())
-            points[i].drawTo(canvas)
+            points[i].drawTo(scope)
         }
     }
 

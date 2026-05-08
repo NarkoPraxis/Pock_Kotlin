@@ -4,6 +4,9 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -22,25 +25,24 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         isAntiAlias = true
         style = Paint.Style.STROKE
         strokeJoin = Paint.Join.ROUND
-        // Settings.strokeWidth is constant after setup; cache the scaled value once.
         strokeWidth = Settings.strokeWidth * 0.6f
     }
     private val path = Path()
 
-    override fun drawChargingPaddle(canvas: Canvas) {
-        drawShard(canvas, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
+    override fun drawChargingPaddle(scope: DrawScope) {
+        drawShard(scope, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
     }
 
     override fun drawStrikingPaddle(
-        canvas: Canvas,
+        scope: DrawScope,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
         val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
-        drawShard(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
+        drawShard(scope, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
 
-    private fun drawShard(canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase, fill: Float) {
+    private fun drawShard(scope: DrawScope, cx: Float, cy: Float, aX: Float, aY: Float, ph: ChargePhase, fill: Float) {
         val half = paddleHalfLength()
         val pX = -aY
         val pY = aX
@@ -54,18 +56,21 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         path.lineTo(cx - aX * shortR, cy - aY * shortR)
         path.close()
 
-        shardFill.color = responsivePrimary
-        canvas.drawPath(path, shardFill)
-
-        if (fill > 0f) {
-            shardFill.color = theme.shield.primary
-            shardFill.alpha = (180 * fill).toInt().coerceIn(0, 255)
+        scope.drawIntoCanvas { c ->
+            val canvas = c.nativeCanvas
+            shardFill.color = responsivePrimary
             canvas.drawPath(path, shardFill)
-            shardFill.alpha = 255
-        }
 
-        shardStroke.color = Color.WHITE
-        canvas.drawPath(path, shardStroke)
+            if (fill > 0f) {
+                shardFill.color = theme.shield.primary
+                shardFill.alpha = (180 * fill).toInt().coerceIn(0, 255)
+                canvas.drawPath(path, shardFill)
+                shardFill.alpha = 255
+            }
+
+            shardStroke.color = Color.WHITE
+            canvas.drawPath(path, shardStroke)
+        }
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
@@ -89,7 +94,6 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val stroke = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE
-            // strokeWidth is constant for the lifetime of this effect.
             strokeWidth = Settings.strokeWidth * 0.5f
             color = theme.main.primary
             alpha = 130
@@ -101,9 +105,9 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         // Post-score animation state
         private var postScoreFrame = -1
         private var startCrystalT = 0f
-        private val meltDuration = 30       // frames for crystal to finish shrinking
-        private val postCrystalHold = 30    // frames after crystal vanishes before puddle fades (≈0.5s)
-        private val fadeDuration = 30       // frames for puddle to fade to 0
+        private val meltDuration = 30
+        private val postCrystalHold = 30
+        private val fadeDuration = 30
         private val totalPostScore = meltDuration + postCrystalHold + fadeDuration
 
         private var _isDone = false
@@ -126,12 +130,10 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         override fun draw(canvas: Canvas) {
             if (postScoreFrame >= 0) {
-                // Crystal: step from its current T to 1.0 over meltDuration
                 if (postScoreFrame < meltDuration) {
                     val t = startCrystalT + (postScoreFrame.toFloat() / meltDuration) * (1f - startCrystalT)
                     drawCrystal(canvas, t)
                 }
-                // Puddle: grow from 0 over (meltDuration + postCrystalHold) frames, then fade
                 val growFrames = (meltDuration + postCrystalHold).toFloat()
                 val growT = (postScoreFrame.toFloat() / growFrames).coerceIn(0f, 1f)
                 val fadeT = ((postScoreFrame - growFrames) / fadeDuration).coerceIn(0f, 1f)
@@ -167,7 +169,6 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             fill.color = Color.WHITE
             fill.alpha = 255
             canvas.drawPath(crystalPath, fill)
-            // stroke color/alpha/strokeWidth are set once at construction; no per-call assignment needed.
             canvas.drawPath(crystalPath, stroke)
         }
     }

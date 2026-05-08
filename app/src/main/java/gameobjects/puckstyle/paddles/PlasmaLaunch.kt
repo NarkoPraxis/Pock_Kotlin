@@ -6,7 +6,9 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
-import androidx.core.graphics.withTranslation
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -24,8 +26,6 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 
-    // ── Paddle drawing ─────────────────────────────────────────────────────────
-
     private var lastColors = theme.main
 
     // arc.color is always WHITE — set once at construction
@@ -40,9 +40,9 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     // Cached radius-derived values for drawBody
     private var cachedBodyRadius = -1f
-    private var smallRadius = 0f   // renderer.radius * 0.2f
-    private var medRadius = 0f     // renderer.radius * 0.7f
-    private var largeRadius = 0f   // medRadius * 0.9f
+    private var smallRadius = 0f
+    private var medRadius = 0f
+    private var largeRadius = 0f
 
     private fun ensureBodyCache() {
         if (cachedBodyRadius != renderer.radius) {
@@ -54,15 +54,15 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
     }
 
-    override fun drawChargingPaddle(canvas: Canvas) =
-        drawBody(canvas, paddleX, paddleY)
+    override fun drawChargingPaddle(scope: DrawScope) =
+        drawBody(scope, paddleX, paddleY)
 
     override fun drawStrikingPaddle(
-        canvas: Canvas,
+        scope: DrawScope,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        drawBody(canvas, cx, cy)
+        drawBody(scope, cx, cy)
     }
 
     protected fun ensureShader(radius: Float) {
@@ -82,23 +82,25 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             Shader.TileMode.CLAMP)
     }
 
-    fun drawBody(canvas: Canvas, cx: Float, cy: Float) {
+    fun drawBody(scope: DrawScope, cx: Float, cy: Float) {
         ensureBodyCache()
         ensureShader(medRadius)
-        canvas.withTranslation(cx, cy) {
-            drawCircle(0f, 0f, medRadius, fill)
+        scope.drawIntoCanvas { c ->
+            val canvas = c.nativeCanvas
+            canvas.save()
+            canvas.translate(cx, cy)
+            canvas.drawCircle(0f, 0f, medRadius, fill)
             repeat(3) {
                 val a1 = Random.nextFloat() * TWO_PI
                 val a2 = a1 + (Random.nextFloat() - 0.5f) * 2
-                drawLine(
-                    cos(a1) * smallRadius,
-                    sin(a1) * smallRadius,
-                    cos(a2) * largeRadius,
-                    sin(a2) * largeRadius,
+                canvas.drawLine(
+                    cos(a1) * smallRadius, sin(a1) * smallRadius,
+                    cos(a2) * largeRadius, sin(a2) * largeRadius,
                     arc
                 )
             }
-            drawCircle(0f, 0f, medRadius, arc)
+            canvas.drawCircle(0f, 0f, medRadius, arc)
+            canvas.restore()
         }
     }
 
@@ -122,13 +124,6 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
     }
 
-    // ── Persistent Effects ─────────────────────────────────────────────────────
-
-    /**
-     * Short-lived burst of jumping lightning bolts radiating from the impact point.
-     * In fullCircle mode anchors scatter around center (persistent). In celebration
-     * mode anchors sit at maxDistance in a semicircle and expire after totalFrames.
-     */
     private class PlasmaLightningBurst(
         private val cx: Float,
         private val cy: Float,
@@ -142,16 +137,14 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val boltPaint = Paint().apply {
             isAntiAlias = true; style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
-            strokeWidth = Settings.strokeWidth * 0.7f   // constant across all instances
+            strokeWidth = Settings.strokeWidth * 0.7f
         }
         private val boltPath = Path()
         private var frame = 0
         private val totalFrames = 80
-        private val totalFramesInv = 1f / totalFrames   // avoid per-frame division
+        private val totalFramesInv = 1f / totalFrames
 
         override val isDone: Boolean get() = !fullCircle && frame >= totalFrames
-
-
 
         private val anchors: Array<FloatArray>
         init {
@@ -192,7 +185,6 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 }
             }
 
-
             boltPaint.alpha = 255
         }
 
@@ -215,10 +207,6 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
     }
 
-    /**
-     * Permanent lightning burn — dark scorch ring + frozen bolt stubs radiating outward.
-     * Never expires; cleared by onReset() when the next goal resets all persistent effects.
-     */
     private class PlasmaBurn(
         private val cx: Float,
         private val cy: Float,
@@ -233,14 +221,12 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val burnBoltPaint = Paint().apply {
             isAntiAlias = true; style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
-            strokeWidth = Settings.strokeWidth * 0.38f   // constant; set once
+            strokeWidth = Settings.strokeWidth * 0.38f
         }
         private val boltPath = Path()
 
-        // Color.rgb(15, 5, 20) is a constant — compute once
         private val scorchColor = Color.rgb(15, 5, 20)
 
-        // Frozen bolt stubs baked at construction — fixed shape forever
         private data class BoltStub(
             val x1: Float, val y1: Float,
             val x2: Float, val y2: Float,
@@ -271,12 +257,10 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         override fun step() { /* permanent — no decay */ }
 
         override fun draw(canvas: Canvas) {
-            // Dark scorch circle
             scorchPaint.color = scorchColor
             scorchPaint.alpha = 170
             canvas.drawCircle(cx, cy, radius * 0.65f, scorchPaint)
 
-            // Frozen bolt stubs at low alpha — charred traces
             for (stub in stubs) {
                 burnBoltPaint.color = Palette.withAlpha(stub.color, 120)
                 boltPath.reset()
@@ -286,8 +270,6 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 canvas.drawPath(boltPath, burnBoltPaint)
             }
 
-            // Small bright center dot — residual plasma node
-            // withAlpha(secondary, 160) already encodes alpha; no separate .alpha= needed
             scorchPaint.color = Palette.withAlpha(secondary, 160)
             canvas.drawCircle(cx, cy, radius * 0.18f, scorchPaint)
         }

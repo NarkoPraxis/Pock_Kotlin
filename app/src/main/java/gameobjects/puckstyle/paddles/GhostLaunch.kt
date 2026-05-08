@@ -3,6 +3,12 @@ package gameobjects.puckstyle.paddles
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -32,9 +38,6 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         AuraConfig(1.55f, 0.12f, 3.7f, 12, 2.8f)
     )
 
-    private val bodyPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-    private val glowPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
-
     // Cached constant colors — these never change.
     private val bodyWhiteColor = Color.argb(120, 255, 255, 255)
     private val glowWhite200 = Color.argb(200, 255, 255, 255)
@@ -49,74 +52,72 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private val tailYs = FloatArray(tailCapacity)
     private var tailSize = 0
 
+    // Paint objects kept for companion drawGhostTail (still canvas-based for PersistentEffect use)
     private val tailFillPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val tailGlowPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
 
     private val orbRadius: Float
         get() = renderer.radius * .6f
 
-    override fun drawChargingPaddle(canvas: Canvas) {
+    override fun drawChargingPaddle(scope: DrawScope) {
         // Shift tail buffer and prepend current paddle position (no allocation).
         if (tailSize < tailCapacity) {
-            // Buffer not yet full — shift right to make room at index 0.
             for (i in tailSize downTo 1) { tailXs[i] = tailXs[i - 1]; tailYs[i] = tailYs[i - 1] }
             tailSize++
         } else {
-            // Buffer full — shift right, oldest entry (index tailCapacity-1) falls off.
             for (i in tailCapacity - 1 downTo 1) { tailXs[i] = tailXs[i - 1]; tailYs[i] = tailYs[i - 1] }
         }
         tailXs[0] = paddleX; tailYs[0] = paddleY
 
-        drawGhostOrb(canvas, paddleX, paddleY)
-        drawGhostTail(canvas, tailXs, tailYs, tailSize, orbRadius, responsivePrimary, tailGlowPaint, tailFillPaint, chargeFillRatio, theme.shield.primary)
+        drawGhostOrb(scope, paddleX, paddleY)
+        scope.drawIntoCanvas { c ->
+            drawGhostTail(c.nativeCanvas, tailXs, tailYs, tailSize, orbRadius, responsivePrimary, tailGlowPaint, tailFillPaint, chargeFillRatio, theme.shield.primary)
+        }
     }
 
     override fun drawStrikingPaddle(
-        canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
+        scope: DrawScope, cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
-        drawGhostOrb(canvas, cx, cy)
+        drawGhostOrb(scope, cx, cy)
     }
 
-    override fun drawIdlePaddle(canvas: Canvas) {
+    override fun drawIdlePaddle(scope: DrawScope) {
         if (tailSize > 0) {
-            // Drain from the front — shift left so oldest entry survives longest.
             tailSize--
             for (i in 0 until tailSize) { tailXs[i] = tailXs[i + 1]; tailYs[i] = tailYs[i + 1] }
         }
     }
 
-    private fun drawGhostOrb(canvas: Canvas, cx: Float, cy: Float) {
+    private fun drawGhostOrb(scope: DrawScope, cx: Float, cy: Float) {
         val frameF = frame.toFloat()
         val pulse = 0.88f + 0.12f * sin(frameF * 0.18f)
         val r = orbRadius * pulse
         val glowColor = if (phase == ChargePhase.SweetSpot) theme.shield.primary else responsivePrimary
         val sw = baseSw
+        val center = Offset(cx, cy)
 
         val auraFramePhase = frameF * 0.04f
         for (ring in auraRings) {
             val auraR = r * ring.baseMult + r * ring.amp * sin(auraFramePhase + ring.phase)
-            glowPaint.color = Palette.withAlpha(glowColor, ring.alpha)
-            glowPaint.strokeWidth = sw * ring.strokeMult
-            canvas.drawCircle(cx, cy, auraR, glowPaint)
+            scope.drawCircle(
+                color = ComposeColor(Palette.withAlpha(glowColor, ring.alpha)),
+                radius = auraR,
+                center = center,
+                style = Stroke(width = sw * ring.strokeMult)
+            )
         }
 
-        bodyPaint.color = bodyWhiteColor
-        canvas.drawCircle(cx, cy, r, bodyPaint)
+        scope.drawCircle(ComposeColor(bodyWhiteColor), r, center)
 
-        glowPaint.color = glowWhite200
-        glowPaint.strokeWidth = sw
-        canvas.drawCircle(cx, cy, r, glowPaint)
+        scope.drawCircle(ComposeColor(glowWhite200), r, center, style = Stroke(width = sw))
 
         val innerR = r * 0.75f + r * 0.1f * sin(frameF * 0.025f + 5f)
-        glowPaint.strokeWidth = sw * 0.7f
-        glowPaint.color = glowWhite160
-        canvas.drawCircle(cx, cy, innerR, glowPaint)
+        scope.drawCircle(ComposeColor(glowWhite160), innerR, center, style = Stroke(width = sw * 0.7f))
 
         if (chargeFillRatio > 0f) {
-            bodyPaint.alpha = 255
-            bodyPaint.color = Palette.lerpColor(theme.shield.primary, theme.shield.secondary, sin(frameF * 0.25f) * 0.5f + 0.5f)
-            canvas.drawCircle(cx, cy, r * chargeFillRatio, bodyPaint)
+            val chargeColor = Palette.lerpColor(theme.shield.primary, theme.shield.secondary, sin(frameF * 0.25f) * 0.5f + 0.5f)
+            scope.drawCircle(ComposeColor(chargeColor), r * chargeFillRatio, center)
         }
     }
 
@@ -191,12 +192,10 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val tailFillPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val tailGlowPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
 
-        // Cached constant colors
         private val bodyWhiteColor = Color.argb(120, 255, 255, 255)
         private val glowWhite200 = Color.argb(200, 255, 255, 255)
         private val glowWhite160 = Color.argb(160, 255, 255, 255)
 
-        // Cached strokeWidth — doesn't change after init
         private val baseSw = Settings.strokeWidth * 0.7f
 
         private var frame = 0
@@ -204,7 +203,6 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private var returnFrames = 0
         private val maxReturnFrames = 300
 
-        // Parallel float arrays for tail — no Pair allocation per frame.
         private val tailCapacity = 20
         private val tailXs = FloatArray(tailCapacity)
         private val tailYs = FloatArray(tailCapacity)
@@ -232,15 +230,12 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 if (tailSize > 0) {
                     cx = renderer.x
                     cy = renderer.y
-                    // Drain from the tip (oldest entry) so the trail shortens toward the ball
-                    // rather than appearing to recede backward from the head.
                     tailSize--
                 } else {
                     _isDone = true
                     return
                 }
             } else {
-                // Prepend current position to tail.
                 if (tailSize < tailCapacity) {
                     for (i in tailSize downTo 1) { tailXs[i] = tailXs[i - 1]; tailYs[i] = tailYs[i - 1] }
                     tailSize++
@@ -249,7 +244,6 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 }
                 tailXs[0] = cx; tailYs[0] = cy
 
-                // Proportional speed with floor/cap for smooth pursuit
                 val speed = (dist * 0.08f)
                     .coerceAtLeast(Settings.screenRatio * 0.12f)
                     .coerceAtMost(Settings.screenRatio * 0.5f)
@@ -260,7 +254,6 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         override fun draw(canvas: Canvas) {
             val frameF = frame.toFloat()
-            // Oscillate between 1.25x (peak) and 0.75x (trough) of the paddle radius
             val sizePulse = 1.0f + 0.25f * sin(frameF * 0.052f)
             val r = baseRadius * sizePulse
             val glowColor = color

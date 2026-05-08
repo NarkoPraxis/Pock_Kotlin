@@ -1,16 +1,16 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import gameobjects.puckstyle.skins.GhostSkin.Companion.radiusOffset
 
-class GhostTail( override val renderer: PuckRenderer) : TailRenderer {
+class GhostTail(override val renderer: PuckRenderer) : TailRenderer {
 
     // Parallel float arrays instead of a list of data-class objects — zero per-frame allocation.
     private var xs: FloatArray? = null
@@ -20,13 +20,10 @@ class GhostTail( override val renderer: PuckRenderer) : TailRenderer {
     private var cachedGhostLen = -1
     private val baseCount = 30
 
-    private val whitePaint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-    private val glowPaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE }
-
     override val zIndex: Int
         get() = 2
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         val ghostLen = (baseCount * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
 
         // Reallocate arrays only when length changes (rare).
@@ -53,13 +50,16 @@ class GhostTail( override val renderer: PuckRenderer) : TailRenderer {
         ys[0] = renderer.y
 
         // Pass 1 — glow rings (drawn first so white fill sits on top)
-        glowPaint.strokeWidth = sw
         for (i in lastIdx downTo 0) {
             val ratio = i.toFloat() / lastIdx.coerceAtLeast(1)
             val size = r - Settings.strokeWidth - r * (i.coerceAtLeast(1).toFloat() / lastIdx)
             val alpha = (255f * (1f - ratio)).toInt()
-            glowPaint.color = Palette.withAlpha(glowColor, (alpha * 0.45f).toInt())
-            canvas.drawCircle(xs[i], ys[i], size * 1.15f * radiusOffset, glowPaint)
+            scope.drawCircle(
+                color = Color(Palette.withAlpha(glowColor, (alpha * 0.45f).toInt())),
+                radius = size * 1.15f * radiusOffset,
+                center = Offset(xs[i], ys[i]),
+                style = Stroke(sw)
+            )
         }
 
         // Pass 2 — white fill discs
@@ -67,8 +67,11 @@ class GhostTail( override val renderer: PuckRenderer) : TailRenderer {
             val ratio = i.toFloat() / lastIdx.coerceAtLeast(1)
             val size = r * 1.1f - Settings.strokeWidth - r * (i.coerceAtLeast(1).toFloat() / lastIdx)
             val alpha = (255f * (1f - ratio)).toInt()
-            whitePaint.color = Color.argb((alpha * 0.75f).toInt(), 255, 255, 255)
-            canvas.drawCircle(xs[i], ys[i], size * radiusOffset, whitePaint)
+            scope.drawCircle(
+                color = Color(1f, 1f, 1f, (alpha * 0.75f) / 255f),
+                radius = size * radiusOffset,
+                center = Offset(xs[i], ys[i])
+            )
         }
     }
 

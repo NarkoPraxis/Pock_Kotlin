@@ -1,11 +1,12 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.core.graphics.withRotation
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
@@ -15,7 +16,7 @@ import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.random.Random
 
-class ChickenTail( override val renderer: PuckRenderer) : TailRenderer {
+class ChickenTail(override val renderer: PuckRenderer) : TailRenderer {
 
     // ---- Layer 1: footsteps ----
     private class Footprint(val x: Float, val y: Float, val angle: Float, var alpha: Int = 180)
@@ -62,7 +63,7 @@ class ChickenTail( override val renderer: PuckRenderer) : TailRenderer {
 
     override val zIndex: Int get() = -1
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         val r = renderer.radius
         ensureCache(r)
         val fw = cachedFw
@@ -88,17 +89,20 @@ class ChickenTail( override val renderer: PuckRenderer) : TailRenderer {
             footprints += Footprint(renderer.x + perpX, renderer.y + perpY, travelAngle)
             stepSide = -stepSide
         }
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = r * 0.13f
-        paint.strokeCap = Paint.Cap.ROUND
         val fadeStep = (3f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         var fi = footprints.size - 1
         while (fi >= 0) {
             val f = footprints[fi]
             f.alpha -= fadeStep
             if (f.alpha <= 0) { footprints.removeAt(fi); fi--; continue }
-            paint.color = Palette.withAlpha(colors.secondary, f.alpha)
-            drawFoot(canvas, f, r)
+            scope.drawIntoCanvas { c ->
+                val canvas = c.nativeCanvas
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = r * 0.13f
+                paint.strokeCap = Paint.Cap.ROUND
+                paint.color = Palette.withAlpha(colors.secondary, f.alpha)
+                drawFoot(canvas, f, r)
+            }
             fi--
         }
 
@@ -127,27 +131,28 @@ class ChickenTail( override val renderer: PuckRenderer) : TailRenderer {
             f.alpha -= featherFadeStep
             if (f.alpha <= 0) { feathers.removeAt(fIdx); fIdx--; continue }
             val c = Palette.lerpColor(colors.primary, colors.secondary, f.colorMix)
-            paint.style = Paint.Style.FILL
-            paint.color = Palette.withAlpha(c, f.alpha)
-            canvas.withRotation(f.angle, f.x, f.y) {
-                drawOval(f.x - fw, f.y - fh, f.x + fw, f.y + fh, paint)
-                // Quill stem along long axis
-                paint.style = Paint.Style.STROKE
-                paint.strokeWidth = fw * 0.35f
-                paint.strokeCap = Paint.Cap.ROUND
-                paint.color = Palette.withAlpha(colors.secondary, f.alpha)
-                drawLine(f.x, f.y + fh * 1.3f, f.x, f.y - fh * 0.7f, paint)
+            scope.drawIntoCanvas { composeCanvas ->
+                val canvas = composeCanvas.nativeCanvas
+                paint.style = Paint.Style.FILL
+                paint.color = Palette.withAlpha(c, f.alpha)
+                canvas.withRotation(f.angle, f.x, f.y) {
+                    drawOval(f.x - fw, f.y - fh, f.x + fw, f.y + fh, paint)
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = fw * 0.35f
+                    paint.strokeCap = Paint.Cap.ROUND
+                    paint.color = Palette.withAlpha(colors.secondary, f.alpha)
+                    drawLine(f.x, f.y + fh * 1.3f, f.x, f.y - fh * 0.7f, paint)
+                }
             }
             fIdx--
         }
     }
 
-    private fun drawFoot(canvas: Canvas, f: Footprint, r: Float) {
+    private fun drawFoot(canvas: android.graphics.Canvas, f: Footprint, r: Float) {
         val toeLen = r * 0.55f
         val faceAngle = f.angle
         val rearAngle = faceAngle + PI_F
 
-        // Single path for all toes — no alpha accumulation at the shared center point
         footPath.reset()
         footPath.moveTo(f.x, f.y)
         footPath.lineTo(f.x + cos(faceAngle) * toeLen, f.y + sin(faceAngle) * toeLen)

@@ -7,6 +7,9 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -23,15 +26,6 @@ import kotlin.random.Random
 /** Tethered fireball: a mini flame instead of a paddle bar. Sweet-spot leaves a persistent scorch. */
 class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
-    private val flamePaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.FILL
-    }
-    private val tailPaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.FILL
-    }
-
     private class Spark(
         var x: Float, var y: Float,
         var vx: Float, var vy: Float,
@@ -42,24 +36,23 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     val SPARK_BASE_SIZE get() = renderer.radius * .32f
     val BASE_SIZE get() = renderer.radius * .6f
 
-
     private val tailSparks = ArrayDeque<Spark>()
 
-    override fun drawChargingPaddle(canvas: Canvas) {
-        updateAndDrawTail(canvas, paddleX, paddleY)
-        drawFireball(canvas, paddleX, paddleY, phase, chargeFillRatio)
+    override fun drawChargingPaddle(scope: DrawScope) {
+        updateAndDrawTail(scope, paddleX, paddleY)
+        drawFireball(scope, paddleX, paddleY, phase, chargeFillRatio)
     }
 
     override fun drawStrikingPaddle(
-        canvas: Canvas,
+        scope: DrawScope,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
         val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
-        drawFireball(canvas, cx, cy, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
+        drawFireball(scope, cx, cy, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
 
-    private fun updateAndDrawTail(canvas: Canvas, cx: Float, cy: Float) {
+    private fun updateAndDrawTail(scope: DrawScope, cx: Float, cy: Float) {
         val dx = cx - renderer.x
         val dy = cy - renderer.y
         val dist = sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
@@ -79,7 +72,6 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
         while (tailSparks.size > 24) tailSparks.removeFirst()
 
-        // Hoist color resolution out of the loop — same value for every spark this frame.
         val primary = responsivePrimary
         val secondary = responsiveSecondary
 
@@ -94,26 +86,26 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 continue
             }
             val c = Palette.lerpColor(secondary, primary, 1f - s.life)
-            tailPaint.color = Palette.withAlpha(c, (220f * s.life).toInt().coerceIn(0, 255))
-            canvas.drawCircle(s.x, s.y, (SPARK_BASE_SIZE * s.life).coerceAtLeast(1f), tailPaint)
+            val color = Palette.withAlpha(c, (220f * s.life).toInt().coerceIn(0, 255))
+            scope.drawCircle(ComposeColor(color), (SPARK_BASE_SIZE * s.life).coerceAtLeast(1f), Offset(s.x, s.y))
             i++
         }
     }
 
-    private fun drawFireball(canvas: Canvas, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
+    private fun drawFireball(scope: DrawScope, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         val jitter = 1f + 0.08f * sin(frame * 0.9f)
         val outerR = BASE_SIZE * jitter
 
-        flamePaint.color = responsiveSecondary
-        flamePaint.alpha = 255
-        canvas.drawCircle(cx, cy, outerR, flamePaint)
+        scope.drawCircle(ComposeColor(responsiveSecondary), outerR, Offset(cx, cy))
 
         if (fill > 0f) {
             val coreColor = if (ph == ChargePhase.SweetSpot) theme.shield.primary else responsivePrimary
-            flamePaint.color = coreColor
             val pulse = if (ph == ChargePhase.SweetSpot) 0.8f + 0.2f * sin(frame * 0.4f) else 1f
-            flamePaint.alpha = (255 * pulse).toInt().coerceIn(0, 255)
-            canvas.drawCircle(cx, cy, outerR * 0.6f * fill, flamePaint)
+            scope.drawCircle(
+                ComposeColor(Palette.withAlpha(coreColor, (255 * pulse).toInt().coerceIn(0, 255))),
+                outerR * 0.6f * fill,
+                Offset(cx, cy)
+            )
         }
     }
 
@@ -168,7 +160,6 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
 
         override fun draw(canvas: Canvas) {
-            // Cache per-frame invariant: life ratio is the same for every spark this frame.
             val lifeRatio = (1f - frame * invTotalFrames).coerceAtLeast(0f)
             val alpha = (230f * lifeRatio * lifeRatio).toInt().coerceIn(0, 255)
             paint.color = Palette.withAlpha(color, alpha)
@@ -203,12 +194,7 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         init {
             val rng = Random(cx.toInt() xor cy.toInt())
 
-            // Build starburst: 22 thin triangular spikes radiating from center.
-            // Each spike is a narrow triangle: two base points very close to center
-            // at ±halfWidth from the spike axis, tip at the outer radius.
             val spikeCount = 22
-            // Pre-computed irregular length multipliers so the silhouette is organic.
-            // Lengths alternate between longer and shorter with added per-spike noise.
             val lengthPattern = floatArrayOf(
                 1.10f, 0.72f, 1.30f, 0.60f, 1.05f, 0.85f, 1.40f, 0.55f,
                 1.20f, 0.68f, 1.35f, 0.78f, 1.15f, 0.62f, 1.25f, 0.90f,
@@ -218,7 +204,6 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 val baseAngle = (i.toFloat() / spikeCount) * 2f * PI.toFloat() +
                         (rng.nextFloat() - 0.5f) * (2f * PI.toFloat() / spikeCount) * 0.6f
                 val len = radius * lengthPattern[i] * (0.90f + rng.nextFloat() * 0.20f)
-                // Half-angle of the spike's triangular cross-section — very narrow
                 val halfWidth = radius * (0.055f + rng.nextFloat() * 0.035f)
                 val perpAngle = baseAngle + (PI / 2f).toFloat()
 
@@ -249,8 +234,6 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 close()
             }
 
-            // Build the radial gradient once — cx, cy, radius, and colors are all
-            // fixed at construction time and never change for a given scorch mark.
             fillPaint.shader = RadialGradient(
                 cx, cy,
                 radius * 1.45f,
@@ -263,9 +246,6 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         override fun step() { frame++ }
 
         override fun draw(canvas: Canvas) {
-            // Starburst char mark: radial gradient from opaque black center to transparent tip.
-            // The gradient + blur together ensure no hard edges anywhere on the spikes.
-            // Gradient is pre-built in init — no per-frame allocation.
             for (path in spikePaths) {
                 canvas.drawPath(path, fillPaint)
             }

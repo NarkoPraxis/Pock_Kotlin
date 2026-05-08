@@ -1,16 +1,17 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.Palette.hsv
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
-class PrismTail( override val renderer: PuckRenderer) : TailRenderer {
+class PrismTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private class Frame {
         var x: Float = 0f
@@ -60,7 +61,7 @@ class PrismTail( override val renderer: PuckRenderer) : TailRenderer {
     private val cosA = FloatArray(7)
     private val sinA = FloatArray(7)
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         val historySize = (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (history == null || history!!.size != historySize) {
             history = MutableList(historySize) { Frame().apply {
@@ -91,49 +92,52 @@ class PrismTail( override val renderer: PuckRenderer) : TailRenderer {
         val chargeRange = Settings.sweetSpotMax.toFloat() - Settings.chargeStart
         val chargeRatio = ((renderer.currentCharge - Settings.chargeStart) / chargeRange).coerceIn(0f, 1f)
 
-        for (i in history.indices) {
-            val entry = history[i]
-            val ratio = i.toFloat() / (history.size - 1).coerceAtLeast(1)
-            val scale = 1f - ratio
-            val alpha = (200f * scale).toInt()
-            if (alpha <= 0 || scale <= 0f) continue
+        scope.drawIntoCanvas { composeCanvas ->
+            val canvas = composeCanvas.nativeCanvas
+            for (i in history.indices) {
+                val entry = history[i]
+                val ratio = i.toFloat() / (history.size - 1).coerceAtLeast(1)
+                val scale = 1f - ratio
+                val alpha = (200f * scale).toInt()
+                if (alpha <= 0 || scale <= 0f) continue
 
-            // Precompute 7 boundary angles for this snapshot
-            val r = entry.radius
-            for (k in 0..6) {
-                val rad = (k * 60.0 + entry.angle) * Math.PI / 180.0
-                cosA[k] = kotlin.math.cos(rad).toFloat()
-                sinA[k] = kotlin.math.sin(rad).toFloat()
-            }
-
-            for (j in 0 until 6) {
-                val p0x = entry.x
-                val p0y = entry.y
-                val p1x = entry.x + cosA[j] * r
-                val p1y = entry.y + sinA[j] * r
-                val p2x = entry.x + cosA[j + 1] * r
-                val p2y = entry.y + sinA[j + 1] * r
-
-                val centX = (p0x + p1x + p2x) / 3f
-                val centY = (p0y + p1y + p2y) / 3f
-
-                path.reset()
-                path.moveTo(centX + (p0x - centX) * scale, centY + (p0y - centY) * scale)
-                path.lineTo(centX + (p1x - centX) * scale, centY + (p1y - centY) * scale)
-                path.lineTo(centX + (p2x - centX) * scale, centY + (p2y - centY) * scale)
-                path.close()
-
-                // Charge inverts the osc shift: at full charge, storedOsc is negated
-                val finalHue = hues[j] + entry.osc * (1f - 2f * chargeRatio)
-                paint.color = Palette.withAlpha(Palette.hsvThemed(finalHue), alpha)
-                if (renderer.shielded) {
-                    val purpleCenter = if (baseHue > 180f) 290f else 270f
-                    val purpleHue = purpleCenter + entry.osc * 0.5f * (1f - 2f * chargeRatio) + (j - 2.5f) * 6f
-                    paint.color = Palette.withAlpha(Palette.hsvThemed(purpleHue), alpha)
-                } else if (renderer.isInert) {
-                    paint.color = Palette.withAlpha(hsv( hues[j], .10f, .90f), alpha)
+                // Precompute 7 boundary angles for this snapshot
+                val r = entry.radius
+                for (k in 0..6) {
+                    val rad = (k * 60.0 + entry.angle) * Math.PI / 180.0
+                    cosA[k] = kotlin.math.cos(rad).toFloat()
+                    sinA[k] = kotlin.math.sin(rad).toFloat()
                 }
-                canvas.drawPath(path, paint)
+
+                for (j in 0 until 6) {
+                    val p0x = entry.x
+                    val p0y = entry.y
+                    val p1x = entry.x + cosA[j] * r
+                    val p1y = entry.y + sinA[j] * r
+                    val p2x = entry.x + cosA[j + 1] * r
+                    val p2y = entry.y + sinA[j + 1] * r
+
+                    val centX = (p0x + p1x + p2x) / 3f
+                    val centY = (p0y + p1y + p2y) / 3f
+
+                    path.reset()
+                    path.moveTo(centX + (p0x - centX) * scale, centY + (p0y - centY) * scale)
+                    path.lineTo(centX + (p1x - centX) * scale, centY + (p1y - centY) * scale)
+                    path.lineTo(centX + (p2x - centX) * scale, centY + (p2y - centY) * scale)
+                    path.close()
+
+                    // Charge inverts the osc shift: at full charge, storedOsc is negated
+                    val finalHue = hues[j] + entry.osc * (1f - 2f * chargeRatio)
+                    paint.color = Palette.withAlpha(Palette.hsvThemed(finalHue), alpha)
+                    if (renderer.shielded) {
+                        val purpleCenter = if (baseHue > 180f) 290f else 270f
+                        val purpleHue = purpleCenter + entry.osc * 0.5f * (1f - 2f * chargeRatio) + (j - 2.5f) * 6f
+                        paint.color = Palette.withAlpha(Palette.hsvThemed(purpleHue), alpha)
+                    } else if (renderer.isInert) {
+                        paint.color = Palette.withAlpha(hsv(hues[j], .10f, .90f), alpha)
+                    }
+                    canvas.drawPath(path, paint)
+                }
             }
         }
     }

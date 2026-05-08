@@ -1,15 +1,14 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 
-class IceTail( override val renderer: PuckRenderer) : TailRenderer {
+class IceTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private class Shard(
         val x: Float,
@@ -21,13 +20,12 @@ class IceTail( override val renderer: PuckRenderer) : TailRenderer {
 
     private val shards = ArrayDeque<Shard>()
     private val maxShards = 120
-    private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
 
     // Cached constants derived from Settings values that never change after init.
     private val maxCount = (maxShards * Settings.tailLengthMultiplier).toInt()
     private val lifeDecrement = 0.012f / Settings.tailLengthMultiplier
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         shards.addLast(Shard(
             x = renderer.x,
             y = renderer.y,
@@ -61,13 +59,19 @@ class IceTail( override val renderer: PuckRenderer) : TailRenderer {
 
             // Puddle layer — peaks at mid-life, then fades as water evaporates.
             val puddleAlpha = (90f * s.life * (1f - s.life)).toInt().coerceIn(0, 180)
-            paint.color = Palette.withAlpha(primaryColor, puddleAlpha)
-            canvas.drawCircle(s.x, s.y, s.puddleSize, paint)
+            scope.drawCircle(
+                color = Color(Palette.withAlpha(primaryColor, puddleAlpha)),
+                radius = s.puddleSize,
+                center = Offset(s.x, s.y)
+            )
 
             // Ice crystal layer on top — shrinking white circle.
             if (s.iceSize > iceCutoff) {
-                paint.color = Color.WHITE
-                canvas.drawCircle(s.x, s.y, s.iceSize, paint)
+                scope.drawCircle(
+                    color = Color.White,
+                    radius = s.iceSize,
+                    center = Offset(s.x, s.y)
+                )
             }
             i++
         }

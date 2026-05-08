@@ -7,8 +7,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas as ComposeCanvas
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import gameobjects.Settings
@@ -191,12 +189,12 @@ class PuckRenderer(var theme: ColorTheme) {
                 }
                 is TailRenderer -> {
                     if (Settings.tailLength != 0) {
-                        drawIntoCanvas { c -> layer.renderWithPreview(c.nativeCanvas) }
+                        layer.renderWithPreview(this)
                     }
                 }
                 is PaddleLaunchEffect -> {
                     if (effectEnabled || layer.alwaysVisible) {
-                        drawIntoCanvas { c -> layer.renderWithPreview(c.nativeCanvas) }
+                        layer.renderWithPreview(this)
                     }
                 }
             }

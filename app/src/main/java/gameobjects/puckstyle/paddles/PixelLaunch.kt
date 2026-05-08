@@ -3,6 +3,10 @@ package gameobjects.puckstyle.paddles
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.core.graphics.withSave
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
@@ -10,7 +14,6 @@ import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import utility.Effects
-import androidx.core.graphics.withSave
 
 /** 8-bit paddle: solid secondary base line; charge overlays discrete centered cells in 20% steps. */
 class PixelLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
@@ -33,57 +36,59 @@ class PixelLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         cachedCellW    = cachedTotalLen / 5f  // steps = 5
     }
 
-    override fun drawChargingPaddle(canvas: Canvas) {
+    override fun drawChargingPaddle(scope: DrawScope) {
         ensureCache()
-        drawPixelBar(canvas, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
+        drawPixelBar(scope, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
     }
 
     override fun drawStrikingPaddle(
-        canvas: Canvas,
+        scope: DrawScope,
         cx: Float, cy: Float, aX: Float, aY: Float,
         sweet: Boolean, fatigued: Boolean, progress: Float
     ) {
         ensureCache()
         val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
-        drawPixelBar(canvas, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
+        drawPixelBar(scope, cx, cy, aX, aY, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
 
     private fun drawPixelBar(
-        canvas: Canvas, cx: Float, cy: Float, aX: Float, aY: Float,
+        scope: DrawScope, cx: Float, cy: Float, aX: Float, aY: Float,
         ph: ChargePhase, fill: Float
     ) {
-        canvas.withSave {
-            val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
-            rotate(angle + 90f, cx, cy)
+        scope.drawIntoCanvas { c ->
+            c.nativeCanvas.withSave {
+                val angle = Math.toDegrees(kotlin.math.atan2(aY, aX).toDouble()).toFloat()
+                rotate(angle + 90f, cx, cy)
 
-            val totalLen = cachedTotalLen
-            val thick    = cachedThick
-            val half     = cachedHalf
-            val cellW    = cachedCellW
+                val totalLen = cachedTotalLen
+                val thick    = cachedThick
+                val half     = cachedHalf
+                val cellW    = cachedCellW
 
-            // Base line
-            block.color = responsiveSecondary
-            rect.set(cx - half, cy - thick, cx + half, cy + thick)
-            drawRect(rect, block)
+                // Base line
+                block.color = responsiveSecondary
+                rect.set(cx - half, cy - thick, cx + half, cy + thick)
+                drawRect(rect, block)
 
-            // Charge overlay: cells growing outward from center in 20% steps
-            val steps = 5
-            val filledCount = when {
-                ph == ChargePhase.Inert -> 0
-                ph == ChargePhase.SweetSpot -> steps
-                else -> (fill * steps).toInt()
-            }
-            if (filledCount > 0) {
-                block.color = theme.shield.primary
-                val startX = cx - filledCount * cellW / 2f
-                for (i in 0 until filledCount) {
-                    rect.set(
-                        startX + i * cellW,
-                        cy - thick,
-                        startX + (i + 1) * cellW,
-                        cy + thick
-                    )
-                    drawRect(rect, block)
+                // Charge overlay: cells growing outward from center in 20% steps
+                val steps = 5
+                val filledCount = when {
+                    ph == ChargePhase.Inert -> 0
+                    ph == ChargePhase.SweetSpot -> steps
+                    else -> (fill * steps).toInt()
+                }
+                if (filledCount > 0) {
+                    block.color = theme.shield.primary
+                    val startX = cx - filledCount * cellW / 2f
+                    for (i in 0 until filledCount) {
+                        rect.set(
+                            startX + i * cellW,
+                            cy - thick,
+                            startX + (i + 1) * cellW,
+                            cy + thick
+                        )
+                        drawRect(rect, block)
+                    }
                 }
             }
         }
@@ -110,7 +115,6 @@ class PixelLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     ) : Effects.PersistentEffect {
         private val halfSize = puckRadius * 0.5f
         private val fillPaint = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
-        // strokeWidth is constant for the life of this object — set once at construction
         private val ringPaint = Paint().apply {
             isAntiAlias = false
             style = Paint.Style.STROKE

@@ -1,24 +1,19 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.random.Random
 
-class PlasmaTail( override val renderer: PuckRenderer) : TailRenderer {
+class PlasmaTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private class Pos(var x: Float = 0f, var y: Float = 0f)
     private var points: MutableList<Pos>? = null
-
-    private val core = Color.WHITE
-
-    private val dot = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-    private val bolt = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
 
     // Cached radius-derived values — updated when renderer.radius changes
     private var cachedRadius = -1f
@@ -38,7 +33,7 @@ class PlasmaTail( override val renderer: PuckRenderer) : TailRenderer {
     override val zIndex: Int
         get() = 1
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         val plasmaLen = (18 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != plasmaLen) points = MutableList(plasmaLen) { Pos(renderer.x, renderer.y) }
         val points = points!!
@@ -56,30 +51,34 @@ class PlasmaTail( override val renderer: PuckRenderer) : TailRenderer {
         val edge = stateColors.secondary
         val n = points.size
         val nDenomInv = 1f / (n - 1).coerceAtLeast(1)
+        val white = android.graphics.Color.WHITE
 
         for (i in 0 until n) {
             val ratio = i.toFloat() * nDenomInv
             val alpha = (255f * (1f - ratio)).toInt()
             val c = when {
-                ratio < 0.3f -> Palette.lerpColor(core, mid, ratio / 0.3f)
+                ratio < 0.3f -> Palette.lerpColor(white, mid, ratio / 0.3f)
                 else -> Palette.lerpColor(mid, edge, (ratio - 0.3f) / 0.7f)
             }
-            dot.color = Palette.withAlpha(c, alpha)
-            canvas.drawCircle(points[i].x, points[i].y, scaledRadius * (1f - ratio) + dotOffset, dot)
+            scope.drawCircle(
+                color = Color(Palette.withAlpha(c, alpha)),
+                radius = scaledRadius * (1f - ratio) + dotOffset,
+                center = Offset(points[i].x, points[i].y)
+            )
         }
 
-        bolt.strokeWidth = boltStrokeWidth
         val boltMax = (n - 1).coerceAtMost(10)
         val nInv = 1f / n
         for (i in 0 until boltMax) {
             val a = points[i]
             val b = points[i + 1]
             val ratio = i.toFloat() * nInv
-            bolt.color = Palette.withAlpha(Color.WHITE, (200f * (1f - ratio)).toInt())
+            val boltAlpha = (200f * (1f - ratio)).toInt()
             val midX = (a.x + b.x) * 0.5f + (Random.nextFloat() - 0.5f) * screenRatioJitter
             val midY = (a.y + b.y) * 0.5f + (Random.nextFloat() - 0.5f) * screenRatioJitter
-            canvas.drawLine(a.x, a.y, midX, midY, bolt)
-            canvas.drawLine(midX, midY, b.x, b.y, bolt)
+            val boltColor = Color(Palette.withAlpha(white, boltAlpha))
+            scope.drawLine(boltColor, Offset(a.x, a.y), Offset(midX, midY), boltStrokeWidth, StrokeCap.Round)
+            scope.drawLine(boltColor, Offset(midX, midY), Offset(b.x, b.y), boltStrokeWidth, StrokeCap.Round)
         }
     }
 

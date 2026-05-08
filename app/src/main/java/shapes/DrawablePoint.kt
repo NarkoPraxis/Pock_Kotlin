@@ -32,7 +32,7 @@ open class DrawablePoint(x: Float, y: Float, var pointColor: Int = Color.BLACK, 
         canvas.drawCircle(x, y, size, paint)
     }
 
-    fun DrawScope.drawTo() = drawIntoCanvas { drawTo(it.nativeCanvas) }
+    fun drawTo(scope: DrawScope) = scope.drawIntoCanvas { drawTo(it.nativeCanvas) }
 
     override fun intersects(circle: Circle) : Boolean {
         return distanceTo(circle) < circle.radius

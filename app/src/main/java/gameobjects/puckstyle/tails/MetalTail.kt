@@ -1,21 +1,20 @@
 package gameobjects.puckstyle.tails
 
-import android.graphics.Canvas
 import android.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.math.pow
 import shapes.DrawablePoint
 
-class MetalTail( override val renderer: PuckRenderer) : TailRenderer {
+class MetalTail(override val renderer: PuckRenderer) : TailRenderer {
     private var points: MutableList<DrawablePoint>? = null
     private val grey = Color.rgb(140, 140, 150)
     private val metalLen = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
 
-    override fun render(canvas: Canvas) {
+    override fun render(scope: DrawScope) {
         if (points == null || points!!.size != metalLen) points = MutableList(metalLen) { DrawablePoint(renderer.x, renderer.y) }
         val points = points!!
         val colors = responsiveGroup
@@ -41,7 +40,7 @@ class MetalTail( override val renderer: PuckRenderer) : TailRenderer {
             points[i].setColor(color)
             points[i].size = renderer.radius * 0.95f
             points[i].setAlpha((255f * (1f - ratio).pow(1.5f)).toInt())
-            points[i].drawTo(canvas)
+            points[i].drawTo(scope)
         }
     }
 
