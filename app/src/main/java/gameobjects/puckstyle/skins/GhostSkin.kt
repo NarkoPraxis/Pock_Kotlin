@@ -1,10 +1,13 @@
 package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
-import android.graphics.Color
+import android.graphics.Color as AndroidColor
 import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
@@ -14,15 +17,15 @@ import kotlin.math.cos
 import kotlin.math.sin
 import utility.Effects
 
-class GhostSkin( override val renderer: PuckRenderer) : PuckSkin {
+class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     private data class AuraRing(val baseMult: Float, val amp: Float, val phase: Float, val alpha: Int, val strokeMult: Float)
 
     private val auraRings = listOf(
-        AuraRing(.6f, 0.2f, 1.0f, 80,  .5f),
-        AuraRing(.8f, 0.1f, 2.0f, 50,  1f),
-        AuraRing(.95f, 0.3f, 3.0f, 30,  2.0f),
-        AuraRing(1.10f, 0.2f, 4.0f, 20,  4f)
+        AuraRing(.6f,   0.2f, 1.0f, 80, .5f),
+        AuraRing(.8f,   0.1f, 2.0f, 50, 1f),
+        AuraRing(.95f,  0.3f, 3.0f, 30, 2.0f),
+        AuraRing(1.10f, 0.2f, 4.0f, 20, 4f)
     )
 
     override fun onCollisionWin(position: Point, speed: Float) {
@@ -31,18 +34,6 @@ class GhostSkin( override val renderer: PuckRenderer) : PuckSkin {
 
     override fun onShieldedCollision(position: Point) {
         GhostLaunch.spawnImpact(position.x, position.y, renderer.radius * .6f, theme.shield.primary, renderer)
-    }
-
-    private val fill = Paint().apply {
-        color = Color.argb(120, 255, 255, 255)
-        isAntiAlias = true; style = Paint.Style.FILL
-    }
-    private val stroke = Paint().apply {
-        color = Color.argb(200, 255, 255, 255)
-        isAntiAlias = true; style = Paint.Style.STROKE
-    }
-    private val glow = Paint().apply {
-        isAntiAlias = true; isDither = true; style = Paint.Style.STROKE
     }
 
     override val explosionFrequency get() = 35
@@ -133,16 +124,16 @@ class GhostSkin( override val renderer: PuckRenderer) : PuckSkin {
                     canvas.drawCircle(ox, oy, auraR, glowPaint)
                 }
 
-                bodyPaint.color = Color.argb((120 * a).toInt(), 255, 255, 255)
+                bodyPaint.color = AndroidColor.argb((120 * a).toInt(), 255, 255, 255)
                 canvas.drawCircle(ox, oy, r, bodyPaint)
 
-                glowPaint.color = Color.argb((200 * a).toInt(), 255, 255, 255)
+                glowPaint.color = AndroidColor.argb((200 * a).toInt(), 255, 255, 255)
                 glowPaint.strokeWidth = sw
                 canvas.drawCircle(ox, oy, r, glowPaint)
 
                 val innerR = r * 0.75f + r * 0.1f * sin(frameF * 0.025f + 5f)
                 glowPaint.strokeWidth = sw * 0.7f
-                glowPaint.color = Color.argb((160 * a).toInt(), 255, 255, 255)
+                glowPaint.color = AndroidColor.argb((160 * a).toInt(), 255, 255, 255)
                 canvas.drawCircle(ox, oy, innerR, glowPaint)
             }
         }
@@ -157,33 +148,37 @@ class GhostSkin( override val renderer: PuckRenderer) : PuckSkin {
         }
     }
 
-    override fun drawBody(canvas: Canvas) {
+    override fun DrawScope.drawBody() {
         val glowColor = responsivePrimary
         val r = renderer.radius
         val sw = renderer.strokePaint.strokeWidth
         val radiusOffset = radiusOffset(renderer)
+        val center = Offset(renderer.x, renderer.y)
 
-        // Hoist per-frame oscillator base values shared across aura rings
         val framePhase = renderer.frame * 0.04f
         val innerFramePhase = renderer.frame * 0.025f
 
-        // Animated aura rings drawn behind the orb — each has its own oscillation phase
         for (ring in auraRings) {
             val sinVal = sin(framePhase + ring.phase)
             val ringR = r * ring.baseMult + r * ring.amp * sinVal
             val alpha = ring.alpha + (ring.alpha * ring.amp * sinVal).toInt()
-            glow.color = Palette.withAlpha(glowColor, alpha)
-            glow.strokeWidth = sw * ring.strokeMult
-            canvas.drawCircle(renderer.x, renderer.y, ringR, glow)
+            drawCircle(
+                Color(Palette.withAlpha(glowColor, alpha)),
+                ringR,
+                center,
+                style = Stroke(width = sw * ring.strokeMult)
+            )
         }
 
-        // White orb at exact radius — not oversized
-        canvas.drawCircle(renderer.x, renderer.y, r * radiusOffset, fill)
+        drawCircle(Color(AndroidColor.argb(120, 255, 255, 255)), r * radiusOffset, center)
 
-        // Inner ring pulses between 50% and 100% of radius, slowly
         val innerR = r * 0.75f + r * 0.1f * sin(innerFramePhase + 5.0f)
-        stroke.strokeWidth = sw * 0.7f
-        canvas.drawCircle(renderer.x, renderer.y, innerR * radiusOffset, stroke)
+        drawCircle(
+            Color(AndroidColor.argb(200, 255, 255, 255)),
+            innerR * radiusOffset,
+            center,
+            style = Stroke(width = sw * 0.7f)
+        )
 
         renderer.chargePaint.color = glowColor
     }

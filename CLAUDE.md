@@ -117,6 +117,16 @@ Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Ho
 - **Touch routing**: Single-touch goes to whichever player's half the touch is in. Multi-touch: pointer 0 and pointer 1 are mapped to high/low based on `highTouchedFirst` (which player put their finger down first). This is set in `ACTION_DOWN` handling.
 - **Player symmetry**: `highPlayer` and `lowPlayer` are always both initialized. Actions on one almost always have a parallel action on the other.
 - **Tail length is fixed**: Tails must never change length based on charge state or shield state. Always use the base length (`baseCount * Settings.tailLengthMultiplier`). If a tail implementation varies length on `shielded` or charge phase, correct it to use the constant base value. (`ClassicTail` and `MetalTail` previously grew to 80 on shield — this is fixed.)
+- **Compose DrawScope transforms: use direct coordinates for rotation/complex transforms**: `withTransform({ translate(x,y); rotate(angle) })` and `withTransform({ rotate(angle) })` do not reliably rotate around the translated origin in this project's DrawScope setup — paths end up offset and at the wrong radius. Prefer Compose `DrawScope` draw calls (drawCircle, drawLine, etc.) when a simple center offset suffices. But any time you need to draw a `Path` with rotation, compute the final screen coordinates directly using trig and draw in absolute screen space — no `withTransform`. Pattern used in `SpinnerSkin` and `PrismSkin`:
+  ```kotlin
+  val rad = angleDegrees * (Math.PI.toFloat() / 180f)
+  val cosA = cos(rad); val sinA = sin(rad)
+  fun sx(lx: Float, ly: Float) = renderer.x + lx * cosA - ly * sinA
+  fun sy(lx: Float, ly: Float) = renderer.y + lx * sinA + ly * cosA
+  path.moveTo(renderer.x, renderer.y)
+  path.lineTo(sx(localX, localY), sy(localX, localY))
+  drawPath(path, color)
+  ```
 
 ---
 

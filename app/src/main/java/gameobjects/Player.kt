@@ -1,8 +1,14 @@
 package gameobjects
 
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.toArgb
 import enums.Direction
 import enums.MotionStates
 import enums.TouchState
@@ -13,7 +19,6 @@ import physics.Point
 import physics.Ticker
 import shapes.Circle
 import shapes.DrawablePoint
-import androidx.compose.ui.graphics.toArgb
 import utility.GameEvents
 import utility.PaintBucket
 import utility.Sounds
@@ -145,7 +150,7 @@ class Player(
         get() = touch == TouchState.Down || touch == TouchState.Ready
 
 
-    fun drawTo(canvas: Canvas) {
+    fun DrawScope.drawTo() {
         if (puck.x.isNaN() || puck.y.isNaN()) {
             puck.x = 500f
             puck.y = 500f
@@ -188,9 +193,9 @@ class Player(
 
         if (chargePowerLocked) overchargeFrames++ else overchargeFrames = 0
         if (preparingToTeleport || isTeleporting) {
-            drawTeleport(canvas)
+            drawTeleport()
         } else {
-            puck.drawTo(canvas)
+            with(puck) { drawTo() }
         }
 
         if (finger != previousFingerLocation || puck != previousPuckLocation) {
@@ -204,12 +209,25 @@ class Player(
         previousPuckLocation.y = py
     }
 
-    private fun drawTeleport(canvas: Canvas) {
+    private fun DrawScope.drawTeleport() {
+        val teleportColor = PaintBucket.effectColor
+        val teleportStroke = Stroke(
+            width = Settings.strokeWidth,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
         if (preparingToTeleport) {
             prepareTicker.tick
-            puck.drawTo(pRadius, canvas)
-            canvas.drawArc(px - pRadius, py - pRadius, px + pRadius, py + pRadius,
-                0f, 360f * prepareTicker.ratio, false, teleportPaint)
+            with(puck) { drawBodyAtRadius(pRadius) }
+            drawArc(
+                color = teleportColor,
+                startAngle = 0f,
+                sweepAngle = 360f * prepareTicker.ratio,
+                useCenter = false,
+                topLeft = Offset(px - pRadius, py - pRadius),
+                size = Size(pRadius * 2, pRadius * 2),
+                style = teleportStroke
+            )
             if (prepareTicker.finished) {
                 preparingToTeleport = false
                 disappearing = true
@@ -218,8 +236,13 @@ class Player(
             }
         }
         if (disappearing) {
-            puck.drawTo(pRadius * teleportTicker.ratio, canvas)
-            canvas.drawCircle(px, py, pRadius * teleportTicker.ratio, teleportPaint)
+            with(puck) { drawBodyAtRadius(pRadius * teleportTicker.ratio) }
+            drawCircle(
+                color = teleportColor,
+                radius = pRadius * teleportTicker.ratio,
+                center = Offset(px, py),
+                style = teleportStroke
+            )
             if (teleportTicker.tick) {
                 disappearing = false
                 reappearing = true
@@ -227,8 +250,13 @@ class Player(
                 puck.setLocation(finger)
             }
         } else if (reappearing) {
-            puck.drawTo(pRadius - (pRadius * teleportTicker.ratio), canvas)
-            canvas.drawCircle(px, py, pRadius * teleportTicker.ratio, teleportPaint)
+            with(puck) { drawBodyAtRadius(pRadius - (pRadius * teleportTicker.ratio)) }
+            drawCircle(
+                color = teleportColor,
+                radius = pRadius * teleportTicker.ratio,
+                center = Offset(px, py),
+                style = teleportStroke
+            )
             if (teleportTicker.tick) {
                 stopTeleportation()
             }

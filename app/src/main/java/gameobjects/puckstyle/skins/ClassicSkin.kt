@@ -2,10 +2,13 @@ package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import enums.Direction
 import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import physics.Point
@@ -17,9 +20,15 @@ import kotlin.math.sin
 
 class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
 
-    override fun drawBody(canvas: Canvas) {
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, renderer.fillPaint)
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, renderer.strokePaint)
+    override fun DrawScope.drawBody() {
+        val center = Offset(renderer.x, renderer.y)
+        drawCircle(Color(renderer.fillColor), renderer.radius, center)
+        drawCircle(
+            color = Color(renderer.strokeColor),
+            radius = renderer.radius,
+            center = center,
+            style = Stroke(width = renderer.strokePaint.strokeWidth)
+        )
     }
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {

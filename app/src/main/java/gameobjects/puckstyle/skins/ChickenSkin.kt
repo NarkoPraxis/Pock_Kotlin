@@ -1,13 +1,19 @@
 package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.core.graphics.withRotation
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorGroup
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.paddles.ChickenLaunch
@@ -19,19 +25,14 @@ import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
-import androidx.core.graphics.withRotation
-import androidx.core.graphics.withTranslation
 import gameobjects.puckstyle.Palette
 import utility.Effects
-import androidx.core.graphics.withScale
 
-class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
+class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
 
-    private val paint         = Paint().apply { isAntiAlias = true }
     private val beakPath      = Path()
     private val wingSecondary = Path()
     private val wingPrimary   = Path()
-    // Avoids List allocation inside eye-drawing loops
     private val eyeSides      = floatArrayOf(0f, 0f)
 
     // Cached radius-derived values
@@ -102,7 +103,7 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
     private var wingAngle = 0f
     private var eyeOpen   = true
 
-    override fun drawBody(canvas: Canvas) {
+    override fun DrawScope.drawBody() {
         ensureCache()
         frameColors = responsiveGroup
         r        = cachedRadius
@@ -158,24 +159,13 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
             }
         }
 
-        canvas.withTranslation(renderer.x, renderer.y) {
-            if (renderer.isHigh) rotate(180f)
-
-            // Body fill
-            paint.style = Paint.Style.FILL
-            paint.color = frameColors.primary
-            drawCircle(0f, 0f, r, paint)
-
-            // Secondary stroke highlight
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = sw
-            paint.color = frameColors.secondary
-            drawCircle(0f, 0f, r, paint)
-
-            drawWingsForState(this)
-            drawFeathersForState(this)
-            drawEyesForState(this)
-            drawBeakForState(this)
+        withTransform({ translate(renderer.x, renderer.y); if (renderer.isHigh) rotate(180f) }) {
+            drawCircle(Color(frameColors.primary), r, Offset.Zero)
+            drawCircle(Color(frameColors.secondary), r, Offset.Zero, style = Stroke(width = sw))
+            drawWingsForState()
+            drawFeathersForState()
+            drawEyesForState()
+            drawBeakForState()
         }
     }
 
@@ -208,26 +198,26 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
 
     // ── state dispatch ─────────────────────────────────────────────────────────
 
-    private fun drawWingsForState(canvas: Canvas) {
+    private fun DrawScope.drawWingsForState() {
         when (currentAnim) {
             ChickenAnim.AlmostHit, ChickenAnim.JustHit -> {
                 val t = if (animFrame >= DELAY_WINGS) easeIn((animFrame - DELAY_WINGS).toFloat(), 3f) else 0f
-                drawWing(canvas, left = true,  angle = displayedWingAngle, scale = lerp(1f, 0.82f, t))
-                drawWing(canvas, left = false, angle = displayedWingAngle, scale = lerp(1f, 0.82f, t))
+                drawWing(left = true,  angle = displayedWingAngle, scale = lerp(1f, 0.82f, t))
+                drawWing(left = false, angle = displayedWingAngle, scale = lerp(1f, 0.82f, t))
             }
             ChickenAnim.Celebration -> {
                 val t = if (animFrame >= DELAY_WINGS) easeIn((animFrame - DELAY_WINGS).toFloat(), 8f) else 0f
-                drawWing(canvas, left = true,  angle = displayedWingAngle, scale = lerp(1f, 1.1f, t))
-                drawWing(canvas, left = false, angle = displayedWingAngle, scale = lerp(1f, 1.1f, t))
+                drawWing(left = true,  angle = displayedWingAngle, scale = lerp(1f, 1.1f, t))
+                drawWing(left = false, angle = displayedWingAngle, scale = lerp(1f, 1.1f, t))
             }
             else -> {
-                drawWing(canvas, left = true,  angle = displayedWingAngle)
-                drawWing(canvas, left = false, angle = displayedWingAngle)
+                drawWing(left = true,  angle = displayedWingAngle)
+                drawWing(left = false, angle = displayedWingAngle)
             }
         }
     }
 
-    private fun drawFeathersForState(canvas: Canvas) {
+    private fun DrawScope.drawFeathersForState() {
         val t = when {
             currentAnim == ChickenAnim.AlmostHit || currentAnim == ChickenAnim.JustHit ->
                 if (animFrame >= DELAY_FEATHERS) easeIn((animFrame - DELAY_FEATHERS).toFloat(), 8f) else 0f
@@ -237,112 +227,90 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
         }
 
         if (t < 0f) {
-            drawHeadFeather(canvas, 0f,        -r * 0.88f, 0f,   1.5f)
-            drawHeadFeather(canvas, -r * 0.2f, -r * 0.85f, -28f, 1.1f)
-            drawHeadFeather(canvas,  r * 0.2f, -r * 0.85f,  28f, 1.1f)
+            drawHeadFeather(0f,        -r * 0.88f, 0f,   1.5f)
+            drawHeadFeather(-r * 0.2f, -r * 0.85f, -28f, 1.1f)
+            drawHeadFeather( r * 0.2f, -r * 0.85f,  28f, 1.1f)
             return
         }
 
         val droopy = currentAnim == ChickenAnim.AlmostHit || currentAnim == ChickenAnim.JustHit
         if (droopy) {
-            drawHeadFeatherDroopy(canvas, 0f,        -r * 0.88f, 0f,   1.5f, t)
-            drawHeadFeatherDroopy(canvas, -r * 0.2f, -r * 0.85f, -28f, 1.1f, t)
-            drawHeadFeatherDroopy(canvas,  r * 0.2f, -r * 0.85f,  28f, 1.1f, t)
+            drawHeadFeatherDroopy(0f,        -r * 0.88f, 0f,   1.5f, t)
+            drawHeadFeatherDroopy(-r * 0.2f, -r * 0.85f, -28f, 1.1f, t)
+            drawHeadFeatherDroopy( r * 0.2f, -r * 0.85f,  28f, 1.1f, t)
         } else {
-            drawHeadFeatherFlared(canvas, 0f,        -r * 0.88f, 0f,   1.5f, t)
-            drawHeadFeatherFlared(canvas, -r * 0.2f, -r * 0.85f, -28f, 1.1f, t)
-            drawHeadFeatherFlared(canvas,  r * 0.2f, -r * 0.85f,  28f, 1.1f, t)
+            drawHeadFeatherFlared(0f,        -r * 0.88f, 0f,   1.5f, t)
+            drawHeadFeatherFlared(-r * 0.2f, -r * 0.85f, -28f, 1.1f, t)
+            drawHeadFeatherFlared( r * 0.2f, -r * 0.85f,  28f, 1.1f, t)
         }
     }
 
-    private fun drawEyesForState(canvas: Canvas) {
+    private fun DrawScope.drawEyesForState() {
         when (currentAnim) {
-            ChickenAnim.Taunt       -> drawWinkingEye(canvas)
-            ChickenAnim.AlmostHit   -> drawWideEye(canvas)
-            ChickenAnim.JustHit     -> drawWinceEye(canvas)
-            ChickenAnim.Celebration -> drawHappyEye(canvas)
-            else                    -> drawEye(canvas, eyeOpen)
+            ChickenAnim.Taunt       -> drawWinkingEye()
+            ChickenAnim.AlmostHit   -> drawWideEye()
+            ChickenAnim.JustHit     -> drawWinceEye()
+            ChickenAnim.Celebration -> drawHappyEye()
+            else                    -> drawEye(eyeOpen)
         }
     }
 
-    private fun drawBeakForState(canvas: Canvas) {
+    private fun DrawScope.drawBeakForState() {
         when {
-            currentAnim == ChickenAnim.AlmostHit   && animFrame >= DELAY_BEAK -> drawBeakGape(canvas)
-            currentAnim == ChickenAnim.JustHit                                -> drawBeakGrimace(canvas)
-            currentAnim == ChickenAnim.Celebration && animFrame >= DELAY_BEAK -> drawBeakGape(canvas)
-            currentAnim == ChickenAnim.Taunt       && animFrame >= DELAY_BEAK -> drawBeakGape(canvas)
-            else                                                               -> drawBeak(canvas)
+            currentAnim == ChickenAnim.AlmostHit   && animFrame >= DELAY_BEAK -> drawBeakGape()
+            currentAnim == ChickenAnim.JustHit                                -> drawBeakGrimace()
+            currentAnim == ChickenAnim.Celebration && animFrame >= DELAY_BEAK -> drawBeakGape()
+            currentAnim == ChickenAnim.Taunt       && animFrame >= DELAY_BEAK -> drawBeakGape()
+            else                                                               -> drawBeak()
         }
     }
 
     // ── eyes ───────────────────────────────────────────────────────────────────
 
-    private fun drawEye(canvas: Canvas, open: Boolean) {
+    private fun DrawScope.drawEye(open: Boolean) {
         if (open) {
             val maxOff = eyeR * 0.45f
             eyeSides[0] = -eyeX; eyeSides[1] = eyeX
             for (side in eyeSides) {
                 val cx = side + irisOffX * maxOff
                 val cy = eyeY + irisOffY * maxOff
-                paint.style = Paint.Style.FILL
-                paint.color = Color.WHITE
-                canvas.drawCircle(side, eyeY, eyeR, paint)
-                paint.color = frameColors.secondary
-                canvas.drawCircle(cx, cy, eyeR * 0.72f, paint)
-                paint.color = Color.BLACK
-                canvas.drawCircle(cx, cy, eyeR * 0.4f, paint)
-                paint.color = Color.WHITE
-                canvas.drawCircle(cx - eyeR * 0.27f, cy - eyeR * 0.3f, eyeR * 0.21f, paint)
+                drawCircle(Color.White, eyeR, Offset(side, eyeY))
+                drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx, cy))
+                drawCircle(Color.Black, eyeR * 0.4f, Offset(cx, cy))
+                drawCircle(Color.White, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
             }
         } else {
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = r * 0.08f
-            paint.strokeCap = Paint.Cap.ROUND
-            paint.color = frameColors.secondary
-            canvas.drawLine(-eyeX - eyeR * 0.65f, eyeY, -eyeX + eyeR * 0.65f, eyeY, paint)
-            canvas.drawLine( eyeX - eyeR * 0.65f, eyeY,  eyeX + eyeR * 0.65f, eyeY, paint)
+            val lineColor = Color(frameColors.secondary)
+            val sw = r * 0.08f
+            drawLine(lineColor, Offset(-eyeX - eyeR * 0.65f, eyeY), Offset(-eyeX + eyeR * 0.65f, eyeY), sw, cap = StrokeCap.Round)
+            drawLine(lineColor, Offset( eyeX - eyeR * 0.65f, eyeY), Offset( eyeX + eyeR * 0.65f, eyeY), sw, cap = StrokeCap.Round)
         }
     }
 
-    private fun drawWinkingEye(canvas: Canvas) {
+    private fun DrawScope.drawWinkingEye() {
         val maxOff    = eyeR * 0.45f
         val openSide  = if (winkRight)  eyeX else -eyeX
         val closedSide = if (winkRight) -eyeX else  eyeX
         val cx = openSide + irisOffX * maxOff
         val cy = eyeY     + irisOffY * maxOff
 
-        // Open eye
-        paint.style = Paint.Style.FILL
-        paint.color = Color.WHITE
-        canvas.drawCircle(openSide, eyeY, eyeR, paint)
-        paint.color = frameColors.secondary
-        canvas.drawCircle(cx, cy, eyeR * 0.72f, paint)
-        paint.color = Color.BLACK
-        canvas.drawCircle(cx, cy, eyeR * 0.4f, paint)
-        paint.color = Color.WHITE
-        canvas.drawCircle(cx - eyeR * 0.27f, cy - eyeR * 0.3f, eyeR * 0.21f, paint)
+        drawCircle(Color.White, eyeR, Offset(openSide, eyeY))
+        drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx, cy))
+        drawCircle(Color.Black, eyeR * 0.4f, Offset(cx, cy))
+        drawCircle(Color.White, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
 
-        // Winking eye — shut for frames 0–25, reopens after
         if (animFrame <= 25) {
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = r * 0.08f
-            paint.strokeCap = Paint.Cap.ROUND
-            paint.color = frameColors.secondary
-            canvas.drawLine(closedSide - eyeR * 0.65f, eyeY, closedSide + eyeR * 0.65f, eyeY, paint)
+            drawLine(Color(frameColors.secondary), Offset(closedSide - eyeR * 0.65f, eyeY), Offset(closedSide + eyeR * 0.65f, eyeY), r * 0.08f, cap = StrokeCap.Round)
         } else {
             val cx2 = closedSide + irisOffX * maxOff
             val cy2 = eyeY       + irisOffY * maxOff
-            paint.style = Paint.Style.FILL
-            paint.color = Color.WHITE
-            canvas.drawCircle(closedSide, eyeY, eyeR, paint)
-            paint.color = frameColors.secondary
-            canvas.drawCircle(cx2, cy2, eyeR * 0.72f, paint)
-            paint.color = Color.BLACK
-            canvas.drawCircle(cx2, cy2, eyeR * 0.4f, paint)
+            drawCircle(Color.White, eyeR, Offset(closedSide, eyeY))
+            drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx2, cy2))
+            drawCircle(Color.Black, eyeR * 0.4f, Offset(cx2, cy2))
         }
     }
 
-    private fun drawWideEye(canvas: Canvas) {
+    private fun DrawScope.drawWideEye() {
         val t = easeIn(animFrame.toFloat(), 8f)
         val scaleX = lerp(1f, 0.75f, t)
         val scaleY = lerp(1f, 1.35f, t)
@@ -351,33 +319,25 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
         for (side in eyeSides) {
             val cx = side + irisOffX * maxOff
             val cy = eyeY + irisOffY * maxOff
-            canvas.save()
-            canvas.scale(scaleX, scaleY, side, eyeY)
-            paint.style = Paint.Style.FILL
-            paint.color = Color.WHITE
-            canvas.drawCircle(side, eyeY, eyeR, paint)
-            paint.color = frameColors.secondary
-            canvas.drawCircle(cx, cy, eyeR * 0.72f, paint)
-            paint.color = Color.BLACK
-            canvas.drawCircle(cx, cy, eyeR * 0.4f, paint)
-            paint.color = Color.WHITE
-            canvas.drawCircle(cx - eyeR * 0.27f, cy - eyeR * 0.3f, eyeR * 0.21f, paint)
-            canvas.restore()
+            withTransform({ scale(scaleX, scaleY, pivot = Offset(side, eyeY)) }) {
+                drawCircle(Color.White, eyeR, Offset(side, eyeY))
+                drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx, cy))
+                drawCircle(Color.Black, eyeR * 0.4f, Offset(cx, cy))
+                drawCircle(Color.White, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
+            }
         }
     }
 
-    private fun drawWinceEye(canvas: Canvas) {
+    private fun DrawScope.drawWinceEye() {
         val decay   = 1f - animFrame.toFloat() / ANIM_JUST_HIT
         val shudder = sin(animFrame * 1.5f) * r * 0.02f * decay
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = r * 0.08f
-        paint.strokeCap = Paint.Cap.ROUND
-        paint.color = frameColors.secondary
-        canvas.drawLine(-eyeX - eyeR * 0.65f, eyeY + shudder, -eyeX + eyeR * 0.65f, eyeY + shudder, paint)
-        canvas.drawLine( eyeX - eyeR * 0.65f, eyeY + shudder,  eyeX + eyeR * 0.65f, eyeY + shudder, paint)
+        val lineColor = Color(frameColors.secondary)
+        val sw = r * 0.08f
+        drawLine(lineColor, Offset(-eyeX - eyeR * 0.65f, eyeY + shudder), Offset(-eyeX + eyeR * 0.65f, eyeY + shudder), sw, cap = StrokeCap.Round)
+        drawLine(lineColor, Offset( eyeX - eyeR * 0.65f, eyeY + shudder), Offset( eyeX + eyeR * 0.65f, eyeY + shudder), sw, cap = StrokeCap.Round)
     }
 
-    private fun drawHappyEye(canvas: Canvas) {
+    private fun DrawScope.drawHappyEye() {
         val t = easeIn(animFrame.toFloat(), 8f)
         val scaleX = lerp(1f, 1.3f,  t)
         val scaleY = lerp(1f, 0.75f, t)
@@ -386,47 +346,33 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
         for (side in eyeSides) {
             val cx = side + irisOffX * maxOff
             val cy = eyeY + irisOffY * maxOff
-            canvas.save()
-            canvas.scale(scaleX, scaleY, side, eyeY)
-            paint.style = Paint.Style.FILL
-            paint.color = Color.WHITE
-            canvas.drawCircle(side, eyeY, eyeR, paint)
-            paint.color = frameColors.secondary
-            canvas.drawCircle(cx, cy, eyeR * 0.72f, paint)
-            paint.color = Color.BLACK
-            canvas.drawCircle(cx, cy, eyeR * 0.4f, paint)
-            paint.color = Color.WHITE
-            canvas.drawCircle(cx - eyeR * 0.27f, cy - eyeR * 0.3f, eyeR * 0.21f, paint)
-            // Happy bottom: overdraw lower portion with body color to create grin-bottom shape
-            paint.color = frameColors.primary
-            canvas.drawRect(side - eyeR, eyeY + eyeR * 0.3f, side + eyeR, eyeY + eyeR + 2f, paint)
-            canvas.restore()
+            withTransform({ scale(scaleX, scaleY, pivot = Offset(side, eyeY)) }) {
+                drawCircle(Color.White, eyeR, Offset(side, eyeY))
+                drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx, cy))
+                drawCircle(Color.Black, eyeR * 0.4f, Offset(cx, cy))
+                drawCircle(Color.White, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
+                // Overdraw lower half with body color to create grin-bottom shape
+                drawRect(Color(frameColors.primary), topLeft = Offset(side - eyeR, eyeY + eyeR * 0.3f), size = Size(2 * eyeR, eyeR + 2f))
+            }
         }
     }
 
     // ── beak ───────────────────────────────────────────────────────────────────
 
-    private fun drawBeak(canvas: Canvas) {
+    private fun DrawScope.drawBeak() {
         beakPath.reset()
         beakPath.moveTo(-r * 0.24f, beakTopY)
         beakPath.lineTo( r * 0.24f, beakTopY)
         beakPath.lineTo(0f,          r * 0.58f)
         beakPath.close()
-        paint.style = Paint.Style.FILL
-        paint.strokeCap = Paint.Cap.BUTT
-        paint.color = frameColors.secondary
-        canvas.drawPath(beakPath, paint)
-        drawNostrils(canvas)
+        drawPath(beakPath, Color(frameColors.secondary))
+        drawNostrils()
     }
 
-    private fun drawNostrils(canvas: Canvas) {
-        paint.style = Paint.Style.FILL
-        paint.color = frameColors.primary
-       // canvas.drawCircle(-r * 0.08f, beakTopY + r * 0.08f, r * 0.05f, paint)
-       // canvas.drawCircle( r * 0.08f, beakTopY + r * 0.08f, r * 0.05f, paint)
-    }
+    @Suppress("EmptyFunctionBlock")
+    private fun DrawScope.drawNostrils() {}
 
-    private fun drawBeakYawn(canvas: Canvas) {
+    private fun DrawScope.drawBeakYawn() {
         val lf = (animFrame - DELAY_BEAK).coerceAtLeast(0)
         val tipY = when {
             lf < 15 -> lerp(r * 0.58f, r * 0.82f, lf / 15f)
@@ -438,13 +384,11 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
         beakPath.lineTo( r * 0.24f, beakTopY)
         beakPath.lineTo(0f,          tipY)
         beakPath.close()
-        paint.style = Paint.Style.FILL
-        paint.color = frameColors.secondary
-        canvas.drawPath(beakPath, paint)
-        drawNostrils(canvas)
+        drawPath(beakPath, Color(frameColors.secondary))
+        drawNostrils()
     }
 
-    private fun drawBeakSnap(canvas: Canvas) {
+    private fun DrawScope.drawBeakSnap() {
         val lf = (animFrame - DELAY_BEAK).coerceAtLeast(0)
         val tipY = when (lf) {
             in 0..3   -> lerp(r * 0.58f, r * 0.78f,  lf / 3f)
@@ -458,130 +402,114 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
         beakPath.lineTo( r * 0.24f, beakTopY)
         beakPath.lineTo(0f,          tipY)
         beakPath.close()
-        paint.style = Paint.Style.FILL
-        paint.color = frameColors.secondary
-        canvas.drawPath(beakPath, paint)
-        drawNostrils(canvas)
+        drawPath(beakPath, Color(frameColors.secondary))
+        drawNostrils()
     }
 
-    private fun drawBeakGape(canvas: Canvas) {
+    private fun DrawScope.drawBeakGape() {
         val lf    = (animFrame - DELAY_BEAK).coerceAtLeast(0)
         val gapeT = easeIn(lf.toFloat(), 5f)
 
         val closedTipY = r * 0.58f
         val growth     = r * 0.10f * gapeT
+        val lowerTipY  = closedTipY + growth
+        val mouthTipY  = closedTipY + growth
+        val upperTipY  = lerp(closedTipY, beakTopY + (closedTipY - beakTopY) * 0.40f, gapeT)
 
-        // Bottom two triangles grow evenly together
-        val lowerTipY = closedTipY + growth
-        val mouthTipY = closedTipY + growth
-
-        // Upper jaw shrinks — base stays at beakTopY, tip retracts toward face
-        val upperTipY = lerp(closedTipY, beakTopY + (closedTipY - beakTopY) * 0.40f, gapeT)
-
-        paint.style = Paint.Style.FILL
-
-        // Layer 1 (behind): lower jaw — secondary, full beak width
+        // Layer 1 (behind): lower jaw
         beakPath.reset()
         beakPath.moveTo(-r * 0.24f, beakTopY)
         beakPath.lineTo( r * 0.24f, beakTopY)
         beakPath.lineTo(0f, lowerTipY)
         beakPath.close()
-        paint.color = frameColors.secondary
-        canvas.drawPath(beakPath, paint)
+        drawPath(beakPath, Color(frameColors.secondary))
 
-        // Layer 2 (middle): mouth interior — black, narrower than the jaws
+        // Layer 2 (middle): mouth interior
         beakPath.reset()
         beakPath.moveTo(-r * 0.14f, beakTopY)
         beakPath.lineTo( r * 0.14f, beakTopY)
         beakPath.lineTo(0f, mouthTipY)
         beakPath.close()
-        paint.color = Color.BLACK
-        canvas.drawPath(beakPath, paint)
+        drawPath(beakPath, Color.Black)
 
-        // Layer 3 (front): upper jaw — secondary, full width, gets shorter as gapeT increases
+        // Layer 3 (front): upper jaw
         beakPath.reset()
         beakPath.moveTo(-r * 0.24f, beakTopY)
         beakPath.lineTo( r * 0.24f, beakTopY)
         beakPath.lineTo(0f, upperTipY)
         beakPath.close()
-        paint.color = frameColors.secondary
-        canvas.drawPath(beakPath, paint)
+        drawPath(beakPath, Color(frameColors.secondary))
 
-        drawNostrils(canvas)
+        drawNostrils()
     }
 
-    private fun drawBeakGrimace(canvas: Canvas) {
+    private fun DrawScope.drawBeakGrimace() {
         val t = easeIn(animFrame.toFloat(), 6f)
         val beakCenterY = beakTopY + (r * 0.58f - beakTopY) / 2f
-        canvas.withScale(lerp(1f, 0.8f, t), lerp(1f, 1.2f, t), 0f, beakCenterY) {
-            drawBeak(this)
+        withTransform({ scale(lerp(1f, 0.8f, t), lerp(1f, 1.2f, t), pivot = Offset(0f, beakCenterY)) }) {
+            drawBeak()
         }
     }
 
     // ── wings ──────────────────────────────────────────────────────────────────
 
-    private fun drawWing(canvas: Canvas, left: Boolean, angle: Float, scale: Float = 1f) {
+    private fun DrawScope.drawWing(left: Boolean, angle: Float, scale: Float = 1f) {
         val s     = if (left) -1f else 1f
         val pivot = s * r * 0.72f
-        canvas.withRotation(s * -angle, pivot, 0f) {
-            if (scale != 1f) scale(scale, scale, pivot, 0f)
-
-            paint.style = Paint.Style.FILL
+        withTransform({
+            rotate(s * -angle, pivot = Offset(pivot, 0f))
+            if (scale != 1f) scale(scale, scale, pivot = Offset(pivot, 0f))
+        }) {
             wingSecondary.reset()
             wingSecondary.moveTo(s * r * 0.72f, -r * 0.13f)
-            wingSecondary.quadTo(s * r * 1.22f, -r * 0.55f, s * r * 1.65f, -r * 0.27f)
-            wingSecondary.quadTo(s * r * 1.58f, r * 0.06f, s * r * 1.22f, r * 0.33f)
-            wingSecondary.quadTo(s * r * 0.92f, r * 0.38f, s * r * 0.72f, r * 0.13f)
+            wingSecondary.quadraticTo(s * r * 1.22f, -r * 0.55f, s * r * 1.65f, -r * 0.27f)
+            wingSecondary.quadraticTo(s * r * 1.58f, r * 0.06f, s * r * 1.22f, r * 0.33f)
+            wingSecondary.quadraticTo(s * r * 0.92f, r * 0.38f, s * r * 0.72f, r * 0.13f)
             wingSecondary.close()
-            paint.color = frameColors.secondary
-            drawPath(wingSecondary, paint)
+            drawPath(wingSecondary, Color(frameColors.secondary))
 
             wingPrimary.reset()
             wingPrimary.moveTo(s * r * 0.50f, -r * 0.10f)
-            wingPrimary.quadTo(s * r * 1.18f, -r * 0.48f, s * r * 1.57f, -r * 0.27f)
-            wingPrimary.quadTo(s * r * 1.50f, r * 0.04f, s * r * 1.16f, r * 0.27f)
-            wingPrimary.quadTo(s * r * 0.90f, r * 0.33f, s * r * 0.50f, r * 0.10f)
+            wingPrimary.quadraticTo(s * r * 1.18f, -r * 0.48f, s * r * 1.57f, -r * 0.27f)
+            wingPrimary.quadraticTo(s * r * 1.50f, r * 0.04f, s * r * 1.16f, r * 0.27f)
+            wingPrimary.quadraticTo(s * r * 0.90f, r * 0.33f, s * r * 0.50f, r * 0.10f)
             wingPrimary.close()
-            paint.color = frameColors.primary
-            drawPath(wingPrimary, paint)
-
+            drawPath(wingPrimary, Color(frameColors.primary))
         }
     }
 
     // ── head feathers ──────────────────────────────────────────────────────────
 
-    private fun drawHeadFeather(canvas: Canvas, attachX: Float, attachY: Float, rotDeg: Float, scale: Float) {
+    private fun DrawScope.drawHeadFeather(attachX: Float, attachY: Float, rotDeg: Float, scale: Float) {
         val fw = r * 0.18f * scale
         val fh = r * 0.46f * scale
-        canvas.withRotation(rotDeg, attachX, attachY) {
+        withTransform({ rotate(rotDeg, pivot = Offset(attachX, attachY)) }) {
             wingSecondary.reset()
             wingSecondary.moveTo(attachX - fw * 0.7f, attachY)
-            wingSecondary.quadTo(attachX - fw, attachY - fh * 0.55f, attachX, attachY - fh)
-            wingSecondary.quadTo(attachX + fw, attachY - fh * 0.55f, attachX + fw * 0.7f, attachY)
+            wingSecondary.quadraticTo(attachX - fw, attachY - fh * 0.55f, attachX, attachY - fh)
+            wingSecondary.quadraticTo(attachX + fw, attachY - fh * 0.55f, attachX + fw * 0.7f, attachY)
             wingSecondary.close()
-            paint.style = Paint.Style.FILL
-            paint.color = frameColors.secondary
-            drawPath(wingSecondary, paint)
+            drawPath(wingSecondary, Color(frameColors.secondary))
+
             wingPrimary.reset()
             wingPrimary.moveTo(attachX - fw * 0.42f, attachY + fh * 0.18f)
-            wingPrimary.quadTo(attachX - fw * 0.75f, attachY - fh * 0.48f, attachX, attachY - fh * 0.88f)
-            wingPrimary.quadTo(attachX + fw * 0.75f, attachY - fh * 0.48f, attachX + fw * 0.42f, attachY + fh * 0.18f)
+            wingPrimary.quadraticTo(attachX - fw * 0.75f, attachY - fh * 0.48f, attachX, attachY - fh * 0.88f)
+            wingPrimary.quadraticTo(attachX + fw * 0.75f, attachY - fh * 0.48f, attachX + fw * 0.42f, attachY + fh * 0.18f)
             wingPrimary.close()
-            paint.color = frameColors.primary
-            drawPath(wingPrimary, paint)
+            drawPath(wingPrimary, Color(frameColors.primary))
         }
     }
 
-    private fun drawHeadFeatherFlared(canvas: Canvas, attachX: Float, attachY: Float, rotDeg: Float, scale: Float, t: Float) {
-        canvas.withScale(1f, lerp(1f, 1.25f, t), attachX, attachY) {
-            drawHeadFeather(this, attachX, attachY, rotDeg, scale + 0.15f * t)
+    private fun DrawScope.drawHeadFeatherFlared(attachX: Float, attachY: Float, rotDeg: Float, scale: Float, t: Float) {
+        withTransform({ scale(1f, lerp(1f, 1.25f, t), pivot = Offset(attachX, attachY)) }) {
+            drawHeadFeather(attachX, attachY, rotDeg, scale + 0.15f * t)
         }
     }
 
-    private fun drawHeadFeatherDroopy(canvas: Canvas, attachX: Float, attachY: Float, rotDeg: Float, scale: Float, t: Float) {
+    private fun DrawScope.drawHeadFeatherDroopy(attachX: Float, attachY: Float, rotDeg: Float, scale: Float, t: Float) {
         val spreadAngle = lerp(rotDeg, rotDeg * 1.36f, t)
-        canvas.withScale(1f, lerp(1f, 0.75f, t), attachX, attachY) {
-            drawHeadFeather(this, attachX, attachY, spreadAngle, scale)
+        withTransform({ scale(1f, lerp(1f, 0.75f, t), pivot = Offset(attachX, attachY)) }) {
+            drawHeadFeather(attachX, attachY, spreadAngle, scale)
         }
     }
 
@@ -691,8 +619,8 @@ class ChickenSkin( override val renderer: PuckRenderer) : PuckSkin {
 
         override fun draw(canvas: Canvas) {
             for (f in feathers) {
-                f.x += f.vx;
-                f.y += f.vy;
+                f.x += f.vx
+                f.y += f.vy
                 f.angle += f.spin
                 val alpha = (220f * (1f - frame / 60f).coerceAtLeast(0f)).toInt()
                 if (alpha <= 0) continue

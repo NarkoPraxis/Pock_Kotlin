@@ -1,31 +1,27 @@
 package gameobjects.puckstyle
 
-import android.graphics.Paint
-import android.graphics.Shader
+import androidx.compose.ui.graphics.Brush
 
 /**
- * Base class for skins that use a cached gradient shader.
- * Subclasses implement [createShader]; the base class checks whether the radius
+ * Base class for skins that use a cached gradient brush.
+ * Subclasses implement [buildBrush]; the base class checks whether the radius
  * has changed and only rebuilds when necessary.
- *
- * Eliminates the copy-pasted lastRadius / ensureShader() pattern in
- * FireSkin, IceSkin, PlasmaSkin, and MetalSkin.
  */
-abstract class CachedShaderSkin( override val renderer: PuckRenderer) : PuckSkin {
+abstract class CachedBrushSkin(override val renderer: PuckRenderer) : PuckSkin {
 
-    protected val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
+    protected var cachedBrush: Brush? = null
     private var lastRadius = -1f
 
-    protected fun ensureShader(radius: Float) {
+    protected fun ensureBrush(radius: Float) {
         if (radius != lastRadius) {
-            fill.shader = createShader(radius)
+            cachedBrush = buildBrush(radius)
             lastRadius = radius
         }
     }
 
-    /** Forces the shader to rebuild on the next ensureShader call, e.g. when theme state changes. */
-    protected fun invalidateShader() { lastRadius = -1f }
+    /** Forces the brush to rebuild on the next ensureBrush call, e.g. when theme state changes. */
+    protected fun invalidateBrush() { lastRadius = -1f }
 
-    /** Called only when radius changes (or after invalidateShader). Build and return the new shader. */
-    protected abstract fun createShader(radius: Float): Shader
+    /** Called only when radius changes (or after invalidateBrush). Build and return the new brush. */
+    protected abstract fun buildBrush(radius: Float): Brush
 }

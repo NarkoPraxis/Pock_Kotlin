@@ -59,8 +59,8 @@ constructor() : this(0f, 0f, 0f, Color.BLACK, Color.BLACK)
         canvas.drawCircle(x, y, radius, strokePaint)
     }
 
-    fun DrawScope.drawTo() = drawIntoCanvas { drawTo(it.nativeCanvas) }
-    fun DrawScope.drawTo(r: Float) = drawIntoCanvas { drawTo(r, it.nativeCanvas) }
+    open fun DrawScope.drawTo() = drawIntoCanvas { drawTo(it.nativeCanvas) }
+    open fun DrawScope.drawTo(r: Float) = drawIntoCanvas { drawTo(r, it.nativeCanvas) }
 
     open fun setStroke(stroke: Int) {
         strokeColor = stroke

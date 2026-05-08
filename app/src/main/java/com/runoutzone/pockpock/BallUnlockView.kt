@@ -172,7 +172,7 @@ class BallUnlockView @JvmOverloads constructor(
 
             // 2. Draw puck clipped to card bounds so tail can't escape into adjacent cells
             canvas.withClip(b[0], b[1], b[2], b[3]) {
-                previewRenderer.draw(this)
+                previewRenderer.drawToCanvas(this)
             }
 
             // 3. Lock overlay

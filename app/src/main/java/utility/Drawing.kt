@@ -248,10 +248,8 @@ object Drawing {
     // -------------------------------------------------------------------------
 
     fun DrawScope.drawPlayersCompose() {
-        drawIntoCanvas { canvas ->
-            Logic.highPlayer.drawTo(canvas.nativeCanvas)
-            Logic.lowPlayer.drawTo(canvas.nativeCanvas)
-        }
+        with(Logic.highPlayer) { drawTo() }
+        with(Logic.lowPlayer) { drawTo() }
     }
 
     // -------------------------------------------------------------------------

@@ -1,12 +1,19 @@
 package gameobjects.puckstyle
 
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Canvas as ComposeCanvas
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import gameobjects.Settings
 import utility.PaintBucket
 import utility.Sounds
-import utility.placeholderPaint
 
 /** Which theme ColorGroup to use this frame — computed once in draw(), read by all components. */
 enum class ColorKey { Main, Shield, Inert }
@@ -149,7 +156,18 @@ class PuckRenderer(var theme: ColorTheme) {
     var flingCurrentX: Float = 0f
     var flingCurrentY: Float = 0f
 
-    fun draw(canvas: Canvas) {
+    /** Bridge for legacy Canvas callers (BallUnlockView, menu previews). */
+    private val canvasDrawScope = CanvasDrawScope()
+    fun drawToCanvas(canvas: android.graphics.Canvas) {
+        canvasDrawScope.draw(
+            Density(1f),
+            LayoutDirection.Ltr,
+            ComposeCanvas(canvas),
+            Size(radius * 4f, radius * 4f)
+        ) { draw() }
+    }
+
+    fun DrawScope.draw() {
 
         responsiveColorGroup = when {
             isInert  -> theme.inert
@@ -161,13 +179,25 @@ class PuckRenderer(var theme: ColorTheme) {
         for (layer in layerOrder) {
             when (layer) {
                 is PuckSkin -> {
-                    if (preview) canvas.drawCircle(x, y, radius, PaintBucket.placeholderPaint)
-                    else layer.drawBody(canvas)
+                    if (preview) {
+                        drawCircle(
+                            color = androidx.compose.ui.graphics.Color(0.118f, 0.118f, 0.118f, 0.784f),
+                            radius = radius,
+                            center = Offset(x, y)
+                        )
+                    } else {
+                        with(layer) { drawBody() }
+                    }
                 }
-                is TailRenderer -> if (Settings.tailLength != 0) layer.renderWithPreview(canvas)
+                is TailRenderer -> {
+                    if (Settings.tailLength != 0) {
+                        drawIntoCanvas { c -> layer.renderWithPreview(c.nativeCanvas) }
+                    }
+                }
                 is PaddleLaunchEffect -> {
-                    if (effectEnabled || layer.alwaysVisible)
-                        layer.renderWithPreview(canvas)
+                    if (effectEnabled || layer.alwaysVisible) {
+                        drawIntoCanvas { c -> layer.renderWithPreview(c.nativeCanvas) }
+                    }
                 }
             }
         }

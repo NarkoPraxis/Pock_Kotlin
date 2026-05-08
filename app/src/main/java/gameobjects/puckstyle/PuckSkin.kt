@@ -1,6 +1,6 @@
 package gameobjects.puckstyle
 
-import android.graphics.Canvas
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import physics.Point
 
 interface PuckSkin {
@@ -20,7 +20,8 @@ interface PuckSkin {
 
     val responsiveGroup: ColorGroup
         get() = renderer.responsiveColorGroup
-    fun drawBody(canvas: Canvas)
+
+    fun DrawScope.drawBody()
 
     /** Frames between each firework burst during victory celebration. */
     val explosionFrequency: Int get() = 15

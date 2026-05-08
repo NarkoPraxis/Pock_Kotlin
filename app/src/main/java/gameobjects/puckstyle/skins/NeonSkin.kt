@@ -1,11 +1,12 @@
 package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import gameobjects.Settings
-import gameobjects.puckstyle.ColorTheme
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
@@ -13,16 +14,6 @@ import physics.Point
 import utility.Effects
 
 class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
-
-    // Subtle dark fill so the hollow center reads as a translucent tube, not empty space
-    private val subtleFill = Paint().apply {
-        color = Color.argb(35, 0, 0, 0)
-        isAntiAlias = true; isDither = true; style = Paint.Style.FILL
-    }
-
-    private val glowPaint = Paint().apply {
-        isAntiAlias = true; isDither = true; style = Paint.Style.STROKE
-    }
 
     // Cache for stroke-width-derived values — updated only when strokeWidth changes
     private var cachedStrokeWidth = -1f
@@ -145,7 +136,7 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
         }
     }
 
-    override fun drawBody(canvas: Canvas) {
+    override fun DrawScope.drawBody() {
         val sw = renderer.strokePaint.strokeWidth
         if (cachedStrokeWidth != sw) {
             cachedStrokeWidth = sw
@@ -163,14 +154,12 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
             glowColor220 = Palette.withAlpha(responsivePrimary, 220)
         }
 
-        // 4 glow rings, outermost first — body always stays theme color, charging shown via chargePaint
-        glowPaint.color = glowColor25;  glowPaint.strokeWidth = sw5
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-        glowPaint.color = glowColor45;  glowPaint.strokeWidth = sw32
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-        glowPaint.color = glowColor110; glowPaint.strokeWidth = sw18
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
-        glowPaint.color = glowColor220; glowPaint.strokeWidth = sw1
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, glowPaint)
+        val center = Offset(renderer.x, renderer.y)
+        val r = renderer.radius
+        // 4 glow rings, outermost first — body always stays theme color
+        drawCircle(Color(glowColor25),  r, center, style = Stroke(width = sw5))
+        drawCircle(Color(glowColor45),  r, center, style = Stroke(width = sw32))
+        drawCircle(Color(glowColor110), r, center, style = Stroke(width = sw18))
+        drawCircle(Color(glowColor220), r, center, style = Stroke(width = sw1))
     }
 }

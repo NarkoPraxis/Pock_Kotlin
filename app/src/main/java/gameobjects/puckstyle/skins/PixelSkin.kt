@@ -2,44 +2,45 @@ package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
 import android.graphics.Paint
-import gameobjects.puckstyle.ColorTheme
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.paddles.PixelLaunch
 import physics.Point
 import utility.Effects
-import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.sqrt
 
-class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
-    private val fill = Paint().apply { isAntiAlias = false; style = Paint.Style.FILL }
-    private val stroke = Paint().apply { isAntiAlias = false; style = Paint.Style.STROKE }
+class PixelSkin(override val renderer: PuckRenderer) : PuckSkin {
 
-    // Cached radius-derived values
+    // Cached radius-derived value
     private var cachedRadius = -1f
     private var cachedSide = 0f
-    private var cachedLeft = 0f
-    private var cachedTop = 0f
 
     private fun ensureCache() {
         if (cachedRadius != renderer.radius) {
             cachedRadius = renderer.radius
             cachedSide = renderer.radius * .85f
         }
-        stroke.strokeWidth = renderer.strokePaint.strokeWidth
-        cachedLeft = renderer.x - cachedSide
-        cachedTop  = renderer.y - cachedSide
     }
 
-    override fun drawBody(canvas: Canvas) {
+    override fun DrawScope.drawBody() {
         ensureCache()
-        fill.color   = responsivePrimary
-        stroke.color = responsiveSecondary
-        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + 2 * cachedSide, cachedTop + 2 * cachedSide, fill)
-        canvas.drawRect(cachedLeft, cachedTop, cachedLeft + 2 * cachedSide, cachedTop + 2 * cachedSide, stroke)
+        val left = renderer.x - cachedSide
+        val top = renderer.y - cachedSide
+        val size = Size(2 * cachedSide, 2 * cachedSide)
+        drawRect(Color(responsivePrimary), topLeft = Offset(left, top), size = size)
+        drawRect(
+            Color(responsiveSecondary),
+            topLeft = Offset(left, top),
+            size = size,
+            style = Stroke(width = renderer.strokePaint.strokeWidth)
+        )
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {
@@ -84,7 +85,6 @@ class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
             var traveled = 0f
             var rippling = false
             var rippleSize = 0f
-            // alpha is clamped to [0,255] in step() so draw() never needs coerceIn
             var rippleAlpha = 0
             var done = false
         }
@@ -134,7 +134,6 @@ class PixelSkin( override val renderer: PuckRenderer) : PuckSkin {
                     canvas.drawRect(p.x - p.halfSide, p.y - p.halfSide, p.x + p.halfSide, p.y + p.halfSide, ring)
                 } else {
                     val half = p.rippleSize / 2f
-                    // rippleAlpha is already clamped to [0,255] by step()
                     ring.color = Palette.withAlpha(secondaryColor, p.rippleAlpha)
                     canvas.drawRect(p.x - half, p.y - half, p.x + half, p.y + half, ring)
                 }

@@ -1,30 +1,31 @@
 package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RadialGradient
-import android.graphics.Shader
-import gameobjects.puckstyle.ColorTheme
+import android.graphics.Path as AndroidPath
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.withTransform
+import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
-import androidx.core.graphics.withTranslation
 import gameobjects.puckstyle.paddles.GalaxyLaunch
 import physics.Point
 import utility.Effects
 
-class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
+class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
 
-    private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-    private val star = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
     private val starPath = Path()
     private var lastRadius = -1f
     private var lastColors = theme.main
+    private var galaxyBrush: Brush? = null
 
     override fun onCollisionWin(position: Point, speed: Float) {
         GalaxyLaunch.spawnStartImpact(renderer.x, renderer.y, renderer.radius, responsivePrimary, responsiveSecondary)
@@ -36,13 +37,12 @@ class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         Effects.addPersistentEffect(GalaxyScoreEffect(position.x, position.y, renderer.radius, theme.main.primary, theme.main.secondary, highGoal, fullCircle = false))
-        GalaxyLaunch.spawnStarBurst(position.x, position.y,  renderer.radius, theme.main.primary, theme.main.secondary)
+        GalaxyLaunch.spawnStarBurst(position.x, position.y, renderer.radius, theme.main.primary, theme.main.secondary)
     }
 
     override fun onVictory(x: Float, y: Float) {
         Effects.addPersistentEffect(GalaxyScoreEffect(x, y, renderer.radius, theme.main.primary, theme.main.secondary, highGoal = true, fullCircle = true))
         GalaxyLaunch.spawnStarBurst(x, y, renderer.radius, theme.main.primary, theme.main.secondary)
-
     }
 
     private class GalaxyScoreEffect(
@@ -62,9 +62,8 @@ class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
         override val isDone: Boolean get() = _isDone
 
         private val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-        private val path = Path()
+        private val path = AndroidPath()
 
-        // Pre-computed star geometry constants (count = 5 is fixed)
         private val angleStep = (TAU / 5f)
         private val halfStep = angleStep / 2f
         private val halfPi = (Math.PI / 2.0).toFloat()
@@ -128,7 +127,6 @@ class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
     }
 
     // FloatArray: [angularPos, distSeed, twinklePhase, angularDrift, twinkleSpeed, distFactor]
-    // distFactor = distSeed * 0.72f + 0.05f — precomputed to avoid per-frame multiplication
     private val starSeeds: List<FloatArray> = List(24) {
         val distSeed = Random.nextFloat()
         floatArrayOf(
@@ -141,21 +139,27 @@ class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
         )
     }
 
-    private fun ensureShader(radius: Float) {
+    private fun ensureGalaxyBrush(radius: Float) {
         if (radius == lastRadius) return
-        val darkCenter = Color.argb(255, 0, 0, 0)
-        val preThemeEdge = Palette.withAlpha(lastColors.primary, 130)
-        val themeEdge = Palette.withAlpha(lastColors.primary, 60)
-        fill.shader = RadialGradient(
-            0f, 0f, radius,
-            intArrayOf(darkCenter, Color.argb(160, 0, 0, 0), preThemeEdge, themeEdge, themeEdge),
-            floatArrayOf(0f, 0.5f, 0.7f, 0.9f, 1f),
-            Shader.TileMode.CLAMP
+        val darkCenter = Color(android.graphics.Color.argb(255, 0, 0, 0))
+        val darkMid = Color(android.graphics.Color.argb(160, 0, 0, 0))
+        val preThemeEdge = Color(Palette.withAlpha(lastColors.primary, 130))
+        val themeEdge = Color(Palette.withAlpha(lastColors.primary, 60))
+        galaxyBrush = Brush.radialGradient(
+            colorStops = arrayOf(
+                0f to darkCenter,
+                0.5f to darkMid,
+                0.7f to preThemeEdge,
+                0.9f to themeEdge,
+                1f to themeEdge
+            ),
+            center = Offset.Zero,
+            radius = radius
         )
         lastRadius = radius
     }
 
-    private fun drawStar(canvas: Canvas, cx: Float, cy: Float, outerR: Float, innerR: Float, paint: Paint) {
+    private fun DrawScope.drawStar(cx: Float, cy: Float, outerR: Float, innerR: Float, color: Color) {
         starPath.reset()
         for (i in 0 until 8) {
             val r = if (i % 2 == 0) outerR else innerR
@@ -164,19 +168,19 @@ class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
             if (i == 0) starPath.moveTo(px, py) else starPath.lineTo(px, py)
         }
         starPath.close()
-        canvas.drawPath(starPath, paint)
+        drawPath(starPath, color)
     }
 
-    override fun drawBody(canvas: Canvas) {
+    override fun DrawScope.drawBody() {
         val colors = responsiveGroup
         if (colors != lastColors) {
             lastColors = colors
             lastRadius = -1f
         }
-        ensureShader(renderer.radius)
+        ensureGalaxyBrush(renderer.radius)
 
-        canvas.withTranslation(renderer.x, renderer.y) {
-            drawCircle(0f, 0f, renderer.radius * 0.85f, fill)
+        withTransform({ translate(renderer.x, renderer.y) }) {
+            drawCircle(brush = galaxyBrush!!, radius = renderer.radius * 0.85f, center = Offset.Zero)
         }
 
         val outerRBase = renderer.radius * 0.12f
@@ -190,10 +194,9 @@ class GalaxySkin( override val renderer: PuckRenderer) : PuckSkin {
             val py = renderer.y + sin(ang) * dist
             val twinkle = (sin(frameF * seed[4] + seed[2]) + 1f) * 0.5f
             val alpha = (110 + 145 * twinkle).toInt()
-            // Set color with alpha in one shot — avoids a redundant star.alpha assignment
-            star.color = Palette.withAlpha(primaryColor, alpha)
+            val starColor = Color(Palette.withAlpha(primaryColor, alpha))
             val outerR = outerRBase * (0.6f + twinkle * 0.8f)
-            drawStar(canvas, px, py, outerR, outerR * 0.38f, star)
+            drawStar(px, py, outerR, outerR * 0.38f, starColor)
         }
     }
 

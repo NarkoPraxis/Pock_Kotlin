@@ -1,37 +1,34 @@
 package gameobjects.puckstyle.skins
 
 import android.graphics.Canvas
-import android.graphics.Color
+import android.graphics.Color as AndroidColor
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RadialGradient
-import android.graphics.Shader
+import android.graphics.Path as AndroidPath
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.Settings
-import gameobjects.puckstyle.CachedShaderSkin
-import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.CachedBrushSkin
+import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
-import androidx.core.graphics.withTranslation
 import gameobjects.puckstyle.paddles.IceLaunch
 import physics.Point
 import utility.Effects
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.sqrt
 
-class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) {
+class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
 
     private var lastColors = theme.main
 
-    private val rimStroke = Paint().apply {
-        color = Color.WHITE
-        isAntiAlias = true
-        style = Paint.Style.STROKE
-    }
-
-    // Cache to avoid recomputing rimStroke.strokeWidth every frame.
+    // Cache rim stroke width — updated only when radius changes
     private var cachedRadius = -1f
+    private var rimStrokeWidth = 0f
 
     override val explosionFrequency get() = 40
     override val scatterDensity get() = 0.9f
@@ -49,21 +46,19 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
         private val radius: Float,
         highGoal: Boolean,
         fullCircle: Boolean,
-        private val theme: ColorTheme
+        private val theme: gameobjects.puckstyle.ColorTheme
     ) : Effects.PersistentEffect {
         private val maxDistance = radius * 5f
-        private val crystalPath = Path()
+        private val crystalPath = AndroidPath()
         private val fill = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
         private val stroke = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE
-            // strokeWidth is constant; set once at construction.
             strokeWidth = Settings.strokeWidth * 0.5f
             color = theme.main.primary
             alpha = 130
         }
 
-        // Central large puddle
         private var centralFrame = 0
         private val centralDuration = 60
         private var _isDone = false
@@ -104,9 +99,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
                 if (c.postMeltFrame < 0) {
                     c.x += c.dirX * c.speed; c.y += c.dirY * c.speed
                     c.traveled += c.speed
-                    if (c.traveled >= c.maxDist) {
-                        c.postMeltFrame = 0
-                    }
+                    if (c.traveled >= c.maxDist) c.postMeltFrame = 0
                 } else {
                     c.postMeltFrame++
                     if (c.postMeltFrame >= c.meltDuration + c.fadeDuration) c.done = true
@@ -161,16 +154,13 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
                 if (i == 0) crystalPath.moveTo(px, py) else crystalPath.lineTo(px, py)
             }
             crystalPath.close()
-            fill.color = Color.WHITE; fill.alpha = 255
+            fill.color = AndroidColor.WHITE; fill.alpha = 255
             canvas.drawPath(crystalPath, fill)
-            // stroke color/alpha/strokeWidth set once at construction; no per-call reassignment.
             canvas.drawPath(crystalPath, stroke)
         }
 
         companion object {
             private val CRYSTAL_ANGLES = FloatArray(8) { i -> (i * 2.0 * PI / 8).toFloat() }
-            // Crystal shrink range: travel covers TRAVEL_T_START→TRAVEL_T_END, melt continues to 1.0.
-            // This ensures no size snap at the travel→melt boundary.
             private const val TRAVEL_T_START = 0.1f
             private const val TRAVEL_T_END = 0.35f
         }
@@ -184,31 +174,40 @@ class IceSkin(override val renderer: PuckRenderer) : CachedShaderSkin(renderer) 
         IceLaunch.spawnImpact(position.x, position.y, renderer.radius * .6f, theme)
     }
 
-    override fun createShader(radius: Float): Shader {
-        val midColor = Palette.lerpColor(lastColors.primary, Color.WHITE, 0.55f)
-        return RadialGradient(0f, 0f, radius,
-            intArrayOf(lastColors.primary, midColor, Color.WHITE),
-            floatArrayOf(0f, 0.5f, 1f),
-            Shader.TileMode.CLAMP)
+    override fun buildBrush(radius: Float): Brush {
+        val midColor = Color(Palette.lerpColor(lastColors.primary, AndroidColor.WHITE, 0.55f))
+        return Brush.radialGradient(
+            colorStops = arrayOf(
+                0f to Color(lastColors.primary),
+                0.5f to midColor,
+                1f to Color.White
+            ),
+            center = Offset.Zero,
+            radius = radius
+        )
     }
 
-    override fun drawBody(canvas: Canvas) {
+    override fun DrawScope.drawBody() {
         val colors = responsiveGroup
         if (colors != lastColors) {
             lastColors = colors
-            invalidateShader()
+            invalidateBrush()
         }
-        ensureShader(renderer.radius)
+        ensureBrush(renderer.radius)
 
-        // Update rimStroke.strokeWidth only when radius changes.
         if (cachedRadius != renderer.radius) {
             cachedRadius = renderer.radius
-            rimStroke.strokeWidth = renderer.strokePaint.strokeWidth * 0.7f
+            rimStrokeWidth = renderer.strokePaint.strokeWidth * 0.7f
         }
 
-        canvas.withTranslation(renderer.x, renderer.y) {
-            drawCircle(0f, 0f, renderer.radius, fill)
+        withTransform({ translate(renderer.x, renderer.y) }) {
+            drawCircle(brush = cachedBrush!!, radius = renderer.radius, center = Offset.Zero)
         }
-        canvas.drawCircle(renderer.x, renderer.y, renderer.radius, rimStroke)
+        drawCircle(
+            color = Color.White,
+            radius = renderer.radius,
+            center = Offset(renderer.x, renderer.y),
+            style = Stroke(width = rimStrokeWidth)
+        )
     }
 }

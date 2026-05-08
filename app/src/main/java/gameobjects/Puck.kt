@@ -1,6 +1,9 @@
 package gameobjects
 
 import android.graphics.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
@@ -47,28 +50,46 @@ class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circ
     }
 
     /** Full z-ordered draw: syncs position/physics state into renderer then delegates. */
-    override fun drawTo(canvas: Canvas) {
+    override fun DrawScope.drawTo() {
         syncRenderer()
-        renderer.draw(canvas)
+        with(renderer) { draw() }
     }
 
     /**
      * Body-only draw at a custom radius — used by teleport shrink/grow animations.
      * Does not go through z-ordering; just draws the skin at the given radius.
      */
-    override fun drawTo(radius: Float, canvas: Canvas) {
+    fun DrawScope.drawBodyAtRadius(radius: Float) {
         syncRenderer()
         val savedRadius = renderer.radius
         renderer.radius = radius
         val skin = renderer.skin
         if (skin != null) {
-            if (renderer.preview) canvas.drawCircle(x, y, radius, PaintBucket.placeholderPaint)
-            else skin.drawBody(canvas)
+            if (renderer.preview) {
+                drawCircle(
+                    color = androidx.compose.ui.graphics.Color(0.118f, 0.118f, 0.118f, 0.784f),
+                    radius = radius,
+                    center = Offset(x, y)
+                )
+            } else {
+                with(skin) { drawBody() }
+            }
         } else {
-            canvas.drawCircle(x, y, radius, fillPaint)
-            canvas.drawCircle(x, y, radius, strokePaint)
+            drawCircle(androidx.compose.ui.graphics.Color(fillColor), radius, Offset(x, y))
+            drawCircle(androidx.compose.ui.graphics.Color(strokeColor), radius, Offset(x, y),
+                style = Stroke(width = Settings.strokeWidth))
         }
         renderer.radius = savedRadius
+    }
+
+    /** Legacy Canvas draw — kept for Circle hierarchy compatibility; not called in normal game flow. */
+    override fun drawTo(canvas: Canvas) {
+        canvas.drawCircle(x, y, radius, fillPaint)
+    }
+
+    /** Legacy Canvas draw at radius — kept for Circle hierarchy compatibility. */
+    override fun drawTo(radius: Float, canvas: Canvas) {
+        canvas.drawCircle(x, y, radius, fillPaint)
     }
 
     private fun syncRenderer() {
