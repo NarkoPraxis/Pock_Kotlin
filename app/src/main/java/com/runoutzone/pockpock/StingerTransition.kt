@@ -52,7 +52,6 @@ class StingerTransition(context: Context, var activity: AppCompatActivity) : Vie
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawRect(rectangle, testPaint)
-        circle.drawTo(canvas)
 
         rectangle.offset(0f, step)
         circle.setLocation(circle.x, circle.y + step)

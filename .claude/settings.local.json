@@ -10,7 +10,11 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\zwery\\\\OneDrive\\\\Documents\\\\Android Studio\\\\Pock_Kotlin\" -Recurse -File -Filter \"*.kt\")",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Head -50)",
-      "Bash(./gradlew :app:compileDebugKotlin)"
+      "Bash(./gradlew :app:compileDebugKotlin)",
+      "Bash(./gradlew :app:linkDebugFrameworkIosSimulatorArm64)",
+      "Bash(./gradlew :app:linkDebugFrameworkIosSimulatorArm64 --info)",
+      "Bash(./gradlew :app:compileKotlinIosSimulatorArm64)",
+      "Bash(xargs -I{} bash -c 'jar tf {} 2>/dev/null | grep -i \"SyncCompose\"')"
     ]
   }
 }

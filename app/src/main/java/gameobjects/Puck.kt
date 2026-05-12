@@ -1,6 +1,5 @@
 package gameobjects
 
-import android.graphics.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -80,16 +79,6 @@ class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circ
                 style = Stroke(width = Settings.strokeWidth))
         }
         renderer.radius = savedRadius
-    }
-
-    /** Legacy Canvas draw — kept for Circle hierarchy compatibility; not called in normal game flow. */
-    override fun drawTo(canvas: Canvas) {
-        canvas.drawCircle(x, y, radius, fillPaint)
-    }
-
-    /** Legacy Canvas draw at radius — kept for Circle hierarchy compatibility. */
-    override fun drawTo(radius: Float, canvas: Canvas) {
-        canvas.drawCircle(x, y, radius, fillPaint)
     }
 
     private fun syncRenderer() {

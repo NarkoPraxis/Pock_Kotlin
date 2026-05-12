@@ -3,10 +3,15 @@ package gameobjects.puckstyle.skins
 import android.graphics.Canvas
 import android.graphics.Paint
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Canvas as ComposeCanvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import enums.Direction
 import gameobjects.Settings
 import gameobjects.puckstyle.PuckRenderer
@@ -117,8 +122,15 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
             PaintBucket.effectColor.toArgb(), color, color,
             position, radius, true, Direction.FULL, 100
         )
+        private val drawScope = CanvasDrawScope()
         override val isDone get() = explosion.finished
         override fun step() {}
-        override fun draw(canvas: Canvas) { explosion.drawTo(canvas) }
+        override fun draw(canvas: Canvas) {
+            drawScope.draw(
+                Density(1f), LayoutDirection.Ltr,
+                ComposeCanvas(canvas),
+                Size(Settings.screenWidth, Settings.screenHeight)
+            ) { with(explosion) { drawTo() } }
+        }
     }
 }
