@@ -77,50 +77,7 @@ object Logic {
     }
 
     fun initializeSettings(width: Int, height: Int) {
-        Settings.tailLength = Storage.tailLength
-        Settings.chargeIncreaseRate = Storage.chargeSpeed
-        Settings.refreshRate = Storage.gameSpeed
-        Settings.pointsToWin = Storage.loadPointsToWin()
-        Settings.highBallType = Storage.loadHighBallType(Settings.highBallType)
-        Settings.lowBallType = Storage.loadLowBallType(Settings.lowBallType)
-        Settings.unlockProgress = Storage.unlockProgress
-        Settings.highPlayerArrow = Storage.highPlayerArrow
-        Settings.lowPlayerArrow = Storage.lowPlayerArrow
-        Settings.highPlayerChargeFill = Storage.highPlayerChargeFill
-        Settings.lowPlayerChargeFill = Storage.lowPlayerChargeFill
-        Settings.scoreOffsetHigh = Storage.scoreOffsetHigh.toFloat()
-        Settings.scoreOffsetLow = Storage.scoreOffsetLow.toFloat()
-
-        Settings.screenWidth = width.toFloat()
-        Settings.screenHeight = height.toFloat()
-        Settings.middleX = Settings.screenWidth / 2f
-        Settings.middleY = Settings.screenHeight / 2f
-        Settings.screenRatio = (Settings.screenWidth / 20).coerceIn(0f, 54f)
-        Settings.screenHeightRatio = (Settings.screenHeight / 40).coerceIn(0f, 54f)
-
-        val ballSizeSettings =  when (Storage.ballSize) {
-            "small" -> .5f
-            "default" -> 1f
-            "large" -> 1.5f
-            else -> 1f
-        }
-
-        Settings.ballRadius = Settings.screenRatio * ballSizeSettings
-
-        Settings.maxPuckSpeed = Settings.screenRatio * (5f/8f)
-        Settings.maxPuckLaunchSpeed = Settings.screenRatio * (6f/8f)
-        Settings.minPuckSpeed = Settings.screenRatio * (1f/8f)
-        Settings.shortParticleSide = Settings.screenRatio / 3f
-        Settings.longParticleSide = Settings.screenRatio - Settings.shortParticleSide
-        Settings.screenLeft = Settings.shortParticleSide
-        Settings.screenRight = Settings.screenWidth - Settings.shortParticleSide
-        Settings.screenTop = Settings.shortParticleSide
-        Settings.screenBottom = Settings.screenHeight - Settings.shortParticleSide
-        Settings.strokeWidth = Settings.screenRatio / 4
-
-        Settings.topGoalBottom = Settings.screenRatio * Settings.scoreZoneHeight
-        Settings.bottomGoalTop = Settings.screenHeight - Settings.topGoalBottom
-
+        Settings.initializeForScreen(width, height)
         highStartX = Settings.screenWidth / 4f
         lowStartX = Settings.screenWidth * (3 / 4f)
     }

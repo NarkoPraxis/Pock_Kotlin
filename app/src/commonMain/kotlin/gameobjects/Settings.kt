@@ -94,4 +94,48 @@ object Settings {
 
     var isSinglePlayer: Boolean = false
     var botConfig: BotConfig = BotConfig.Easy
+
+    fun initializeForScreen(width: Int, height: Int) {
+        tailLength = utility.Storage.tailLength
+        chargeIncreaseRate = utility.Storage.chargeSpeed
+        refreshRate = utility.Storage.gameSpeed
+        pointsToWin = utility.Storage.loadPointsToWin()
+        highBallType = utility.Storage.loadHighBallType(highBallType)
+        lowBallType = utility.Storage.loadLowBallType(lowBallType)
+        unlockProgress = utility.Storage.unlockProgress
+        highPlayerArrow = utility.Storage.highPlayerArrow
+        lowPlayerArrow = utility.Storage.lowPlayerArrow
+        highPlayerChargeFill = utility.Storage.highPlayerChargeFill
+        lowPlayerChargeFill = utility.Storage.lowPlayerChargeFill
+        scoreOffsetHigh = utility.Storage.scoreOffsetHigh.toFloat()
+        scoreOffsetLow = utility.Storage.scoreOffsetLow.toFloat()
+
+        screenWidth = width.toFloat()
+        screenHeight = height.toFloat()
+        middleX = screenWidth / 2f
+        middleY = screenHeight / 2f
+        screenRatio = (screenWidth / 20).coerceIn(0f, 54f)
+        screenHeightRatio = (screenHeight / 40).coerceIn(0f, 54f)
+
+        val ballSizeMod = when (utility.Storage.ballSize) {
+            "small" -> .5f
+            "large" -> 1.5f
+            else -> 1f
+        }
+        ballRadius = screenRatio * ballSizeMod
+
+        maxPuckSpeed = screenRatio * (5f / 8f)
+        maxPuckLaunchSpeed = screenRatio * (6f / 8f)
+        minPuckSpeed = screenRatio * (1f / 8f)
+        shortParticleSide = screenRatio / 3f
+        longParticleSide = screenRatio - shortParticleSide
+        screenLeft = shortParticleSide
+        screenRight = screenWidth - shortParticleSide
+        screenTop = shortParticleSide
+        screenBottom = screenHeight - shortParticleSide
+        strokeWidth = screenRatio / 4
+
+        topGoalBottom = screenRatio * scoreZoneHeight
+        bottomGoalTop = screenHeight - topGoalBottom
+    }
 }
