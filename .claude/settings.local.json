@@ -9,7 +9,8 @@
       "Bash(Format-Table FullName)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\zwery\\\\OneDrive\\\\Documents\\\\Android Studio\\\\Pock_Kotlin\" -Recurse -File -Filter \"*.kt\")",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(Head -50)"
+      "Bash(Head -50)",
+      "Bash(./gradlew :app:compileDebugKotlin)"
     ]
   }
 }
