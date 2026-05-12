@@ -1,53 +1,136 @@
-# Pock — CLAUDE.md
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What This Is
 
-**Pock** is a 2-player local-multiplayer mobile game for Android. Two players hold the phone together (one at each end, or flat on a table) and each uses one finger to control a circular "puck." The goal is to knock the opponent's puck into one of the score zones (top or bottom edge of screen). First player to 5 points wins.
+**Pock** is a 2-player local-multiplayer mobile game targeting both Android and iOS. Two players hold the phone together and each uses one finger to control a circular "puck." The goal is to knock the opponent's puck into one of the score zones (top or bottom edge of screen). First to N points wins.
 
-The game is custom-rendered using Android `Canvas` — there are **no XML layouts for the game screen**, only for the main menu and settings. All game drawing is done frame-by-frame in `onDraw`.
+The project is a **Kotlin Multiplatform (KMP)** app using Compose Multiplatform for rendering. All game drawing is done frame-by-frame in a Compose `Canvas` via `DrawScope`; there are no XML layouts for the game screen.
 
 ## Plans & Workflow
 
-Plans are stored in `Plans/`. When a plan is completed, **prepend `✅` to the filename and move it to `Plans/Finished/`** immediately — do this automatically without waiting to be asked. Example: `07-move-ads-remaining-label.md` → `Plans/Finished/✅07-move-ads-remaining-label.md`.
+Plans are stored in `Plans/<project_name>`. When a plan is completed, **prepend `✅` to the filename and move it to `Plans/<project_name>/Finished/`** immediately — do this automatically without waiting to be asked. Example: `ios-refactor/07-move-ads-remaining-label.md` → `Plans/ios-refactor/ssFinished/✅07-move-ads-remaining-label.md`.
+
+---
+
+## Build Commands
+
+```bash
+# Android debug build
+./gradlew :app:assembleDebug
+
+# Android release build
+./gradlew :app:assembleRelease
+
+# Compile Kotlin (check for errors without full build)
+./gradlew :app:compileDebugKotlin
+
+# iOS — generate the KMP framework Xcode needs
+./gradlew :app:linkDebugFrameworkIosSimulatorArm64
+
+# iOS — build via Gradle wrapper (calls xcodebuild internally)
+./gradlew :iosApp:buildDebug
+
+# iOS — build directly with xcodebuild (from iosApp/ dir)
+xcodebuild -project iosApp.xcodeproj -scheme iosApp -configuration Debug \
+  -destination "platform=iOS Simulator,name=iPhone 15" build
+
+# Clean
+./gradlew clean
+```
+
+There are no unit tests beyond the boilerplate `ExampleUnitTest`. Run instrumented tests with `./gradlew :app:connectedAndroidTest`.
 
 ---
 
 ## Architecture
 
+### KMP Source Set Layout
+
+```
+app/src/
+  commonMain/kotlin/     ← shared game logic (runs on both platforms)
+  androidMain/kotlin/    ← Android-specific expect/actual implementations
+  iosMain/kotlin/        ← iOS-specific expect/actual implementations
+  main/java/             ← legacy Android-only code (not yet migrated to androidMain)
+  main/res/              ← Android resources (still in src/main/ during migration)
+  androidMain/           ← AndroidManifest.xml lives here (KMP remapping)
+iosApp/
+  iosApp.xcodeproj/      ← Xcode project
+  iosApp/                ← Swift entry point (ContentView.swift, iOSApp.swift)
+```
+
+The `afterEvaluate` block in `app/build.gradle` keeps `src/main/java`, `src/main/res`, and `src/main/assets` on the Android source path during migration. New platform-agnostic code goes in `commonMain`; new Android-specific code goes in `androidMain` (not `src/main/java`).
+
+### expect/actual Bridges
+
+Four `expect` declarations wire the KMP boundary. Every new platform capability needs this pattern.
+
+| File (commonMain) | What it declares | Android actual | iOS actual |
+|---|---|---|---|
+| `utility/DrawingBridge.kt` | `DrawScope.drawGameFrame()` | delegates to `Drawing.drawFrame()` | **stub** — draws background rect only |
+| `utility/TouchBridge.kt` | `onGamePointerDown/Move/Up()` | delegates to `Logic.onPointerDown/Move/Up()` | **stub** — no-ops |
+| `utility/GameLoop.kt` | `class GameLoop(intervalMs, onTick)` | `Handler.postDelayed` loop | coroutine loop on `Dispatchers.Main` |
+| `utility/PlatformStorage.kt` | `object PlatformStorage` | `SharedPreferences` (two stores: `adPreferences`, default) | `NSUserDefaults` (keys namespaced `store_key`) |
+
+**The iOS game is not yet rendering or accepting input** — both `DrawingBridge` and `TouchBridge` iOS actuals are stubs. All iOS game work must land in those two files and the underlying systems they call.
+
+### Navigation (Compose Multiplatform)
+
+`AppRoot.kt` (`commonMain`) owns navigation with a `NavHost`:
+```
+MainMenuScreen → GameScreen (via IosGameHost wrapper)
+             → SettingsScreen
+             → BallUnlockScreen
+```
+
+iOS entry: `MainViewController.kt` (`iosMain`) → `ComposeUIViewController { AppRoot() }` → Swift `ContentView` wraps it as `UIViewControllerRepresentable`.
+
+Android still uses legacy `MainActivity` (XML layout) + `GameActivity` (Compose `setContent`) for the game. The `AppRoot` nav graph is shared but Android routes game launch through `GameActivity`, not through `AppRoot`.
+
 ### Package Structure
 
 | Package | Purpose |
 |---|---|
-| `com.runoutzone.pockpock` | Activities (`MainActivity`, `PlayView`, `GameActivity`, `TutorialView`, `BallUnlockActivity`) + `GameView` base class |
-| `enums` | All state enums (GameState, FingerState, TouchState, MotionStates, Direction, MenuSelection, TutorialState) |
-| `gameobjects` | `Player`, `Puck`, `Settings` (global config singleton), `PauseMenu` |
-| `gameobjects/puckstyle` | Ball-style composition: `PuckSkin`, `TailRenderer`, `BallStyleFactory`, `ColorTheme`, `Palette`; `skins/` and `tails/` subpackages (one file per ball type) |
-| `physics` | `Force` (direction + power vector), `Point` (2D vector/position), `Ticker` (countdown/countup timer), `TutorialTicker` |
-| `shapes` | `Shape` (base), `Circle`, `DrawablePoint`, `Explosion`, `ScoreExplosion`, `HandSelection`, `TutorialBox`, `Collision`, `BallSelectionCard`, `BallSelectionPopup` |
-| `utility` | `Logic` (game loop logic singleton), `Drawing` (rendering singleton), `Effects` (particle system), `PaintBucket` (all `Paint` objects), `Sounds` (audio singleton), `Storage` (SharedPreferences), `Tutorial` (tutorial flow singleton) |
+| `com.runoutzone.pockpock` (commonMain) | `AppRoot`, screen composables |
+| `com.runoutzone.pockpock` (main/java) | Activities (`MainActivity`, `GameActivity`, `BallUnlockActivity`, etc.) |
+| `enums` | All state enums (GameState, TouchState, MotionStates, Direction, MenuSelection, TutorialState, BallType) |
+| `gameobjects` | `Player`, `Puck`, `Settings`, `PauseMenu`, `BotBrain`, `BotConfig` |
+| `gameobjects/puckstyle` | `PuckRenderer`, `PuckSkin`, `TailRenderer`, `BallStyleFactory`, `ColorTheme`, `Palette`, `ChargePhase`, `RandomRoll` |
+| `gameobjects/puckstyle/skins` | One file per ball type skin |
+| `gameobjects/puckstyle/tails` | One file per ball type tail |
+| `gameobjects/puckstyle/paddles` | One file per ball type paddle (named `*Launch.kt`) |
+| `physics` | `Force`, `Point`, `Ticker`, `TutorialTicker` |
+| `shapes` | `Circle`, `DrawablePoint`, `Explosion`, `ScoreExplosion`, `Collision`, `BallSelectionPopup`, `TutorialBox` |
+| `utility` | `Logic`, `Drawing`, `Effects`, `PaintBucket`, `Sounds`, `SoundSpatializer`, `Storage`, `PlatformStorage`, `GameLoop`, `GameEvents`, `Signal`, `PurchaseManager`, `ShareHelper` |
 
 ### Key Singletons
 
-- **`Settings`** (`gameobjects`) — All runtime configuration: screen dimensions, ball size, speed, score state, game phase. Set once from `Storage` in `Logic.initializeSettings()`.
-- **`Logic`** (`utility`) — All game logic: player initialization, collision detection, touch routing, game state transitions, pause menu actions.
-- **`Drawing`** (`utility`) — All canvas drawing: arena, walls, players, scores, countdown rectangles.
-- **`PaintBucket`** (`utility`) — All `Paint` objects. Initialized from `Resources` in `PaintBucket.initialize()` after screen size is known.
-- **`Sounds`** (`utility`) — `SoundPool` for SFX + `MediaPlayer` for ambient music.
-- **`Tutorial`** (`utility`) — Tutorial state machine. Chains `TutorialBox` objects in a linked list.
+- **`Settings`** (`commonMain/gameobjects`) — All runtime configuration: screen dimensions, ball size, speed, score state, game phase. Initialized once via `Settings.initializeForScreen(width, height)` which also reads `Storage`.
+- **`Logic`** (`src/main/java/utility`) — All game logic: player init, collision detection, touch routing, game state transitions, pause menu. Android-only; iOS will need a `commonMain` equivalent.
+- **`Drawing`** (`src/main/java/utility`) — All `DrawScope` canvas rendering. `DrawScope.drawFrame()` is the entry point called from `DrawingBridge`.
+- **`PaintBucket`** (`commonMain/utility`) — All colors (Compose `Color`) and stroke descriptors. Android additionally exposes `android.graphics.Paint` objects via extension properties in `PaintBucketAndroid.kt` (`androidMain`). Call `PaintBucket.initialize(screenRatio)` after screen dims are known; Android also calls `initializeColors(resources)` then `buildPaints(resources)`.
+- **`Sounds`** (`expect object`) — SFX + ambient music. Android: `SoundPool` + `MediaPlayer`. iOS: `AVAudioEngine` + `AVAudioPlayer` (10-channel SFX pool with pitch nodes).
+- **`SoundSpatializer`** (`commonMain/utility`) — Shared pitch-rate grid for positional audio. Both platform `Sounds` implementations call `SoundSpatializer.getXRate()` / `getYRate()`.
+- **`Storage`** (`commonMain/utility`) — Thin facade over `PlatformStorage`. All persistence goes through here.
+- **`GameEvents`** (`src/main/java/utility`) — Simple signal bus: `canScore`, `cantScore`, `gameOver`, `gameReset` signals. Use `Signal<T>.connect/disconnect/emit`.
 
 ### Game Loop
 
-The game loop runs in `PlayView.startPlayers()` via `Handler.postDelayed` at `Settings.refreshRate` ms (default 16 ms ≈ 60 fps). The game state machine (`Settings.gameState`) drives what logic runs each tick:
+Android: `PlayView.startPlayers()` starts a `GameLoop` (Handler-based). Each tick runs the state machine:
+```
+BallSelection → Play → Scored → Play → ... → GameOver → BallSelection
+```
+(`CountDown` is a dead/unused state in the current code.)
 
-```
-FingerSelection → CountDown → Play → Scored → CountDown → ... → GameOver → FingerSelection
-```
+iOS: `IosGameHost` in `AppRoot.kt` creates a coroutine-based `GameLoop` that increments a `mutableIntStateOf` tick counter, which forces `GameScreen`'s `Canvas` to redraw. `Settings.initializeForScreen`, `PaintBucket.initialize`, and `Sounds.initializeGame` are called once on the first `onSizeChanged`.
 
 ### Coordinate System / Screen Layout
 
 ```
 ┌────────────────────┐  y=0
-│   HIGH score zone  │  (topGoalBottom = screenRatio * 3)
+│   HIGH score zone  │  (topGoalBottom = screenRatio * scoreZoneHeight)
 ├────────────────────┤  y=topGoalBottom
 │                    │
 │   Play area        │
@@ -57,135 +140,126 @@ FingerSelection → CountDown → Play → Scored → CountDown → ... → Game
 └────────────────────┘  y=screenHeight
 ```
 
-- **highPlayer** controls the top half; **lowPlayer** controls the bottom half.
-- Screen is mirrored 180° for the high player — all drawing for high player uses `canvas.scale(-1, -1)` around screen center. This means the high player's view is naturally upright from their side of the phone.
-- `Settings.screenRatio` = `min(width, height) / 20` — used as the universal unit for all sizes.
+- `screenRatio = min(screenWidth / 20, 54f)` — the universal size unit.
+- The high player's view is mirrored 180°. All drawing for the high player uses `canvas.scale(-1f, -1f, middleX, middleY)` (Android) or equivalent transform. See `Drawing.mirrorText()`.
 
 ### Physics
 
-- `Force` = direction (`Point`, normalized) + `power` (scalar). Two forces per puck: `movement` (charge-release) and `launch` (collision). Combined each frame in `Puck.getNextDirection()`.
-- Friction applied every frame via `Force.applyFriction(Settings.friction)`.
-- Bounce: when puck would cross a wall, direction component is reflected. If inside a score zone and launched, the full arena boundaries apply (puck can enter goal zones mid-flight).
-
-### Finger Selection System
-
-Before each round, players choose a finger (Left Thumb, Right Thumb, Left Pointer, Right Pointer) from `HandSelection` circles. This sets `FingerState`, which affects how raw touch coordinates are `transform()`ed into puck-movement coordinates in `Logic.transform()`. Thumb fingers have more exaggerated mapping (scale factors 2x and 3.5x); pointer fingers use a quadratic mapping on x.
+- `Force` = direction (`Point`, normalized) + `power` (scalar). Each puck has `movement` and `launch` forces combined per frame in `Puck.getNextDirection()`.
+- Friction: `Force.applyFriction(Settings.friction)` every frame.
+- Bounce: crossing a wall reflects the relevant direction component. Pucks can enter score zones mid-flight.
 
 ### Charge System
 
-1. Hold finger down → `charge` increases from `chargeStart (10)` up to `sweetSpotMax (50)`.
-2. Sweet spot: `sweetSpotMin (40)` to `sweetSpotMax (50)` — releasing here sets `shielded = true`.
-3. Overcharge: `charge >= sweetSpotMax` → resets to half and locks (`chargePowerLocked = true`) until released.
-4. Shielded puck: when it collides with an unshielded puck, the shielded puck wins — opponent launches at max + bonus, shielded puck barely moves.
-5. Both shielded: both shields cancel, both launch at their respective stored powers.
+1. Hold → `charge` increases from `chargeStart` to `sweetSpotMax (50)`.
+2. Sweet spot: `sweetSpotMin (40)` to `sweetSpotMax (50)` — release here sets `shielded = true`.
+3. Overcharge: `charge >= sweetSpotMax` → resets to half, locks until release.
+4. Shielded vs unshielded collision: shielded wins; both shielded: both shields persist.
 
 ### Ball Types System
 
-12 `BallType` enum values: Classic, Neon, Ghost, Fire, Ice, Galaxy, Spiral, Metal, Pixel, Rainbow, Prism, Plasma.
+14 `BallType` enum values: Classic, Neon, Ghost, Fire, Ice, Galaxy, Spinner, Metal, Pixel, Rainbow, Prism, Plasma, Chicken, Random.
 
-- **Composition**: each puck has a `PuckSkin` (handles fill/stroke drawing) and a `TailRenderer` (handles trail). `BallStyleFactory` creates the correct skin+tail for a given `BallType`.
-- **Color themes**: `ColorTheme` holds primary/secondary/accent colors per type. Warm theme = high player; cold theme = low player.
-- **Unlock rule** in `BallStyleFactory.isUnlocked`: Classic always free; indices 1–9 unlock at `adsLeft ≤ 100 - ordinal*10`; Prism + Plasma both unlock at `adsLeft == 0`.
-- **Persistence**: `Storage.saveHighBallType`/`saveLowBallType` in `ad` SharedPreferences. Loaded in `Logic.initializeSettings()` AND `Logic.resetGame()`.
-- **In-game selection**: `BallSelectionCard` shown in each goal during FingerSelection. Tapping opens `BallSelectionPopup` — a horizontal drag-scroll strip across the goal width. High popup is positioned below `topGoalBottom`; low popup above `bottomGoalTop`. Touch routing via `Logic.interceptBallMenu`.
-- **Main-menu unlock screen**: `BallUnlockActivity` + `BallUnlockView` — 2×6 vertically scrollable animated preview grid with lock overlays. "Watch Ad to Unlock" decrements `adsLeft` by 2 per reward.
-- **Preview convention**: always call `previewPuck.setFill(theme.primary); previewPuck.setStroke(theme.secondary)` before `drawTo()`, or Classic renders with stale PaintBucket colors.
-- **Mirror drag**: for the mirrored high-player popup, drag delta must be inverted: `logicalX = 2*cx - screenX`.
+- **Composition**: `PuckRenderer` owns a `PuckSkin` (fill/stroke), `TailRenderer` (trail), and `PaddleLaunchEffect` (paddle + strike animation). `BallStyleFactory.buildRenderer()` creates the full renderer for a given type.
+- **Unlock rule** in `BallStyleFactory.isUnlocked`: Classic and Chicken always free; indices 1–9 unlock at `unlockProgress >= ordinal * 10`; Prism, Plasma, and Random unlock at `unlockProgress >= 100`. `Storage.unlockProgress` is currently hardcoded to 100 — do not change it; the owner will update it manually.
+- **Persistence**: `Storage.saveHighBallType` / `saveLowBallType`. Loaded in `Settings.initializeForScreen`. Note: `Spiral` is migrated to `Spinner` on read.
+- **Color themes**: `ColorTheme.getTheme(isHigh)` — warm theme for high player, cold for low.
+- **In-game selection** (`BallSelection` state): `BallSelectionPopup` shown as a horizontal drag-scroll strip in each goal. Touch routed via `Logic.interceptBallMenu`. High popup: mirror drag delta (`logicalX = 2*cx - screenX`).
+- **Preview convention**: always call `previewPuck.setFill(theme.primary); previewPuck.setStroke(theme.secondary)` before `drawTo()`.
 
 ### Paddle System
 
-Each ball type has a **paddle** — a tethered visual object that sits behind the puck along the aim vector and communicates charge state to the player. Paddles are implemented in `gameobjects/puckstyle/launcheffects/` and the directory name `launcheffects` is a historical misnomer: the paddle is the primary concept, and the launch effect (animation of the paddle striking the puck) is secondary behavior the paddle also handles.
+Paddles live in `gameobjects/puckstyle/paddles/` (files named `*Launch.kt`). The directory `launcheffects/` referenced in old docs was renamed to `paddles/`.
 
-- **`LaunchEffect` interface** and **`PaddleLaunchEffect` base class** define the paddle, not just a post-launch animation. When you see "LaunchEffect" in the code, think "paddle."
-- **`PaddleLaunchEffect`** handles all kinematics (distance from puck, aim direction, travel-to-strike animation) in one place. Subclasses (`ClassicLaunch`, `FireLaunch`, etc.) override only the visual drawing methods.
-- **Charge phases** (`ChargePhase` enum: `Idle`, `Building`, `SweetSpot`, `Overcharged`) are computed in `PaddleLaunchEffect.updateState()` from `Settings` constants and exposed to subclasses via `phase` and `chargeFillRatio`. All paddles should derive phase thresholds from `Settings` constants, never hardcode charge values.
-- **`chargePaint` in `PuckRenderer`** is the old charge ring visual. It is **deprecated** — the paddle replaced it. Do not add new logic to the charge ring.
-- **Residual effects**: on a sweet-spot release, `onSpawnResidual()` is called after the strike animation finishes. Currently these are short-lived (10 frames). The intended behavior is that sweet-spot residuals persist in the arena until the next goal is scored.
+- **`LaunchEffect` interface** + **`PaddleLaunchEffect` base class** define the paddle kinematics and strike animation. Subclasses override only visual drawing.
+- **`ChargePhase`** (`Idle`, `Building`, `SweetSpot`, `Overcharged`) computed from `Settings` constants in `PaddleLaunchEffect.updateState()`. Never hardcode charge thresholds in subclasses.
+- **`chargePaint` in `PuckRenderer`** is deprecated (replaced by paddle). Do not add logic to it.
 
-### Sound Design Convention
+### Single-Player Bot
 
-Sounds are spatialized using a 6-zone pitch grid (`rates` array in `Sounds`). Horizontal position → pitch rate from `getXRate()`, vertical position → rate from `getYRate()`. This gives positional audio flavor without spatial audio APIs.
+`BotBrain` + `BotConfig` (`gameobjects`). Created in `Logic.initialize` when `Settings.isSinglePlayer` is true. Three presets: `BotConfig.Easy`, `Medium`, `Hard`. `BotBrain.tick()` is called each game loop tick before logic updates.
+
+### Unlock / Monetization
+
+**Android**: `PurchaseManager` (`utility`) wraps Google Play Billing (`billing-ktx`). One in-app product (`PRODUCT_ID = "unlock_all"`) sets `Storage.unlockProgress = 100` on purchase. `MainActivity` still loads AdMob (`play-services-ads`) for the rewarded ad path but the billing path is the primary unlock mechanism.
+
+**iOS**: No billing or ad integration yet. `Storage.unlockProgress` is hardcoded to 100 (`Storage.kt`, line ~34); leave it alone.
+
+### Sound Design
+
+Sounds are spatialized via `SoundSpatializer` (shared): a 6-zone pitch grid (`rates` array). `getXRate(x)` / `getYRate(y)` map screen position to a pitch rate. Both Android and iOS `Sounds` implementations call these. The iOS implementation uses a 10-node `AVAudioEngine` pool with `AVAudioUnitTimePitch` for pitch shifting.
 
 ---
 
 ## Conventions You Use
 
-- **Global objects over passing context**: `Settings`, `Logic`, `Drawing`, `PaintBucket`, `Sounds`, `Tutorial`, `Effects` are all `object` singletons. Don't refactor these into DI or constructor-injected classes — the design is intentional.
-- **Mirror everything**: The game renders content upside-down for the top player. All drawing that must be readable from both sides uses `canvas.scale(-1f, -1f, middleX, middleY)` then draws again. See `Drawing.mirrorText()` and `Drawing.drawScores()`.
-- **`screenRatio` is the unit**: All sizes (ball radius, wall thickness, particle sizes, text, etc.) are multiples of `Settings.screenRatio`. Never hardcode pixel sizes.
-- **`Ticker`**: The game's timing primitive. Ascending tickers count up to a max and expose `ratio` (0.0–1.0) and `finished`. Use ascending tickers for progress animations, descending for countdowns.
-- **Touch routing**: Single-touch goes to whichever player's half the touch is in. Multi-touch: pointer 0 and pointer 1 are mapped to high/low based on `highTouchedFirst` (which player put their finger down first). This is set in `ACTION_DOWN` handling.
+- **Global objects over passing context**: `Settings`, `Logic`, `Drawing`, `PaintBucket`, `Sounds`, `Storage`, `Effects` are all object singletons. Don't refactor these into DI or constructor-injected classes — the design is intentional.
+- **Mirror everything**: Content for the top player is drawn upside-down using `canvas.scale(-1f, -1f, middleX, middleY)`. All text and asymmetric shapes that must be readable from both ends are drawn twice. See `Drawing.mirrorText()`.
+- **`screenRatio` is the unit**: All sizes (ball radius, wall thickness, text, etc.) are multiples of `Settings.screenRatio`. Never hardcode pixel sizes.
+- **`Ticker`**: The game's timing primitive. Ascending tickers count up and expose `ratio` (0–1) and `finished`. Use ascending for progress animations, descending for countdowns.
+- **Touch routing**: Single-touch goes to whichever player's half the touch is in. Multi-touch: pointer 0 and pointer 1 are mapped to high/low based on `highTouchedFirst`.
 - **Player symmetry**: `highPlayer` and `lowPlayer` are always both initialized. Actions on one almost always have a parallel action on the other.
-- **Tail length is fixed**: Tails must never change length based on charge state or shield state. Always use the base length (`baseCount * Settings.tailLengthMultiplier`). If a tail implementation varies length on `shielded` or charge phase, correct it to use the constant base value. (`ClassicTail` and `MetalTail` previously grew to 80 on shield — this is fixed.)
-- **Compose DrawScope transforms: use direct coordinates for rotation/complex transforms**: `withTransform({ translate(x,y); rotate(angle) })` and `withTransform({ rotate(angle) })` do not reliably rotate around the translated origin in this project's DrawScope setup — paths end up offset and at the wrong radius. Prefer Compose `DrawScope` draw calls (drawCircle, drawLine, etc.) when a simple center offset suffices. But any time you need to draw a `Path` with rotation, compute the final screen coordinates directly using trig and draw in absolute screen space — no `withTransform`. Pattern used in `SpinnerSkin` and `PrismSkin`:
+- **Tail length is fixed**: Never vary tail length based on charge or shield state. Always use `baseCount * Settings.tailLengthMultiplier`.
+- **Compose DrawScope transforms — use direct coordinates for rotation**: `withTransform { rotate(...) }` does not reliably rotate paths around the translated origin. For any `Path` that needs rotation, compute final screen coordinates using trig and draw in absolute screen space. Pattern:
   ```kotlin
   val rad = angleDegrees * (Math.PI.toFloat() / 180f)
   val cosA = cos(rad); val sinA = sin(rad)
   fun sx(lx: Float, ly: Float) = renderer.x + lx * cosA - ly * sinA
   fun sy(lx: Float, ly: Float) = renderer.y + lx * sinA + ly * cosA
-  path.moveTo(renderer.x, renderer.y)
-  path.lineTo(sx(localX, localY), sy(localX, localY))
-  drawPath(path, color)
   ```
+- **KMP expect/actual**: When adding a new platform capability, declare `expect` in `commonMain`, `actual` in both `androidMain` and `iosMain`. iOS actuals may be stubs initially — mark them clearly.
+- **`PaintBucket` Android extensions**: Android-specific `Paint` objects are extension properties defined in `PaintBucketAndroid.kt` (`androidMain`), not in the `PaintBucket` object itself. New Android paints go there; new cross-platform colors go in the `PaintBucket` object.
 
 ---
 
 ## Outstanding Issues / Needs Before Ship
 
-### Critical (Play Store blockers)
+### iOS — Not Yet Functional
 
-1. **All ad unit IDs are test IDs** — Replace before launch:
-   - `MainActivity.kt` — rewarded ad test ID (TODO comment already there); verify live ID `ca-app-pub-1111532606958888/6682727846`
-   - `GameActivity.kt` — interstitial test ID
-   - `strings.xml` — `interstitial_ad_unit_id` is test ID
-2. **AdMob Application ID** — `AndroidManifest.xml` has `ca-app-pub-1111532606958888~7923000787`; verify this is the real production app ID.
+1. **`DrawingBridge` iOS actual is a stub** — only draws the background rect. The full `Drawing.drawFrame()` call path (and its dependency on `Logic`, `Player`, etc.) needs to be wired into `iosMain/utility/DrawingBridge.kt`.
+2. **`TouchBridge` iOS actual is a stub** — all three touch handlers are no-ops. `Logic.onPointerDown/Move/Up` (or a KMP-ified equivalent) must be called from the iOS actual.
+3. **`Logic` is Android-only** — it imports `AppCompatActivity`, `MotionEvent`, etc. iOS needs either a refactored `Logic` in `commonMain` or a separate iOS game controller.
+
+### Critical (Store blockers)
+
+4. **`PurchaseManager.PRODUCT_ID`** — `"unlock_all"` is a placeholder. Replace with the real Google Play product ID before Android launch.
+5. **AdMob IDs still present** — `MainActivity.kt` and `strings.xml` contain test interstitial/rewarded ad unit IDs. Verify whether the ad path is still used alongside IAP; replace test IDs with live IDs before launch.
+6. **AdMob Application ID** — `AndroidManifest.xml` has `ca-app-pub-1111532606958888~7923000787`; verify this is the real production app ID.
 
 ### Bugs
 
-1. **`Player.puckFillColor` is stale after `setPuckColor()` is called** — `puckFillColor` is set once at construction and referenced in `drawTail()` for the non-launched, non-shielded tail color. `Logic.setPuckColor()` → `puck.setFill()` updates `puck.fillColor` but not `Player.puckFillColor`. During the brief Scored state, the tail will briefly show the wrong color.
-2. **`alwaysBlackTextPaint` text size is hardcoded at `120f` pixels** — `PaintBucket.alwaysBlackTextPaint` and `textPaint` both use `textSize = 120f`, a raw pixel value. Should use a `screenRatio`-based size so score numbers scale properly on different screen densities.
-3. **Score text position may clip for double-digit scores** — `Drawing.drawScore()` uses a `screenRatio / 2`-based x-offset, which is tight for two-digit score strings at large text sizes.
-4. **`twoChargeCollisionId` and `teleportId` have no dedicated sound assets** — Placeholder sounds are used (`sheilded_collision` and `charge_activated`). Proper audio assets (`two_charge_collision.mp3`, `teleport.mp3`) should be added to `res/raw/`.
-5. **`Sounds` cell dimensions not recalculated after `initializeGame()`** — `cellWidth` and `cellHeight` are computed at object-declaration time when `Settings` fields are all `0f`. Currently safe because sounds are not called during FingerSelection, but fragile.
-6. **`checkScored()` assigns wrong colors on score** — Swaps puck colors during Scored state regardless of which player is actually high or low. `resetPlayerStates()` restores both. Appears intentional (brief flash) but verify no edge case leaves colors permanently swapped on GameOver.
-7. **`finger` circle movement wastes calculations during FingerSelection** — `Logic.assignFingerLocation()` sets `fingerTargetLocation = player.puck`; circles are never visible here but movement calculations run every frame.
-8. **`Sounds.initialize()` vs `Sounds.initializeGame()` are two separate init paths** — If `initializeGame()` is ever skipped, pitch spatialization silently uses wrong cell dimensions.
+7. **`Player.puckFillColor` is stale after `setPuckColor()` is called** — `puckFillColor` is set at construction and used in tail drawing. `Logic.setPuckColor()` calls `puck.setFill()` but not `Player.puckFillColor`. Brief wrong-color tail during Scored state.
+8. **`checkScored()` assigns wrong colors on score** — swaps puck colors during Scored regardless of which player scored. `resetPlayerStates()` restores both. Appears intentional (brief flash) but verify no edge case leaves colors permanently swapped on GameOver.
+9. **`PauseMenu` icon positions** — Settings, Reset, and Back icons may be swapped relative to what `Logic.menuCallback()` expects for left/right/middle touch zones.
 
 ### Unfinished Features
 
-1. **Teleport mechanic is disabled** — Fully implemented in `Player.kt` (`drawTeleport`, `prepareToTeleport`, `stopTeleportation`, teleport tickers) but trigger lines in `Player.shouldBounce()` are commented out. Uncomment the `preparingToTeleport = true` lines to re-enable.
-2. **Standing-still charge bonus is disabled** — Fully implemented but commented out in `Player.drawTo()` (lines ~146–164). `bonusMovement` field in `Puck.kt` exists for this.
-3. **Tutorial `ChargeBonusCanceledExplain` never triggers** — `TutorialView.playGame()` tracks `collisions` and shows `ChargeExplain` at 5 collisions, but `ChargeBonusCanceledExplain` is never triggered anywhere.
-4. **`Ads.kt` is scaffolding** — Copy of AdMob sample template. Reachable from `MainActivity.goToAds()` but the button is disconnected. Either wire it up or remove it.
-5. **`StingerTransition.kt`** — Screen transition animation (circle bounces up/down) that's never used. `transitionTo()` is empty.
-6. **`Test.kt`** — Contains test/scratch code. Remove before ship.
-7. **`PauseMenu` icon positions** — Settings, Reset, and Back icons in the pause menu (`PauseMenu.kt`) may have swapped positions relative to what `Logic.menuCallback()` expects for left/right/middle touch zones. Verify visual placement matches touch detection zones.
-8. **`Settings.gameOver` reset** — After `GameOver` state resets via `victoryTicker`, verify no edge case where `Settings.gameOver` stays `true` across rounds through the `Logic.scored()` call chain.
+10. **Teleport mechanic is disabled** — fully implemented in `Player.kt` but trigger lines in `Player.shouldBounce()` are commented out.
+11. **Standing-still charge bonus is disabled** — implemented but commented out in `Player.drawTo()`. `bonusMovement` field in `Puck.kt` exists for this.
+12. **`Test.kt`** — scratch code, remove before ship.
+13. **`StingerTransition.kt`** — unused screen transition; `transitionTo()` is empty.
+14. **`Ads.kt`** — AdMob scaffolding; `MainActivity.goToAds()` button is disconnected. Wire up or remove.
+15. **Tutorial `ChargeBonusCanceledExplain`** — never triggered anywhere.
 
 ### Polish / Pre-launch
 
-1. **Custom app launcher icon** — Currently using the default Android Studio adaptive icon. A custom icon is needed before Play Store submission.
-2. **Play Store listing assets** — Screenshots, feature graphic, description needed.
-3. **Privacy policy** — Required for Play Store if collecting data (AdMob requires this).
-4. **`versionCode`** — Starts at 1; increment on each Play Store upload. Managed in `app/build.gradle`.
+16. **Custom app launcher icon** — currently the default Android Studio adaptive icon.
+17. **Play Store / App Store listing assets** — screenshots, feature graphic, description.
+18. **Privacy policy** — required if collecting data (AdMob/billing require this).
 
 ---
 
-## Build Stack (Current)
+## Build Stack
 
 | Tool | Version |
 |---|---|
 | Gradle Wrapper | 8.13 |
 | Android Gradle Plugin | 8.9.1 |
 | Kotlin | 2.1.21 |
+| Compose Multiplatform | 1.7.3 |
 | compileSdk | 35 |
 | minSdk | 26 (Android 8.0) |
 | targetSdk | 35 |
 | Java | 17 |
 | play-services-ads | 23.6.0 |
-
-## File Naming
-
-- Activities: PascalCase (except `tutorial.kt` which is lowercase — inconsistency, do not normalize mid-project)
-- Utility singletons: PascalCase object names in `utility/` package
-- Enums: PascalCase enum class, PascalCase values (exception: `MenuSelection.none` is lowercase — intentional)
+| billing-ktx | 7.1.1 |

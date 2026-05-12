@@ -10,9 +10,9 @@ struct ContentView: View {
             .onChange(of: scenePhase) { phase in
                 switch phase {
                 case .background, .inactive:
-                    SoundsKt.shared.pauseAll()
+                    Sounds.shared.pauseAll()
                 case .active:
-                    SoundsKt.shared.resumeAll()
+                    Sounds.shared.resumeAll()
                 default:
                     break
                 }

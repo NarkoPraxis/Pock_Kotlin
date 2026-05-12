@@ -4,7 +4,7 @@ package utility
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFAudio.*
 import platform.Foundation.*
-import platform.Darwin.*
+import platform.darwin.*
 
 actual object Sounds {
     private class SfxChannel(val player: AVAudioPlayerNode, val pitch: AVAudioUnitTimePitch)
@@ -79,7 +79,7 @@ actual object Sounds {
 
     private fun playSfx(name: String, rate: Float = 1f, volume: Float = effectiveSfxVol) {
         val buffer = sfxBuffers[name] ?: return
-        val channel = sfxChannels.firstOrNull { !it.player.isPlaying } ?: sfxChannels[0]
+        val channel = sfxChannels.firstOrNull { !it.player.isPlaying() } ?: sfxChannels[0]
         channel.pitch.rate = rate
         channel.player.volume = volume
         channel.player.scheduleBuffer(buffer, completionHandler = null)

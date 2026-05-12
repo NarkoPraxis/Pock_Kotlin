@@ -2,8 +2,12 @@
 package utility
 
 import kotlinx.cinterop.ExperimentalForeignApi
-import platform.Foundation.NSDate
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
 import platform.Foundation.NSUserDefaults
+import platform.posix.gettimeofday
+import platform.posix.timeval
 
 actual object PlatformStorage {
     private val defaults = NSUserDefaults.standardUserDefaults
@@ -40,6 +44,9 @@ actual object PlatformStorage {
         val fullKey = k(store, key)
         return if (defaults.objectForKey(fullKey) != null) defaults.floatForKey(fullKey) else default
     }
-    actual fun currentTimeMs(): Long =
-        (NSDate.date().timeIntervalSince1970 * 1000).toLong()
+    actual fun currentTimeMs(): Long = memScoped {
+        val tv = alloc<timeval>()
+        gettimeofday(tv.ptr, null)
+        tv.tv_sec * 1000L + tv.tv_usec / 1000L
+    }
 }
