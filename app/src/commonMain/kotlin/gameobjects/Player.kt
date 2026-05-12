@@ -1,14 +1,11 @@
 package gameobjects
 
-import android.graphics.Color
-import android.graphics.Paint
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.toArgb
 import enums.Direction
 import enums.MotionStates
 import enums.TouchState
@@ -85,33 +82,6 @@ class Player(
         this.resetLocation = Point(puck.x, puck.y)
         setPuckStroke(puck.strokeColor)
         finger.setAlpha(50)
-    }
-
-    private val debug = Paint().apply {
-        textSize = 40f
-        color = Color.BLACK
-        isAntiAlias = true
-        isDither = true
-        style = Paint.Style.STROKE
-        strokeJoin = Paint.Join.ROUND
-        strokeCap = Paint.Cap.ROUND
-        strokeWidth = Settings.strokeWidth
-    }
-
-    private val debugText = Paint().apply {
-        textSize = 40f
-        color = Color.BLACK
-        style = Paint.Style.FILL
-    }
-
-    val teleportPaint = Paint().apply {
-        color = PaintBucket.effectColor.toArgb()
-        isAntiAlias = true
-        isDither = true
-        style = Paint.Style.STROKE
-        strokeJoin = Paint.Join.ROUND
-        strokeCap = Paint.Cap.ROUND
-        strokeWidth = Settings.strokeWidth
     }
 
     var fx: Float
@@ -457,11 +427,19 @@ class Player(
     }
 
     private fun blendColors(from: Int, to: Int, t: Float): Int {
-        val r = (Color.red(from) + (Color.red(to) - Color.red(from)) * t).toInt()
-        val g = (Color.green(from) + (Color.green(to) - Color.green(from)) * t).toInt()
-        val b = (Color.blue(from) + (Color.blue(to) - Color.blue(from)) * t).toInt()
-        val a = (Color.alpha(from) + (Color.alpha(to) - Color.alpha(from)) * t).toInt()
-        return Color.argb(a.coerceIn(0, 255), r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
+        val fromA = (from ushr 24) and 0xFF
+        val fromR = (from shr 16) and 0xFF
+        val fromG = (from shr 8) and 0xFF
+        val fromB = from and 0xFF
+        val toA = (to ushr 24) and 0xFF
+        val toR = (to shr 16) and 0xFF
+        val toG = (to shr 8) and 0xFF
+        val toB = to and 0xFF
+        val a = (fromA + (toA - fromA) * t).toInt().coerceIn(0, 255)
+        val r = (fromR + (toR - fromR) * t).toInt().coerceIn(0, 255)
+        val g = (fromG + (toG - fromG) * t).toInt().coerceIn(0, 255)
+        val b = (fromB + (toB - fromB) * t).toInt().coerceIn(0, 255)
+        return (a shl 24) or (r shl 16) or (g shl 8) or b
     }
 
     private fun applyPendingLaunch() {

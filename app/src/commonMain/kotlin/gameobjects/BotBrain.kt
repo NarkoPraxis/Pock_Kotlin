@@ -2,6 +2,7 @@ package gameobjects
 
 import enums.GameState
 import enums.TouchState
+import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -79,7 +80,7 @@ class BotBrain(private var player: Player, private var opponent: Player, private
 
     private fun planAndStartShot() {
         val varianceDeg = kotlin.random.Random.nextFloat() * 2 * config.accuracyVariance - config.accuracyVariance
-        storedVarianceRad = (varianceDeg * Math.PI / 180.0).toFloat()
+        storedVarianceRad = (varianceDeg * PI / 180.0).toFloat()
         plannedAimDir = currentAimDir()
 
         // Frames needed for charge to reach sweetSpotMax (phase → SweetSpot), adjusted for charge rate.
