@@ -35,16 +35,16 @@ object PaintBucket {
     var canScoreWallColor: Color = Color(0xFF5555AA)
 
     /** High (warm) player puck fill. Mutable — Logic.setPuckColor() swaps this during Scored. */
-    var highBallFill: Color = Color(0xFFFF6B6B)
+    var highBallFill: Color = Color(0xfff59da0)
 
     /** High (warm) player puck stroke. Mutable. */
-    var highBallStroke: Color = Color(0xFFFF9999)
+    var highBallStroke: Color = Color(0xfff25252)
 
     /** Low (cold) player puck fill. Mutable. */
-    var lowBallFill: Color = Color(0xFF6B6BFF)
+    var lowBallFill: Color = Color(0xff9dd4f5)
 
     /** Low (cold) player puck stroke. Mutable. */
-    var lowBallStroke: Color = Color(0xFF9999FF)
+    var lowBallStroke: Color = Color(0xff52b6f2)
 
     /**
      * Primary effect/wall color alias — kept separately so code referencing `effectColor`

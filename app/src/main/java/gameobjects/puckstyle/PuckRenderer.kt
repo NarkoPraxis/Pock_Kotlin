@@ -70,11 +70,15 @@ class PuckRenderer(var theme: ColorTheme) {
     var x: Float = 0f
     var y: Float = 0f
 
+    var radius4: Float = 0f
+
     // Setting radius rebuilds the BallSize lookup table so subclass r() calls never multiply per frame.
     var radius: Float = 0f
         set(value) {
+            radius4 = value * 4
             field = value
         }
+
 
     // Animation frame counter — incremented each draw in gameplay; also advanced in menus
     var frame: Int = 0
@@ -161,7 +165,7 @@ class PuckRenderer(var theme: ColorTheme) {
             Density(1f),
             LayoutDirection.Ltr,
             ComposeCanvas(canvas),
-            Size(radius * 4f, radius * 4f)
+            Size(radius4, radius4)
         ) { draw() }
     }
 

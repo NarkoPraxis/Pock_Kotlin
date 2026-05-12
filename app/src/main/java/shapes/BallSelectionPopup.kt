@@ -17,6 +17,7 @@ import utility.Storage
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import androidx.core.graphics.withClip
 
 class BallSelectionPopup(val isHigh: Boolean) {
 
@@ -28,8 +29,6 @@ class BallSelectionPopup(val isHigh: Boolean) {
     private val slotBg = Paint().apply { color = Color.argb(60, 255, 255, 255); style = Paint.Style.FILL; isAntiAlias = true }
     private val slotBgSel = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
     private val lockPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; isAntiAlias = true; strokeCap = Paint.Cap.ROUND }
-    private val stubFillPaint = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
-    private val stubStrokePaint = Paint().apply { style = Paint.Style.STROKE; isAntiAlias = true }
 
     private var snapIndex: Int = 0
 
@@ -224,23 +223,20 @@ class BallSelectionPopup(val isHigh: Boolean) {
                 val phase = i * 0.7f
                 val puckY = cy + amplitude * sin(2 * Math.PI.toFloat() * previewRenderer.frame / 80f + phase)
 
-                canvas.save()
-                canvas.clipRect(
+                canvas.withClip(
                     slotCenterX - slotW / 2f,
                     cy - halfH + Settings.screenRatio * 0.15f,
                     slotCenterX + slotW / 2f,
                     cy + halfH - Settings.screenRatio * 0.15f
-                )
+                ) {
+                    previewRenderer.x = slotCenterX
+                    previewRenderer.y = puckY
+                    previewRenderer.fillColor = theme.main.primary
+                    previewRenderer.strokeColor = theme.main.secondary
+                    previewRenderer.drawToCanvas(this)
 
-                // Step 10 stub: solid-color circle until skins are migrated in step 11
-                stubFillPaint.color = theme.main.primary
-                stubStrokePaint.color = theme.main.secondary
-                stubStrokePaint.strokeWidth = Settings.strokeWidth
-                canvas.drawCircle(slotCenterX, puckY, pr, stubFillPaint)
-                canvas.drawCircle(slotCenterX, puckY, pr, stubStrokePaint)
-
-                if (!isUnlocked(type)) drawLock(canvas, slotCenterX, puckY, pr)
-                canvas.restore()
+                    if (!isUnlocked(type)) drawLock(this, slotCenterX, puckY, pr)
+                }
             }
 
             canvas.restore()

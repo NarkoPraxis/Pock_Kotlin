@@ -10,10 +10,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withSave
 import gameobjects.puckstyle.CachedBrushSkin
 import gameobjects.puckstyle.PuckRenderer
+import utility.PaintBucket
 import physics.Point
 import utility.Effects
 import gameobjects.puckstyle.paddles.MetalLaunch
@@ -25,25 +26,32 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer)
     private val darkGrey = AndroidColor.rgb(70, 70, 80)
 
     private var lastPrimary = -1
+    private var lastX = Float.NaN
+    private var lastY = Float.NaN
     private var cachedEdgeSw = -1f
     private var edgeStroke = Stroke(width = 0f)
 
     override fun buildBrush(radius: Float): Brush =
         Brush.linearGradient(
             colorStops = arrayOf(
-                0f to Color(theme.inert.primary),
+                0f to Color(PaintBucket.inertPrimaryColor.toArgb()),
                 0.25f to Color(responsivePrimary),
                 0.75f to Color(grey),
                 1f to Color(darkGrey)
             ),
-            start = Offset(0f, -radius),
-            end = Offset(0f, radius)
+            start = Offset(renderer.x, renderer.y - radius),
+            end = Offset(renderer.x, renderer.y + radius)
         )
 
     override fun DrawScope.drawBody() {
         val primary = responsivePrimary
         if (primary != lastPrimary) {
             lastPrimary = primary
+            invalidateBrush()
+        }
+        if (renderer.x != lastX || renderer.y != lastY) {
+            lastX = renderer.x
+            lastY = renderer.y
             invalidateBrush()
         }
         ensureBrush(renderer.radius)
@@ -54,9 +62,7 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer)
             edgeStroke = Stroke(width = sw)
         }
 
-        withTransform({ translate(renderer.x, renderer.y) }) {
-            drawCircle(brush = cachedBrush!!, radius = renderer.radius, center = Offset.Zero)
-        }
+        drawCircle(brush = cachedBrush!!, radius = renderer.radius, center = Offset(renderer.x, renderer.y))
         drawCircle(Color(responsiveSecondary), renderer.radius, Offset(renderer.x, renderer.y), style = edgeStroke)
     }
 

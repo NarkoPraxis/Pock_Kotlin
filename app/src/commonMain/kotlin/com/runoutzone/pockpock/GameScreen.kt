@@ -34,9 +34,18 @@ fun GameScreen(
                             val y = change.position.y
                             val pointerId = change.id.value.toInt()
                             when (event.type) {
-                                PointerEventType.Press -> onGamePointerDown(x, y, pointerId)
-                                PointerEventType.Move -> onGamePointerMove(x, y, pointerId)
-                                PointerEventType.Release -> onGamePointerUp(x, y, pointerId)
+                                PointerEventType.Press -> {
+                                    if (change.pressed && !change.previousPressed)
+                                        onGamePointerDown(x, y, pointerId)
+                                }
+                                PointerEventType.Move -> {
+                                    if (change.pressed)
+                                        onGamePointerMove(x, y, pointerId)
+                                }
+                                PointerEventType.Release -> {
+                                    if (!change.pressed && change.previousPressed)
+                                        onGamePointerUp(x, y, pointerId)
+                                }
                                 else -> {}
                             }
                         }
