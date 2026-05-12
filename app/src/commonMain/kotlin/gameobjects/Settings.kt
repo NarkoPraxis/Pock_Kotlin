@@ -32,10 +32,7 @@ object Settings {
     val canScoreBottomWallBottom: Float get() = if (canScore) screenHeight else screenHeight - (screenHeight - bottomGoalTop) * canScoreWallProgress
     var refreshRate: Int = 16
     var unlockProgress = 0
-    var pauseGame = false;
     var startWithTutorial = false
-    var tutorialPaused = false
-    var playerPaused = false
     var gameOver = false
     var gameState = GameState.BallSelection
     var longParticleSide = 0f

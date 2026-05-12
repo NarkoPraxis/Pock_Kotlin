@@ -1,16 +1,11 @@
 package utility
 
 import android.content.Context
-import android.content.Intent
-import android.os.Bundle
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import com.runoutzone.pockpock.GameView
 import com.runoutzone.pockpock.MainActivity
-import com.runoutzone.pockpock.SettingsActivity
 import enums.*
-import gameobjects.PauseMenu
 import gameobjects.Player
 import gameobjects.Puck
 import gameobjects.Settings
@@ -34,7 +29,6 @@ object Logic {
     lateinit var lowPlayer: Player
     var botBrain: BotBrain? = null
 
-    lateinit var pauseMenu: PauseMenu
     lateinit var victoryTicker: Ticker
 
     val highBallPopup = shapes.BallSelectionPopup(isHigh = true)
@@ -42,9 +36,6 @@ object Logic {
 
     lateinit var activity: AppCompatActivity
 
-    var menuSelection = MenuSelection.none
-
-    var countPauseTouches = 0
     var highTouchedFirst = false
 
     var tempGameState = GameState.BallSelection
@@ -87,9 +78,7 @@ object Logic {
         this.gameView = gameView
         leaving = false
         Settings.gameState = GameState.BallSelection
-        Settings.pauseGame = false
         Settings.gameOver = false
-        Settings.playerPaused = false
         highPopupDragPointerId = -1
         lowPopupDragPointerId = -1
         Drawing.resetTipIndices()
@@ -102,15 +91,12 @@ object Logic {
 
         victoryTicker = Ticker(Settings.victoryThreshold)
 
-        pauseMenu = PauseMenu(this.activity)
-
         highBallPopup.open()
         lowBallPopup.open()
 
     }
 
     fun reset() {
-        countPauseTouches = 0
         tempGameState = GameState.Play
     }
 
@@ -362,7 +348,6 @@ object Logic {
             highPlayer.fatigueInertLocked = false
             lowPlayer.clearCharge()
             highPlayer.clearCharge()
-            Settings.pauseGame = false
             Settings.gameOver = false
             highPopupDragPointerId = -1
             lowPopupDragPointerId = -1
@@ -547,24 +532,6 @@ object Logic {
             return true
         }
         return false
-    }
-
-    fun checkPauseGame(pointerCount: Int, y1: Float, y2: Float) {
-        if ((Settings.gameState == GameState.Play || Settings.gameState == GameState.BallSelection)) {
-            if (pointerCount == 2 && (y1 < Settings.topGoalBottom && y2 < Settings.topGoalBottom) || (y1 > Settings.bottomGoalTop && y2 > Settings.bottomGoalTop)) {
-                tempGameState = Settings.gameState
-                Settings.pauseGame = true
-                Settings.playerPaused = true
-            }
-        }
-    }
-
-    fun checkUnpauseGame(y1: Float, y2: Float) {
-        if (!(Settings.topGoalBottom < y1 && y1 < Settings.bottomGoalTop) || Settings.topGoalBottom < y2 && y2 < Settings.bottomGoalTop) {
-            Settings.gameState = tempGameState
-            Settings.pauseGame = false
-            countPauseTouches = 0
-        }
     }
 
     fun adjustPlayerPositions() : Boolean {
@@ -840,8 +807,6 @@ object Logic {
             return
         }
 
-        if (Settings.pauseGame) return
-
         val isHighSide = y < Settings.middleY
         if (isHighSide && !Settings.isSinglePlayer && highPlayer.lockedPointerId == -1) {
             if (lowPlayer.lockedPointerId == -1) highTouchedFirst = true
@@ -881,11 +846,6 @@ object Logic {
                 lowPlayer.touch = TouchState.Ready
                 lowPlayer.shouldReleaseCharge = true
             }
-            return
-        }
-
-        if (Settings.pauseGame) {
-            handlePauseTouch(x, y)
             return
         }
 
@@ -958,40 +918,6 @@ object Logic {
         return consumed
     }
 
-    private fun handlePauseTouch(x: Float, y: Float) {
-        when {
-            y < Settings.topGoalBottom -> {
-                menuSelection = when {
-                    x < Settings.screenWidth / 3f -> MenuSelection.back
-                    x > 2 * Settings.screenWidth / 3f -> MenuSelection.settings
-                    else -> MenuSelection.reset
-                }
-                countPauseTouches++
-                if (countPauseTouches == 2) {
-                    menuCallback(activity)
-                    countPauseTouches = 0
-                }
-            }
-            y > Settings.bottomGoalTop -> {
-                menuSelection = when {
-                    x < Settings.screenWidth / 3f -> MenuSelection.settings
-                    x > 2 * Settings.screenWidth / 3f -> MenuSelection.back
-                    else -> MenuSelection.reset
-                }
-                countPauseTouches++
-                if (countPauseTouches == 2) {
-                    menuCallback(activity)
-                    countPauseTouches = 0
-                }
-            }
-            else -> {
-                Settings.pauseGame = false
-                Settings.gameState = tempGameState
-                countPauseTouches = 0
-            }
-        }
-    }
-
     // -------------------------------------------------------------------------
     // Legacy Android MotionEvent handler (used by PlayView)
     // -------------------------------------------------------------------------
@@ -1050,116 +976,40 @@ object Logic {
         else {
             val x = event!!.x
             val y = event.y
-            if (Settings.pauseGame) {
-                if (y < Settings.topGoalBottom) { // top menu touched
-                    if (x < Settings.screenWidth / 3f) { //left
-                        menuSelection = MenuSelection.back
-                    }
-                    else if (x >  (2 * Settings.screenWidth) / 3f) { // right
-                        menuSelection = MenuSelection.settings
-                    }
-                    else { //middle
-                        menuSelection = MenuSelection.reset
-                    }
+            val pointerId = event.getPointerId(0)
+            if (motionEvent == MotionEvent.ACTION_DOWN) {
+                // Ownership is fixed at touch-down based on starting y position
+                if (y > Settings.middleY) {
+                    highTouchedFirst = false
+                    if (lowPlayer.lockedPointerId == -1) lowPlayer.lockedPointerId = pointerId
+                    startFling(lowPlayer, x, y)
+                    setSingleTouch(motionEvent, lowPlayer)
+                } else if (!Settings.isSinglePlayer) {
+                    highTouchedFirst = true
+                    if (highPlayer.lockedPointerId == -1) highPlayer.lockedPointerId = pointerId
+                    startFling(highPlayer, x, y)
+                    setSingleTouch(motionEvent, highPlayer)
+                }
+            } else {
+                // Route MOVE and UP by locked pointer ID so the arrow can cross the midline
+                if (pointerId == highPlayer.lockedPointerId) {
                     if (motionEvent == MotionEvent.ACTION_UP) {
-                        countPauseTouches++
-                        if (countPauseTouches == 2) {
-                            menuCallback(context)
-                            countPauseTouches = 0
-                        }
+                        Sounds.playHighPlayerSound(highPlayer.fx)
+                        endFling(highPlayer, x, y)
+                        highPlayer.lockedPointerId = -1
                     }
-                }
-                else if (y > Settings.bottomGoalTop) {// bottom menu touched
-                    if (x < Settings.screenWidth / 3) { //left
-                        menuSelection = MenuSelection.settings
-                    }
-                    else if (x >  (2 * Settings.screenWidth) / 3) { // right
-                        menuSelection = MenuSelection.back
-                    }
-                    else { //middle
-                        menuSelection = MenuSelection.reset
-                    }
+                    updateFlingCurrent(highPlayer, x, y)
+                    if (highPlayer.notLocked()) setSingleTouch(motionEvent, highPlayer)
+                } else if (pointerId == lowPlayer.lockedPointerId) {
                     if (motionEvent == MotionEvent.ACTION_UP) {
-                        countPauseTouches++
-                        if (countPauseTouches == 2) {
-                            menuCallback(context)
-                            countPauseTouches = 0
-                        }
+                        Sounds.playLowPlayerSound(lowPlayer.fx)
+                        endFling(lowPlayer, x, y)
+                        lowPlayer.lockedPointerId = -1
                     }
-                }
-                else {
-                    if (motionEvent == MotionEvent.ACTION_UP) {
-                        Settings.pauseGame = false
-                        Settings.gameState = tempGameState
-                        countPauseTouches = 0
-                    }
+                    updateFlingCurrent(lowPlayer, x, y)
+                    if (lowPlayer.notLocked()) setSingleTouch(motionEvent, lowPlayer)
                 }
             }
-            else {
-                val pointerId = event.getPointerId(0)
-                if (motionEvent == MotionEvent.ACTION_DOWN) {
-                    // Ownership is fixed at touch-down based on starting y position
-                    if (y > Settings.middleY) {
-                        highTouchedFirst = false
-                        if (lowPlayer.lockedPointerId == -1) lowPlayer.lockedPointerId = pointerId
-                        startFling(lowPlayer, x, y)
-                        setSingleTouch(motionEvent, lowPlayer)
-                    } else if (!Settings.isSinglePlayer) {
-                        highTouchedFirst = true
-                        if (highPlayer.lockedPointerId == -1) highPlayer.lockedPointerId = pointerId
-                        startFling(highPlayer, x, y)
-                        setSingleTouch(motionEvent, highPlayer)
-                    }
-                } else {
-                    // Route MOVE and UP by locked pointer ID so the arrow can cross the midline
-                    if (pointerId == highPlayer.lockedPointerId) {
-                        if (motionEvent == MotionEvent.ACTION_UP) {
-                            Sounds.playHighPlayerSound(highPlayer.fx)
-                            endFling(highPlayer, x, y)
-                            highPlayer.lockedPointerId = -1
-                        }
-                        updateFlingCurrent(highPlayer, x, y)
-                        if (highPlayer.notLocked()) setSingleTouch(motionEvent, highPlayer)
-                    } else if (pointerId == lowPlayer.lockedPointerId) {
-                        if (motionEvent == MotionEvent.ACTION_UP) {
-                            Sounds.playLowPlayerSound(lowPlayer.fx)
-                            endFling(lowPlayer, x, y)
-                            lowPlayer.lockedPointerId = -1
-                        }
-                        updateFlingCurrent(lowPlayer, x, y)
-                        if (lowPlayer.notLocked()) setSingleTouch(motionEvent, lowPlayer)
-                    }
-                }
-            }
-        }
-    }
-
-    fun menuCallback(context: Context) {
-        when(menuSelection){
-            MenuSelection.back -> {
-                leaving = true
-                Effects.clearPersistentEffects()
-                Effects.collisions.clear()
-                Sounds.playMenuAmbiance()
-                val intent = Intent(context, MainActivity::class.java)
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                ContextCompat.startActivity(context, intent, Bundle())
-                activity.finish()
-            }
-            MenuSelection.reset -> {
-                resetGame(GameView::doOnSizeChange)
-            }
-            MenuSelection.settings -> {
-                leaving = true
-                Effects.clearPersistentEffects()
-                Effects.collisions.clear()
-                Sounds.playMenuAmbiance()
-                val intent = Intent(context, SettingsActivity::class.java)
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                ContextCompat.startActivity(context, intent, Bundle())
-                activity.finish()
-            }
-            else -> {}
         }
     }
 
@@ -1180,7 +1030,6 @@ object Logic {
         Settings.lowPlayerArrow = Storage.lowPlayerArrow
         Settings.highPlayerChargeFill = Storage.highPlayerChargeFill
         Settings.lowPlayerChargeFill = Storage.lowPlayerChargeFill
-        Settings.pauseGame = false
         val gv = gameView
         if (gv != null) {
             sizeChanged(gv, Settings.screenWidth.toInt(), Settings.screenHeight.toInt(), Settings.screenWidth.toInt(), Settings.screenHeight.toInt())
@@ -1189,7 +1038,6 @@ object Logic {
         }
         Settings.gameState = GameState.BallSelection
         Settings.gameOver = false
-        Settings.playerPaused = false
         Drawing.cycleHighTip()
         Drawing.cycleLowTip()
     }
