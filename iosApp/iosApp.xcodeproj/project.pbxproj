@@ -118,11 +118,11 @@
 			);
 			inputPaths = (
 			);
+			alwaysOutOfDate = 1;
 			name = "Gradle — embedAndSign KMP Framework";
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/ComposeApp.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

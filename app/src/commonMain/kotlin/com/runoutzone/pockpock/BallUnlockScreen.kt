@@ -1,27 +1,63 @@
 package com.runoutzone.pockpock
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.*
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import enums.BallType
+import gameobjects.Settings
+import gameobjects.puckstyle.BallStyleFactory
+import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.PuckRenderer
+import kotlinx.coroutines.delay
 import utility.PaintBucket
 import utility.Storage
+import kotlin.math.PI
+import kotlin.math.min
+import kotlin.math.sin
 
 @Composable
 fun BallUnlockScreen(onBack: () -> Unit) {
-    val unlockProgress by remember { mutableIntStateOf(Storage.unlockProgress) }
     val displayTypes = remember { BallType.entries.filter { it != BallType.Random } }
+    val count = displayTypes.size
+    val textMeasurer = rememberTextMeasurer()
+
+    val warmFlags = remember { BooleanArray(count) { i -> i % 2 == 0 } }
+    var bounceFrame by remember { mutableIntStateOf(0) }
+    var bouncingIndex by remember { mutableIntStateOf(-1) }
+    val renderers = remember { arrayOfNulls<PuckRenderer>(count) }
+    var renderersBuilt by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(16L)
+            bounceFrame++
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -29,103 +65,174 @@ fun BallUnlockScreen(onBack: () -> Unit) {
             .background(PaintBucket.backgroundColor)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
                 Text("← Back", color = Color.White, fontSize = 16.sp)
             }
             Spacer(Modifier.weight(1f))
-            Text("BALL TYPES", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "BALL TYPES",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(Modifier.weight(1f))
         }
 
-        Text(
-            text = "Unlock Progress: $unlockProgress / 100",
-            color = Color(0xFFAAAAAA),
-            fontSize = 13.sp,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        LinearProgressIndicator(
-            progress = { unlockProgress / 100f },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            color = Color(0xFF6666AA),
-            trackColor = Color(0xFF333344)
-        )
-
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(displayTypes) { ballType ->
-                BallTypeCard(
-                    ballType = ballType,
-                    isUnlocked = isBallTypeUnlocked(ballType, unlockProgress)
-                )
-            }
-        }
-    }
-}
+            itemsIndexed(displayTypes) { index, type ->
+                val isUnlocked = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
 
-private fun isBallTypeUnlocked(type: BallType, unlockProgress: Int): Boolean {
-    val adsLeft = 100 - unlockProgress
-    return when (type) {
-        BallType.Classic -> true
-        BallType.Prism, BallType.Plasma -> adsLeft == 0
-        BallType.Random -> unlockProgress >= 100
-        else -> {
-            val ordinal = type.ordinal
-            ordinal in 1..9 && adsLeft <= 100 - ordinal * 10
-        }
-    }
-}
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .onSizeChanged { size ->
+                            if (!renderersBuilt && size.width > 0) {
+                                val r = min(size.width.toFloat(), size.height.toFloat()) / 18f
+                                if (Settings.screenRatio == 0f) {
+                                    Settings.screenRatio = r
+                                    Settings.strokeWidth = r / 4f
+                                    PaintBucket.initialize(r)
+                                }
+                                for (i in 0 until count) {
+                                    val theme = if (warmFlags[i]) ColorTheme.Warm else ColorTheme.Cold
+                                    renderers[i] = BallStyleFactory.buildRenderer(displayTypes[i], theme)
+                                }
+                                renderersBuilt = true
+                            }
+                        }
+                        .clickable {
+                            if (renderersBuilt) {
+                                warmFlags[index] = !warmFlags[index]
+                                renderers[index]?.tail?.clear()
+                                val newTheme = if (warmFlags[index]) ColorTheme.Warm else ColorTheme.Cold
+                                renderers[index] = BallStyleFactory.buildRenderer(type, newTheme)
+                                bouncingIndex = index
+                            }
+                        }
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize().clipToBounds()) {
+                        val previewRenderer = renderers[index] ?: return@Canvas
 
-@Composable
-private fun BallTypeCard(ballType: BallType, isUnlocked: Boolean) {
-    val bgColor = if (isUnlocked) Color(0xFF2A2A3A) else Color(0xFF1A1A22)
-    val nameColor = if (isUnlocked) Color.White else Color(0xFF666666)
+                        val savedRatio = Settings.screenRatio
+                        val savedStroke = Settings.strokeWidth
+                        val ratio = min(size.width, size.height) / 18f
+                        Settings.screenRatio = ratio
+                        Settings.strokeWidth = ratio / 4f
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f),
-        colors = CardDefaults.cardColors(containerColor = bgColor)
-    ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (!isUnlocked) {
-                    Text("🔒", fontSize = 32.sp)
-                } else {
-                    Text("●", fontSize = 40.sp, color = ballTypeColor(ballType))
+                        val theme = if (warmFlags[index]) ColorTheme.Warm else ColorTheme.Cold
+
+                        val bgColor = if (Storage.darkMode)
+                            Color(0x16 / 255f, 0x16 / 255f, 0x22 / 255f, 0xDC / 255f)
+                        else
+                            Color(0xE8 / 255f, 0xE8 / 255f, 0xF8 / 255f, 0xDC / 255f)
+                        drawRoundRect(color = bgColor, cornerRadius = CornerRadius(ratio * 0.4f))
+
+                        drawRoundRect(
+                            color = Color(theme.main.primary),
+                            cornerRadius = CornerRadius(ratio * 0.4f),
+                            style = Stroke(width = ratio * 0.24f)
+                        )
+
+                        val cx = size.width / 2f
+                        val baseCy = size.height / 2f - ratio * 0.4f
+                        val amplitude = if (index == bouncingIndex) ratio * 1.1f else ratio * 0.5f
+                        val phase = index * 0.7f
+                        val puckY = baseCy + amplitude * sin(2f * PI.toFloat() * bounceFrame / 80f + phase)
+                        val pr = ratio * 1.2f
+
+                        previewRenderer.effectEnabled = false
+                        previewRenderer.strokeWidth = ratio / 4f
+                        previewRenderer.x = cx
+                        previewRenderer.y = puckY
+                        previewRenderer.radius = pr
+                        previewRenderer.frame = bounceFrame
+                        previewRenderer.theme = theme
+                        previewRenderer.fillColor = theme.main.primary
+                        previewRenderer.strokeColor = theme.main.secondary
+                        previewRenderer.baseFillColor = theme.main.primary
+                        previewRenderer.preview = !isUnlocked
+
+                        with(previewRenderer) { draw() }
+
+                        if (!isUnlocked) drawLock(cx, puckY, pr, ratio)
+
+                        val pxPerSp = density * fontScale
+                        val textColor = if (Storage.darkMode) Color.White
+                            else Color(0x0F / 255f, 0x0F / 255f, 0x23 / 255f, 0xE6 / 255f)
+                        val subColor = if (Storage.darkMode) Color(1f, 1f, 1f, 0xA0 / 255f)
+                            else Color(0x14 / 255f, 0x14 / 255f, 0x32 / 255f, 0xA0 / 255f)
+
+                        val nameStyle = TextStyle(
+                            color = textColor,
+                            fontSize = (ratio * 0.7f / pxPerSp).sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center
+                        )
+                        val nameMeasured = textMeasurer.measure(type.name, nameStyle)
+                        drawText(
+                            nameMeasured,
+                            topLeft = Offset(
+                                cx - nameMeasured.size.width / 2f,
+                                size.height - ratio * 0.85f - nameMeasured.size.height
+                            )
+                        )
+
+                        val statusText = if (isUnlocked) "Unlocked"
+                            else BallStyleFactory.unlockThreshold(type)?.let { "Reach $it%" } ?: "Unlocked"
+                        val subStyle = TextStyle(
+                            color = subColor,
+                            fontSize = (ratio * 0.45f / pxPerSp).sp,
+                            textAlign = TextAlign.Center
+                        )
+                        val subMeasured = textMeasurer.measure(statusText, subStyle)
+                        drawText(
+                            subMeasured,
+                            topLeft = Offset(
+                                cx - subMeasured.size.width / 2f,
+                                size.height - ratio * 0.3f - subMeasured.size.height
+                            )
+                        )
+
+                        Settings.screenRatio = savedRatio
+                        Settings.strokeWidth = savedStroke
+                    }
                 }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = ballType.name,
-                    color = nameColor,
-                    fontSize = 14.sp,
-                    fontWeight = if (isUnlocked) FontWeight.Bold else FontWeight.Normal,
-                    textAlign = TextAlign.Center
-                )
             }
         }
     }
 }
 
-private fun ballTypeColor(type: BallType): Color = when (type) {
-    BallType.Classic -> Color(0xFFf59da0)
-    BallType.Neon    -> Color(0xFF39FF14)
-    BallType.Ghost   -> Color(0xAAEEEEFF)
-    BallType.Fire    -> Color(0xFFFF6600)
-    BallType.Ice     -> Color(0xFF88DDFF)
-    BallType.Galaxy  -> Color(0xFF9966FF)
-    BallType.Spinner -> Color(0xFFFFCC00)
-    BallType.Metal   -> Color(0xFFBBBBBB)
-    BallType.Pixel   -> Color(0xFF00FF88)
-    BallType.Rainbow -> Color(0xFFFF4488)
-    BallType.Prism   -> Color(0xFFFFFFFF)
-    BallType.Plasma  -> Color(0xFFFF00FF)
-    BallType.Chicken -> Color(0xFFFFDD44)
-    BallType.Random  -> Color(0xFFAAAAAA)
+private fun DrawScope.drawLock(cx: Float, ly: Float, radius: Float, ratio: Float) {
+    val strokeW = ratio * 0.22f
+    val bodyW = radius * 0.8f
+    val bodyH = radius * 0.7f
+
+    drawRoundRect(
+        color = Color.White,
+        topLeft = Offset(cx - bodyW / 2f, ly - bodyH / 4f),
+        size = Size(bodyW, bodyH),
+        cornerRadius = CornerRadius(ratio * 0.15f)
+    )
+
+    val shackleR = bodyW / 2.6f
+    drawArc(
+        color = Color.White,
+        startAngle = 180f,
+        sweepAngle = 180f,
+        useCenter = false,
+        topLeft = Offset(cx - shackleR, ly - bodyH * 0.85f),
+        size = Size(shackleR * 2f, bodyH * 0.75f),
+        style = Stroke(width = strokeW, cap = StrokeCap.Round)
+    )
 }

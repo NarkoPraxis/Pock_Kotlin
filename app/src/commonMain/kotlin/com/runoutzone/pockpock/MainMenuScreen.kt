@@ -15,6 +15,7 @@ import utility.PaintBucket
 @Composable
 fun MainMenuScreen(
     onPlayTapped: () -> Unit,
+    onSinglePlayerTapped: () -> Unit,
     onSettingsTapped: () -> Unit,
     onBallsTapped: () -> Unit
 ) {
@@ -36,6 +37,7 @@ fun MainMenuScreen(
             )
             Spacer(Modifier.height(24.dp))
             MenuButton(text = "PLAY", onClick = onPlayTapped)
+            MenuButton(text = "PLAY SOLO", onClick = onSinglePlayerTapped)
             MenuButton(text = "SETTINGS", onClick = onSettingsTapped)
             MenuButton(text = "BALL TYPES", onClick = onBallsTapped)
         }
