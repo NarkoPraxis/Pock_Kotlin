@@ -65,16 +65,17 @@ The `afterEvaluate` block in `app/build.gradle` keeps `src/main/java`, `src/main
 
 ### expect/actual Bridges
 
-Four `expect` declarations wire the KMP boundary. Every new platform capability needs this pattern.
+Five `expect` declarations wire the KMP boundary. Every new platform capability needs this pattern.
 
 | File (commonMain) | What it declares | Android actual | iOS actual |
 |---|---|---|---|
-| `utility/DrawingBridge.kt` | `DrawScope.drawGameFrame()` | delegates to `Drawing.drawFrame()` | **stub** — draws background rect only |
-| `utility/TouchBridge.kt` | `onGamePointerDown/Move/Up()` | delegates to `Logic.onPointerDown/Move/Up()` | **stub** — no-ops |
+| `utility/DrawingBridge.kt` | `DrawScope.drawGameFrame()` | delegates to `Drawing.drawFrame()` | delegates to `Drawing.drawFrame()` |
+| `utility/TouchBridge.kt` | `onGamePointerDown/Move/Up()` | delegates to `Logic.onPointerDown/Move/Up()` | delegates to `Logic.onPointerDown/Move/Up()` |
 | `utility/GameLoop.kt` | `class GameLoop(intervalMs, onTick)` | `Handler.postDelayed` loop | coroutine loop on `Dispatchers.Main` |
 | `utility/PlatformStorage.kt` | `object PlatformStorage` | `SharedPreferences` (two stores: `adPreferences`, default) | `NSUserDefaults` (keys namespaced `store_key`) |
+| `utility/Sounds.kt` | `object Sounds` (SFX + ambient music) | `SoundPool` + `MediaPlayer` | `AVAudioEngine` + 10-channel SFX pool with `AVAudioUnitTimePitch` |
 
-**The iOS game is not yet rendering or accepting input** — both `DrawingBridge` and `TouchBridge` iOS actuals are stubs. All iOS game work must land in those two files and the underlying systems they call.
+All five bridges are fully implemented on both platforms. The iOS game renders, accepts input, and runs the game loop.
 
 ### Navigation (Compose Multiplatform)
 
@@ -108,13 +109,13 @@ Android still uses legacy `MainActivity` (XML layout) + `GameActivity` (Compose 
 ### Key Singletons
 
 - **`Settings`** (`commonMain/gameobjects`) — All runtime configuration: screen dimensions, ball size, speed, score state, game phase. Initialized once via `Settings.initializeForScreen(width, height)` which also reads `Storage`.
-- **`Logic`** (`src/main/java/utility`) — All game logic: player init, collision detection, touch routing, game state transitions, pause menu. Android-only; iOS will need a `commonMain` equivalent.
-- **`Drawing`** (`src/main/java/utility`) — All `DrawScope` canvas rendering. `DrawScope.drawFrame()` is the entry point called from `DrawingBridge`.
+- **`Logic`** (`commonMain/utility`) — All game logic: player init, collision detection, touch routing, game state transitions, pause menu. Fully shared. `Logic.isInitialized` guards against calls before setup. `Logic.composeReinitCallback` allows `IosGameHost` to trigger a full re-init on reinstatement.
+- **`Drawing`** (`commonMain/utility`) — All `DrawScope` canvas rendering. `Drawing.drawFrame()` is the entry point called from `DrawingBridge` on both platforms.
 - **`PaintBucket`** (`commonMain/utility`) — All colors (Compose `Color`) and stroke descriptors. Android additionally exposes `android.graphics.Paint` objects via extension properties in `PaintBucketAndroid.kt` (`androidMain`). Call `PaintBucket.initialize(screenRatio)` after screen dims are known; Android also calls `initializeColors(resources)` then `buildPaints(resources)`.
 - **`Sounds`** (`expect object`) — SFX + ambient music. Android: `SoundPool` + `MediaPlayer`. iOS: `AVAudioEngine` + `AVAudioPlayer` (10-channel SFX pool with pitch nodes).
 - **`SoundSpatializer`** (`commonMain/utility`) — Shared pitch-rate grid for positional audio. Both platform `Sounds` implementations call `SoundSpatializer.getXRate()` / `getYRate()`.
 - **`Storage`** (`commonMain/utility`) — Thin facade over `PlatformStorage`. All persistence goes through here.
-- **`GameEvents`** (`src/main/java/utility`) — Simple signal bus: `canScore`, `cantScore`, `gameOver`, `gameReset` signals. Use `Signal<T>.connect/disconnect/emit`.
+- **`GameEvents`** (`commonMain/utility`) — Simple signal bus: `canScore`, `cantScore`, `gameOver`, `gameReset` signals. Use `Signal<T>.connect/disconnect/emit`.
 
 ### Game Loop
 
@@ -214,38 +215,41 @@ Sounds are spatialized via `SoundSpatializer` (shared): a 6-zone pitch grid (`ra
 
 ## Outstanding Issues / Needs Before Ship
 
-### iOS — Not Yet Functional
+### iOS — Parity Gaps (Android is the source of truth)
 
-1. **`DrawingBridge` iOS actual is a stub** — only draws the background rect. The full `Drawing.drawFrame()` call path (and its dependency on `Logic`, `Player`, etc.) needs to be wired into `iosMain/utility/DrawingBridge.kt`.
-2. **`TouchBridge` iOS actual is a stub** — all three touch handlers are no-ops. `Logic.onPointerDown/Move/Up` (or a KMP-ified equivalent) must be called from the iOS actual.
-3. **`Logic` is Android-only** — it imports `AppCompatActivity`, `MotionEvent`, etc. iOS needs either a refactored `Logic` in `commonMain` or a separate iOS game controller.
+The iOS game loop, rendering, and touch input are fully wired. The remaining gaps are UI parity issues compared to the Android screens:
+
+1. **`MainMenuScreen` missing single-player mode** — Android's `MainActivity` has a "Play Solo" button that shows a difficulty picker dialog (`Easy`/`Medium`/`Hard`) and sets `Settings.botConfig` + `Settings.isSinglePlayer = true`. `AppRoot.kt` only has a two-player `onPlayTapped`. Add a second button and dialog.
+2. **`MainMenuScreen` missing ambient sound** — `MainActivity` calls `Sounds.playMenuAmbiance()` on `onResume` and `Sounds.playGameAmbiance()` before launching the game. `AppRoot.kt` / `IosGameHost` makes no sound calls during menu navigation.
+3. **`BallUnlockScreen` is a placeholder** — the Compose version shows static emoji ("●" / "🔒") and plain text cards. The Android `BallUnlockView` shows animated `PuckRenderer` draws with real ball skins, a per-frame bounce animation, warm/cold theme toggle on tap, a drawn lock overlay, and `BallStyleFactory.isUnlocked` labels ("Unlocked" / "Reach X%"). The Compose screen needs to match this using `Canvas` inside each card.
+4. **`SettingsScreen` missing dark-mode toggle** — Android has a "dark mode" preference that triggers a full theme recreate. The `SettingsScreen` in commonMain has no dark mode toggle (though `Storage.darkMode` exists).
+5. **`PauseMenu` icon positions unverified** — Settings, Reset, and Back icons may be drawn in positions that don't match `Logic.menuCallback()`'s left/right/middle touch zone mapping. Needs a manual test.
 
 ### Critical (Store blockers)
 
-4. **`PurchaseManager.PRODUCT_ID`** — `"unlock_all"` is a placeholder. Replace with the real Google Play product ID before Android launch.
-5. **AdMob IDs still present** — `MainActivity.kt` and `strings.xml` contain test interstitial/rewarded ad unit IDs. Verify whether the ad path is still used alongside IAP; replace test IDs with live IDs before launch.
-6. **AdMob Application ID** — `AndroidManifest.xml` has `ca-app-pub-1111532606958888~7923000787`; verify this is the real production app ID.
+6. **`PurchaseManager.PRODUCT_ID`** — `"unlock_all"` is a placeholder. Replace with the real Google Play product ID before Android launch.
+7. **AdMob IDs still present** — `MainActivity.kt` and `strings.xml` contain test interstitial/rewarded ad unit IDs. Verify whether the ad path is still used alongside IAP; replace test IDs with live IDs before launch.
+8. **AdMob Application ID** — `AndroidManifest.xml` has `ca-app-pub-1111532606958888~7923000787`; verify this is the real production app ID.
 
 ### Bugs
 
-7. **`Player.puckFillColor` is stale after `setPuckColor()` is called** — `puckFillColor` is set at construction and used in tail drawing. `Logic.setPuckColor()` calls `puck.setFill()` but not `Player.puckFillColor`. Brief wrong-color tail during Scored state.
-8. **`checkScored()` assigns wrong colors on score** — swaps puck colors during Scored regardless of which player scored. `resetPlayerStates()` restores both. Appears intentional (brief flash) but verify no edge case leaves colors permanently swapped on GameOver.
-9. **`PauseMenu` icon positions** — Settings, Reset, and Back icons may be swapped relative to what `Logic.menuCallback()` expects for left/right/middle touch zones.
+9. **`Player.puckFillColor` is stale after `setPuckColor()` is called** — `puckFillColor` is set at construction and used in tail drawing. `Logic.setPuckColor()` calls `puck.setFill()` but not `Player.puckFillColor`. Brief wrong-color tail during Scored state.
+10. **`checkScored()` assigns wrong colors on score** — swaps puck colors during Scored regardless of which player scored. `resetPlayerStates()` restores both. Appears intentional (brief flash) but verify no edge case leaves colors permanently swapped on GameOver.
 
 ### Unfinished Features
 
-10. **Teleport mechanic is disabled** — fully implemented in `Player.kt` but trigger lines in `Player.shouldBounce()` are commented out.
-11. **Standing-still charge bonus is disabled** — implemented but commented out in `Player.drawTo()`. `bonusMovement` field in `Puck.kt` exists for this.
-12. **`Test.kt`** — scratch code, remove before ship.
-13. **`StingerTransition.kt`** — unused screen transition; `transitionTo()` is empty.
-14. **`Ads.kt`** — AdMob scaffolding; `MainActivity.goToAds()` button is disconnected. Wire up or remove.
-15. **Tutorial `ChargeBonusCanceledExplain`** — never triggered anywhere.
+11. **Teleport mechanic is disabled** — fully implemented in `Player.kt` but trigger lines in `Player.shouldBounce()` are commented out.
+12. **Standing-still charge bonus is disabled** — implemented but commented out in `Player.drawTo()`. `bonusMovement` field in `Puck.kt` exists for this.
+13. **`Test.kt`** — scratch code, remove before ship.
+14. **`StingerTransition.kt`** — unused screen transition; `transitionTo()` is empty.
+15. **`Ads.kt`** — AdMob scaffolding; `MainActivity.goToAds()` button is disconnected. Wire up or remove.
+16. **Tutorial `ChargeBonusCanceledExplain`** — never triggered anywhere.
 
 ### Polish / Pre-launch
 
-16. **Custom app launcher icon** — currently the default Android Studio adaptive icon.
-17. **Play Store / App Store listing assets** — screenshots, feature graphic, description.
-18. **Privacy policy** — required if collecting data (AdMob/billing require this).
+17. **Custom app launcher icon** — currently the default Android Studio adaptive icon.
+18. **Play Store / App Store listing assets** — screenshots, feature graphic, description.
+19. **Privacy policy** — required if collecting data (AdMob/billing require this).
 
 ---
 
