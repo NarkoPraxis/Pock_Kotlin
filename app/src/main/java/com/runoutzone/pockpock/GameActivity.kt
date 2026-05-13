@@ -35,7 +35,7 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         super.onSizeChanged(width, height, oldWidth, oldHeight)
         Logic.initializeSettings(width, height)
         PaintBucket.initialize(resources)
-        Logic.initialize(activity, this)
+        Logic.initialize()
         Sounds.initializeGame()
         Drawing.initialize()
         (activity as? GameActivity)?.positionTipOverlays(
@@ -110,7 +110,6 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        Logic.onTouchEvent(event, context)
         return true
     }
 }
@@ -159,7 +158,7 @@ class GameActivity : AppCompatActivity() {
     private fun initGame(width: Float, height: Float) {
         Logic.initializeSettings(width.toInt(), height.toInt())
         PaintBucket.initialize(resources)
-        Logic.initialize(this)
+        Logic.initialize()
         Sounds.initializeGame()
         Drawing.initialize()
         Logic.composeReinitCallback = { initGame(width, height) }

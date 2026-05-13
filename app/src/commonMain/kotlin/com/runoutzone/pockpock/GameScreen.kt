@@ -9,6 +9,8 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.rememberTextMeasurer
+import utility.Drawing
 import utility.drawGameFrame
 import utility.onGamePointerDown
 import utility.onGamePointerMove
@@ -19,6 +21,9 @@ fun GameScreen(
     gameLoopTick: State<Int>,
     onSizeKnown: (width: Float, height: Float) -> Unit = { _, _ -> }
 ) {
+    val textMeasurer = rememberTextMeasurer()
+    Drawing.initializeTextMeasurer(textMeasurer)
+
     Canvas(
         modifier = Modifier
             .fillMaxSize()

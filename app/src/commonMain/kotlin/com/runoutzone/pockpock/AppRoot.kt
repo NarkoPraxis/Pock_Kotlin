@@ -7,8 +7,11 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import enums.GameState
 import gameobjects.Settings
+import utility.Drawing
 import utility.GameLoop
+import utility.Logic
 import utility.PaintBucket
 import utility.Sounds
 
@@ -44,25 +47,63 @@ fun AppRoot() {
 @Composable
 private fun IosGameHost(onBack: () -> Unit) {
     val tickState = remember { mutableIntStateOf(0) }
+    var initialized by remember { mutableStateOf(false) }
+
     val gameLoop = remember {
         GameLoop(
             intervalMs = { Settings.refreshRate.toLong() },
-            onTick = { tickState.intValue++ }
+            onTick = {
+                if (Logic.isInitialized) {
+                    Logic.botBrain?.tick()
+                    Logic.updateCanScoreWall()
+                    when (Settings.gameState) {
+                        GameState.BallSelection -> {
+                            Logic.checkCharge()
+                            Logic.cancelChargesOnRelease()
+                            Logic.checkBallSelectionEnd()
+                        }
+                        GameState.Play -> {
+                            Logic.adjustPlayerPositions()
+                            Logic.checkCharge()
+                            Logic.calculateCollision()
+                            Logic.checkScored()
+                            Logic.checkDanger()
+                        }
+                        GameState.Scored -> Logic.scored()
+                        GameState.GameOver -> Logic.gameOver()
+                        else -> {}
+                    }
+                }
+                tickState.intValue++
+            }
         )
     }
 
     DisposableEffect(Unit) {
-        onDispose { gameLoop.stop() }
+        onDispose {
+            gameLoop.stop()
+            Logic.isInitialized = false
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         GameScreen(
             gameLoopTick = tickState,
             onSizeKnown = { w, h ->
-                if (Settings.screenWidth == 0f) {
-                    Settings.initializeForScreen(w.toInt(), h.toInt())
+                if (!initialized) {
+                    initialized = true
+                    Logic.initializeSettings(w.toInt(), h.toInt())
                     PaintBucket.initialize(Settings.screenRatio)
                     Sounds.initializeGame()
+                    Drawing.initialize()
+                    Logic.initialize()
+                    Logic.composeReinitCallback = {
+                        Logic.isInitialized = false
+                        Logic.initializeSettings(w.toInt(), h.toInt())
+                        PaintBucket.initialize(Settings.screenRatio)
+                        Drawing.initialize()
+                        Logic.initialize()
+                    }
                     gameLoop.start()
                 }
             }
