@@ -26,6 +26,17 @@
         <item>fastest</item>
     </string-array>
 
+    <string-array name="charge_meter_styles">
+        <item>Side Bar</item>
+        <item>Full Screen</item>
+        <item>None</item>
+    </string-array>
+    <string-array name="charge_meter_style_values">
+        <item>SideBar</item>
+        <item>FullScreen</item>
+        <item>None</item>
+    </string-array>
+
     <string-array name="tail_lengths">
         <item>None</item>
         <item>Short</item>

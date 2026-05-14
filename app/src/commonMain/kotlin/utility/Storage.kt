@@ -1,6 +1,7 @@
 package utility
 
 import enums.BallType
+import enums.ChargeMeterStyle
 
 object Storage {
 
@@ -165,8 +166,20 @@ object Storage {
 
     val highPlayerArrow: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "high_player_arrow", true)
     val lowPlayerArrow: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "low_player_arrow", true)
-    val highPlayerChargeFill: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "high_player_charge_fill", true)
-    val lowPlayerChargeFill: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "low_player_charge_fill", true)
+
+    val highPlayerChargeMeterStyle: ChargeMeterStyle get() = readChargeMeterStyle("high_player_charge_meter")
+    val lowPlayerChargeMeterStyle: ChargeMeterStyle get() = readChargeMeterStyle("low_player_charge_meter")
+
+    fun saveHighPlayerChargeMeterStyle(style: ChargeMeterStyle) =
+        PlatformStorage.saveString(SETTINGS, "high_player_charge_meter", style.name)
+    fun saveLowPlayerChargeMeterStyle(style: ChargeMeterStyle) =
+        PlatformStorage.saveString(SETTINGS, "low_player_charge_meter", style.name)
+
+    private fun readChargeMeterStyle(key: String): ChargeMeterStyle {
+        val stored = PlatformStorage.getString(SETTINGS, key, "")
+        if (stored.isNotEmpty()) return try { ChargeMeterStyle.valueOf(stored) } catch (e: IllegalArgumentException) { ChargeMeterStyle.SideBar }
+        return ChargeMeterStyle.SideBar
+    }
 
     // --- Sound volume settings ---
 

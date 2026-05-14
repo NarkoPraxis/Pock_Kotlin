@@ -11,15 +11,19 @@
             android:key="low_player_arrow"
             android:summary="@string/pref_low_player_arrow_summary"
             android:title="@string/pref_blue_player_arrow_title" />
-    <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="high_player_charge_fill"
-            android:summary="@string/pref_high_player_charge_fill_summary"
+    <ListPreference
+            android:summary="%s"
+            android:defaultValue="SideBar"
+            android:entries="@array/charge_meter_styles"
+            android:entryValues="@array/charge_meter_style_values"
+            android:key="high_player_charge_meter"
             android:title="@string/pref_red_player_charge_meter_title" />
-    <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="low_player_charge_fill"
-            android:summary="@string/pref_low_player_charge_fill_summary"
+    <ListPreference
+            android:summary="%s"
+            android:defaultValue="SideBar"
+            android:entries="@array/charge_meter_styles"
+            android:entryValues="@array/charge_meter_style_values"
+            android:key="low_player_charge_meter"
             android:title="@string/pref_blue_player_charge_meter_title" />
 
     <ListPreference

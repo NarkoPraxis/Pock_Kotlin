@@ -673,8 +673,8 @@ object Logic {
         Settings.unlockProgress = Storage.unlockProgress
         Settings.highPlayerArrow = Storage.highPlayerArrow
         Settings.lowPlayerArrow = Storage.lowPlayerArrow
-        Settings.highPlayerChargeFill = Storage.highPlayerChargeFill
-        Settings.lowPlayerChargeFill = Storage.lowPlayerChargeFill
+        Settings.highPlayerChargeMeterStyle = Storage.highPlayerChargeMeterStyle
+        Settings.lowPlayerChargeMeterStyle = Storage.lowPlayerChargeMeterStyle
         composeReinitCallback?.invoke()
         Settings.gameState = GameState.BallSelection
         Settings.gameOver = false
