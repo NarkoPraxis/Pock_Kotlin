@@ -13,13 +13,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import utility.PaintBucket
 import utility.PlatformStorage
 import utility.Sounds
 import utility.Storage
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}) {
+    val isDark = LocalDarkMode.current
+    val bgColor = if (isDark) Color(0xFF12102A) else Color(0xFFFFFFFF)
+    val textPrimary = if (isDark) Color.White else Color(0xFF12102A)
+    val textSecondary = if (isDark) Color(0xFFAAAAAA) else Color(0xFF555566)
+    val labelColor = if (isDark) Color(0xFFCCCCCC) else Color(0xFF333344)
+    val dividerColor = if (isDark) Color(0xFF444466) else Color(0xFFCCCCDD)
+
     var ballSize by remember { mutableStateOf(Storage.ballSize) }
     var chargeSpeed by remember { mutableStateOf(Storage.chargeSpeed) }
     var gameSpeed by remember { mutableIntStateOf(Storage.gameSpeed) }
@@ -71,36 +77,38 @@ fun SettingsScreen(onBack: () -> Unit) {
         highCharge = true
         lowCharge = true
         darkMode = false
+        onDarkModeChanged(false)
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PaintBucket.backgroundColor)
+            .background(bgColor)
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text("← Back", color = Color.White, fontSize = 16.sp)
+                Text("← Back", color = textPrimary, fontSize = 16.sp)
             }
             Spacer(Modifier.weight(1f))
-            Text("SETTINGS", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("SETTINGS", color = textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
         }
 
-        HorizontalDivider(color = Color(0xFF444466))
-        SettingsSectionLabel("Gameplay")
+        HorizontalDivider(color = dividerColor)
+        SettingsSectionLabel("Gameplay", textSecondary)
 
-        SettingsSectionLabel("Ball Size")
+        SettingsSectionLabel("Ball Size", textSecondary)
         SegmentedSelector(
             options = listOf("small" to "Small", "default" to "Default", "large" to "Large"),
             selected = ballSize,
             onSelect = { ballSize = it; PlatformStorage.saveString("settings", "ball_sizes", it) }
         )
 
-        SettingsSectionLabel("Charge Speed")
+        SettingsSectionLabel("Charge Speed", textSecondary)
         SegmentedSelector(
             options = listOf(0.3f to "Slow", 0.7f to "Normal", 1.2f to "Fast", 2f to "Fastest"),
             selected = chargeSpeed,
@@ -111,7 +119,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         )
 
-        SettingsSectionLabel("Game Speed")
+        SettingsSectionLabel("Game Speed", textSecondary)
         SegmentedSelector(
             options = listOf(24 to "Slow", 16 to "Normal", 8 to "Fast"),
             selected = gameSpeed,
@@ -122,7 +130,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         )
 
-        SettingsSectionLabel("Points to Win: $pointsToWin")
+        SettingsSectionLabel("Points to Win: $pointsToWin", textSecondary)
         Slider(
             value = pointsToWin.toFloat(),
             onValueChange = {
@@ -133,10 +141,10 @@ fun SettingsScreen(onBack: () -> Unit) {
             steps = 8
         )
 
-        HorizontalDivider(color = Color(0xFF444466))
-        SettingsSectionLabel("Sound")
+        HorizontalDivider(color = dividerColor)
+        SettingsSectionLabel("Sound", textSecondary)
 
-        VolumeSliderRow("Master", masterVol, masterMuted, onMute = {
+        VolumeSliderRow("Master", masterVol, masterMuted, labelColor, textPrimary, onMute = {
             val next = !masterMuted
             masterMuted = next
             Storage.saveSoundMasterMuted(next)
@@ -146,7 +154,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             Storage.saveSoundMasterVolume(it)
             Sounds.applyBackgroundVolume()
         }
-        VolumeSliderRow("Background", bgVol, bgMuted, onMute = {
+        VolumeSliderRow("Background", bgVol, bgMuted, labelColor, textPrimary, onMute = {
             val next = !bgMuted
             bgMuted = next
             Storage.saveSoundBackgroundMuted(next)
@@ -156,7 +164,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             Storage.saveSoundBackgroundVolume(it)
             Sounds.applyBackgroundVolume()
         }
-        VolumeSliderRow("Sound FX", sfxVol, sfxMuted, onMute = {
+        VolumeSliderRow("Sound FX", sfxVol, sfxMuted, labelColor, textPrimary, onMute = {
             val next = !sfxMuted
             sfxMuted = next
             Storage.saveSoundSfxMuted(next)
@@ -167,10 +175,10 @@ fun SettingsScreen(onBack: () -> Unit) {
             Sounds.applyBackgroundVolume()
         }
 
-        HorizontalDivider(color = Color(0xFF444466))
-        SettingsSectionLabel("Visual")
+        HorizontalDivider(color = dividerColor)
+        SettingsSectionLabel("Visual", textSecondary)
 
-        SettingsSectionLabel("Tail Length")
+        SettingsSectionLabel("Tail Length", textSecondary)
         SegmentedSelector(
             options = listOf(0 to "None", 10 to "Short", 20 to "Default", 40 to "Long"),
             selected = tailLength,
@@ -181,24 +189,25 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         )
 
-        ToggleRow("High Player Arrow", highArrow) {
+        ToggleRow("High Player Arrow", highArrow, labelColor) {
             highArrow = it; PlatformStorage.saveBoolean("settings", "high_player_arrow", it)
         }
-        ToggleRow("Low Player Arrow", lowArrow) {
+        ToggleRow("Low Player Arrow", lowArrow, labelColor) {
             lowArrow = it; PlatformStorage.saveBoolean("settings", "low_player_arrow", it)
         }
-        ToggleRow("High Player Charge Fill", highCharge) {
+        ToggleRow("High Player Charge Fill", highCharge, labelColor) {
             highCharge = it; PlatformStorage.saveBoolean("settings", "high_player_charge_fill", it)
         }
-        ToggleRow("Low Player Charge Fill", lowCharge) {
+        ToggleRow("Low Player Charge Fill", lowCharge, labelColor) {
             lowCharge = it; PlatformStorage.saveBoolean("settings", "low_player_charge_fill", it)
         }
-        ToggleRow("Dark Mode", darkMode) {
+        ToggleRow("Dark Mode", darkMode, labelColor) {
             darkMode = it
             PlatformStorage.saveBoolean("settings", "darkmode", it)
+            onDarkModeChanged(it)
         }
 
-        HorizontalDivider(color = Color(0xFF444466))
+        HorizontalDivider(color = dividerColor)
         TextButton(
             onClick = { resetToDefaults() },
             modifier = Modifier.fillMaxWidth()
@@ -211,8 +220,8 @@ fun SettingsScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun SettingsSectionLabel(text: String) {
-    Text(text = text, color = Color(0xFFAAAAAA), fontSize = 13.sp)
+private fun SettingsSectionLabel(text: String, color: Color) {
+    Text(text = text, color = color, fontSize = 13.sp)
 }
 
 @Composable
@@ -243,6 +252,8 @@ private fun VolumeSliderRow(
     label: String,
     value: Int,
     muted: Boolean,
+    labelColor: Color,
+    valueColor: Color,
     onMute: () -> Unit,
     onValueChange: (Int) -> Unit
 ) {
@@ -252,7 +263,7 @@ private fun VolumeSliderRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(label, color = Color(0xFFCCCCCC), fontSize = 14.sp)
+            Text(label, color = labelColor, fontSize = 14.sp)
             TextButton(onClick = onMute) {
                 Text(
                     if (muted) "Muted" else "Mute",
@@ -272,19 +283,19 @@ private fun VolumeSliderRow(
                 enabled = !muted
             )
             Spacer(Modifier.width(8.dp))
-            Text("$value%", color = Color.White, fontSize = 12.sp, modifier = Modifier.width(40.dp))
+            Text("$value%", color = valueColor, fontSize = 12.sp, modifier = Modifier.width(40.dp))
         }
     }
 }
 
 @Composable
-private fun ToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun ToggleRow(label: String, checked: Boolean, labelColor: Color, onCheckedChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = Color(0xFFCCCCCC), fontSize = 14.sp)
+        Text(label, color = labelColor, fontSize = 14.sp)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
