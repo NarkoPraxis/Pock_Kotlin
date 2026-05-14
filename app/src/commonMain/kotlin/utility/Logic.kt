@@ -18,6 +18,8 @@ import kotlin.math.absoluteValue
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.random.Random
+import kotlin.time.TimeSource
+import kotlin.time.TimeMark
 
 object Logic {
 
@@ -46,6 +48,12 @@ object Logic {
 
     var winnerSoundHasBeenPlayed = false
     private var victoryCelebrationFrame = 0
+
+    private var timerMark: TimeMark? = null
+    var timerStarted = false
+    var timerExpired = false
+    var timerHidden = false
+    var timerSecondsRemaining = 0
 
     private var highInDanger = false
     private var lowInDanger  = false
@@ -82,6 +90,12 @@ object Logic {
 
         victoryTicker = Ticker(Settings.victoryThreshold)
 
+        timerMark = null
+        timerStarted = false
+        timerExpired = false
+        timerHidden = false
+        timerSecondsRemaining = Settings.timeLimitMinutes * 60
+
         highBallPopup.open()
         lowBallPopup.open()
 
@@ -90,6 +104,18 @@ object Logic {
 
     fun reset() {
         tempGameState = GameState.Play
+    }
+
+    fun updateTimer() {
+        val mark = timerMark ?: return
+        if (timerExpired) return
+        val limitMs = Settings.timeLimitMinutes.toLong() * 60_000L
+        val remainingMs = (limitMs - mark.elapsedNow().inWholeMilliseconds).coerceAtLeast(0L)
+        timerSecondsRemaining = (remainingMs / 1000L).toInt()
+        if (remainingMs == 0L) {
+            timerExpired = true
+            timerHidden = true
+        }
     }
 
     fun applyBallStyles() {
@@ -118,6 +144,10 @@ object Logic {
             canCollide = true
             Settings.gameState = GameState.Play
             Sounds.playGameStart()
+            if (Settings.timeLimitMinutes > 0 && !timerStarted) {
+                timerStarted = true
+                timerMark = TimeSource.Monotonic.markNow()
+            }
         }
     }
 
@@ -237,7 +267,9 @@ object Logic {
         val lowIsReady = lowPlayer.moveTowardPoint(lowPlayer.resetLocation)
         val highIsReady = highPlayer.moveTowardPoint(highPlayer.resetLocation)
         if (lowIsReady && highIsReady) {
-            Settings.gameState = if (!Settings.gameOver && (lowPlayer.score >= Settings.pointsToWin || highPlayer.score >= Settings.pointsToWin)) {
+            val scoreWin = Settings.pointsToWin > 0 && (lowPlayer.score >= Settings.pointsToWin || highPlayer.score >= Settings.pointsToWin)
+            val timerGameOver = timerExpired && highPlayer.score != lowPlayer.score
+            Settings.gameState = if (!Settings.gameOver && (scoreWin || timerGameOver)) {
                 Settings.gameOver = true
                 victoryTicker.reset(Settings.victoryThreshold)
                 GameState.GameOver
@@ -284,6 +316,11 @@ object Logic {
             highPopupDragPointerId = -1
             lowPopupDragPointerId = -1
             GameEvents.gameReset.emit(Unit)
+            timerMark = null
+            timerStarted = false
+            timerExpired = false
+            timerHidden = false
+            timerSecondsRemaining = Settings.timeLimitMinutes * 60
             Settings.gameState = GameState.BallSelection
             Drawing.cycleHighTip()
             Drawing.cycleLowTip()
@@ -303,7 +340,12 @@ object Logic {
     var previousAngle = 0f
 
     private fun updateVictoryCelebration() {
-        val winner = if (highPlayer.score >= Settings.pointsToWin) highPlayer else lowPlayer
+        val winner = when {
+            Settings.pointsToWin > 0 && highPlayer.score >= Settings.pointsToWin -> highPlayer
+            Settings.pointsToWin > 0 && lowPlayer.score >= Settings.pointsToWin -> lowPlayer
+            highPlayer.score > lowPlayer.score -> highPlayer
+            else -> lowPlayer
+        }
         if (victoryCelebrationFrame % winner.puck.renderer.skin.explosionFrequency == 0) {
             val skin = winner.puck.renderer.skin
             val baseMargin = Settings.screenRatio * 2f
@@ -625,6 +667,7 @@ object Logic {
     fun resetGame() {
         closeBallPopups()
         Settings.pointsToWin = Storage.loadPointsToWin()
+        Settings.timeLimitMinutes = Storage.loadTimeLimit()
         Settings.highBallType = Storage.loadHighBallType(Settings.highBallType)
         Settings.lowBallType = Storage.loadLowBallType(Settings.lowBallType)
         Settings.unlockProgress = Storage.unlockProgress

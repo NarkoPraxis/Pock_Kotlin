@@ -22,12 +22,17 @@
             android:entryValues="@array/game_values"
             android:key="game_speed"
             android:title="@string/pref_game_speed_title" />
-    <ListPreference
+    <com.runoutzone.pockpock.InfinitySeekBarPreference
             app:key="points_to_win"
             app:title="@string/pref_points_to_win_title"
-            app:summary="%s"
-            app:entries="@array/points_to_win_entries"
-            app:entryValues="@array/points_to_win_values"
-            app:defaultValue="5" />
+            android:max="20"
+            app:defaultValue="5"
+            app:showSeekBarValue="true" />
+    <com.runoutzone.pockpock.InfinitySeekBarPreference
+            app:key="time_limit_minutes"
+            app:title="@string/pref_time_limit_title"
+            android:max="20"
+            app:defaultValue="0"
+            app:showSeekBarValue="true" />
 
 </PreferenceScreen>

@@ -65,6 +65,7 @@
     <string name="pref_sound_background">Hintergrundmusik</string>
     <string name="pref_sound_sfx">Soundeffekte</string>
     <string name="pref_sound_mute">Stumm</string>
+    <string name="pref_time_limit_title">Zeitlimit</string>
 
     <!-- Settings option arrays -->
     <string-array name="ball_sizes">

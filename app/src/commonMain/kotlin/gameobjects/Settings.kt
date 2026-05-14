@@ -91,12 +91,14 @@ object Settings {
 
     var isSinglePlayer: Boolean = false
     var botConfig: BotConfig = BotConfig.Easy
+    var timeLimitMinutes: Int = 0
 
     fun initializeForScreen(width: Int, height: Int) {
         tailLength = utility.Storage.tailLength
         chargeIncreaseRate = utility.Storage.chargeSpeed
         refreshRate = utility.Storage.gameSpeed
         pointsToWin = utility.Storage.loadPointsToWin()
+        timeLimitMinutes = utility.Storage.loadTimeLimit()
         highBallType = utility.Storage.loadHighBallType(highBallType)
         lowBallType = utility.Storage.loadLowBallType(lowBallType)
         unlockProgress = utility.Storage.unlockProgress

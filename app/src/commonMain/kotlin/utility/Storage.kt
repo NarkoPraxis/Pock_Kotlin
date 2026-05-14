@@ -142,7 +142,25 @@ object Storage {
     }
 
     fun loadPointsToWin(): Int {
-        return PlatformStorage.getString(SETTINGS, "points_to_win", "5").toIntOrNull() ?: 5
+        return try {
+            PlatformStorage.getInt(SETTINGS, "points_to_win", 5)
+        } catch (e: Exception) {
+            val legacy = PlatformStorage.getString(SETTINGS, "points_to_win", "5").toIntOrNull() ?: 5
+            PlatformStorage.saveInt(SETTINGS, "points_to_win", legacy)
+            legacy
+        }
+    }
+
+    fun savePointsToWin(value: Int) {
+        PlatformStorage.saveInt(SETTINGS, "points_to_win", value.coerceIn(0, 20))
+    }
+
+    fun loadTimeLimit(): Int {
+        return PlatformStorage.getInt(SETTINGS, "time_limit_minutes", 0)
+    }
+
+    fun saveTimeLimit(minutes: Int) {
+        PlatformStorage.saveInt(SETTINGS, "time_limit_minutes", minutes.coerceIn(0, 20))
     }
 
     val highPlayerArrow: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "high_player_arrow", true)
