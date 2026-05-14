@@ -80,4 +80,5 @@
     <string name="pref_sound_background">Background</string>
     <string name="pref_sound_sfx">SFX</string>
     <string name="pref_sound_mute">Mute</string>
+    <string name="pref_time_limit_title">Time Limit</string>
 </resources>

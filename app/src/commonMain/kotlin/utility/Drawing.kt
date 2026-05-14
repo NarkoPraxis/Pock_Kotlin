@@ -67,11 +67,14 @@ object Drawing {
         with(Effects) { drawEffects() }
         drawPlayersCompose()
         drawWalls()
+        drawTimer()
         drawAimArrows()
         drawArenaForeground()
         drawBallPopups()
         drawScoreFlash()
         drawScores(Logic.highPlayer, Logic.lowPlayer)
+        Logic.updateTimer()
+
     }
 
     fun DrawScope.drawBallPopups() {
@@ -483,39 +486,51 @@ object Drawing {
         )
 
         val xMargin = Settings.screenRatio * 3f
-        val yMargin = Settings.topGoalBottom * 0.2f
+        val yMargin = 0
         val scoreY = Settings.screenHeight - yMargin
 
         val highX = xMargin + Settings.scoreOffsetHigh
         val midX = Settings.screenWidth / 2f
         val midY = Settings.screenHeight / 2f
-        val highPop = Settings.highScorePopTicker
         val highResult = tm.measure(highPlayer.cachedScoreText, style)
 
         withTransform({ scale(-1f, -1f, pivot = Offset(midX, midY)) }) {
-            if (Settings.scorePopEnabled && !highPop.finished) {
-                highPop.tick
-                val scale = 1f + sin(highPop.ratio * kotlin.math.PI.toFloat())
-                withTransform({ scale(scale, scale, pivot = Offset(highX, scoreY)) }) {
-                    drawText(highResult, topLeft = Offset(highX, scoreY - highResult.size.height))
-                }
-            } else {
-                drawText(highResult, topLeft = Offset(highX, scoreY - highResult.size.height))
-            }
+            drawText(highResult, color=Color.White, topLeft = Offset(highX, scoreY - highResult.size.height))
         }
 
         val lowX = xMargin + Settings.scoreOffsetLow
-        val lowPop = Settings.lowScorePopTicker
         val lowResult = tm.measure(lowPlayer.cachedScoreText, style)
-        if (Settings.scorePopEnabled && !lowPop.finished) {
-            lowPop.tick
-            val scale = 1f + sin(lowPop.ratio * kotlin.math.PI.toFloat())
-            withTransform({ scale(scale, scale, pivot = Offset(lowX, scoreY)) }) {
-                drawText(lowResult, topLeft = Offset(lowX, scoreY - lowResult.size.height))
-            }
-        } else {
-            drawText(lowResult, topLeft = Offset(lowX, scoreY - lowResult.size.height))
+
+        drawText(lowResult, color=Color.White, topLeft = Offset(lowX, scoreY - lowResult.size.height))
+
+    }
+
+    fun DrawScope.drawTimer() {
+        if (Settings.timeLimitMinutes == 0) return
+        if (!Logic.timerStarted || Logic.timerHidden) return
+        val tm = textMeasurer ?: return
+
+        val density = drawContext.density.density
+        val fontSizePx = Settings.screenRatio * 1.2f
+        val fontSizeSp = fontSizePx / density
+        val style = androidx.compose.ui.text.TextStyle(
+            fontSize = androidx.compose.ui.unit.TextUnit(fontSizeSp, androidx.compose.ui.unit.TextUnitType.Sp),
+            color = PaintBucket.timerColor
+        )
+        val result = tm.measure(Logic.timerSecondsRemaining.toString(), style)
+
+        val midX = Settings.screenWidth / 2f
+        val midY = Settings.screenHeight / 2f
+        val timerX = midX - result.size.width / 2f
+        val timerPad = Settings.screenRatio * 0.4f
+        val timerY = Settings.bottomGoalTop - timerPad - result.size.height
+
+        // High player — mirrored to appear above the top goal from their perspective
+        withTransform({ scale(-1f, -1f, pivot = Offset(midX, midY)) }) {
+            drawText(result, topLeft = Offset(timerX, timerY))
         }
+        // Low player — just above the bottom goal zone
+        drawText(result, topLeft = Offset(timerX, timerY))
     }
 
     fun DrawScope.drawScoreFlash() {

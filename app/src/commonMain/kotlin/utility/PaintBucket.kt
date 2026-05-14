@@ -71,6 +71,8 @@ object PaintBucket {
 
     var menuHintColor: Color = Color(0x3CFFFFFF)
 
+    val timerColor: Color get() = if (utility.Storage.darkMode) Color(0xFF999999) else Color(0xFFD9D9D9)
+
     // ── Stroke descriptors ─────────────────────────────────────────────────────
 
     /** Puck outline stroke — width set in [initialize]. */

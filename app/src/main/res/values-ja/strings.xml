@@ -65,6 +65,7 @@
     <string name="pref_sound_background">BGM</string>
     <string name="pref_sound_sfx">効果音</string>
     <string name="pref_sound_mute">ミュート</string>
+    <string name="pref_time_limit_title">制限時間</string>
 
     <!-- Settings option arrays -->
     <string-array name="ball_sizes">

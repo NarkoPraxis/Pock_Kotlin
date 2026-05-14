@@ -1,9 +1,11 @@
 package com.runoutzone.pockpock
 
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.os.Bundle
+import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -20,6 +22,9 @@ import androidx.fragment.app.FragmentActivity
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
+import androidx.preference.PreferenceViewHolder
+import androidx.preference.R as PreferenceR
+import androidx.preference.SeekBarPreference
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.appbar.MaterialToolbar
@@ -131,7 +136,25 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
 
     class GameplayFragment : PreferenceFragmentCompat() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+            migrateIntPrefs()
             setPreferencesFromResource(R.xml.gameplay_preferences, rootKey)
+        }
+
+        private fun migrateIntPrefs() {
+            val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+            val defaults = mapOf("points_to_win" to 5, "time_limit_minutes" to 0)
+            val editor = prefs.edit()
+            var dirty = false
+            for ((key, default) in defaults) {
+                try {
+                    prefs.getInt(key, default)
+                } catch (e: ClassCastException) {
+                    val v = prefs.getString(key, null)?.toIntOrNull() ?: default
+                    editor.putInt(key, v)
+                    dirty = true
+                }
+            }
+            if (dirty) editor.apply()
         }
     }
 
@@ -252,5 +275,29 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
                 btn.setTextColor(accentColor)
             }
         }
+    }
+}
+
+class InfinitySeekBarPreference @JvmOverloads constructor(
+    context: Context, attrs: AttributeSet? = null
+) : SeekBarPreference(context, attrs) {
+
+    override fun onBindViewHolder(holder: PreferenceViewHolder) {
+        super.onBindViewHolder(holder)
+        val seekBar = holder.itemView.findViewById<SeekBar>(PreferenceR.id.seekbar) ?: return
+        val valueText = holder.itemView.findViewById<TextView>(PreferenceR.id.seekbar_value) ?: return
+
+        fun display(v: Int) { valueText.text = if (v == 0) "∞" else "$v" }
+        display(seekBar.progress)
+
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onStartTrackingTouch(bar: SeekBar) {}
+            override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
+                display(progress)
+            }
+            override fun onStopTrackingTouch(bar: SeekBar) {
+                if (callChangeListener(bar.progress)) value = bar.progress
+            }
+        })
     }
 }

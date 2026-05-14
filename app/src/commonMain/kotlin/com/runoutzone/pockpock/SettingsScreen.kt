@@ -31,6 +31,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
     var gameSpeed by remember { mutableIntStateOf(Storage.gameSpeed) }
     var tailLength by remember { mutableIntStateOf(Storage.tailLength) }
     var pointsToWin by remember { mutableIntStateOf(Storage.loadPointsToWin()) }
+    var timeLimit by remember { mutableIntStateOf(Storage.loadTimeLimit()) }
     var masterVol by remember { mutableIntStateOf(Storage.soundMasterVolume) }
     var bgVol by remember { mutableIntStateOf(Storage.soundBackgroundVolume) }
     var sfxVol by remember { mutableIntStateOf(Storage.soundSfxVolume) }
@@ -48,7 +49,8 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         PlatformStorage.saveString("settings", "charge_speed", "default")
         PlatformStorage.saveString("settings", "game_speed", "default")
         PlatformStorage.saveString("settings", "tail_length", "default")
-        PlatformStorage.saveString("settings", "points_to_win", "5")
+        Storage.savePointsToWin(5)
+        Storage.saveTimeLimit(0)
         Storage.saveSoundMasterVolume(70)
         Storage.saveSoundBackgroundVolume(100)
         Storage.saveSoundSfxVolume(70)
@@ -66,6 +68,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         gameSpeed = 16
         tailLength = 20
         pointsToWin = 5
+        timeLimit = 0
         masterVol = 70
         bgVol = 100
         sfxVol = 70
@@ -130,15 +133,26 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
             }
         )
 
-        SettingsSectionLabel("Points to Win: $pointsToWin", textSecondary)
+        SettingsSectionLabel(if (pointsToWin == 0) "Points to Win: ∞" else "Points to Win: $pointsToWin")
         Slider(
             value = pointsToWin.toFloat(),
             onValueChange = {
                 pointsToWin = it.toInt()
-                PlatformStorage.saveString("settings", "points_to_win", pointsToWin.toString())
+                Storage.savePointsToWin(pointsToWin)
             },
-            valueRange = 1f..10f,
-            steps = 8
+            valueRange = 0f..20f,
+            steps = 19
+        )
+
+        SettingsSectionLabel(if (timeLimit == 0) "Time Limit: ∞" else "Time Limit: $timeLimit min")
+        Slider(
+            value = timeLimit.toFloat(),
+            onValueChange = {
+                timeLimit = it.toInt()
+                Storage.saveTimeLimit(timeLimit)
+            },
+            valueRange = 0f..20f,
+            steps = 19
         )
 
         HorizontalDivider(color = dividerColor)

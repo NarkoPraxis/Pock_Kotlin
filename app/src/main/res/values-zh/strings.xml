@@ -65,6 +65,7 @@
     <string name="pref_sound_background">背景音乐</string>
     <string name="pref_sound_sfx">音效</string>
     <string name="pref_sound_mute">静音</string>
+    <string name="pref_time_limit_title">时间限制</string>
 
     <!-- Settings option arrays -->
     <string-array name="ball_sizes">
