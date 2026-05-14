@@ -19,14 +19,8 @@ open class Ticker(var value: Int, var accending: Boolean = false) {
        get() {
            dirty = true
            ticking = true
-           return if (Settings.pauseGame) {
-               if (accending) {
-                   value >= referanceValue
-               } else {
-                   value <= 0
-               }
-           } else if (accending) {
-                   value++ >= referanceValue
+           return if (accending) {
+               value++ >= referanceValue
            } else {
                value-- <= 0
            }

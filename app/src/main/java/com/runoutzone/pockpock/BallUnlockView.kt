@@ -9,7 +9,14 @@ import android.os.Looper
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Canvas as ComposeCanvas
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.core.graphics.withClip
 import enums.BallType
+import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
@@ -19,11 +26,10 @@ import gameobjects.puckstyle.PuckSkin
 import gameobjects.puckstyle.TailRenderer
 import utility.PaintBucket
 import utility.Storage
+import utility.initialize
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sin
-import androidx.core.graphics.withClip
-import gameobjects.Puck
 
 class BallUnlockView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -42,6 +48,7 @@ class BallUnlockView @JvmOverloads constructor(
     private var bounceFrame: Int = 0
 
     private var renderers: Array<PuckRenderer>? = null
+    private val canvasDrawScope = CanvasDrawScope()
 
     private var tailsBuiltForProgress: Int = -1
 
@@ -155,10 +162,7 @@ class BallUnlockView @JvmOverloads constructor(
             // Configure previewRenderer for this slot
             val unlocked = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
             previewRenderer.effectEnabled = false
-            // strokeWidth must be synced each frame — the renderer is constructed before Settings.strokeWidth
-            // is set by initializeSettings(), so the baked-in value is 0f.
-            previewRenderer.strokePaint.strokeWidth = ratio() / 4f
-            previewRenderer.chargePaint.strokeWidth = ratio() / 4f
+            previewRenderer.strokeWidth = ratio() / 4f
             previewRenderer.x = cx
             previewRenderer.y = puckY
             previewRenderer.radius = pr
@@ -171,7 +175,14 @@ class BallUnlockView @JvmOverloads constructor(
 
             // 2. Draw puck clipped to card bounds so tail can't escape into adjacent cells
             canvas.withClip(b[0], b[1], b[2], b[3]) {
-                previewRenderer.draw(this)
+                canvasDrawScope.draw(
+                    density = Density(resources.displayMetrics.density),
+                    layoutDirection = LayoutDirection.Ltr,
+                    canvas = ComposeCanvas(this),
+                    size = Size(width.toFloat(), height.toFloat())
+                ) {
+                    with(previewRenderer) { draw() }
+                }
             }
 
             // 3. Lock overlay

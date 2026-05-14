@@ -9,8 +9,10 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.mutableIntStateOf
 import enums.*
 import gameobjects.*
 import utility.*
@@ -33,9 +35,9 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         super.onSizeChanged(width, height, oldWidth, oldHeight)
         Logic.initializeSettings(width, height)
         PaintBucket.initialize(resources)
-        Logic.initialize(activity, this)
+        Logic.initialize()
         Sounds.initializeGame()
-        Drawing.initialize(resources)
+        Drawing.initialize()
         (activity as? GameActivity)?.positionTipOverlays(
             width, height, Settings.topGoalBottom, Settings.bottomGoalTop
         )
@@ -87,29 +89,10 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
         Logic.checkDanger()
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
+    // onDraw is unused — GameActivity renders via Compose Canvas (drawGameFrame).
+    // Retained for compilation; PlayView is not shown when GameActivity uses setContent.
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (Logic.leaving) {
-            return
-        }
-
-        Drawing.drawArenaBackground(canvas)
-        Drawing.drawChargeFill(canvas)
-        Effects.drawEffects(canvas)
-        Drawing.drawPlayers(canvas)
-        Drawing.drawWalls(canvas)
-        Drawing.drawAimArrows(canvas)
-        Drawing.drawArenaForeground(canvas)
-
-        if (Settings.gameState != GameState.BallSelection) {
-            Drawing.drawScoreFlash(canvas)
-            Drawing.drawScores(canvas, Logic.highPlayer, Logic.lowPlayer)
-        } else {
-            Logic.highBallPopup.drawTo(canvas)
-            Logic.lowBallPopup.drawTo(canvas)
-        }
-
     }
 
     fun pauseGameLoop() {
@@ -127,82 +110,64 @@ open class PlayView(context: Context, override var activity: AppCompatActivity) 
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        Logic.onTouchEvent(event, context)
         return true
     }
 }
 
 class GameActivity : AppCompatActivity() {
-    lateinit var playView: PlayView
-    private lateinit var lowTipOverlay: android.view.View
-    private lateinit var highTipOverlay: android.view.View
-
-    private val tipStringIds = intArrayOf(
-        R.string.tip_controls,
-        R.string.tip_scoring,
-        R.string.tip_charging,
-        R.string.tip_shields,
-        R.string.tip_overcharge,
-        R.string.tip_grey
+    private val tickState = mutableIntStateOf(0)
+    private val gameLoop = GameLoop(
+        intervalMs = { Settings.refreshRate.toLong() },
+        onTick = {
+            if (Settings.screenWidth > 0f) {
+                Logic.botBrain?.tick()
+                Logic.updateCanScoreWall()
+                when (Settings.gameState) {
+                    GameState.BallSelection -> {
+                        Logic.checkCharge()
+                        Logic.cancelChargesOnRelease()
+                        Logic.checkBallSelectionEnd()
+                    }
+                    GameState.Play -> {
+                        Logic.adjustPlayerPositions()
+                        Logic.checkCharge()
+                        Logic.calculateCollision()
+                        Logic.checkScored()
+                        Logic.checkDanger()
+                    }
+                    GameState.Scored -> Logic.scored()
+                    GameState.GameOver -> Logic.gameOver()
+                    else -> {}
+                }
+            }
+            tickState.intValue++
+        }
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val root = android.widget.FrameLayout(this)
-
-        playView = PlayView(this, this)
-        playView.contentDescription = getString(R.string.gameViewDescription)
-        root.addView(playView, android.widget.FrameLayout.LayoutParams(
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
-        ))
-
-        lowTipOverlay = layoutInflater.inflate(R.layout.tip_overlay, root, false)
-        highTipOverlay = layoutInflater.inflate(R.layout.tip_overlay, root, false)
-        highTipOverlay.rotation = 180f
-        lowTipOverlay.visibility = View.GONE
-        highTipOverlay.visibility = View.GONE
-
-        root.addView(lowTipOverlay, android.widget.FrameLayout.LayoutParams(
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
-        ))
-        root.addView(highTipOverlay, android.widget.FrameLayout.LayoutParams(
-            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
-        ))
-
-        setContentView(root)
+        setContent {
+            GameScreen(
+                gameLoopTick = tickState,
+                onSizeKnown = { w, h -> initGame(w, h) }
+            )
+        }
         hideSystemUI()
     }
 
-    fun positionTipOverlays(width: Int, height: Int, topGoalBottom: Float, bottomGoalTop: Float) {
-        val padding = (height * 0.02f).toInt()
-        val carouselHeight = (gameobjects.Settings.screenRatio * 5f).toInt()
-
-        (lowTipOverlay.layoutParams as android.widget.FrameLayout.LayoutParams).apply {
-            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
-            bottomMargin = (height - bottomGoalTop).toInt() + carouselHeight + padding
-        }
-        lowTipOverlay.requestLayout()
-
-        (highTipOverlay.layoutParams as android.widget.FrameLayout.LayoutParams).apply {
-            gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
-            topMargin = topGoalBottom.toInt() + carouselHeight + padding
-        }
-        highTipOverlay.requestLayout()
+    private fun initGame(width: Float, height: Float) {
+        Logic.initializeSettings(width.toInt(), height.toInt())
+        PaintBucket.initialize(resources)
+        Logic.initialize()
+        Sounds.initializeGame()
+        Drawing.initialize()
+        Logic.composeReinitCallback = { initGame(width, height) }
+        gameLoop.start()
     }
 
-    fun updateTipOverlay(highIndex: Int, lowIndex: Int, visible: Boolean) {
-        val vis = if (visible) View.VISIBLE else View.GONE
-        lowTipOverlay.visibility = vis
-        highTipOverlay.visibility = vis
-        if (visible) {
-            lowTipOverlay.findViewById<android.widget.TextView>(R.id.tipText).setText(tipStringIds[lowIndex])
-            highTipOverlay.findViewById<android.widget.TextView>(R.id.tipText).setText(tipStringIds[highIndex])
-        }
-    }
+    // Stubs retained so PlayView (kept as fallback) continues to compile
+    fun positionTipOverlays(width: Int, height: Int, topGoalBottom: Float, bottomGoalTop: Float) {}
+    fun updateTipOverlay(highIndex: Int, lowIndex: Int, visible: Boolean) {}
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
@@ -211,19 +176,15 @@ class GameActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        if (Logic.leaving) {
-            Sounds.autoPauseSfx()
-        } else {
-            Sounds.pauseAll()
-        }
-        playView.pauseGameLoop()
+        if (Logic.leaving) Sounds.autoPauseSfx() else Sounds.pauseAll()
+        gameLoop.stop()
     }
 
     override fun onResume() {
         super.onResume()
         hideSystemUI()
         Sounds.resumeAll()
-        playView.resumeGameLoop()
+        gameLoop.start()
     }
 
     private fun hideSystemUI() {
@@ -250,6 +211,4 @@ class GameActivity : AppCompatActivity() {
         Logic.unregisterPhaseCallbacks()
         Settings.isSinglePlayer = false
     }
-
-
 }

@@ -12,8 +12,10 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
+import androidx.compose.ui.graphics.toArgb
 import gameobjects.Settings
 import utility.Drawing
+import utility.initialize
 import utility.Logic
 import utility.PaintBucket
 import utility.Storage
@@ -77,14 +79,14 @@ class ScoreCalibrationView(context: Context) : View(context) {
             Logic.initializeSettings(w, h)
         }
         PaintBucket.initialize(resources)
-        Drawing.initialize(resources)
+        Drawing.initialize()
 
         scorePaint.textSize = Settings.topGoalBottom * 0.85f
         hintPaint.textSize = Settings.screenRatio * 0.85f
 
-        bgPaint.color = PaintBucket.backgroundPaint.color
-        goalPaint.color = PaintBucket.goalColor
-        wallPaint.color = PaintBucket.effectColor
+        bgPaint.color = PaintBucket.backgroundColor.toArgb()
+        goalPaint.color = PaintBucket.goalColor.toArgb()
+        wallPaint.color = PaintBucket.effectColor.toArgb()
 
         val tv = TypedValue()
         context.theme.resolveAttribute(com.google.android.material.R.attr.colorSecondary, tv, true)
