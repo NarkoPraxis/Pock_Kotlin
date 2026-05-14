@@ -38,6 +38,7 @@ import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import kotlinx.coroutines.delay
+import utility.LocalStrings
 import utility.PaintBucket
 import utility.PlatformAd
 import utility.Storage
@@ -52,6 +53,7 @@ fun BallUnlockScreen(onBack: () -> Unit) {
     val bgColor = if (isDark) Color(0xFF12102A) else Color(0xFFFFFFFF)
     val textPrimary = if (isDark) Color.White else Color(0xFF12102A)
     val dividerColor = if (isDark) Color(0xFF444466) else Color(0xFFCCCCDD)
+    val strings = LocalStrings.current
 
     val displayTypes = remember { BallType.entries.filter { it != BallType.Random } }
     val count = displayTypes.size
@@ -118,11 +120,11 @@ fun BallUnlockScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
-                Text("← Back", color = textPrimary, fontSize = 16.sp)
+                Text(strings.back, color = textPrimary, fontSize = 16.sp)
             }
             Spacer(Modifier.weight(1f))
             Text(
-                "BALL TYPES",
+                strings.ballTypesTitle,
                 color = textPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
@@ -145,13 +147,13 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        "$unlockProgress% Unlocked",
+                        strings.percentUnlocked(unlockProgress),
                         color = textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        "Watch ads to unlock more ball types",
+                        strings.watchAdsToUnlockMore,
                         color = textPrimary.copy(alpha = 0.6f),
                         fontSize = 11.sp
                     )
@@ -168,13 +170,13 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val adLabel = when {
-                        Storage.adsWatchedToday() >= 5 -> "Come Back Tomorrow"
+                        Storage.adsWatchedToday() >= 5 -> strings.comeBackTomorrow
                         Storage.minutesUntilNextAd() > 0 -> {
                             val mins = Storage.minutesUntilNextAd()
-                            "Next Ad in ${if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m"}"
+                            strings.nextAdIn(if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m")
                         }
-                        adReady -> "Watch Ad (+2%)"
-                        else -> "Watch Ad (Loading...)"
+                        adReady -> strings.watchAdEarn
+                        else -> strings.watchAdLoading
                     }
                     Button(
                         onClick = {
@@ -200,10 +202,10 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                         enabled = adReady && Storage.canWatchAdNow(),
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF444466),
-                            contentColor = Color.White,
-                            disabledContainerColor = Color(0xFF333344),
-                            disabledContentColor = Color(0xFF888899)
+                            containerColor = if (isDark) Color(0xFF444466) else Color(0xFFD4C8FF),
+                            contentColor = if (isDark) Color.White else Color(0xFF12102A),
+                            disabledContainerColor = if (isDark) Color(0xFF333344) else Color(0xFFE8E0FF),
+                            disabledContentColor = if (isDark) Color(0xFF888899) else Color(0xFF8877AA)
                         )
                     ) {
                         Text(adLabel, fontSize = 12.sp)
@@ -214,13 +216,13 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                         enabled = false,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF444466),
-                            contentColor = Color.White,
-                            disabledContainerColor = Color(0xFF333344),
-                            disabledContentColor = Color(0xFF888899)
+                            containerColor = if (isDark) Color(0xFF444466) else Color(0xFFD4C8FF),
+                            contentColor = if (isDark) Color.White else Color(0xFF12102A),
+                            disabledContainerColor = if (isDark) Color(0xFF333344) else Color(0xFFE8E0FF),
+                            disabledContentColor = if (isDark) Color(0xFF888899) else Color(0xFF8877AA)
                         )
                     ) {
-                        Text("Get Pro", fontSize = 12.sp)
+                        Text(strings.getPro, fontSize = 12.sp)
                     }
                 }
 
@@ -228,7 +230,7 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                     onClick = { /* TODO: iOS restore purchases */ },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
-                    Text("Restore Purchases", color = textPrimary.copy(alpha = 0.6f), fontSize = 12.sp)
+                    Text(strings.restorePurchases, color = textPrimary.copy(alpha = 0.6f), fontSize = 12.sp)
                 }
             }
             HorizontalDivider(color = dividerColor)
@@ -325,8 +327,8 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                             )
                         )
 
-                        val statusText = if (isUnlocked) "Unlocked"
-                            else BallStyleFactory.unlockThreshold(type)?.let { "Reach $it%" } ?: "Unlocked"
+                        val statusText = if (isUnlocked) strings.unlocked
+                            else BallStyleFactory.unlockThreshold(type)?.let { strings.reachPercent(it) } ?: strings.unlocked
                         val subStyle = TextStyle(
                             color = subColor,
                             fontSize = (ratio * 0.45f / pxPerSp).sp,

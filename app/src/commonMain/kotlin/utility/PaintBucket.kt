@@ -121,6 +121,15 @@ object PaintBucket {
     // ── Initialization ────────────────────────────────────────────────────────
 
     /**
+     * Set arena colors for iOS based on dark mode. Call after [initialize].
+     * Android does not call this — it uses initializeColors(resources) instead.
+     */
+    fun initializePlatformColors(isDark: Boolean) {
+        backgroundColor = if (isDark) Color(0xFF1A1A1A) else Color(0xFFFFFFFF)
+        goalColor = Color(0xFFE3D1FF)
+    }
+
+    /**
      * Recompute size-dependent values. Call once after [Settings] screen fields are populated.
      * On Android, call [initializeColors] first to load R.color values, then this.
      */
