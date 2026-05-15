@@ -17,9 +17,19 @@ import gameobjects.BotConfig
 import gameobjects.Settings
 import utility.Drawing
 import utility.GameLoop
+import utility.LanguageHelper
+import utility.LocalStrings
 import utility.Logic
 import utility.PaintBucket
 import utility.Sounds
+import utility.Storage
+import utility.Strings
+
+/** Provides the current dark-mode flag to any composable in the tree. */
+val LocalDarkMode = compositionLocalOf { false }
+
+/** Provides the current language code (e.g. "de", "fr", "" = English) to any composable. */
+val LocalLanguage = compositionLocalOf { "" }
 
 private enum class Screen { MainMenu, Game, Settings, BallUnlock }
 
@@ -27,6 +37,8 @@ private enum class Screen { MainMenu, Game, Settings, BallUnlock }
 fun AppRoot() {
     val navController = rememberNavController()
     var showDifficultyDialog by remember { mutableStateOf(false) }
+    var darkMode by remember { mutableStateOf(Storage.darkMode) }
+    var language by remember { mutableStateOf(LanguageHelper.getCurrentCode()) }
 
     NavHost(navController, startDestination = Screen.MainMenu.name) {
         composable(Screen.MainMenu.name) {
@@ -57,38 +69,78 @@ fun AppRoot() {
             BallUnlockScreen(onBack = { navController.popBackStack() })
         }
     }
+    CompositionLocalProvider(
+        LocalDarkMode provides darkMode,
+        LocalLanguage provides language,
+        LocalStrings provides Strings.forCode(language)
+    ) {
+        NavHost(navController, startDestination = Screen.MainMenu.name) {
+            composable(Screen.MainMenu.name) {
+                LaunchedEffect(Unit) {
+                    Sounds.playMenuAmbiance()
+                }
+                MainMenuScreen(
+                    onPlayTapped = {
+                        Settings.isSinglePlayer = false
+                        Sounds.playGameAmbiance()
+                        navController.navigate(Screen.Game.name)
+                    },
+                    onSinglePlayerTapped = { showDifficultyDialog = true },
+                    onSettingsTapped = { navController.navigate(Screen.Settings.name) },
+                    onBallsTapped = { navController.navigate(Screen.BallUnlock.name) },
+                    onLanguageChanged = { code ->
+                        LanguageHelper.saveLanguage(code)
+                        language = code
+                    }
+                )
+            }
+            composable(Screen.Game.name) {
+                IosGameHost(onBack = { navController.popBackStack() })
+            }
+            composable(Screen.Settings.name) {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onDarkModeChanged = { darkMode = it }
+                )
+            }
+            composable(Screen.BallUnlock.name) {
+                BallUnlockScreen(onBack = { navController.popBackStack() })
+            }
+        }
 
-    if (showDifficultyDialog) {
-        AlertDialog(
-            onDismissRequest = { showDifficultyDialog = false },
-            title = { Text("Choose Difficulty", color = Color.White) },
-            text = {
-                Column {
-                    listOf(
-                        "Easy" to BotConfig.Easy,
-                        "Medium" to BotConfig.Medium,
-                        "Hard" to BotConfig.Hard
-                    ).forEach { (label, config) ->
-                        TextButton(onClick = {
-                            Settings.botConfig = config
-                            Settings.isSinglePlayer = true
-                            showDifficultyDialog = false
-                            Sounds.playGameAmbiance()
-                            navController.navigate(Screen.Game.name)
-                        }) {
-                            Text(label, color = Color.White)
+        if (showDifficultyDialog) {
+            val strings = LocalStrings.current
+            AlertDialog(
+                onDismissRequest = { showDifficultyDialog = false },
+                title = { Text(strings.chooseDifficulty, color = Color.White) },
+                text = {
+                    Column {
+                        listOf(
+                            strings.easy to BotConfig.Easy,
+                            strings.medium to BotConfig.Medium,
+                            strings.hard to BotConfig.Hard
+                        ).forEach { (label, config) ->
+                            TextButton(onClick = {
+                                Settings.botConfig = config
+                                Settings.isSinglePlayer = true
+                                showDifficultyDialog = false
+                                Sounds.playGameAmbiance()
+                                navController.navigate(Screen.Game.name)
+                            }) {
+                                Text(label, color = Color.White)
+                            }
                         }
                     }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showDifficultyDialog = false }) {
-                    Text("Cancel", color = Color.White)
-                }
-            },
-            containerColor = Color(0xFF2A2A3A)
-        )
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showDifficultyDialog = false }) {
+                        Text(strings.cancel, color = Color.White)
+                    }
+                },
+                containerColor = Color(0xFF2A2A3A)
+            )
+        }
     }
 }
 
@@ -144,6 +196,7 @@ private fun IosGameHost(onBack: () -> Unit) {
                     initialized = true
                     Logic.initializeSettings(w.toInt(), h.toInt())
                     PaintBucket.initialize(Settings.screenRatio)
+                    PaintBucket.initializePlatformColors(Storage.darkMode)
                     Sounds.initializeGame()
                     Drawing.initialize()
                     Logic.initialize()
@@ -151,6 +204,7 @@ private fun IosGameHost(onBack: () -> Unit) {
                         Logic.isInitialized = false
                         Logic.initializeSettings(w.toInt(), h.toInt())
                         PaintBucket.initialize(Settings.screenRatio)
+                        PaintBucket.initializePlatformColors(Storage.darkMode)
                         Drawing.initialize()
                         Logic.initialize()
                     }
