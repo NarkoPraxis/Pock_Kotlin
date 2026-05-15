@@ -124,6 +124,8 @@ private fun IosGameHost(onBack: () -> Unit) {
         )
     }
 
+    ImmersiveModeEffect()
+
     DisposableEffect(Unit) {
         onDispose {
             gameLoop.stop()

@@ -40,6 +40,7 @@ fun MainMenuScreen(
             MenuButton(text = "PLAY SOLO", onClick = onSinglePlayerTapped)
             MenuButton(text = "SETTINGS", onClick = onSettingsTapped)
             MenuButton(text = "BALL TYPES", onClick = onBallsTapped)
+            PlatformMenuExtras()
         }
     }
 }

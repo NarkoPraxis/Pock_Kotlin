@@ -83,6 +83,8 @@ fun BallUnlockScreen(onBack: () -> Unit) {
             Spacer(Modifier.weight(1f))
         }
 
+        PlatformBallUnlockExtras()
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(12.dp),
