@@ -156,14 +156,17 @@ class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
             }
         }
 
-        withTransform({ translate(renderer.x, renderer.y); if (renderer.isHigh) rotate(180f) }) {
-            drawCircle(Color(frameColors.primary), r, Offset.Zero)
-            drawCircle(Color(frameColors.secondary), r, Offset.Zero, style = Stroke(width = sw))
-            drawWingsForState()
-            drawFeathersForState()
-            drawEyesForState()
-            drawBeakForState()
-        }
+        val canvas = drawContext.canvas
+        canvas.save()
+        canvas.translate(renderer.x, renderer.y)
+        if (renderer.isHigh) canvas.scale(-1f, -1f)
+        drawCircle(Color(frameColors.primary), r, Offset.Zero)
+        drawCircle(Color(frameColors.secondary), r, Offset.Zero, style = Stroke(width = sw))
+        drawWingsForState()
+        drawFeathersForState()
+        drawEyesForState()
+        drawBeakForState()
+        canvas.restore()
     }
 
     // ── iris direction ─────────────────────────────────────────────────────────

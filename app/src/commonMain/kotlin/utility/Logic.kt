@@ -213,6 +213,7 @@ object Logic {
     }
 
     fun checkScored() : Result {
+        if (Settings.isDemoMode) return Result.Neither
         val highScored = checkScored(highPlayer, lowPlayer)
         val lowScored = checkScored(lowPlayer, highPlayer)
         return if (highScored && !lowScored) {
@@ -227,7 +228,7 @@ object Logic {
     }
 
     private fun checkScored(winner: Player, loser: Player) : Boolean {
-        if (loser.shielded) return false
+        if ( loser.shielded) return false
         if (Settings.canScore && (loser.py < Settings.topGoalBottom + loser.pRadius || loser.py > Settings.bottomGoalTop - loser.pRadius)) {
             val highGoal = loser.py < Settings.topGoalBottom + loser.pRadius
             winner.score()
@@ -479,7 +480,9 @@ object Logic {
                 }
             }
             resetTails(highPlayer, lowPlayer)
-            GameEvents.canScore.emit(Unit)
+            if (!Settings.isDemoMode) {
+                GameEvents.canScore.emit(Unit)
+            }
             return true
         }
         return false

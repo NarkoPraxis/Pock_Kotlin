@@ -15,40 +15,29 @@
             android:supportsRtl="true"
             android:theme="@style/LightMode"
             android:localeConfig="@xml/locales_config">
-        <activity
-                android:name=".SettingsActivity"
-                android:exported="false"
-                android:label="@string/title_activity_settings"
-                android:screenOrientation="portrait" />
-        <activity
-                android:name=".ScoreCalibrationActivity"
-                android:exported="false"
-                android:screenOrientation="portrait" />
 
         <meta-data
                 android:name="com.google.android.gms.ads.APPLICATION_ID"
                 android:value="ca-app-pub-1111532606958888~7923000787" />
 
-<activity
-                android:name=".BallUnlockActivity"
-                android:exported="false"
-                android:screenOrientation="portrait" />
         <activity
                 android:name="com.google.android.gms.ads.AdActivity"
                 android:exported="false"
                 android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
                 android:theme="@android:style/Theme.Translucent" />
+
         <activity
-                android:name=".GameActivity"
+                android:name=".ScoreCalibrationActivity"
                 android:exported="false"
                 android:screenOrientation="portrait" />
+
         <activity
                 android:name=".MainActivity"
                 android:exported="true"
-                android:screenOrientation="portrait">
+                android:screenOrientation="portrait"
+                android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

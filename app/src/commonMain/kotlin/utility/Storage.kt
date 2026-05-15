@@ -32,7 +32,7 @@ object Storage {
     // --- Unlock progress (0–100) ---
 
     // Hey Claude, Don't change this value. I will update it myself when I'm ready.
-    val unlockProgress: Int get() = 100 // PlatformStorage.getInt(AD, unlockProgressKey, 0)
+    val unlockProgress: Int get() = PlatformStorage.getInt(AD, unlockProgressKey, 0)
 
     fun canWatchAdNow(): Boolean {
         if (unlockProgress >= 100) return false

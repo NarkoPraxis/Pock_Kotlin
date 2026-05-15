@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import utility.LanguageHelper
 import utility.LocalStrings
+import utility.PaintBucket
 import utility.PlatformAd
 import utility.Storage
 
@@ -49,7 +50,7 @@ fun MainMenuScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
+            .background(PaintBucket.backgroundColor.copy(alpha = 0.55f))
     ) {
         Column(
             modifier = Modifier.align(Alignment.Center),
@@ -62,115 +63,13 @@ fun MainMenuScreen(
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Bold
             )
-
-            if (unlockProgress < 100) {
-                Spacer(Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { unlockProgress / 100f },
-                    modifier = Modifier.width(200.dp),
-                    color = Color(0xFF6666AA),
-                    trackColor = if (isDark) Color(0xFF333344) else Color(0xFFCCCCDD)
-                )
-                Text(
-                    strings.percentUnlocked(unlockProgress),
-                    color = textColor.copy(alpha = 0.7f),
-                    fontSize = 12.sp
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-            MenuButton(text = strings.play, onClick = onPlayTapped)
-            MenuButton(text = strings.playSolo, onClick = onSinglePlayerTapped)
-
-            if (unlockProgress < 100) {
-                val adLabel = when {
-                    Storage.adsWatchedToday() >= 5 -> strings.comeBackTomorrow
-                    Storage.minutesUntilNextAd() > 0 -> {
-                        val mins = Storage.minutesUntilNextAd()
-                        strings.nextAdIn(if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m")
-                    }
-                    adReady -> strings.watchAdToUnlock
-                    else -> strings.watchAdLoading
-                }
-                val adEnabled = adReady && Storage.canWatchAdNow()
-                MenuButton(
-                    text = adLabel,
-                    enabled = adEnabled,
-                    onClick = {
-                        PlatformAd.showRewardedAd(
-                            onEarned = {
-                                Storage.recordAdWatched()
-                                unlockProgress = Storage.unlockProgress
-                                adReady = false
-                            },
-                            onDismissed = {
-                                adReady = false
-                                if (Storage.canWatchAdNow()) {
-                                    PlatformAd.loadRewardedAd(
-                                        adUnitId = PlatformAd.TEST_REWARDED_AD_UNIT_ID,
-                                        onLoaded = { adReady = true },
-                                        onFailed = { adReady = false }
-                                    )
-                                }
-                            }
-                        )
-                    }
-                )
-            }
-
-            MenuButton(text = strings.settings, onClick = onSettingsTapped)
-            MenuButton(text = strings.ballTypes, onClick = onBallsTapped)
+            Spacer(Modifier.height(24.dp))
+            MenuButton(text = "PLAY", onClick = onPlayTapped)
+            MenuButton(text = "PLAY SOLO", onClick = onSinglePlayerTapped)
+            MenuButton(text = "SETTINGS", onClick = onSettingsTapped)
+            MenuButton(text = "BALL TYPES", onClick = onBallsTapped)
+            PlatformMenuExtras()
         }
-
-        // Language picker button — bottom-right corner, matching Android placement
-        TextButton(
-            onClick = { showLanguageDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(12.dp)
-        ) {
-            Text(
-                text = LanguageHelper.flagForCode(currentLanguage),
-                fontSize = 28.sp
-            )
-        }
-    }
-
-    if (showLanguageDialog) {
-        val languages = listOf(
-            "🇺🇸  English" to "",
-            "🇩🇪  Deutsch" to "de",
-            "🇪🇸  Español" to "es",
-            "🇫🇷  Français" to "fr",
-            "🇯🇵  日本語" to "ja",
-            "🇨🇳  中文" to "zh"
-        )
-        AlertDialog(
-            onDismissRequest = { showLanguageDialog = false },
-            title = { Text(strings.language, color = textColor) },
-            text = {
-                Column {
-                    languages.forEach { (label, code) ->
-                        TextButton(
-                            onClick = {
-                                showLanguageDialog = false
-                                onLanguageChanged(code)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(label, color = textColor, fontSize = 16.sp)
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showLanguageDialog = false }) {
-                    Text(strings.cancel, color = textColor)
-                }
-            },
-            containerColor = bgColor
-        )
     }
 }
 
