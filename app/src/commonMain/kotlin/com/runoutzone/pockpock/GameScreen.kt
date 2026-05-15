@@ -1,6 +1,7 @@
 package com.runoutzone.pockpock
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -24,43 +25,47 @@ fun GameScreen(
     val textMeasurer = rememberTextMeasurer()
     Drawing.initializeTextMeasurer(textMeasurer)
 
-    Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .onSizeChanged { size ->
-                onSizeKnown(size.width.toFloat(), size.height.toFloat())
-            }
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Main)
-                        event.changes.forEach { change ->
-                            val x = change.position.x
-                            val y = change.position.y
-                            val pointerId = change.id.value.toInt()
-                            when (event.type) {
-                                PointerEventType.Press -> {
-                                    if (change.pressed && !change.previousPressed)
-                                        onGamePointerDown(x, y, pointerId)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { size ->
+                    onSizeKnown(size.width.toFloat(), size.height.toFloat())
+                }
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            event.changes.forEach { change ->
+                                val x = change.position.x
+                                val y = change.position.y
+                                val pointerId = change.id.value.toInt()
+                                when (event.type) {
+                                    PointerEventType.Press -> {
+                                        if (change.pressed && !change.previousPressed)
+                                            onGamePointerDown(x, y, pointerId)
+                                    }
+                                    PointerEventType.Move -> {
+                                        if (change.pressed)
+                                            onGamePointerMove(x, y, pointerId)
+                                    }
+                                    PointerEventType.Release -> {
+                                        if (!change.pressed && change.previousPressed)
+                                            onGamePointerUp(x, y, pointerId)
+                                    }
+                                    else -> {}
                                 }
-                                PointerEventType.Move -> {
-                                    if (change.pressed)
-                                        onGamePointerMove(x, y, pointerId)
-                                }
-                                PointerEventType.Release -> {
-                                    if (!change.pressed && change.previousPressed)
-                                        onGamePointerUp(x, y, pointerId)
-                                }
-                                else -> {}
                             }
                         }
                     }
                 }
-            }
-    ) {
-        @Suppress("UNUSED_EXPRESSION")
-        gameLoopTick.value
+        ) {
+            @Suppress("UNUSED_EXPRESSION")
+            gameLoopTick.value
 
-        drawGameFrame()
+            drawGameFrame()
+        }
+
+        TipOverlay(gameLoopTick)
     }
 }

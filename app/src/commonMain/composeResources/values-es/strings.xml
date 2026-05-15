@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tip_title">Mantén Aquí Cuando Estés Listo</string>
+    <string name="tip_controls">Toca la pantalla y arrastra el dedo hacia atrás para lanzar tu pock hacia adelante.</string>
+    <string name="tip_scoring">Golpea a tu oponente en una de las zonas de gol moradas para anotar puntos y ganar.</string>
+    <string name="tip_charging">Mantén tu disparo para cargar poder. ¡Suelta cuando esté morado para obtener un escudo!</string>
+    <string name="tip_shields">¡Un puck morado está protegido y gana cada colisión!</string>
+    <string name="tip_overcharge">¡Si te golpean mientras cargas, perderás el control, no seas imprudente!</string>
+</resources>

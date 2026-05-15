@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tip_title">Hier Festhalten wenn Bereit</string>
+    <string name="tip_controls">Berühr den Bildschirm und ziehe deinen Finger zurück, um deinen Pock vorwärts zu schleudern.</string>
+    <string name="tip_scoring">Triff deinen Gegner in eine der lila Torzonen und erziele Punkte zum Gewinnen.</string>
+    <string name="tip_charging">Halte deinen Schuss zum Aufladen. Lasse bei Lila los, um ein Schild zu bekommen!</string>
+    <string name="tip_shields">Ein lila Pock ist geschützt und gewinnt jeden Zusammenstoß!</string>
+    <string name="tip_overcharge">Wenn du beim Aufladen getroffen wirst, verlierst du die Kontrolle – sei nicht leichtsinnig!</string>
+</resources>

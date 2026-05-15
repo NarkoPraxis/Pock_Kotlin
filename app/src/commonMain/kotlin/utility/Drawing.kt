@@ -66,9 +66,9 @@ object Drawing {
         if (!Logic.isInitialized) return
         drawChargeFill()
         with(Effects) { drawEffects() }
+        drawTimer()
         drawPlayersCompose()
         drawWalls()
-        drawTimer()
         drawAimArrows()
         drawArenaForeground()
         drawBallPopups()

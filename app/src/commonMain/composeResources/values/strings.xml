@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tip_title">Hold Here When Ready</string>
+    <string name="tip_controls">Touch the screen and pull back your finger to slingshot your pock forwards.</string>
+    <string name="tip_scoring">Hit your opponent into the either purple goal zones and score points to win.</string>
+    <string name="tip_charging">Hold your shot to charge power. Release when purple to gain a shield!</string>
+    <string name="tip_shields">A purple puck is shielded and wins every collision!</string>
+    <string name="tip_overcharge">If hit while charging you will lose control, don\'t be reckless!</string>
+</resources>
