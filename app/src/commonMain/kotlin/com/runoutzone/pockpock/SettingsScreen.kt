@@ -13,8 +13,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import utility.LocalStrings
 import utility.PlatformStorage
+import utility.LocalStrings
+import enums.ChargeMeterStyle
 import utility.Sounds
 import utility.Storage
 
@@ -42,8 +43,8 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
     var sfxMuted by remember { mutableStateOf(Storage.soundSfxMuted) }
     var highArrow by remember { mutableStateOf(Storage.highPlayerArrow) }
     var lowArrow by remember { mutableStateOf(Storage.lowPlayerArrow) }
-    var highCharge by remember { mutableStateOf(Storage.highPlayerChargeFill) }
-    var lowCharge by remember { mutableStateOf(Storage.lowPlayerChargeFill) }
+    var highChargeMeter by remember { mutableStateOf(Storage.highPlayerChargeMeterStyle) }
+    var lowChargeMeter by remember { mutableStateOf(Storage.lowPlayerChargeMeterStyle) }
     var darkMode by remember { mutableStateOf(Storage.darkMode) }
 
     fun resetToDefaults() {
@@ -61,8 +62,8 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         Storage.saveSoundSfxMuted(false)
         PlatformStorage.saveBoolean("settings", "high_player_arrow", true)
         PlatformStorage.saveBoolean("settings", "low_player_arrow", true)
-        PlatformStorage.saveBoolean("settings", "high_player_charge_fill", true)
-        PlatformStorage.saveBoolean("settings", "low_player_charge_fill", true)
+        Storage.saveHighPlayerChargeMeterStyle(ChargeMeterStyle.SideBar)
+        Storage.saveLowPlayerChargeMeterStyle(ChargeMeterStyle.SideBar)
         PlatformStorage.saveBoolean("settings", "darkmode", false)
         Sounds.applyBackgroundVolume()
         ballSize = "default"
@@ -79,8 +80,8 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         sfxMuted = false
         highArrow = true
         lowArrow = true
-        highCharge = true
-        lowCharge = true
+        highChargeMeter = ChargeMeterStyle.SideBar
+        lowChargeMeter = ChargeMeterStyle.SideBar
         darkMode = false
         onDarkModeChanged(false)
     }
@@ -223,13 +224,27 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         ToggleRow(strings.lowPlayerArrow, lowArrow, labelColor) {
             lowArrow = it; PlatformStorage.saveBoolean("settings", "low_player_arrow", it)
         }
-        ToggleRow(strings.highPlayerChargeFill, highCharge, labelColor) {
-            highCharge = it; PlatformStorage.saveBoolean("settings", "high_player_charge_fill", it)
-        }
-        ToggleRow(strings.lowPlayerChargeFill, lowCharge, labelColor) {
-            lowCharge = it; PlatformStorage.saveBoolean("settings", "low_player_charge_fill", it)
-        }
-        ToggleRow(strings.darkMode, darkMode, labelColor) {
+        SettingsSectionLabel("High Player Charge Meter")
+        SegmentedSelector(
+            options = listOf(
+                ChargeMeterStyle.SideBar   to "Side Bar",
+                ChargeMeterStyle.FullScreen to "Full Screen",
+                ChargeMeterStyle.None       to "None"
+            ),
+            selected = highChargeMeter,
+            onSelect = { highChargeMeter = it; Storage.saveHighPlayerChargeMeterStyle(it) }
+        )
+        SettingsSectionLabel("Low Player Charge Meter")
+        SegmentedSelector(
+            options = listOf(
+                ChargeMeterStyle.SideBar   to "Side Bar",
+                ChargeMeterStyle.FullScreen to "Full Screen",
+                ChargeMeterStyle.None       to "None"
+            ),
+            selected = lowChargeMeter,
+            onSelect = { lowChargeMeter = it; Storage.saveLowPlayerChargeMeterStyle(it) }
+        )
+        ToggleRow("Dark Mode", darkMode) {
             darkMode = it
             PlatformStorage.saveBoolean("settings", "darkmode", it)
             onDarkModeChanged(it)

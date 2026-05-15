@@ -163,11 +163,12 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
             spikeBrush = Brush.radialGradient(
                 colorStops = arrayOf(
-                    0f   to Color(Palette.BLACK),
-                    0.4f to Color(Palette.DKGRAY),
-                    0.7f to Color(primary),
-                    0.8f to Color(Palette.TRANSPARENT)
+                    0f   to Color(0XFF777777),
+                    0.3f to Color(0xCCCCCCCC),
+                    0.55f to Color(primary).copy(alpha = .4f),
+                    0.75f to Color(Palette.TRANSPARENT)
                 ),
+
                 center = Offset(cx, cy),
                 radius = radius * 2f
             )

@@ -1,5 +1,6 @@
 package utility
 
+import enums.ChargeMeterStyle
 import gameobjects.Player
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
@@ -201,8 +202,37 @@ object Drawing {
 
     fun DrawScope.drawChargeFill() {
         chargeFillFrame++
-        if (Settings.highPlayerChargeFill) drawPlayerChargeFill(Logic.highPlayer, isHigh = true)
-        if (Settings.lowPlayerChargeFill) drawPlayerChargeFill(Logic.lowPlayer, isHigh = false)
+        when (Settings.highPlayerChargeMeterStyle) {
+            ChargeMeterStyle.FullScreen -> drawPlayerChargeFill(Logic.highPlayer, isHigh = true)
+            ChargeMeterStyle.SideBar    -> drawPlayerSideBarCharge(Logic.highPlayer, isHigh = true)
+            ChargeMeterStyle.None       -> Unit
+        }
+        when (Settings.lowPlayerChargeMeterStyle) {
+            ChargeMeterStyle.FullScreen -> drawPlayerChargeFill(Logic.lowPlayer, isHigh = false)
+            ChargeMeterStyle.SideBar    -> drawPlayerSideBarCharge(Logic.lowPlayer, isHigh = false)
+            ChargeMeterStyle.None       -> Unit
+        }
+    }
+
+    private fun DrawScope.resolveChargeColor(player: Player): Pair<Int, Float>? {
+        val effect = player.puck.renderer.effect ?: return null
+        val ph = effect.phase
+        if (ph == ChargePhase.Idle || ph == ChargePhase.Inert) return null
+        val ratio = effect.chargeFillRatio
+        if (ratio <= 0f) return null
+        val theme = effect.theme
+        val rawColor = when (ph) {
+            ChargePhase.Building -> theme.main.primary
+            ChargePhase.Draining -> theme.inert.secondary
+            ChargePhase.SweetSpot -> theme.shield.secondary
+            else -> return null
+        }
+        val alpha = when (ph) {
+            ChargePhase.Building, ChargePhase.Draining -> 255f
+            ChargePhase.SweetSpot -> (0.7f + 0.3f * sin(chargeFillFrame * 0.35f)).coerceIn(0f, 1f)
+            else -> return null
+        }
+        return rawColor to alpha
     }
 
     private fun DrawScope.drawPlayerChargeFill(player: Player, isHigh: Boolean) {
@@ -211,20 +241,7 @@ object Drawing {
         if (ph == ChargePhase.Idle || ph == ChargePhase.Inert) return
         val ratio = effect.chargeFillRatio
         if (ratio <= 0f) return
-        val theme = effect.theme
-        val rawColor = when (ph) {
-            ChargePhase.Building, ChargePhase.Draining -> theme.main.primary
-            ChargePhase.SweetSpot -> theme.shield.primary
-            else -> return
-        }
-        val alpha = when (ph) {
-            ChargePhase.Building, ChargePhase.Draining -> 128 / 255f
-            ChargePhase.SweetSpot -> {
-                val pulse = 0.7f + 0.3f * sin(chargeFillFrame * 0.35f)
-                pulse.coerceIn(0f, 1f)
-            }
-            else -> return
-        }
+        val (rawColor, alpha) = resolveChargeColor(player) ?: return
         val color = Color(rawColor).copy(alpha = alpha)
         if (isHigh) {
             val bottom = Settings.topGoalBottom + ratio * (Settings.middleY - Settings.topGoalBottom)
@@ -240,6 +257,26 @@ object Drawing {
                 topLeft = Offset(0f, top),
                 size = Size(Settings.screenWidth, Settings.bottomGoalTop - top)
             )
+        }
+    }
+
+    private fun DrawScope.drawPlayerSideBarCharge(player: Player, isHigh: Boolean) {
+        val effect = player.puck.renderer.effect ?: return
+        val ratio = effect.chargeFillRatio
+        if (ratio <= 0f) return
+        val (rawColor, alpha) = resolveChargeColor(player) ?: return
+        val color = Color(rawColor).copy(alpha = alpha)
+        val barWidth = Settings.shortParticleSide
+        if (isHigh) {
+            val bottom = Settings.topGoalBottom + ratio * (Settings.middleY - Settings.topGoalBottom)
+            val barHeight = bottom - Settings.topGoalBottom
+            drawRect(color = color, topLeft = Offset(0f, Settings.topGoalBottom), size = Size(barWidth, barHeight))
+            drawRect(color = color, topLeft = Offset(Settings.screenWidth - barWidth, Settings.topGoalBottom), size = Size(barWidth, barHeight))
+        } else {
+            val top = Settings.bottomGoalTop - ratio * (Settings.bottomGoalTop - Settings.middleY)
+            val barHeight = Settings.bottomGoalTop - top
+            drawRect(color = color, topLeft = Offset(0f, top), size = Size(barWidth, barHeight))
+            drawRect(color = color, topLeft = Offset(Settings.screenWidth - barWidth, top), size = Size(barWidth, barHeight))
         }
     }
 

@@ -194,8 +194,8 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             }
             spikeBrush = Brush.radialGradient(
                 colorStops = arrayOf(
-                    0f to Color(Palette.DKGRAY),
-                    0.4f to Color(primary),
+                    0f to Color(0x77444444),
+                    0.4f to Color(primary).copy(alpha = .3f),
                     1f to Color(Palette.TRANSPARENT)
                 ),
                 center = Offset(cx, cy),

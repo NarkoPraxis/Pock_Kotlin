@@ -1,6 +1,7 @@
 package gameobjects
 
 import enums.BallType
+import enums.ChargeMeterStyle
 import enums.GameState
 import gameobjects.puckstyle.RandomRoll
 import physics.Ticker
@@ -79,8 +80,8 @@ object Settings {
     var pointsToWin: Int = 5
     var highPlayerArrow: Boolean = true
     var lowPlayerArrow: Boolean = true
-    var highPlayerChargeFill: Boolean = true
-    var lowPlayerChargeFill: Boolean = true
+    var highPlayerChargeMeterStyle: ChargeMeterStyle = ChargeMeterStyle.SideBar
+    var lowPlayerChargeMeterStyle: ChargeMeterStyle = ChargeMeterStyle.SideBar
     var scoreOffsetHigh: Float = 0f
     var scoreOffsetLow: Float = 0f
 
@@ -104,8 +105,8 @@ object Settings {
         unlockProgress = utility.Storage.unlockProgress
         highPlayerArrow = utility.Storage.highPlayerArrow
         lowPlayerArrow = utility.Storage.lowPlayerArrow
-        highPlayerChargeFill = utility.Storage.highPlayerChargeFill
-        lowPlayerChargeFill = utility.Storage.lowPlayerChargeFill
+        highPlayerChargeMeterStyle = utility.Storage.highPlayerChargeMeterStyle
+        lowPlayerChargeMeterStyle = utility.Storage.lowPlayerChargeMeterStyle
         scoreOffsetHigh = utility.Storage.scoreOffsetHigh.toFloat()
         scoreOffsetLow = utility.Storage.scoreOffsetLow.toFloat()
 
