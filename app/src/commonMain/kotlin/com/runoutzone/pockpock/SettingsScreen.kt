@@ -224,7 +224,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         ToggleRow(strings.lowPlayerArrow, lowArrow, labelColor) {
             lowArrow = it; PlatformStorage.saveBoolean("settings", "low_player_arrow", it)
         }
-        SettingsSectionLabel("High Player Charge Meter")
+        SettingsSectionLabel("High Player Charge Meter", textSecondary)
         SegmentedSelector(
             options = listOf(
                 ChargeMeterStyle.SideBar   to "Side Bar",
@@ -234,7 +234,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
             selected = highChargeMeter,
             onSelect = { highChargeMeter = it; Storage.saveHighPlayerChargeMeterStyle(it) }
         )
-        SettingsSectionLabel("Low Player Charge Meter")
+        SettingsSectionLabel("Low Player Charge Meter", textSecondary)
         SegmentedSelector(
             options = listOf(
                 ChargeMeterStyle.SideBar   to "Side Bar",
@@ -244,7 +244,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
             selected = lowChargeMeter,
             onSelect = { lowChargeMeter = it; Storage.saveLowPlayerChargeMeterStyle(it) }
         )
-        ToggleRow("Dark Mode", darkMode) {
+        ToggleRow("Dark Mode", darkMode, textSecondary) {
             darkMode = it
             PlatformStorage.saveBoolean("settings", "darkmode", it)
             onDarkModeChanged(it)
