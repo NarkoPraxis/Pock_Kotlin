@@ -50,7 +50,7 @@ fun MainMenuScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(PaintBucket.backgroundColor.copy(alpha = 0.55f))
+            .background(PaintBucket.backgroundColor.copy(alpha = 0.00f))
     ) {
         Column(
             modifier = Modifier.align(Alignment.Center),
