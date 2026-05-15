@@ -61,7 +61,7 @@ fun AppRoot() {
     if (showDifficultyDialog) {
         AlertDialog(
             onDismissRequest = { showDifficultyDialog = false },
-            title = { Text("Choose Difficulty", color = Color.White) },
+            title = { Text("Choose Difficulty", color = PaintBucket.white) },
             text = {
                 Column {
                     listOf(
@@ -76,7 +76,7 @@ fun AppRoot() {
                             Sounds.playGameAmbiance()
                             navController.navigate(Screen.Game.name)
                         }) {
-                            Text(label, color = Color.White)
+                            Text(label, color = PaintBucket.white)
                         }
                     }
                 }
@@ -84,10 +84,10 @@ fun AppRoot() {
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showDifficultyDialog = false }) {
-                    Text("Cancel", color = Color.White)
+                    Text("Cancel", color = PaintBucket.white)
                 }
             },
-            containerColor = Color(0xFF2A2A3A)
+            containerColor = PaintBucket.menuButtonDark
         )
     }
 }

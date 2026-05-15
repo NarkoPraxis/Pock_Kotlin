@@ -20,7 +20,41 @@ import gameobjects.Settings
  */
 object PaintBucket {
 
-    // ── Colors ────────────────────────────────────────────────────────────────
+    // ── Canonical palette (single source of truth for all UI and game colors) ──
+
+    val black: Color = Color(0xFF000000)
+    val white: Color = Color(0xFFFFFFFF)
+
+    /** High (warm) player puck fill. */
+    var highPlayerPrimary: Color = Color(0xFFf59da0)
+    /** High (warm) player puck stroke. */
+    var highPlayerSecondary: Color = Color(0xFFf25252)
+
+    /** Low (cold) player puck fill. */
+    var lowPlayerPrimary: Color = Color(0xFF9dd4f5)
+    /** Low (cold) player puck stroke. */
+    var lowPlayerSecondary: Color = Color(0xFF52b6f2)
+
+    /** Shield/effect primary color. */
+    var shieldPrimary: Color = Color(0xFFc09df5)
+    /** Shield/effect secondary color. */
+    var shieldSecondary: Color = Color(0xFF9356ee)
+
+    /** Inert/neutral puck primary (light grey). */
+    var inertPrimary: Color = Color(0xFFD9D9D9)
+    /** Inert/neutral puck secondary (mid grey). */
+    var inertSecondary: Color = Color(0xFF999999)
+
+    /** Dark-mode menu/arena background. */
+    var menuBackgroundDark: Color = Color(0xFF131221)
+    /** Dark-mode menu button fill. */
+    var menuButtonDark: Color = Color(0xFF2e2c50)
+    /** Light-mode menu background. */
+    var menuBackgroundLight: Color = Color(0xFFFFFFFF)
+    /** Light-mode menu button fill. */
+    var menuButtonLight: Color = Color(0xFFe2d1fa)
+
+    // ── Legacy aliases (kept for backward compatibility — point to canonical fields above) ──
 
     /** Background fill (dark arena). Overwritten by Android initializeColors(). */
     var backgroundColor: Color = Color(0xFF1A1A1A)
@@ -35,28 +69,25 @@ object PaintBucket {
     var canScoreWallColor: Color = Color(0xFF5555AA)
 
     /** High (warm) player puck fill. Mutable — Logic.setPuckColor() swaps this during Scored. */
-    var highBallFill: Color = Color(0xfff59da0)
+    var highBallFill: Color get() = highPlayerPrimary; set(v) { highPlayerPrimary = v }
 
     /** High (warm) player puck stroke. Mutable. */
-    var highBallStroke: Color = Color(0xfff25252)
+    var highBallStroke: Color get() = highPlayerSecondary; set(v) { highPlayerSecondary = v }
 
     /** Low (cold) player puck fill. Mutable. */
-    var lowBallFill: Color = Color(0xff9dd4f5)
+    var lowBallFill: Color get() = lowPlayerPrimary; set(v) { lowPlayerPrimary = v }
 
     /** Low (cold) player puck stroke. Mutable. */
-    var lowBallStroke: Color = Color(0xff52b6f2)
+    var lowBallStroke: Color get() = lowPlayerSecondary; set(v) { lowPlayerSecondary = v }
 
-    /**
-     * Primary effect/wall color alias — kept separately so code referencing `effectColor`
-     * compiles without changes. Always kept in sync with [wallColor] after initialize().
-     */
-    var effectColor: Color = Color(0xFF444466)
+    /** Primary shield/effect color alias. */
+    var effectColor: Color get() = shieldPrimary; set(v) { shieldPrimary = v }
 
-    var inertPrimaryColor: Color = Color(0xFF555555)
-    var inertSecondaryColor: Color = Color(0xFF333333)
+    var inertPrimaryColor: Color get() = inertPrimary; set(v) { inertPrimary = v }
+    var inertSecondaryColor: Color get() = inertSecondary; set(v) { inertSecondary = v }
 
-    /** Saturated variant of [effectColor] used for shield/secondary effects. */
-    var effectSecondaryColor: Color = Color(0xFF666688)
+    /** Secondary shield/effect color alias. */
+    var effectSecondaryColor: Color get() = shieldSecondary; set(v) { shieldSecondary = v }
 
     var bonusColor: Color = Color(0xFFFFFF00)
 
