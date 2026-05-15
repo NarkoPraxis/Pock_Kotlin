@@ -63,7 +63,7 @@ object PaintBucket {
     var goalColor: Color = Color(0xFF2A2A3A)
 
     /** Wall/particle color (alias: effectColor). */
-    var wallColor: Color = Color(0xFF444466)
+    var wallColor: Color = Color(0xFFC09DF5)
 
     /** Saturated wall color shown when a goal is open. */
     var canScoreWallColor: Color = Color(0xFF5555AA)
@@ -150,6 +150,15 @@ object PaintBucket {
     var chargeAlpha: Float = 1f
 
     // ── Initialization ────────────────────────────────────────────────────────
+
+    /**
+     * Set arena colors for iOS based on dark mode. Call after [initialize].
+     * Android does not call this — it uses initializeColors(resources) instead.
+     */
+    fun initializePlatformColors(isDark: Boolean) {
+        backgroundColor = if (isDark) Color(0xFF1A1A1A) else Color(0xFFFFFFFF)
+        goalColor = Color(0xFFE3D1FF)
+    }
 
     /**
      * Recompute size-dependent values. Call once after [Settings] screen fields are populated.
