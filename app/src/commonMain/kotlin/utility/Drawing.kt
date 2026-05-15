@@ -65,15 +65,15 @@ object Drawing {
         drawArenaBackground()
         if (!Logic.isInitialized) return
         drawChargeFill()
-        with(Effects) { drawEffects() }
-        drawTimer()
+        if (!Settings.isDemoMode) with(Effects) { drawEffects() }
         drawPlayersCompose()
         drawWalls()
+        if (!Settings.isDemoMode) drawTimer()
         drawAimArrows()
         drawArenaForeground()
         drawBallPopups()
         drawScoreFlash()
-        drawScores(Logic.highPlayer, Logic.lowPlayer)
+        if (!Settings.isDemoMode) drawScores(Logic.highPlayer, Logic.lowPlayer)
         Logic.updateTimer()
 
     }

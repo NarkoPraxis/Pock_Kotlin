@@ -22,7 +22,7 @@ fun MainMenuScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(PaintBucket.backgroundColor)
+            .background(PaintBucket.backgroundColor.copy(alpha = 0.55f))
     ) {
         Column(
             modifier = Modifier.align(Alignment.Center),

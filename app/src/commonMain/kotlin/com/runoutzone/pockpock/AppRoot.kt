@@ -33,16 +33,19 @@ fun AppRoot() {
             LaunchedEffect(Unit) {
                 Sounds.playMenuAmbiance()
             }
-            MainMenuScreen(
-                onPlayTapped = {
-                    Settings.isSinglePlayer = false
-                    Sounds.playGameAmbiance()
-                    navController.navigate(Screen.Game.name)
-                },
-                onSinglePlayerTapped = { showDifficultyDialog = true },
-                onSettingsTapped = { navController.navigate(Screen.Settings.name) },
-                onBallsTapped = { navController.navigate(Screen.BallUnlock.name) }
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                MenuDemoCanvas()
+                MainMenuScreen(
+                    onPlayTapped = {
+                        Settings.isSinglePlayer = false
+                        Sounds.playGameAmbiance()
+                        navController.navigate(Screen.Game.name)
+                    },
+                    onSinglePlayerTapped = { showDifficultyDialog = true },
+                    onSettingsTapped = { navController.navigate(Screen.Settings.name) },
+                    onBallsTapped = { navController.navigate(Screen.BallUnlock.name) }
+                )
+            }
         }
         composable(Screen.Game.name) {
             IosGameHost(onBack = { navController.popBackStack() })
@@ -129,7 +132,6 @@ private fun IosGameHost(onBack: () -> Unit) {
     DisposableEffect(Unit) {
         onDispose {
             gameLoop.stop()
-            Logic.isInitialized = false
             Sounds.pauseAll()
         }
     }

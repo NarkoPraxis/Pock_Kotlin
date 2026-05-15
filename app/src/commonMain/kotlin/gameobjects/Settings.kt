@@ -92,6 +92,7 @@ object Settings {
 
     var isSinglePlayer: Boolean = false
     var botConfig: BotConfig = BotConfig.Easy
+    var isDemoMode: Boolean = false
     var timeLimitMinutes: Int = 0
 
     fun initializeForScreen(width: Int, height: Int) {
