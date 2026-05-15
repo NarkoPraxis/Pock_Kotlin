@@ -40,35 +40,6 @@ fun AppRoot() {
     var darkMode by remember { mutableStateOf(Storage.darkMode) }
     var language by remember { mutableStateOf(LanguageHelper.getCurrentCode()) }
 
-    NavHost(navController, startDestination = Screen.MainMenu.name) {
-        composable(Screen.MainMenu.name) {
-            LaunchedEffect(Unit) {
-                Sounds.playMenuAmbiance()
-            }
-            Box(modifier = Modifier.fillMaxSize()) {
-                MenuDemoCanvas()
-                MainMenuScreen(
-                    onPlayTapped = {
-                        Settings.isSinglePlayer = false
-                        Sounds.playGameAmbiance()
-                        navController.navigate(Screen.Game.name)
-                    },
-                    onSinglePlayerTapped = { showDifficultyDialog = true },
-                    onSettingsTapped = { navController.navigate(Screen.Settings.name) },
-                    onBallsTapped = { navController.navigate(Screen.BallUnlock.name) }
-                )
-            }
-        }
-        composable(Screen.Game.name) {
-            IosGameHost(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.Settings.name) {
-            SettingsScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.BallUnlock.name) {
-            BallUnlockScreen(onBack = { navController.popBackStack() })
-        }
-    }
     CompositionLocalProvider(
         LocalDarkMode provides darkMode,
         LocalLanguage provides language,
@@ -79,20 +50,23 @@ fun AppRoot() {
                 LaunchedEffect(Unit) {
                     Sounds.playMenuAmbiance()
                 }
-                MainMenuScreen(
-                    onPlayTapped = {
-                        Settings.isSinglePlayer = false
-                        Sounds.playGameAmbiance()
-                        navController.navigate(Screen.Game.name)
-                    },
-                    onSinglePlayerTapped = { showDifficultyDialog = true },
-                    onSettingsTapped = { navController.navigate(Screen.Settings.name) },
-                    onBallsTapped = { navController.navigate(Screen.BallUnlock.name) },
-                    onLanguageChanged = { code ->
-                        LanguageHelper.saveLanguage(code)
-                        language = code
-                    }
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    MenuDemoCanvas()
+                    MainMenuScreen(
+                        onPlayTapped = {
+                            Settings.isSinglePlayer = false
+                            Sounds.playGameAmbiance()
+                            navController.navigate(Screen.Game.name)
+                        },
+                        onSinglePlayerTapped = { showDifficultyDialog = true },
+                        onSettingsTapped = { navController.navigate(Screen.Settings.name) },
+                        onBallsTapped = { navController.navigate(Screen.BallUnlock.name) },
+                        onLanguageChanged = { code ->
+                            LanguageHelper.saveLanguage(code)
+                            language = code
+                        }
+                    )
+                }
             }
             composable(Screen.Game.name) {
                 IosGameHost(onBack = { navController.popBackStack() })
