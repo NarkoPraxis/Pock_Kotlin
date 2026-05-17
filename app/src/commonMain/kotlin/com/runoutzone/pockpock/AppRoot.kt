@@ -40,35 +40,6 @@ fun AppRoot() {
     var darkMode by remember { mutableStateOf(Storage.darkMode) }
     var language by remember { mutableStateOf(LanguageHelper.getCurrentCode()) }
 
-    NavHost(navController, startDestination = Screen.MainMenu.name) {
-        composable(Screen.MainMenu.name) {
-            LaunchedEffect(Unit) {
-                Sounds.playMenuAmbiance()
-            }
-            Box(modifier = Modifier.fillMaxSize()) {
-                MenuDemoCanvas()
-                MainMenuScreen(
-                    onPlayTapped = {
-                        Settings.isSinglePlayer = false
-                        Sounds.playGameAmbiance()
-                        navController.navigate(Screen.Game.name)
-                    },
-                    onSinglePlayerTapped = { showDifficultyDialog = true },
-                    onSettingsTapped = { navController.navigate(Screen.Settings.name) },
-                    onBallsTapped = { navController.navigate(Screen.BallUnlock.name) }
-                )
-            }
-        }
-        composable(Screen.Game.name) {
-            IosGameHost(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.Settings.name) {
-            SettingsScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.BallUnlock.name) {
-            BallUnlockScreen(onBack = { navController.popBackStack() })
-        }
-    }
     CompositionLocalProvider(
         LocalDarkMode provides darkMode,
         LocalLanguage provides language,
@@ -79,20 +50,23 @@ fun AppRoot() {
                 LaunchedEffect(Unit) {
                     Sounds.playMenuAmbiance()
                 }
-                MainMenuScreen(
-                    onPlayTapped = {
-                        Settings.isSinglePlayer = false
-                        Sounds.playGameAmbiance()
-                        navController.navigate(Screen.Game.name)
-                    },
-                    onSinglePlayerTapped = { showDifficultyDialog = true },
-                    onSettingsTapped = { navController.navigate(Screen.Settings.name) },
-                    onBallsTapped = { navController.navigate(Screen.BallUnlock.name) },
-                    onLanguageChanged = { code ->
-                        LanguageHelper.saveLanguage(code)
-                        language = code
-                    }
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    MenuDemoCanvas()
+                    MainMenuScreen(
+                        onPlayTapped = {
+                            Settings.isSinglePlayer = false
+                            Sounds.playGameAmbiance()
+                            navController.navigate(Screen.Game.name)
+                        },
+                        onSinglePlayerTapped = { showDifficultyDialog = true },
+                        onSettingsTapped = { navController.navigate(Screen.Settings.name) },
+                        onBallsTapped = { navController.navigate(Screen.BallUnlock.name) },
+                        onLanguageChanged = { code ->
+                            LanguageHelper.saveLanguage(code)
+                            language = code
+                        }
+                    )
+                }
             }
             composable(Screen.Game.name) {
                 IosGameHost(onBack = { navController.popBackStack() })
@@ -181,6 +155,13 @@ private fun IosGameHost(onBack: () -> Unit) {
 
     ImmersiveModeEffect()
 
+    // Release any pointer locks left over from iOS touch cancellations (e.g. app backgrounded
+    // mid-touch). Runs every time IosGameHost enters composition, which is every time the game
+    // screen becomes visible — safe to call even before Logic is fully initialized.
+    LaunchedEffect(Unit) {
+        Logic.releaseAllPointers()
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             gameLoop.stop()
@@ -194,6 +175,7 @@ private fun IosGameHost(onBack: () -> Unit) {
             onSizeKnown = { w, h ->
                 if (!initialized) {
                     initialized = true
+                    Settings.isDemoMode = false   // stop demo loop before touching Logic state
                     Logic.initializeSettings(w.toInt(), h.toInt())
                     PaintBucket.initialize(Settings.screenRatio)
                     PaintBucket.initializePlatformColors(Storage.darkMode)
