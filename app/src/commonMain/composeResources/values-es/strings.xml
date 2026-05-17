@@ -4,7 +4,7 @@
     <string name="app_title">POCK</string>
 
     <!-- Common -->
-    <string name="back">← Atrás</string>
+    <string name="back">Atrás</string>
     <string name="cancel">Cancelar</string>
     <string name="language">Idioma</string>
 

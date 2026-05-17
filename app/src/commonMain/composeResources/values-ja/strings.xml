@@ -4,7 +4,7 @@
     <string name="app_title">POCK</string>
 
     <!-- Common -->
-    <string name="back">← 戻る</string>
+    <string name="back">戻る</string>
     <string name="cancel">キャンセル</string>
     <string name="language">言語</string>
 

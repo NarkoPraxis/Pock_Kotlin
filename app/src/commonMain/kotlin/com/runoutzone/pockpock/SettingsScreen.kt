@@ -187,7 +187,12 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
                 Storage.savePointsToWin(pointsToWin)
             },
             valueRange = 0f..20f,
-            steps = 19
+            steps = 19,
+            colors = SliderDefaults.colors(
+                thumbColor = PaintBucket.segmentActive,
+                activeTrackColor = PaintBucket.segmentActive,
+                inactiveTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight
+            )
         )
 
         SettingsSectionLabel(
@@ -201,7 +206,12 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
                 Storage.saveTimeLimit(timeLimit)
             },
             valueRange = 0f..20f,
-            steps = 19
+            steps = 19,
+            colors = SliderDefaults.colors(
+                thumbColor = PaintBucket.segmentActive,
+                activeTrackColor = PaintBucket.segmentActive,
+                inactiveTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight
+            )
         )
 
         HorizontalDivider(color = dividerColor)
@@ -344,6 +354,7 @@ private fun VolumeSliderRow(
     onMute: () -> Unit,
     onValueChange: (Int) -> Unit
 ) {
+    val isDark = LocalDarkMode.current
     Column {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -367,7 +378,15 @@ private fun VolumeSliderRow(
                 modifier = Modifier
                     .weight(1f)
                     .alpha(if (muted) 0.4f else 1f),
-                enabled = !muted
+                enabled = !muted,
+                colors = SliderDefaults.colors(
+                    thumbColor = PaintBucket.segmentActive,
+                    activeTrackColor = PaintBucket.segmentActive,
+                    inactiveTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight,
+                    disabledThumbColor = PaintBucket.segmentActive,
+                    disabledActiveTrackColor = PaintBucket.segmentActive,
+                    disabledInactiveTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight
+                )
             )
             Spacer(Modifier.width(8.dp))
             Text("$value%", color = valueColor, fontSize = 12.sp, modifier = Modifier.width(40.dp))
@@ -377,12 +396,22 @@ private fun VolumeSliderRow(
 
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, labelColor: Color, onCheckedChange: (Boolean) -> Unit) {
+    val isDark = LocalDarkMode.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, color = labelColor, fontSize = 14.sp)
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = PaintBucket.segmentActive,
+                checkedThumbColor = PaintBucket.white,
+                uncheckedTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight,
+                uncheckedThumbColor = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
+            )
+        )
     }
 }

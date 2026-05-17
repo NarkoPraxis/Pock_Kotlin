@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,6 +45,7 @@ import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import gameobjects.Settings
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
+import utility.PaintBucket
 import utility.PurchaseManager
 import utility.ShareHelper
 import utility.Storage
@@ -67,6 +67,8 @@ actual fun PlatformMenuExtras() {
         }
     }
 
+    val isDark = LocalDarkMode.current
+
     val strComeBackTomorrow = stringResource(Res.string.come_back_tomorrow)
     val strWatchAdToUnlock = stringResource(Res.string.watch_ad_to_unlock)
     val strShareThanks = stringResource(Res.string.share_thanks)
@@ -77,17 +79,18 @@ actual fun PlatformMenuExtras() {
     val timeStr = if (minsUntil >= 60) "${minsUntil / 60}h ${minsUntil % 60}m" else "${minsUntil}m"
     val strNextAdIn = stringResource(Res.string.next_ad_in, timeStr)
 
+    val menuButtonColors = ButtonDefaults.buttonColors(
+        containerColor = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuButtonLight,
+        contentColor = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark,
+        disabledContainerColor = if (isDark) PaintBucket.segmentInactiveDark else Color(0xFFE8E0FF),
+        disabledContentColor = if (isDark) Color(0xFF888899) else Color(0xFF8877AA)
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (unlockProgress < 100) {
-            Spacer(Modifier.height(8.dp))
-            UnlockProgressBar(
-                progress = unlockProgress,
-                modifier = Modifier.width(200.dp).height(40.dp)
-            )
-
             val adButtonText = when {
                 watchedToday >= 5 -> strComeBackTomorrow
                 minsUntil > 0 -> strNextAdIn
@@ -114,7 +117,7 @@ actual fun PlatformMenuExtras() {
                 },
                 enabled = adEnabled,
                 modifier = Modifier.width(200.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF444466), contentColor = Color.White)
+                colors = menuButtonColors
             ) {
                 Text(adButtonText)
             }
@@ -135,7 +138,7 @@ actual fun PlatformMenuExtras() {
                 }
             },
             modifier = Modifier.width(200.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF444466), contentColor = Color.White)
+            colors = menuButtonColors
         ) {
             Text(stringResource(Res.string.share))
         }
@@ -177,6 +180,8 @@ actual fun PlatformBallUnlockBottom() {
 
     if (unlockProgress >= 100) return
 
+    val isDark = LocalDarkMode.current
+
     val strPurchase = stringResource(Res.string.purchase)
     val strRestore = stringResource(Res.string.restore)
     val strComeBackTomorrow = stringResource(Res.string.come_back_tomorrow)
@@ -186,6 +191,13 @@ actual fun PlatformBallUnlockBottom() {
     val timeStr = if (minsUntil >= 60) "${minsUntil / 60}h ${minsUntil % 60}m" else "${minsUntil}m"
     val strNextAdIn = stringResource(Res.string.next_ad_in, timeStr)
 
+    val menuButtonColors = ButtonDefaults.buttonColors(
+        containerColor = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuButtonLight,
+        contentColor = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark,
+        disabledContainerColor = if (isDark) PaintBucket.segmentInactiveDark else Color(0xFFE8E0FF),
+        disabledContentColor = if (isDark) Color(0xFF888899) else Color(0xFF8877AA)
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -194,11 +206,11 @@ actual fun PlatformBallUnlockBottom() {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = { PurchaseManager.purchaseUnlockAll(activity) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF444466), contentColor = Color.White)
+                colors = menuButtonColors
             ) {
                 Text(strPurchase)
             }
-            OutlinedButton(
+            Button(
                 onClick = {
                     PurchaseManager.restorePurchases(activity) { success ->
                         if (success) {
@@ -206,9 +218,10 @@ actual fun PlatformBallUnlockBottom() {
                             unlockProgress = Storage.unlockProgress
                         }
                     }
-                }
+                },
+                colors = menuButtonColors
             ) {
-                Text(strRestore, color = Color.White)
+                Text(strRestore)
             }
         }
 
@@ -236,7 +249,7 @@ actual fun PlatformBallUnlockBottom() {
             },
             enabled = adEnabled,
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF444466), contentColor = Color.White)
+            colors = menuButtonColors
         ) {
             Text(adButtonText)
         }

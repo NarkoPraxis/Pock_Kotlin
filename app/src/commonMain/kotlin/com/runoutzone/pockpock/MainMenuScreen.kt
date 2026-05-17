@@ -60,6 +60,12 @@ fun MainMenuScreen(
                     .width(160.dp)
                     .aspectRatio(285.35f / 280.34f)
             )
+            if (unlockProgress < 100) {
+                UnlockProgressBar(
+                    progress = unlockProgress,
+                    modifier = Modifier.width(200.dp).height(40.dp)
+                )
+            }
             MenuButton(text = stringResource(Res.string.play), onClick = onPlayTapped)
             MenuButton(text = stringResource(Res.string.play_solo), onClick = onSinglePlayerTapped)
             MenuButton(text = stringResource(Res.string.settings), onClick = onSettingsTapped)

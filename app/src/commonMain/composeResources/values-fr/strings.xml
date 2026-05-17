@@ -4,7 +4,7 @@
     <string name="app_title">POCK</string>
 
     <!-- Common -->
-    <string name="back">← Retour</string>
+    <string name="back">Retour</string>
     <string name="cancel">Annuler</string>
     <string name="language">Langue</string>
 

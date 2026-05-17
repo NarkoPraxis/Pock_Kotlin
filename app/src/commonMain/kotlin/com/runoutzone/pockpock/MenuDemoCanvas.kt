@@ -26,6 +26,11 @@ fun MenuDemoCanvas() {
     val textMeasurer = rememberTextMeasurer()
     Drawing.initializeTextMeasurer(textMeasurer)
 
+    val isDark = LocalDarkMode.current
+    LaunchedEffect(isDark) {
+        PaintBucket.initializePlatformColors(isDark)
+    }
+
     val demoBotHigh = remember { mutableStateOf<BotBrain?>(null) }
     val demoBotLow  = remember { mutableStateOf<BotBrain?>(null) }
 
@@ -73,6 +78,7 @@ fun MenuDemoCanvas() {
 
                     Logic.initializeSettings(size.width, size.height)
                     PaintBucket.initialize(Settings.screenRatio)
+                    PaintBucket.initializePlatformColors(isDark)
                     Sounds.initializeGame()
                     Drawing.initialize()
 

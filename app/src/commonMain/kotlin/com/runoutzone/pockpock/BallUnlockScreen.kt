@@ -112,27 +112,40 @@ fun BallUnlockScreen(onBack: () -> Unit) {
             .statusBarsPadding()
             .onSizeChanged { screenWidth = it.width; screenHeight = it.height }
     ) {
-        // Header row
+        // Header row: Back | [title centered over progress bar]
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
                 Text(stringResource(Res.string.back), color = textPrimary, fontSize = 16.sp)
             }
-            Spacer(Modifier.weight(1f))
-            Text(
-                stringResource(Res.string.ball_types_title),
-                color = textPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (unlockProgress < 100) {
+                    UnlockProgressBar(
+                        progress = unlockProgress,
+                        modifier = Modifier.fillMaxWidth().height(40.dp)
+                    )
+                }
+                Text(
+                    stringResource(Res.string.ball_types_title),
+                    color = if (unlockProgress < 100) PaintBucket.white else textPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = if (unlockProgress < 100) 44.dp else 0.dp)
+                )
+            }
         }
-
-        PlatformBallUnlockTop()
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),

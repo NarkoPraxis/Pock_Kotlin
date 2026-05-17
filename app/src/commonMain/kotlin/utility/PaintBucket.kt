@@ -191,7 +191,8 @@ object PaintBucket {
      */
     fun initializePlatformColors(isDark: Boolean) {
         backgroundColor = if (isDark) Color(0xFF1A1A1A) else Color(0xFFFFFFFF)
-        goalColor = Color(0xFFE3D1FF)
+        goalColor = if (isDark) Color(0xFF2A2A3A) else shieldPrimary
+        canScoreWallColor = if (isDark) Color(0xFF5555AA) else shieldSecondary
     }
 
     /**
