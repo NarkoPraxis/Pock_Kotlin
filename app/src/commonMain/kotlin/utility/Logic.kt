@@ -660,6 +660,21 @@ object Logic {
         return consumed
     }
 
+    /** Clear any stale pointer locks — call when the app foregrounds or touch state is unknown. */
+    fun releaseAllPointers() {
+        if (!isInitialized) return
+        listOf(highPlayer, lowPlayer).forEach { player ->
+            if (player.lockedPointerId != -1) {
+                player.lockedPointerId = -1
+                player.touch = TouchState.Ready
+                player.isFlingHeld = false
+                player.shouldReleaseCharge = true
+            }
+        }
+        highPopupDragPointerId = -1
+        lowPopupDragPointerId = -1
+    }
+
     fun closeBallPopups() {
         highBallPopup.close()
         lowBallPopup.close()

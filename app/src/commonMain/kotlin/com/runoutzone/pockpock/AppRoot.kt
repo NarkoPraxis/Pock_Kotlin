@@ -155,6 +155,13 @@ private fun IosGameHost(onBack: () -> Unit) {
 
     ImmersiveModeEffect()
 
+    // Release any pointer locks left over from iOS touch cancellations (e.g. app backgrounded
+    // mid-touch). Runs every time IosGameHost enters composition, which is every time the game
+    // screen becomes visible — safe to call even before Logic is fully initialized.
+    LaunchedEffect(Unit) {
+        Logic.releaseAllPointers()
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             gameLoop.stop()
@@ -168,6 +175,7 @@ private fun IosGameHost(onBack: () -> Unit) {
             onSizeKnown = { w, h ->
                 if (!initialized) {
                     initialized = true
+                    Settings.isDemoMode = false   // stop demo loop before touching Logic state
                     Logic.initializeSettings(w.toInt(), h.toInt())
                     PaintBucket.initialize(Settings.screenRatio)
                     PaintBucket.initializePlatformColors(Storage.darkMode)
