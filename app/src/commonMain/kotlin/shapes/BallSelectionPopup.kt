@@ -280,13 +280,13 @@ class BallSelectionPopup(val isHigh: Boolean) {
     }
 
     private fun DrawScope.drawLock(lx: Float, ly: Float, radius: Float) {
+        val lockColor = utility.PaintBucket.shieldPrimary
         val strokeWidth = Settings.screenRatio * 0.2f
         val bodyW = radius * 0.8f
         val bodyH = radius * 0.7f
 
-        // Lock body — filled white rounded rect
         val bodyPaint = Paint().apply {
-            color = Color.White
+            color = lockColor
             style = PaintingStyle.Fill
         }
         drawContext.canvas.drawRoundRect(
@@ -295,10 +295,9 @@ class BallSelectionPopup(val isHigh: Boolean) {
             bodyPaint
         )
 
-        // Shackle — stroked white arc
         val shackleR = bodyW / 2.6f
         drawArc(
-            color = Color.White,
+            color = lockColor,
             startAngle = 180f,
             sweepAngle = 180f,
             useCenter = false,

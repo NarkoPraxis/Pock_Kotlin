@@ -38,7 +38,8 @@ import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PuckRenderer
 import kotlinx.coroutines.delay
-import utility.LocalStrings
+import org.jetbrains.compose.resources.stringResource
+import pock_kotlin.app.generated.resources.*
 import utility.PaintBucket
 import utility.PlatformAd
 import utility.Storage
@@ -53,7 +54,6 @@ fun BallUnlockScreen(onBack: () -> Unit) {
     val bgColor = if (isDark) Color(0xFF12102A) else Color(0xFFFFFFFF)
     val textPrimary = if (isDark) Color.White else Color(0xFF12102A)
     val dividerColor = if (isDark) Color(0xFF444466) else Color(0xFFCCCCDD)
-    val strings = LocalStrings.current
 
     val displayTypes = remember { BallType.entries.filter { it != BallType.Random } }
     val count = displayTypes.size
@@ -120,11 +120,11 @@ fun BallUnlockScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
-                Text(strings.back, color = textPrimary, fontSize = 16.sp)
+                Text(stringResource(Res.string.back), color = textPrimary, fontSize = 16.sp)
             }
             Spacer(Modifier.weight(1f))
             Text(
-                strings.ballTypesTitle,
+                stringResource(Res.string.ball_types_title),
                 color = textPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
@@ -132,16 +132,21 @@ fun BallUnlockScreen(onBack: () -> Unit) {
             Spacer(Modifier.weight(1f))
         }
 
-        PlatformBallUnlockExtras()
+        PlatformBallUnlockTop()
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f)
         ) {
             itemsIndexed(displayTypes) { index, type ->
                 val isUnlocked = BallStyleFactory.isUnlocked(type, unlockProgress)
+                val strUnlocked = stringResource(Res.string.unlocked)
+                val threshold = BallStyleFactory.unlockThreshold(type)
+                val statusText = if (isUnlocked) strUnlocked
+                    else if (threshold != null) stringResource(Res.string.reach_percent, threshold) else strUnlocked
 
                 Box(
                     modifier = Modifier
@@ -158,6 +163,7 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                         }
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize().clipToBounds()) {
+                        val frame = bounceFrame
                         val previewRenderer = renderers[index] ?: return@Canvas
 
                         val savedRatio = Settings.screenRatio
@@ -185,7 +191,7 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                         val baseCy = size.height / 2f - ratio * 0.4f
                         val amplitude = if (index == bouncingIndex) ratio * 1.1f else ratio * 0.5f
                         val phase = index * 0.7f
-                        val puckY = baseCy + amplitude * sin(2f * PI.toFloat() * bounceFrame / 80f + phase)
+                        val puckY = baseCy + amplitude * sin(2f * PI.toFloat() * frame / 80f + phase)
                         val pr = ratio * 1.2f
 
                         previewRenderer.effectEnabled = false
@@ -193,12 +199,12 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                         previewRenderer.x = cx
                         previewRenderer.y = puckY
                         previewRenderer.radius = pr
-                        previewRenderer.frame = bounceFrame
+                        previewRenderer.frame = frame
                         previewRenderer.theme = theme
                         previewRenderer.fillColor = theme.main.primary
                         previewRenderer.strokeColor = theme.main.secondary
                         previewRenderer.baseFillColor = theme.main.primary
-                        previewRenderer.preview = !isUnlocked
+                        previewRenderer.preview = false
 
                         with(previewRenderer) { draw() }
 
@@ -225,8 +231,6 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                             )
                         )
 
-                        val statusText = if (isUnlocked) strings.unlocked
-                            else BallStyleFactory.unlockThreshold(type)?.let { strings.reachPercent(it) } ?: strings.unlocked
                         val subStyle = TextStyle(
                             color = subColor,
                             fontSize = (ratio * 0.45f / pxPerSp).sp,
@@ -247,16 +251,19 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                 }
             }
         }
+
+        PlatformBallUnlockBottom()
     }
 }
 
 private fun DrawScope.drawLock(cx: Float, ly: Float, radius: Float, ratio: Float) {
+    val lockColor = PaintBucket.shieldPrimary
     val strokeW = ratio * 0.22f
     val bodyW = radius * 0.8f
     val bodyH = radius * 0.7f
 
     drawRoundRect(
-        color = Color.White,
+        color = lockColor,
         topLeft = Offset(cx - bodyW / 2f, ly - bodyH / 4f),
         size = Size(bodyW, bodyH),
         cornerRadius = CornerRadius(ratio * 0.15f)
@@ -264,7 +271,7 @@ private fun DrawScope.drawLock(cx: Float, ly: Float, radius: Float, ratio: Float
 
     val shackleR = bodyW / 2.6f
     drawArc(
-        color = Color.White,
+        color = lockColor,
         startAngle = 180f,
         sweepAngle = 180f,
         useCenter = false,

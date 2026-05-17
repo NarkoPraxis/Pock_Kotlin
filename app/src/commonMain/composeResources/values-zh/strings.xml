@@ -1,5 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App -->
+    <string name="app_title">POCK</string>
+
+    <!-- Common -->
+    <string name="back">← 返回</string>
+    <string name="cancel">取消</string>
+    <string name="language">语言</string>
+
+    <!-- Main menu -->
+    <string name="play">游玩</string>
+    <string name="play_solo">单人游玩</string>
+    <string name="settings">设置</string>
+    <string name="ball_types">球</string>
+    <string name="share">分享</string>
+    <string name="watch_ad_to_unlock">观看广告解锁</string>
+    <string name="watch_ad_loading">观看广告（加载中…）</string>
+    <string name="come_back_tomorrow">明天再来</string>
+    <string name="next_ad_in">%1$s后可看广告</string>
+    <string name="percent_unlocked">%1$d%% 已解锁</string>
+    <string name="share_thanks">感谢分享！进度 +10%%。</string>
+    <string name="share_already_claimed">再次感谢分享！奖励已被领取。</string>
+
+    <!-- Difficulty dialog -->
+    <string name="choose_difficulty">选择难度</string>
+    <string name="easy">简单</string>
+    <string name="medium">中等</string>
+    <string name="hard">困难</string>
+
+    <!-- Settings -->
+    <string name="settings_title">设置</string>
+    <string name="gameplay">玩法</string>
+    <string name="ball_size_label">球的大小</string>
+    <string name="ball_size_small">小</string>
+    <string name="ball_size_default">默认</string>
+    <string name="ball_size_large">大</string>
+    <string name="charge_speed_label">蓄力速度</string>
+    <string name="speed_slow">慢</string>
+    <string name="speed_normal">默认</string>
+    <string name="speed_fast">快</string>
+    <string name="speed_fastest">最快</string>
+    <string name="game_speed_label">游戏速度</string>
+    <string name="points_to_win_label">获胜所需分数</string>
+    <string name="time_limit_label">时间限制</string>
+    <string name="minute_short">分钟</string>
+    <string name="sound">音效</string>
+    <string name="sound_master">总音量</string>
+    <string name="sound_background">背景音乐</string>
+    <string name="sound_fx">音效</string>
+    <string name="mute">静音</string>
+    <string name="muted">已静音</string>
+    <string name="visual">视觉</string>
+    <string name="tail_length_label">尾迹长度</string>
+    <string name="tail_none">无</string>
+    <string name="tail_short">短</string>
+    <string name="tail_default">默认</string>
+    <string name="tail_long">长</string>
+    <string name="high_player_arrow">上方玩家箭头</string>
+    <string name="low_player_arrow">下方玩家箭头</string>
+    <string name="high_player_charge_meter">上方玩家蓄力条</string>
+    <string name="low_player_charge_meter">下方玩家蓄力条</string>
+    <string name="charge_meter_sidebar">侧边栏</string>
+    <string name="charge_meter_fullscreen">全屏</string>
+    <string name="charge_meter_none">无</string>
+    <string name="dark_mode">深色模式</string>
+    <string name="reset_defaults">恢复默认设置</string>
+
+    <!-- Ball unlock -->
+    <string name="ball_types_title">解锁球</string>
+    <string name="watch_ads_to_unlock_more">观看广告解锁更多球类型</string>
+    <string name="watch_ad_earn">观看广告 (+2%%)</string>
+    <string name="get_pro">获取专业版</string>
+    <string name="restore_purchases">恢复购买</string>
+    <string name="purchase">购买</string>
+    <string name="restore">恢复</string>
+    <string name="unlocked">已解锁</string>
+    <string name="reach_percent">达到%1$d%%</string>
+
+    <!-- In-game tips -->
     <string name="tip_title">准备好后按住此处</string>
     <string name="tip_controls">触摸屏幕并向后拉手指，将你的冰球弹射向前。</string>
     <string name="tip_scoring">将对手打入任一紫色球门区域并得分以赢得比赛。</string>

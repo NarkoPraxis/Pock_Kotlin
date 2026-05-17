@@ -15,21 +15,17 @@ import androidx.navigation.compose.rememberNavController
 import enums.GameState
 import gameobjects.BotConfig
 import gameobjects.Settings
+import org.jetbrains.compose.resources.stringResource
+import pock_kotlin.app.generated.resources.*
 import utility.Drawing
 import utility.GameLoop
-import utility.LanguageHelper
-import utility.LocalStrings
 import utility.Logic
 import utility.PaintBucket
 import utility.Sounds
 import utility.Storage
-import utility.Strings
 
 /** Provides the current dark-mode flag to any composable in the tree. */
 val LocalDarkMode = compositionLocalOf { false }
-
-/** Provides the current language code (e.g. "de", "fr", "" = English) to any composable. */
-val LocalLanguage = compositionLocalOf { "" }
 
 private enum class Screen { MainMenu, Game, Settings, BallUnlock }
 
@@ -38,13 +34,8 @@ fun AppRoot() {
     val navController = rememberNavController()
     var showDifficultyDialog by remember { mutableStateOf(false) }
     var darkMode by remember { mutableStateOf(Storage.darkMode) }
-    var language by remember { mutableStateOf(LanguageHelper.getCurrentCode()) }
 
-    CompositionLocalProvider(
-        LocalDarkMode provides darkMode,
-        LocalLanguage provides language,
-        LocalStrings provides Strings.forCode(language)
-    ) {
+    CompositionLocalProvider(LocalDarkMode provides darkMode) {
         NavHost(navController, startDestination = Screen.MainMenu.name) {
             composable(Screen.MainMenu.name) {
                 LaunchedEffect(Unit) {
@@ -61,10 +52,6 @@ fun AppRoot() {
                         onSinglePlayerTapped = { showDifficultyDialog = true },
                         onSettingsTapped = { navController.navigate(Screen.Settings.name) },
                         onBallsTapped = { navController.navigate(Screen.BallUnlock.name) },
-                        onLanguageChanged = { code ->
-                            LanguageHelper.saveLanguage(code)
-                            language = code
-                        }
                     )
                 }
             }
@@ -83,16 +70,15 @@ fun AppRoot() {
         }
 
         if (showDifficultyDialog) {
-            val strings = LocalStrings.current
             AlertDialog(
                 onDismissRequest = { showDifficultyDialog = false },
-                title = { Text(strings.chooseDifficulty, color = PaintBucket.white) },
+                title = { Text(stringResource(Res.string.choose_difficulty), color = PaintBucket.white) },
                 text = {
                     Column {
                         listOf(
-                            strings.easy to BotConfig.Easy,
-                            strings.medium to BotConfig.Medium,
-                            strings.hard to BotConfig.Hard
+                            stringResource(Res.string.easy) to BotConfig.Easy,
+                            stringResource(Res.string.medium) to BotConfig.Medium,
+                            stringResource(Res.string.hard) to BotConfig.Hard
                         ).forEach { (label, config) ->
                             TextButton(onClick = {
                                 Settings.botConfig = config
@@ -109,7 +95,7 @@ fun AppRoot() {
                 confirmButton = {},
                 dismissButton = {
                     TextButton(onClick = { showDifficultyDialog = false }) {
-                        Text(strings.cancel, color = PaintBucket.white)
+                        Text(stringResource(Res.string.cancel), color = PaintBucket.white)
                     }
                 },
                 containerColor = PaintBucket.menuButtonDark

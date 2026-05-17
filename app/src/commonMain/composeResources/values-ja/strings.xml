@@ -1,5 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App -->
+    <string name="app_title">POCK</string>
+
+    <!-- Common -->
+    <string name="back">← 戻る</string>
+    <string name="cancel">キャンセル</string>
+    <string name="language">言語</string>
+
+    <!-- Main menu -->
+    <string name="play">プレイ</string>
+    <string name="play_solo">1人でプレイ</string>
+    <string name="settings">設定</string>
+    <string name="ball_types">ボール</string>
+    <string name="share">シェア</string>
+    <string name="watch_ad_to_unlock">広告を見てアンロック</string>
+    <string name="watch_ad_loading">広告（読込中…）</string>
+    <string name="come_back_tomorrow">明日また来てね</string>
+    <string name="next_ad_in">次の広告まで%1$s</string>
+    <string name="percent_unlocked">%1$d%% アンロック済み</string>
+    <string name="share_thanks">シェアありがとう！進捗 +10%%。</string>
+    <string name="share_already_claimed">またシェアしてくれてありがとう！報酬はすでに受け取り済みです。</string>
+
+    <!-- Difficulty dialog -->
+    <string name="choose_difficulty">難易度を選択</string>
+    <string name="easy">かんたん</string>
+    <string name="medium">ふつう</string>
+    <string name="hard">むずかしい</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="gameplay">ゲームプレイ</string>
+    <string name="ball_size_label">ボールのサイズ</string>
+    <string name="ball_size_small">小さい</string>
+    <string name="ball_size_default">デフォルト</string>
+    <string name="ball_size_large">大きい</string>
+    <string name="charge_speed_label">チャージ速度</string>
+    <string name="speed_slow">遅い</string>
+    <string name="speed_normal">デフォルト</string>
+    <string name="speed_fast">速い</string>
+    <string name="speed_fastest">最速</string>
+    <string name="game_speed_label">ゲーム速度</string>
+    <string name="points_to_win_label">勝利ポイント</string>
+    <string name="time_limit_label">制限時間</string>
+    <string name="minute_short">分</string>
+    <string name="sound">サウンド</string>
+    <string name="sound_master">マスター</string>
+    <string name="sound_background">BGM</string>
+    <string name="sound_fx">効果音</string>
+    <string name="mute">ミュート</string>
+    <string name="muted">ミュート中</string>
+    <string name="visual">ビジュアル</string>
+    <string name="tail_length_label">尾の長さ</string>
+    <string name="tail_none">なし</string>
+    <string name="tail_short">短い</string>
+    <string name="tail_default">デフォルト</string>
+    <string name="tail_long">長い</string>
+    <string name="high_player_arrow">上プレイヤーの矢印</string>
+    <string name="low_player_arrow">下プレイヤーの矢印</string>
+    <string name="high_player_charge_meter">上プレイヤーのチャージゲージ</string>
+    <string name="low_player_charge_meter">下プレイヤーのチャージゲージ</string>
+    <string name="charge_meter_sidebar">サイドバー</string>
+    <string name="charge_meter_fullscreen">全画面</string>
+    <string name="charge_meter_none">なし</string>
+    <string name="dark_mode">ダークモード</string>
+    <string name="reset_defaults">デフォルトに戻す</string>
+
+    <!-- Ball unlock -->
+    <string name="ball_types_title">ボールをアンロック</string>
+    <string name="watch_ads_to_unlock_more">広告を見てボールをアンロックしよう</string>
+    <string name="watch_ad_earn">広告を見る (+2%%)</string>
+    <string name="get_pro">Proを取得</string>
+    <string name="restore_purchases">購入を復元</string>
+    <string name="purchase">購入</string>
+    <string name="restore">復元</string>
+    <string name="unlocked">アンロック済み</string>
+    <string name="reach_percent">%1$d%%を達成</string>
+
+    <!-- In-game tips -->
     <string name="tip_title">準備できたらここを押してください</string>
     <string name="tip_controls">画面をタッチして指を引き、パックを前方に弾き飛ばしましょう。</string>
     <string name="tip_scoring">相手を紫のゴールゾーンのどちらかに打ち込んでポイントを獲得し、勝利を目指しましょう。</string>

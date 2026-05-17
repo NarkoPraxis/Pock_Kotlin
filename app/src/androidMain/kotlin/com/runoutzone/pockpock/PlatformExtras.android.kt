@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +44,8 @@ import com.google.android.gms.ads.OnUserEarnedRewardListener
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import gameobjects.Settings
+import org.jetbrains.compose.resources.stringResource
+import pock_kotlin.app.generated.resources.*
 import utility.PurchaseManager
 import utility.ShareHelper
 import utility.Storage
@@ -64,6 +67,16 @@ actual fun PlatformMenuExtras() {
         }
     }
 
+    val strComeBackTomorrow = stringResource(Res.string.come_back_tomorrow)
+    val strWatchAdToUnlock = stringResource(Res.string.watch_ad_to_unlock)
+    val strShareThanks = stringResource(Res.string.share_thanks)
+    val strShareAlreadyClaimed = stringResource(Res.string.share_already_claimed)
+
+    val watchedToday = Storage.adsWatchedToday()
+    val minsUntil = Storage.minutesUntilNextAd()
+    val timeStr = if (minsUntil >= 60) "${minsUntil / 60}h ${minsUntil % 60}m" else "${minsUntil}m"
+    val strNextAdIn = stringResource(Res.string.next_ad_in, timeStr)
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -75,15 +88,10 @@ actual fun PlatformMenuExtras() {
                 modifier = Modifier.width(200.dp).height(40.dp)
             )
 
-            val watchedToday = Storage.adsWatchedToday()
-            val minsUntil = Storage.minutesUntilNextAd()
             val adButtonText = when {
-                watchedToday >= 5 -> "Come back tomorrow"
-                minsUntil > 0 -> {
-                    val t = if (minsUntil >= 60) "${minsUntil / 60}h ${minsUntil % 60}m" else "${minsUntil}m"
-                    "Next ad in $t"
-                }
-                else -> "Watch Ad to Unlock"
+                watchedToday >= 5 -> strComeBackTomorrow
+                minsUntil > 0 -> strNextAdIn
+                else -> strWatchAdToUnlock
             }
             val adEnabled = watchedToday < 5 && minsUntil == 0L && rewardedAd != null
 
@@ -116,20 +124,20 @@ actual fun PlatformMenuExtras() {
             onClick = {
                 ShareHelper.shareAppPromo(activity) {
                     if (Storage.shareRewardClaimed) {
-                        Toast.makeText(activity, "Thanks for sharing again! The reward has already been claimed.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(activity, strShareAlreadyClaimed, Toast.LENGTH_SHORT).show()
                     } else {
                         Storage.markShareRewardClaimed()
                         Storage.addBonusProgress(10)
                         Settings.unlockProgress = Storage.unlockProgress
                         unlockProgress = Storage.unlockProgress
-                        Toast.makeText(activity, "Thanks for sharing! Unlock progress +10%.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(activity, strShareThanks, Toast.LENGTH_SHORT).show()
                     }
                 }
             },
             modifier = Modifier.width(200.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF444466), contentColor = Color.White)
         ) {
-            Text("Share")
+            Text(stringResource(Res.string.share))
         }
 
         TextButton(onClick = {
@@ -141,7 +149,20 @@ actual fun PlatformMenuExtras() {
 }
 
 @Composable
-actual fun PlatformBallUnlockExtras() {
+actual fun PlatformBallUnlockTop() {
+    var unlockProgress by remember { mutableIntStateOf(Storage.unlockProgress) }
+    if (unlockProgress >= 100) return
+
+    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        UnlockProgressBar(
+            progress = unlockProgress,
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        )
+    }
+}
+
+@Composable
+actual fun PlatformBallUnlockBottom() {
     val context = LocalContext.current
     val activity = context as? Activity ?: return
 
@@ -156,22 +177,26 @@ actual fun PlatformBallUnlockExtras() {
 
     if (unlockProgress >= 100) return
 
+    val strPurchase = stringResource(Res.string.purchase)
+    val strRestore = stringResource(Res.string.restore)
+    val strComeBackTomorrow = stringResource(Res.string.come_back_tomorrow)
+    val strWatchAdToUnlock = stringResource(Res.string.watch_ad_to_unlock)
+    val watchedToday = Storage.adsWatchedToday()
+    val minsUntil = Storage.minutesUntilNextAd()
+    val timeStr = if (minsUntil >= 60) "${minsUntil / 60}h ${minsUntil % 60}m" else "${minsUntil}m"
+    val strNextAdIn = stringResource(Res.string.next_ad_in, timeStr)
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        UnlockProgressBar(
-            progress = unlockProgress,
-            modifier = Modifier.fillMaxWidth().height(48.dp)
-        )
-
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = { PurchaseManager.purchaseUnlockAll(activity) },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF444466), contentColor = Color.White)
             ) {
-                Text("Purchase")
+                Text(strPurchase)
             }
             OutlinedButton(
                 onClick = {
@@ -183,19 +208,14 @@ actual fun PlatformBallUnlockExtras() {
                     }
                 }
             ) {
-                Text("Restore", color = Color.White)
+                Text(strRestore, color = Color.White)
             }
         }
 
-        val watchedToday = Storage.adsWatchedToday()
-        val minsUntil = Storage.minutesUntilNextAd()
         val adButtonText = when {
-            watchedToday >= 5 -> "Come back tomorrow"
-            minsUntil > 0 -> {
-                val t = if (minsUntil >= 60) "${minsUntil / 60}h ${minsUntil % 60}m" else "${minsUntil}m"
-                "Next ad in $t"
-            }
-            else -> "Watch Ad to Unlock"
+            watchedToday >= 5 -> strComeBackTomorrow
+            minsUntil > 0 -> strNextAdIn
+            else -> strWatchAdToUnlock
         }
         val adEnabled = watchedToday < 5 && minsUntil == 0L && rewardedAd != null
 

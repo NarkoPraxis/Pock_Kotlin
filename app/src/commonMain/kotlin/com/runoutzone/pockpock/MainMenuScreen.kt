@@ -10,8 +10,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import utility.LanguageHelper
-import utility.LocalStrings
+import org.jetbrains.compose.resources.stringResource
+import pock_kotlin.app.generated.resources.*
 import utility.PaintBucket
 import utility.PlatformAd
 import utility.Storage
@@ -24,17 +24,13 @@ fun MainMenuScreen(
     onSinglePlayerTapped: () -> Unit,
     onSettingsTapped: () -> Unit,
     onBallsTapped: () -> Unit,
-    onLanguageChanged: (String) -> Unit = {}
 ) {
     val isDark = LocalDarkMode.current
     val bgColor = if (isDark) Color(0xFF12102A) else Color(0xFFFFFFFF)
     val textColor = if (isDark) Color.White else Color(0xFF12102A)
-    val currentLanguage = LocalLanguage.current
-    val strings = LocalStrings.current
 
     var unlockProgress by remember { mutableIntStateOf(Storage.unlockProgress) }
     var adReady by remember { mutableStateOf(false) }
-    var showLanguageDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         unlockProgress = Storage.unlockProgress
@@ -58,16 +54,16 @@ fun MainMenuScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "POCK",
+                text = stringResource(Res.string.app_title),
                 color = textColor,
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(24.dp))
-            MenuButton(text = "PLAY", onClick = onPlayTapped)
-            MenuButton(text = "PLAY SOLO", onClick = onSinglePlayerTapped)
-            MenuButton(text = "SETTINGS", onClick = onSettingsTapped)
-            MenuButton(text = "BALL TYPES", onClick = onBallsTapped)
+            MenuButton(text = stringResource(Res.string.play), onClick = onPlayTapped)
+            MenuButton(text = stringResource(Res.string.play_solo), onClick = onSinglePlayerTapped)
+            MenuButton(text = stringResource(Res.string.settings), onClick = onSettingsTapped)
+            MenuButton(text = stringResource(Res.string.ball_types), onClick = onBallsTapped)
             PlatformMenuExtras()
         }
     }

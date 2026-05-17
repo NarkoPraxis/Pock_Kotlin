@@ -1,5 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App -->
+    <string name="app_title">POCK</string>
+
+    <!-- Common -->
+    <string name="back">← Zurück</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="language">Sprache</string>
+
+    <!-- Main menu -->
+    <string name="play">Spielen</string>
+    <string name="play_solo">Alleine spielen</string>
+    <string name="settings">Einstellungen</string>
+    <string name="ball_types">Bälle</string>
+    <string name="share">Teilen</string>
+    <string name="watch_ad_to_unlock">Werbung ansehen zum Freischalten</string>
+    <string name="watch_ad_loading">Werbung (Lädt…)</string>
+    <string name="come_back_tomorrow">Komm morgen wieder</string>
+    <string name="next_ad_in">Nächste Werbung in %1$s</string>
+    <string name="percent_unlocked">%1$d%% freigeschaltet</string>
+    <string name="share_thanks">Danke fürs Teilen! Fortschritt +10%%.</string>
+    <string name="share_already_claimed">Danke fürs Teilen! Die Belohnung wurde bereits beansprucht.</string>
+
+    <!-- Difficulty dialog -->
+    <string name="choose_difficulty">Schwierigkeit wählen</string>
+    <string name="easy">Leicht</string>
+    <string name="medium">Mittel</string>
+    <string name="hard">Schwer</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="gameplay">Spielmodus</string>
+    <string name="ball_size_label">Ballgröße</string>
+    <string name="ball_size_small">Klein</string>
+    <string name="ball_size_default">Standard</string>
+    <string name="ball_size_large">Groß</string>
+    <string name="charge_speed_label">Ladegeschwindigkeit</string>
+    <string name="speed_slow">Langsam</string>
+    <string name="speed_normal">Standard</string>
+    <string name="speed_fast">Schnell</string>
+    <string name="speed_fastest">Am schnellsten</string>
+    <string name="game_speed_label">Spielgeschwindigkeit</string>
+    <string name="points_to_win_label">Punkte zum Gewinnen</string>
+    <string name="time_limit_label">Zeitlimit</string>
+    <string name="minute_short">min</string>
+    <string name="sound">Sound</string>
+    <string name="sound_master">Hauptlautstärke</string>
+    <string name="sound_background">Hintergrundmusik</string>
+    <string name="sound_fx">Soundeffekte</string>
+    <string name="mute">Stumm</string>
+    <string name="muted">Stummgeschaltet</string>
+    <string name="visual">Visuelle</string>
+    <string name="tail_length_label">Schweiflänge</string>
+    <string name="tail_none">Kein</string>
+    <string name="tail_short">Kurz</string>
+    <string name="tail_default">Standard</string>
+    <string name="tail_long">Lang</string>
+    <string name="high_player_arrow">Pfeil des oberen Spielers</string>
+    <string name="low_player_arrow">Pfeil des unteren Spielers</string>
+    <string name="high_player_charge_meter">Ladebalken des oberen Spielers</string>
+    <string name="low_player_charge_meter">Ladebalken des unteren Spielers</string>
+    <string name="charge_meter_sidebar">Seitenleiste</string>
+    <string name="charge_meter_fullscreen">Vollbild</string>
+    <string name="charge_meter_none">Kein</string>
+    <string name="dark_mode">Dunkelmodus</string>
+    <string name="reset_defaults">Standardwerte wiederherstellen</string>
+
+    <!-- Ball unlock -->
+    <string name="ball_types_title">Bälle freischalten</string>
+    <string name="watch_ads_to_unlock_more">Werbung ansehen, um mehr Balltypen freizuschalten</string>
+    <string name="watch_ad_earn">Werbung ansehen (+2%%)</string>
+    <string name="get_pro">Pro kaufen</string>
+    <string name="restore_purchases">Käufe wiederherstellen</string>
+    <string name="purchase">Kaufen</string>
+    <string name="restore">Wiederherstellen</string>
+    <string name="unlocked">Freigeschaltet</string>
+    <string name="reach_percent">%1$d%% erreichen</string>
+
+    <!-- In-game tips -->
     <string name="tip_title">Hier Festhalten wenn Bereit</string>
     <string name="tip_controls">Berühr den Bildschirm und ziehe deinen Finger zurück, um deinen Pock vorwärts zu schleudern.</string>
     <string name="tip_scoring">Triff deinen Gegner in eine der lila Torzonen und erziele Punkte zum Gewinnen.</string>

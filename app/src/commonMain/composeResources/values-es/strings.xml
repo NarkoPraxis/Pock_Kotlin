@@ -1,5 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App -->
+    <string name="app_title">POCK</string>
+
+    <!-- Common -->
+    <string name="back">← Atrás</string>
+    <string name="cancel">Cancelar</string>
+    <string name="language">Idioma</string>
+
+    <!-- Main menu -->
+    <string name="play">Jugar</string>
+    <string name="play_solo">Jugar solo</string>
+    <string name="settings">Ajustes</string>
+    <string name="ball_types">Pelotas</string>
+    <string name="share">Compartir</string>
+    <string name="watch_ad_to_unlock">Ver anuncio para desbloquear</string>
+    <string name="watch_ad_loading">Ver anuncio (Cargando…)</string>
+    <string name="come_back_tomorrow">Vuelve mañana</string>
+    <string name="next_ad_in">Próximo anuncio en %1$s</string>
+    <string name="percent_unlocked">%1$d%% desbloqueado</string>
+    <string name="share_thanks">¡Gracias por compartir! Progreso +10%%.</string>
+    <string name="share_already_claimed">¡Gracias por compartir de nuevo! La recompensa ya fue reclamada.</string>
+
+    <!-- Difficulty dialog -->
+    <string name="choose_difficulty">Elige la dificultad</string>
+    <string name="easy">Fácil</string>
+    <string name="medium">Medio</string>
+    <string name="hard">Difícil</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ajustes</string>
+    <string name="gameplay">Jugabilidad</string>
+    <string name="ball_size_label">Tamaño del balón</string>
+    <string name="ball_size_small">Pequeño</string>
+    <string name="ball_size_default">Predeterminado</string>
+    <string name="ball_size_large">Grande</string>
+    <string name="charge_speed_label">Velocidad de carga</string>
+    <string name="speed_slow">Lento</string>
+    <string name="speed_normal">Predeterminado</string>
+    <string name="speed_fast">Rápido</string>
+    <string name="speed_fastest">Más rápido</string>
+    <string name="game_speed_label">Velocidad del juego</string>
+    <string name="points_to_win_label">Puntos para ganar</string>
+    <string name="time_limit_label">Límite de tiempo</string>
+    <string name="minute_short">min</string>
+    <string name="sound">Sonido</string>
+    <string name="sound_master">Principal</string>
+    <string name="sound_background">Fondo</string>
+    <string name="sound_fx">Efectos de sonido</string>
+    <string name="mute">Silenciar</string>
+    <string name="muted">Silenciado</string>
+    <string name="visual">Visual</string>
+    <string name="tail_length_label">Longitud de la cola</string>
+    <string name="tail_none">Ninguna</string>
+    <string name="tail_short">Corta</string>
+    <string name="tail_default">Predeterminada</string>
+    <string name="tail_long">Larga</string>
+    <string name="high_player_arrow">Flecha del jugador superior</string>
+    <string name="low_player_arrow">Flecha del jugador inferior</string>
+    <string name="high_player_charge_meter">Barra del jugador superior</string>
+    <string name="low_player_charge_meter">Barra del jugador inferior</string>
+    <string name="charge_meter_sidebar">Lateral</string>
+    <string name="charge_meter_fullscreen">Pantalla completa</string>
+    <string name="charge_meter_none">Ninguna</string>
+    <string name="dark_mode">Modo oscuro</string>
+    <string name="reset_defaults">Restaurar valores predeterminados</string>
+
+    <!-- Ball unlock -->
+    <string name="ball_types_title">Desbloquear pelotas</string>
+    <string name="watch_ads_to_unlock_more">Ver anuncios para desbloquear más tipos de pelota</string>
+    <string name="watch_ad_earn">Ver anuncio (+2%%)</string>
+    <string name="get_pro">Conseguir Pro</string>
+    <string name="restore_purchases">Restaurar compras</string>
+    <string name="purchase">Comprar</string>
+    <string name="restore">Restaurar</string>
+    <string name="unlocked">Desbloqueado</string>
+    <string name="reach_percent">Llega al %1$d%%</string>
+
+    <!-- In-game tips -->
     <string name="tip_title">Mantén Aquí Cuando Estés Listo</string>
     <string name="tip_controls">Toca la pantalla y arrastra el dedo hacia atrás para lanzar tu pock hacia adelante.</string>
     <string name="tip_scoring">Golpea a tu oponente en una de las zonas de gol moradas para anotar puntos y ganar.</string>

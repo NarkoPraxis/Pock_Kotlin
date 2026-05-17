@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_title">POCK</string>
+
+    <!-- Common -->
+    <string name="back">← Retour</string>
+    <string name="cancel">Annuler</string>
+    <string name="language">Langue</string>
+
+    <!-- Main menu -->
+    <string name="play">Jouer</string>
+    <string name="play_solo">Jouer seul</string>
+    <string name="settings">Paramètres</string>
+    <string name="ball_types">Balles</string>
+    <string name="share">Partager</string>
+    <string name="watch_ad_to_unlock">Regarder une pub pour débloquer</string>
+    <string name="watch_ad_loading">Regarder pub (Chargement…)</string>
+    <string name="come_back_tomorrow">Reviens demain</string>
+    <string name="next_ad_in">Prochaine pub dans %1$s</string>
+    <string name="percent_unlocked">%1$d%% débloqué</string>
+    <string name="share_thanks">Merci de partager ! Progression +10%%.</string>
+    <string name="share_already_claimed">Merci de partager à nouveau ! La récompense a déjà été réclamée.</string>
+
+    <!-- Difficulty dialog -->
+    <string name="choose_difficulty">Choisir la difficulté</string>
+    <string name="easy">Facile</string>
+    <string name="medium">Moyen</string>
+    <string name="hard">Difficile</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Paramètres</string>
+    <string name="gameplay">Gameplay</string>
+    <string name="ball_size_label">Taille de la balle</string>
+    <string name="ball_size_small">Petit</string>
+    <string name="ball_size_default">Défaut</string>
+    <string name="ball_size_large">Grand</string>
+    <string name="charge_speed_label">Vitesse de charge</string>
+    <string name="speed_slow">Lent</string>
+    <string name="speed_normal">Défaut</string>
+    <string name="speed_fast">Rapide</string>
+    <string name="speed_fastest">Le plus rapide</string>
+    <string name="game_speed_label">Vitesse du jeu</string>
+    <string name="points_to_win_label">Points pour gagner</string>
+    <string name="time_limit_label">Limite de temps</string>
+    <string name="minute_short">min</string>
+    <string name="sound">Son</string>
+    <string name="sound_master">Principal</string>
+    <string name="sound_background">Fond</string>
+    <string name="sound_fx">Effets sonores</string>
+    <string name="mute">Muet</string>
+    <string name="muted">Coupé</string>
+    <string name="visual">Visuel</string>
+    <string name="tail_length_label">Longueur de la traînée</string>
+    <string name="tail_none">Aucune</string>
+    <string name="tail_short">Courte</string>
+    <string name="tail_default">Défaut</string>
+    <string name="tail_long">Longue</string>
+    <string name="high_player_arrow">Flèche du joueur du haut</string>
+    <string name="low_player_arrow">Flèche du joueur du bas</string>
+    <string name="high_player_charge_meter">Jauge du joueur du haut</string>
+    <string name="low_player_charge_meter">Jauge du joueur du bas</string>
+    <string name="charge_meter_sidebar">Latérale</string>
+    <string name="charge_meter_fullscreen">Plein écran</string>
+    <string name="charge_meter_none">Aucune</string>
+    <string name="dark_mode">Mode sombre</string>
+    <string name="reset_defaults">Rétablir les valeurs par défaut</string>
+
+    <!-- Ball unlock -->
+    <string name="ball_types_title">Débloquer les balles</string>
+    <string name="watch_ads_to_unlock_more">Regarder des pubs pour débloquer plus de types de balles</string>
+    <string name="watch_ad_earn">Regarder pub (+2%%)</string>
+    <string name="get_pro">Obtenir Pro</string>
+    <string name="restore_purchases">Restaurer les achats</string>
+    <string name="purchase">Acheter</string>
+    <string name="restore">Restaurer</string>
+    <string name="unlocked">Débloqué</string>
+    <string name="reach_percent">Atteindre %1$d%%</string>
+
+    <!-- In-game tips -->
+    <string name="tip_title">Maintiens ici quand tu es prêt</string>
+    <string name="tip_controls">Touche l\'écran et tire ton doigt en arrière pour catapulter ton pock vers l\'avant.</string>
+    <string name="tip_scoring">Envoie ton adversaire dans l\'une des zones de but violettes pour marquer des points et gagner.</string>
+    <string name="tip_charging">Maintiens ton tir pour charger de la puissance. Relâche quand c\'est violet pour obtenir un bouclier !</string>
+    <string name="tip_shields">Un puck violet est protégé et gagne chaque collision !</string>
+    <string name="tip_overcharge">Si tu es touché en chargeant tu perdras le contrôle, ne sois pas imprudent !</string>
+</resources>

@@ -13,9 +13,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import utility.PlatformStorage
-import utility.LocalStrings
 import enums.ChargeMeterStyle
+import org.jetbrains.compose.resources.stringResource
+import pock_kotlin.app.generated.resources.*
+import utility.PlatformStorage
 import utility.Sounds
 import utility.Storage
 
@@ -27,7 +28,6 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
     val textSecondary = if (isDark) Color(0xFFAAAAAA) else Color(0xFF555566)
     val labelColor = if (isDark) Color(0xFFCCCCCC) else Color(0xFF333344)
     val dividerColor = if (isDark) Color(0xFF444466) else Color(0xFFCCCCDD)
-    val strings = LocalStrings.current
 
     var ballSize by remember { mutableStateOf(Storage.ballSize) }
     var chargeSpeed by remember { mutableStateOf(Storage.chargeSpeed) }
@@ -86,6 +86,45 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         onDarkModeChanged(false)
     }
 
+    // Pre-resolve all strings in composable scope
+    val strBack = stringResource(Res.string.back)
+    val strSettingsTitle = stringResource(Res.string.settings_title)
+    val strGameplay = stringResource(Res.string.gameplay)
+    val strBallSizeLabel = stringResource(Res.string.ball_size_label)
+    val strBallSizeSmall = stringResource(Res.string.ball_size_small)
+    val strBallSizeDefault = stringResource(Res.string.ball_size_default)
+    val strBallSizeLarge = stringResource(Res.string.ball_size_large)
+    val strChargeSpeedLabel = stringResource(Res.string.charge_speed_label)
+    val strSpeedSlow = stringResource(Res.string.speed_slow)
+    val strSpeedNormal = stringResource(Res.string.speed_normal)
+    val strSpeedFast = stringResource(Res.string.speed_fast)
+    val strSpeedFastest = stringResource(Res.string.speed_fastest)
+    val strGameSpeedLabel = stringResource(Res.string.game_speed_label)
+    val strPointsToWinLabel = stringResource(Res.string.points_to_win_label)
+    val strTimeLimitLabel = stringResource(Res.string.time_limit_label)
+    val strMinuteShort = stringResource(Res.string.minute_short)
+    val strSound = stringResource(Res.string.sound)
+    val strSoundMaster = stringResource(Res.string.sound_master)
+    val strSoundBackground = stringResource(Res.string.sound_background)
+    val strSoundFx = stringResource(Res.string.sound_fx)
+    val strMute = stringResource(Res.string.mute)
+    val strMuted = stringResource(Res.string.muted)
+    val strVisual = stringResource(Res.string.visual)
+    val strTailLengthLabel = stringResource(Res.string.tail_length_label)
+    val strTailNone = stringResource(Res.string.tail_none)
+    val strTailShort = stringResource(Res.string.tail_short)
+    val strTailDefault = stringResource(Res.string.tail_default)
+    val strTailLong = stringResource(Res.string.tail_long)
+    val strHighPlayerArrow = stringResource(Res.string.high_player_arrow)
+    val strLowPlayerArrow = stringResource(Res.string.low_player_arrow)
+    val strHighChargeMeter = stringResource(Res.string.high_player_charge_meter)
+    val strLowChargeMeter = stringResource(Res.string.low_player_charge_meter)
+    val strSideBar = stringResource(Res.string.charge_meter_sidebar)
+    val strFullScreen = stringResource(Res.string.charge_meter_fullscreen)
+    val strMeterNone = stringResource(Res.string.charge_meter_none)
+    val strDarkMode = stringResource(Res.string.dark_mode)
+    val strResetDefaults = stringResource(Res.string.reset_defaults)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -97,26 +136,26 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text(strings.back, color = textPrimary, fontSize = 16.sp)
+                Text(strBack, color = textPrimary, fontSize = 16.sp)
             }
             Spacer(Modifier.weight(1f))
-            Text(strings.settingsTitle, color = textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(strSettingsTitle, color = textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
         }
 
         HorizontalDivider(color = dividerColor)
-        SettingsSectionLabel(strings.gameplay, textSecondary)
+        SettingsSectionLabel(strGameplay, textSecondary)
 
-        SettingsSectionLabel(strings.ballSizeLabel, textSecondary)
+        SettingsSectionLabel(strBallSizeLabel, textSecondary)
         SegmentedSelector(
-            options = listOf("small" to strings.ballSizeSmall, "default" to strings.ballSizeDefault, "large" to strings.ballSizeLarge),
+            options = listOf("small" to strBallSizeSmall, "default" to strBallSizeDefault, "large" to strBallSizeLarge),
             selected = ballSize,
             onSelect = { ballSize = it; PlatformStorage.saveString("settings", "ball_sizes", it) }
         )
 
-        SettingsSectionLabel(strings.chargeSpeedLabel, textSecondary)
+        SettingsSectionLabel(strChargeSpeedLabel, textSecondary)
         SegmentedSelector(
-            options = listOf(0.3f to strings.speedSlow, 0.7f to strings.speedNormal, 1.2f to strings.speedFast, 2f to strings.speedFastest),
+            options = listOf(0.3f to strSpeedSlow, 0.7f to strSpeedNormal, 1.2f to strSpeedFast, 2f to strSpeedFastest),
             selected = chargeSpeed,
             onSelect = {
                 chargeSpeed = it
@@ -125,9 +164,9 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
             }
         )
 
-        SettingsSectionLabel(strings.gameSpeedLabel, textSecondary)
+        SettingsSectionLabel(strGameSpeedLabel, textSecondary)
         SegmentedSelector(
-            options = listOf(24 to strings.speedSlow, 16 to strings.speedNormal, 8 to strings.speedFast),
+            options = listOf(24 to strSpeedSlow, 16 to strSpeedNormal, 8 to strSpeedFast),
             selected = gameSpeed,
             onSelect = {
                 gameSpeed = it
@@ -137,7 +176,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         )
 
         SettingsSectionLabel(
-            if (pointsToWin == 0) "${strings.pointsToWinLabel}: ∞" else "${strings.pointsToWinLabel}: $pointsToWin",
+            if (pointsToWin == 0) "$strPointsToWinLabel: ∞" else "$strPointsToWinLabel: $pointsToWin",
             textSecondary
         )
         Slider(
@@ -151,7 +190,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         )
 
         SettingsSectionLabel(
-            if (timeLimit == 0) "${strings.timeLimitLabel}: ∞" else "${strings.timeLimitLabel}: $timeLimit ${strings.minuteShort}",
+            if (timeLimit == 0) "$strTimeLimitLabel: ∞" else "$strTimeLimitLabel: $timeLimit $strMinuteShort",
             textSecondary
         )
         Slider(
@@ -165,10 +204,10 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         )
 
         HorizontalDivider(color = dividerColor)
-        SettingsSectionLabel(strings.sound, textSecondary)
+        SettingsSectionLabel(strSound, textSecondary)
 
-        VolumeSliderRow(strings.soundMaster, masterVol, masterMuted, labelColor, textPrimary,
-            muteLabel = strings.mute, mutedLabel = strings.muted,
+        VolumeSliderRow(strSoundMaster, masterVol, masterMuted, labelColor, textPrimary,
+            muteLabel = strMute, mutedLabel = strMuted,
             onMute = {
                 val next = !masterMuted
                 masterMuted = next
@@ -179,8 +218,8 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
             Storage.saveSoundMasterVolume(it)
             Sounds.applyBackgroundVolume()
         }
-        VolumeSliderRow(strings.soundBackground, bgVol, bgMuted, labelColor, textPrimary,
-            muteLabel = strings.mute, mutedLabel = strings.muted,
+        VolumeSliderRow(strSoundBackground, bgVol, bgMuted, labelColor, textPrimary,
+            muteLabel = strMute, mutedLabel = strMuted,
             onMute = {
                 val next = !bgMuted
                 bgMuted = next
@@ -191,8 +230,8 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
             Storage.saveSoundBackgroundVolume(it)
             Sounds.applyBackgroundVolume()
         }
-        VolumeSliderRow(strings.soundFx, sfxVol, sfxMuted, labelColor, textPrimary,
-            muteLabel = strings.mute, mutedLabel = strings.muted,
+        VolumeSliderRow(strSoundFx, sfxVol, sfxMuted, labelColor, textPrimary,
+            muteLabel = strMute, mutedLabel = strMuted,
             onMute = {
                 val next = !sfxMuted
                 sfxMuted = next
@@ -205,11 +244,11 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
         }
 
         HorizontalDivider(color = dividerColor)
-        SettingsSectionLabel(strings.visual, textSecondary)
+        SettingsSectionLabel(strVisual, textSecondary)
 
-        SettingsSectionLabel(strings.tailLengthLabel, textSecondary)
+        SettingsSectionLabel(strTailLengthLabel, textSecondary)
         SegmentedSelector(
-            options = listOf(0 to strings.tailNone, 10 to strings.tailShort, 20 to strings.tailDefault, 40 to strings.tailLong),
+            options = listOf(0 to strTailNone, 10 to strTailShort, 20 to strTailDefault, 40 to strTailLong),
             selected = tailLength,
             onSelect = {
                 tailLength = it
@@ -218,33 +257,33 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
             }
         )
 
-        ToggleRow(strings.highPlayerArrow, highArrow, labelColor) {
+        ToggleRow(strHighPlayerArrow, highArrow, labelColor) {
             highArrow = it; PlatformStorage.saveBoolean("settings", "high_player_arrow", it)
         }
-        ToggleRow(strings.lowPlayerArrow, lowArrow, labelColor) {
+        ToggleRow(strLowPlayerArrow, lowArrow, labelColor) {
             lowArrow = it; PlatformStorage.saveBoolean("settings", "low_player_arrow", it)
         }
-        SettingsSectionLabel("High Player Charge Meter", textSecondary)
+        SettingsSectionLabel(strHighChargeMeter, textSecondary)
         SegmentedSelector(
             options = listOf(
-                ChargeMeterStyle.SideBar   to "Side Bar",
-                ChargeMeterStyle.FullScreen to "Full Screen",
-                ChargeMeterStyle.None       to "None"
+                ChargeMeterStyle.SideBar    to strSideBar,
+                ChargeMeterStyle.FullScreen to strFullScreen,
+                ChargeMeterStyle.None       to strMeterNone
             ),
             selected = highChargeMeter,
             onSelect = { highChargeMeter = it; Storage.saveHighPlayerChargeMeterStyle(it) }
         )
-        SettingsSectionLabel("Low Player Charge Meter", textSecondary)
+        SettingsSectionLabel(strLowChargeMeter, textSecondary)
         SegmentedSelector(
             options = listOf(
-                ChargeMeterStyle.SideBar   to "Side Bar",
-                ChargeMeterStyle.FullScreen to "Full Screen",
-                ChargeMeterStyle.None       to "None"
+                ChargeMeterStyle.SideBar    to strSideBar,
+                ChargeMeterStyle.FullScreen to strFullScreen,
+                ChargeMeterStyle.None       to strMeterNone
             ),
             selected = lowChargeMeter,
             onSelect = { lowChargeMeter = it; Storage.saveLowPlayerChargeMeterStyle(it) }
         )
-        ToggleRow("Dark Mode", darkMode, textSecondary) {
+        ToggleRow(strDarkMode, darkMode, textSecondary) {
             darkMode = it
             PlatformStorage.saveBoolean("settings", "darkmode", it)
             onDarkModeChanged(it)
@@ -255,7 +294,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
             onClick = { resetToDefaults() },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(strings.resetDefaults, color = Color(0xFFFF6666), fontSize = 16.sp)
+            Text(strResetDefaults, color = Color(0xFFFF6666), fontSize = 16.sp)
         }
 
         Spacer(Modifier.height(32.dp))
