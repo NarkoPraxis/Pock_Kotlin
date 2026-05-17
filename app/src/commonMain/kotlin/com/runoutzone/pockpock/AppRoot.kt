@@ -27,7 +27,7 @@ import utility.Storage
 /** Provides the current dark-mode flag to any composable in the tree. */
 val LocalDarkMode = compositionLocalOf { false }
 
-private enum class Screen { MainMenu, Game, Settings, BallUnlock }
+private enum class Screen { MainMenu, Game, Settings, BallUnlock, ScoreCalibration }
 
 @Composable
 fun AppRoot() {
@@ -61,8 +61,12 @@ fun AppRoot() {
             composable(Screen.Settings.name) {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
-                    onDarkModeChanged = { darkMode = it }
+                    onDarkModeChanged = { darkMode = it },
+                    onScoreCalibrationTapped = { navController.navigate(Screen.ScoreCalibration.name) }
                 )
+            }
+            composable(Screen.ScoreCalibration.name) {
+                ScoreCalibrationScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.BallUnlock.name) {
                 BallUnlockScreen(onBack = { navController.popBackStack() })

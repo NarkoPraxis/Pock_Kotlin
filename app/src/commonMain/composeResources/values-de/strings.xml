@@ -65,6 +65,9 @@
     <string name="charge_meter_none">Kein</string>
     <string name="dark_mode">Dunkelmodus</string>
     <string name="reset_defaults">Standardwerte wiederherstellen</string>
+    <string name="score_position">Punkteposition</string>
+    <string name="score_calibration_hint">← zum Positionieren ziehen →</string>
+    <string name="score_calibration_save">Positionen speichern</string>
 
     <!-- Ball unlock -->
     <string name="ball_types_title">Bälle freischalten</string>

@@ -65,6 +65,9 @@
     <string name="charge_meter_none">なし</string>
     <string name="dark_mode">ダークモード</string>
     <string name="reset_defaults">デフォルトに戻す</string>
+    <string name="score_position">スコア位置</string>
+    <string name="score_calibration_hint">← ドラッグして位置調整 →</string>
+    <string name="score_calibration_save">位置を保存</string>
 
     <!-- Ball unlock -->
     <string name="ball_types_title">ボールをアンロック</string>

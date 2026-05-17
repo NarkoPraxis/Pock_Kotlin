@@ -22,7 +22,11 @@ import utility.Sounds
 import utility.Storage
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onDarkModeChanged: (Boolean) -> Unit = {},
+    onScoreCalibrationTapped: () -> Unit = {}
+) {
     val isDark = LocalDarkMode.current
     val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
     val textPrimary = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
@@ -124,6 +128,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
     val strFullScreen = stringResource(Res.string.charge_meter_fullscreen)
     val strMeterNone = stringResource(Res.string.charge_meter_none)
     val strDarkMode = stringResource(Res.string.dark_mode)
+    val strScorePosition = stringResource(Res.string.score_position)
     val strResetDefaults = stringResource(Res.string.reset_defaults)
 
     Column(
@@ -256,6 +261,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
 
         HorizontalDivider(color = dividerColor)
         SettingsSectionLabel(strVisual, textSecondary)
+        NavigationRow(strScorePosition, onScoreCalibrationTapped)
 
         SettingsSectionLabel(strTailLengthLabel, textSecondary)
         SegmentedSelector(
@@ -390,6 +396,28 @@ private fun VolumeSliderRow(
             )
             Spacer(Modifier.width(8.dp))
             Text("$value%", color = valueColor, fontSize = 12.sp, modifier = Modifier.width(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun NavigationRow(label: String, onClick: () -> Unit) {
+    val isDark = LocalDarkMode.current
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight,
+            contentColor = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, fontSize = 14.sp)
+            Text("›", fontSize = 18.sp)
         }
     }
 }

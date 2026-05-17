@@ -65,6 +65,9 @@
     <string name="charge_meter_none">无</string>
     <string name="dark_mode">深色模式</string>
     <string name="reset_defaults">恢复默认设置</string>
+    <string name="score_position">分数位置</string>
+    <string name="score_calibration_hint">← 拖动调整位置 →</string>
+    <string name="score_calibration_save">保存位置</string>
 
     <!-- Ball unlock -->
     <string name="ball_types_title">解锁球</string>

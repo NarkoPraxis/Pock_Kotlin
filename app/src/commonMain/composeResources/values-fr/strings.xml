@@ -65,6 +65,9 @@
     <string name="charge_meter_none">Aucune</string>
     <string name="dark_mode">Mode sombre</string>
     <string name="reset_defaults">Rétablir les valeurs par défaut</string>
+    <string name="score_position">Position du score</string>
+    <string name="score_calibration_hint">← glisser pour positionner →</string>
+    <string name="score_calibration_save">Enregistrer les positions</string>
 
     <!-- Ball unlock -->
     <string name="ball_types_title">Débloquer les balles</string>
