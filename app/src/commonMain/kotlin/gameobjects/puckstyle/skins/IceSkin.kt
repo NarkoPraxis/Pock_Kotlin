@@ -15,6 +15,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.paddles.IceLaunch
 import physics.Point
 import utility.Effects
+import utility.PaintBucket
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -157,7 +158,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
                     if (i == 0) crystalPath.moveTo(px, py) else crystalPath.lineTo(px, py)
                 }
                 crystalPath.close()
-                drawPath(crystalPath, Color.White)
+                drawPath(crystalPath, PaintBucket.white)
                 drawPath(crystalPath, Color(Palette.withAlpha(primaryColor, 130)), style = Stroke(width = strokeWidth))
             }
         }
@@ -177,7 +178,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
             colorStops = arrayOf(
                 0f to Color(lastColors.primary),
                 0.5f to midColor,
-                1f to Color.White
+                1f to PaintBucket.white
             ),
             center = Offset.Zero,
             radius = radius
@@ -201,7 +202,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
             drawCircle(brush = cachedBrush!!, radius = renderer.radius, center = Offset.Zero)
         }
         drawCircle(
-            color = Color.White,
+            color = PaintBucket.white,
             radius = renderer.radius,
             center = Offset(renderer.x, renderer.y),
             style = Stroke(width = rimStrokeWidth)

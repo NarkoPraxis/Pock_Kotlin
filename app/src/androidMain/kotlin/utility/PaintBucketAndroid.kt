@@ -196,7 +196,7 @@ fun PaintBucket.buildPaints(resources: Resources) {
     val p = AndroidPaints  // shorthand
 
     p.tutorialTextPaint = Paint().apply {
-        color = if (darkMode) backgroundColor.toArgb() else AndroidColor.BLACK
+        color = if (darkMode) backgroundColor.toArgb() else black.toArgb()
         textSize = resources.getDimensionPixelSize(R.dimen.tutorial_text_size).toFloat()
         style = Paint.Style.FILL
     }
@@ -213,12 +213,12 @@ fun PaintBucket.buildPaints(resources: Resources) {
 
     p.debugTextPaint = Paint().apply {
         textSize = 40f
-        color = AndroidColor.BLACK
+        color = black.toArgb()
         style = Paint.Style.FILL
     }
 
     p.backgroundPaint = Paint().apply {
-        color = if (darkMode) AndroidColor.BLACK else backgroundColor.toArgb()
+        color = if (darkMode) black.toArgb() else backgroundColor.toArgb()
         isAntiAlias = true
         isDither = true
         style = Paint.Style.FILL
@@ -248,13 +248,13 @@ fun PaintBucket.buildPaints(resources: Resources) {
     }
 
     p.textPaint = Paint().apply {
-        color = if (darkMode) backgroundColor.toArgb() else AndroidColor.BLACK
+        color = if (darkMode) backgroundColor.toArgb() else black.toArgb()
         textSize = scoreFontSize
         style = Paint.Style.FILL
     }
 
     p.alwaysBlackTextPaint = Paint().apply {
-        color = AndroidColor.BLACK
+        color = black.toArgb()
         textSize = scoreFontSize
         style = Paint.Style.FILL
     }
@@ -336,7 +336,7 @@ fun PaintBucket.buildPaints(resources: Resources) {
     }
 
     p.menuHintPaint = Paint().apply {
-        color = AndroidColor.WHITE
+        color = white.toArgb()
         alpha = 60
         textSize = Settings.screenRatio * 1.2f
         textAlign = Paint.Align.CENTER

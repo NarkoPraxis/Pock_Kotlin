@@ -13,6 +13,7 @@ import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
+import utility.PaintBucket
 import gameobjects.puckstyle.paddles.ChickenLaunch
 import physics.Point
 import gameobjects.puckstyle.paddles.ChickenLaunch.Companion.spawnFeatherExplosion
@@ -274,10 +275,10 @@ class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
             for (side in eyeSides) {
                 val cx = side + irisOffX * maxOff
                 val cy = eyeY + irisOffY * maxOff
-                drawCircle(Color.White, eyeR, Offset(side, eyeY))
+                drawCircle(PaintBucket.white, eyeR, Offset(side, eyeY))
                 drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx, cy))
-                drawCircle(Color.Black, eyeR * 0.4f, Offset(cx, cy))
-                drawCircle(Color.White, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
+                drawCircle(PaintBucket.black, eyeR * 0.4f, Offset(cx, cy))
+                drawCircle(PaintBucket.white, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
             }
         } else {
             val lineColor = Color(frameColors.secondary)
@@ -294,19 +295,19 @@ class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
         val cx = openSide + irisOffX * maxOff
         val cy = eyeY     + irisOffY * maxOff
 
-        drawCircle(Color.White, eyeR, Offset(openSide, eyeY))
+        drawCircle(PaintBucket.white, eyeR, Offset(openSide, eyeY))
         drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx, cy))
-        drawCircle(Color.Black, eyeR * 0.4f, Offset(cx, cy))
-        drawCircle(Color.White, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
+        drawCircle(PaintBucket.black, eyeR * 0.4f, Offset(cx, cy))
+        drawCircle(PaintBucket.white, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
 
         if (animFrame <= 25) {
             drawLine(Color(frameColors.secondary), Offset(closedSide - eyeR * 0.65f, eyeY), Offset(closedSide + eyeR * 0.65f, eyeY), r * 0.08f, cap = StrokeCap.Round)
         } else {
             val cx2 = closedSide + irisOffX * maxOff
             val cy2 = eyeY       + irisOffY * maxOff
-            drawCircle(Color.White, eyeR, Offset(closedSide, eyeY))
+            drawCircle(PaintBucket.white, eyeR, Offset(closedSide, eyeY))
             drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx2, cy2))
-            drawCircle(Color.Black, eyeR * 0.4f, Offset(cx2, cy2))
+            drawCircle(PaintBucket.black, eyeR * 0.4f, Offset(cx2, cy2))
         }
     }
 
@@ -320,10 +321,10 @@ class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
             val cx = side + irisOffX * maxOff
             val cy = eyeY + irisOffY * maxOff
             withTransform({ scale(scaleX, scaleY, pivot = Offset(side, eyeY)) }) {
-                drawCircle(Color.White, eyeR, Offset(side, eyeY))
+                drawCircle(PaintBucket.white, eyeR, Offset(side, eyeY))
                 drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx, cy))
-                drawCircle(Color.Black, eyeR * 0.4f, Offset(cx, cy))
-                drawCircle(Color.White, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
+                drawCircle(PaintBucket.black, eyeR * 0.4f, Offset(cx, cy))
+                drawCircle(PaintBucket.white, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
             }
         }
     }
@@ -347,10 +348,10 @@ class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
             val cx = side + irisOffX * maxOff
             val cy = eyeY + irisOffY * maxOff
             withTransform({ scale(scaleX, scaleY, pivot = Offset(side, eyeY)) }) {
-                drawCircle(Color.White, eyeR, Offset(side, eyeY))
+                drawCircle(PaintBucket.white, eyeR, Offset(side, eyeY))
                 drawCircle(Color(frameColors.secondary), eyeR * 0.72f, Offset(cx, cy))
-                drawCircle(Color.Black, eyeR * 0.4f, Offset(cx, cy))
-                drawCircle(Color.White, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
+                drawCircle(PaintBucket.black, eyeR * 0.4f, Offset(cx, cy))
+                drawCircle(PaintBucket.white, eyeR * 0.21f, Offset(cx - eyeR * 0.27f, cy - eyeR * 0.3f))
                 // Overdraw lower half with body color to create grin-bottom shape
                 drawRect(Color(frameColors.primary), topLeft = Offset(side - eyeR, eyeY + eyeR * 0.3f), size = Size(2 * eyeR, eyeR + 2f))
             }
@@ -430,7 +431,7 @@ class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
         beakPath.lineTo( r * 0.14f, beakTopY)
         beakPath.lineTo(0f, mouthTipY)
         beakPath.close()
-        drawPath(beakPath, Color.Black)
+        drawPath(beakPath, PaintBucket.black)
 
         // Layer 3 (front): upper jaw
         beakPath.reset()

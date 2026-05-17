@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Pock Pock</string>
+    <string name="app_name">Pok Pok</string>
     <string name="gameViewDescription">运行并显示游戏的屏幕</string>
     <string name="title_activity_settings">设置</string>
     <string name="darkmode_label">深色模式</string>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Pock Pock</string>
+    <string name="app_name">Pok Pok</string>
     <string name="gameViewDescription">The screen that runs and displays the game</string>
     <string name="title_activity_settings">Settings</string>
 

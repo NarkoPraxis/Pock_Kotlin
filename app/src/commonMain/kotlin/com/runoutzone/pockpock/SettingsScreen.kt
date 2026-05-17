@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import enums.ChargeMeterStyle
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
+import utility.PaintBucket
 import utility.PlatformStorage
 import utility.Sounds
 import utility.Storage
@@ -23,11 +24,11 @@ import utility.Storage
 @Composable
 fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}) {
     val isDark = LocalDarkMode.current
-    val bgColor = if (isDark) Color(0xFF12102A) else Color(0xFFFFFFFF)
-    val textPrimary = if (isDark) Color.White else Color(0xFF12102A)
-    val textSecondary = if (isDark) Color(0xFFAAAAAA) else Color(0xFF555566)
-    val labelColor = if (isDark) Color(0xFFCCCCCC) else Color(0xFF333344)
-    val dividerColor = if (isDark) Color(0xFF444466) else Color(0xFFCCCCDD)
+    val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
+    val textPrimary = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
+    val textSecondary = if (isDark) PaintBucket.textSecondaryDark else PaintBucket.textSecondaryLight
+    val labelColor = if (isDark) PaintBucket.textMutedDark else PaintBucket.textMutedLight
+    val dividerColor = if (isDark) PaintBucket.dividerDark else PaintBucket.dividerLight
 
     var ballSize by remember { mutableStateOf(Storage.ballSize) }
     var chargeSpeed by remember { mutableStateOf(Storage.chargeSpeed) }
@@ -294,7 +295,7 @@ fun SettingsScreen(onBack: () -> Unit, onDarkModeChanged: (Boolean) -> Unit = {}
             onClick = { resetToDefaults() },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(strResetDefaults, color = Color(0xFFFF6666), fontSize = 16.sp)
+            Text(strResetDefaults, color = PaintBucket.dangerRed, fontSize = 16.sp)
         }
 
         Spacer(Modifier.height(32.dp))
@@ -319,9 +320,9 @@ private fun <T> SegmentedSelector(
             Button(
                 onClick = { onSelect(value) },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) Color(0xFF6666AA)
-                                     else if (isDark) Color(0xFF333344) else Color(0xFFD4C8FF),
-                    contentColor = if (isSelected || isDark) Color.White else Color(0xFF12102A)
+                    containerColor = if (isSelected) PaintBucket.segmentActive
+                                     else if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight,
+                    contentColor = if (isSelected || isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
                 ),
                 modifier = Modifier.weight(1f)
             ) {
@@ -353,7 +354,7 @@ private fun VolumeSliderRow(
             TextButton(onClick = onMute) {
                 Text(
                     if (muted) mutedLabel else muteLabel,
-                    color = if (muted) Color(0xFFFF6666) else Color(0xFF8888AA),
+                    color = if (muted) PaintBucket.dangerRed else PaintBucket.muteInactive,
                     fontSize = 12.sp
                 )
             }

@@ -10,6 +10,7 @@ import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
+import utility.PaintBucket
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -138,7 +139,7 @@ class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
 
     private fun ensureGalaxyBrush(radius: Float) {
         if (radius == lastRadius) return
-        val darkCenter = Color.Black
+        val darkCenter = PaintBucket.black
         val darkMid = Color(Palette.withAlpha(Palette.argb(255, 0, 0, 0), 160))
         val preThemeEdge = Color(Palette.withAlpha(lastColors.primary, 130))
         val themeEdge = Color(Palette.withAlpha(lastColors.primary, 60))

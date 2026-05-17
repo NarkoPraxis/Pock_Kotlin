@@ -51,9 +51,9 @@ import kotlin.math.sin
 @Composable
 fun BallUnlockScreen(onBack: () -> Unit) {
     val isDark = LocalDarkMode.current
-    val bgColor = if (isDark) Color(0xFF12102A) else Color(0xFFFFFFFF)
-    val textPrimary = if (isDark) Color.White else Color(0xFF12102A)
-    val dividerColor = if (isDark) Color(0xFF444466) else Color(0xFFCCCCDD)
+    val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
+    val textPrimary = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
+    val dividerColor = if (isDark) PaintBucket.dividerDark else PaintBucket.dividerLight
 
     val displayTypes = remember { BallType.entries.filter { it != BallType.Random } }
     val count = displayTypes.size
@@ -176,9 +176,9 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                         val theme = if (warmFlags[index]) ColorTheme.Warm else ColorTheme.Cold
 
                         val cardBgColor = if (isDark)
-                            Color(0x16 / 255f, 0x16 / 255f, 0x22 / 255f, 0xDC / 255f)
+                            PaintBucket.menuBackgroundDark.copy(alpha = 0xDC / 255f)
                         else
-                            Color(0xE8 / 255f, 0xE8 / 255f, 0xF8 / 255f, 0xDC / 255f)
+                            PaintBucket.cardBackgroundLight.copy(alpha = 0xDC / 255f)
                         drawRoundRect(color = cardBgColor, cornerRadius = CornerRadius(ratio * 0.4f))
 
                         drawRoundRect(
@@ -211,10 +211,10 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                         if (!isUnlocked) drawLock(cx, puckY, pr, ratio)
 
                         val pxPerSp = density * fontScale
-                        val textColor = if (isDark) Color.White
-                            else Color(0x0F / 255f, 0x0F / 255f, 0x23 / 255f, 0xE6 / 255f)
-                        val subColor = if (isDark) Color(1f, 1f, 1f, 0xA0 / 255f)
-                            else Color(0x14 / 255f, 0x14 / 255f, 0x32 / 255f, 0xA0 / 255f)
+                        val textColor = if (isDark) PaintBucket.white
+                            else PaintBucket.menuBackgroundDark.copy(alpha = 0xE6 / 255f)
+                        val subColor = if (isDark) PaintBucket.white.copy(alpha = 0xA0 / 255f)
+                            else PaintBucket.menuBackgroundDark.copy(alpha = 0xA0 / 255f)
 
                         val nameStyle = TextStyle(
                             color = textColor,

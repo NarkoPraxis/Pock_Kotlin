@@ -26,6 +26,7 @@ import gameobjects.Settings
 import org.jetbrains.compose.resources.stringResource
 import utility.Drawing
 import utility.Logic
+import utility.PaintBucket
 import utility.Storage
 
 @Composable
@@ -38,7 +39,7 @@ fun TipOverlay(gameLoopTick: State<Int>) {
     if (!highOpen && !lowOpen) return
 
     val sr = Settings.screenRatio
-    val textColor = if (Storage.darkMode) Color.White else Color(0xFF111111.toInt())
+    val textColor = if (Storage.darkMode) PaintBucket.white else PaintBucket.black
 
     val tipTitle = stringResource(Res.string.tip_title)
     val tips = listOf(

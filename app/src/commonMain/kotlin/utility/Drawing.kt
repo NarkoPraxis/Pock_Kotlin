@@ -519,7 +519,7 @@ object Drawing {
         val fontSizeSp = (PaintBucket.scoreFontSize / density)
         val style = TextStyle(
             fontSize = androidx.compose.ui.unit.TextUnit(fontSizeSp, androidx.compose.ui.unit.TextUnitType.Sp),
-            color = Color.Black
+            color = PaintBucket.black
         )
 
         val xMargin = Settings.screenRatio * 3f
@@ -532,13 +532,13 @@ object Drawing {
         val highResult = tm.measure(highPlayer.cachedScoreText, style)
 
         withTransform({ scale(-1f, -1f, pivot = Offset(midX, midY)) }) {
-            drawText(highResult, color=Color.White, topLeft = Offset(highX, scoreY - highResult.size.height))
+            drawText(highResult, color=PaintBucket.white, topLeft = Offset(highX, scoreY - highResult.size.height))
         }
 
         val lowX = xMargin + Settings.scoreOffsetLow
         val lowResult = tm.measure(lowPlayer.cachedScoreText, style)
 
-        drawText(lowResult, color=Color.White, topLeft = Offset(lowX, scoreY - lowResult.size.height))
+        drawText(lowResult, color=PaintBucket.white, topLeft = Offset(lowX, scoreY - lowResult.size.height))
 
     }
 

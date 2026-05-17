@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Pock Pock</string>
+    <string name="app_name">Pok Pok</string>
     <string name="gameViewDescription">ゲームを実行・表示する画面</string>
     <string name="title_activity_settings">設定</string>
     <string name="darkmode_label">ダークモード</string>

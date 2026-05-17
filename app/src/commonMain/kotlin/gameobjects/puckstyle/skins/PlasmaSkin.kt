@@ -13,6 +13,7 @@ import kotlin.random.Random
 import gameobjects.puckstyle.paddles.PlasmaLaunch
 import physics.Point
 import utility.Effects
+import utility.PaintBucket
 
 class PlasmaSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
 
@@ -38,7 +39,7 @@ class PlasmaSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer
     override fun buildBrush(radius: Float): Brush =
         Brush.radialGradient(
             colorStops = arrayOf(
-                0f to Color.White,
+                0f to PaintBucket.white,
                 0.4f to Color(lastColors.primary),
                 1f to Color(lastColors.secondary)
             ),

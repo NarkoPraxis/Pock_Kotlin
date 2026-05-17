@@ -7,6 +7,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
+import utility.PaintBucket
 
 class IceTail(override val renderer: PuckRenderer) : TailRenderer {
 
@@ -68,7 +69,7 @@ class IceTail(override val renderer: PuckRenderer) : TailRenderer {
             // Ice crystal layer on top — shrinking white circle.
             if (s.iceSize > iceCutoff) {
                 scope.drawCircle(
-                    color = Color.White,
+                    color = PaintBucket.white,
                     radius = s.iceSize,
                     center = Offset(s.x, s.y)
                 )

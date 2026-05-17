@@ -47,7 +47,7 @@ fun UnlockProgressBar(
         val fillColor = PaintBucket.effectColor
 
         val paletteDim = palette.copy(alpha = 80f / 255f)
-        val tickOnFill = Color.White.copy(alpha = 200f / 255f)
+        val tickOnFill = PaintBucket.white.copy(alpha = 200f / 255f)
         val bgAlpha = if (isDark) 35f / 255f else 18f / 255f
         val tubeEmptyBg = palette.copy(alpha = bgAlpha)
 
@@ -125,7 +125,7 @@ fun UnlockProgressBar(
         val measured = textMeasurer.measure(
             "$clampedProgress%",
             TextStyle(
-                color = Color.White,
+                color = PaintBucket.white,
                 fontSize = textSizeSp.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center

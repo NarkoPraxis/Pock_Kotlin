@@ -54,6 +54,40 @@ object PaintBucket {
     /** Light-mode menu button fill. */
     var menuButtonLight: Color = Color(0xFFe2d1fa)
 
+    // ── UI accent colors ───────────────────────────────────────────────────────
+
+    /** Error/danger red — reset button, muted-on indicator. */
+    val dangerRed: Color = Color(0xFFFF6666)
+    /** Volume slider unmuted-state label. */
+    val muteInactive: Color = Color(0xFF8888AA)
+    /** Segment selector active button fill. */
+    val segmentActive: Color = Color(0xFF6666AA)
+    /** Segment selector inactive button fill (dark mode). */
+    val segmentInactiveDark: Color = Color(0xFF333344)
+
+    // ── Text hierarchy ─────────────────────────────────────────────────────────
+
+    /** Secondary text / section labels (dark mode). */
+    val textSecondaryDark: Color = Color(0xFFAAAAAA)
+    /** Secondary text / section labels (light mode). */
+    val textSecondaryLight: Color = Color(0xFF555566)
+    /** Tertiary / muted labels and volume values (dark mode). */
+    val textMutedDark: Color = Color(0xFFCCCCCC)
+    /** Tertiary / muted labels and volume values (light mode). */
+    val textMutedLight: Color = Color(0xFF333344)
+
+    // ── Component backgrounds ──────────────────────────────────────────────────
+
+    /** Ball-unlock card background (light mode). */
+    val cardBackgroundLight: Color = Color(0xFFE8E8F8)
+
+    // ── Dividers ───────────────────────────────────────────────────────────────
+
+    /** Section divider line (dark mode). */
+    val dividerDark: Color = Color(0xFF444466)
+    /** Section divider line (light mode). */
+    val dividerLight: Color = Color(0xFFCCCCDD)
+
     // ── Legacy aliases (kept for backward compatibility — point to canonical fields above) ──
 
     /** Background fill (dark arena). Overwritten by Android initializeColors(). */

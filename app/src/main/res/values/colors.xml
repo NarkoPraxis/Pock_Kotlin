@@ -13,9 +13,9 @@
     <color name="goalColor">#e3d1ff</color>
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
-    <color name="menuBackground">#12102a</color>
+    <color name="menuBackground">#131221</color>
     <color name="menuButtonSecondary">#2e2c50</color>
-    <color name="menuButtonLight">#d4c8ff</color>
+    <color name="menuButtonLight">#e2d1fa</color>
     <color name="inertPrimary">#D9D9D9</color>
     <color name="inertSecondary">#999999</color>
 </resources>

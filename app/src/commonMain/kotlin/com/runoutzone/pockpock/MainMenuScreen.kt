@@ -1,5 +1,6 @@
 package com.runoutzone.pockpock
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -10,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
 import utility.PaintBucket
@@ -26,8 +28,6 @@ fun MainMenuScreen(
     onBallsTapped: () -> Unit,
 ) {
     val isDark = LocalDarkMode.current
-    val bgColor = if (isDark) Color(0xFF12102A) else Color(0xFFFFFFFF)
-    val textColor = if (isDark) Color.White else Color(0xFF12102A)
 
     var unlockProgress by remember { mutableIntStateOf(Storage.unlockProgress) }
     var adReady by remember { mutableStateOf(false) }
@@ -53,13 +53,13 @@ fun MainMenuScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = stringResource(Res.string.app_title),
-                color = textColor,
-                fontSize = 64.sp,
-                fontWeight = FontWeight.Bold
+            Image(
+                painter = painterResource(Res.drawable.logo_full_color),
+                contentDescription = stringResource(Res.string.app_title),
+                modifier = Modifier
+                    .width(160.dp)
+                    .aspectRatio(285.35f / 280.34f)
             )
-            Spacer(Modifier.height(24.dp))
             MenuButton(text = stringResource(Res.string.play), onClick = onPlayTapped)
             MenuButton(text = stringResource(Res.string.play_solo), onClick = onSinglePlayerTapped)
             MenuButton(text = stringResource(Res.string.settings), onClick = onSettingsTapped)
@@ -81,9 +81,9 @@ private fun MenuButton(
         enabled = enabled,
         modifier = Modifier.width(200.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isDark) Color(0xFF444466) else Color(0xFFD4C8FF),
-            contentColor = if (isDark) Color.White else Color(0xFF12102A),
-            disabledContainerColor = if (isDark) Color(0xFF333344) else Color(0xFFE8E0FF),
+            containerColor = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuButtonLight,
+            contentColor = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark,
+            disabledContainerColor = if (isDark) PaintBucket.segmentInactiveDark else Color(0xFFE8E0FF),
             disabledContentColor = if (isDark) Color(0xFF888899) else Color(0xFF8877AA)
         )
     ) {
