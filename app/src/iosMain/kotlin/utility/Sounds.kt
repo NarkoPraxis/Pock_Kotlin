@@ -5,6 +5,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFAudio.*
 import platform.Foundation.*
 import platform.darwin.*
+import utility.Logic
 
 actual object Sounds {
     private class SfxChannel(val player: AVAudioPlayerNode, val pitch: AVAudioUnitTimePitch)
@@ -48,7 +49,7 @@ actual object Sounds {
 
     private fun setupAudioSession() {
         val session = AVAudioSession.sharedInstance()
-        session.setCategory(AVAudioSessionCategoryAmbient, error = null)
+        session.setCategory(AVAudioSessionCategoryPlayback, error = null)
         session.setActive(true, error = null)
     }
 
@@ -62,7 +63,12 @@ actual object Sounds {
             name = "UIApplicationWillEnterForegroundNotification",
             `object` = null,
             queue = NSOperationQueue.mainQueue
-        ) { _ -> if (!adMuted) resumeAll() }
+        ) { _ ->
+            if (!adMuted) resumeAll()
+            // Any in-progress touches were cancelled by the system while backgrounded;
+            // release pointer locks so neither player stays permanently frozen.
+            Logic.releaseAllPointers()
+        }
     }
 
     private fun setupSfxPool() {
@@ -251,6 +257,7 @@ actual object Sounds {
     actual fun resumeAll() {
         if (adMuted) return
         isPaused = false
+        AVAudioSession.sharedInstance().setActive(true, error = null)
         try { engine.startAndReturnError(null) } catch (_: Exception) {}
         ambientPlayer?.let { player ->
             if (!player.playing) {

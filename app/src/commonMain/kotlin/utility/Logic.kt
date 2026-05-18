@@ -34,8 +34,6 @@ object Logic {
 
     var isInitialized: Boolean = false
 
-    var highTouchedFirst = false
-
     var tempGameState = GameState.BallSelection
     var leaving = false
     var canCollide = true
@@ -43,8 +41,8 @@ object Logic {
     /** Called instead of doOnSizeChange when running under Compose (no GameView). */
     var composeReinitCallback: (() -> Unit)? = null
 
-    private var highPopupDragPointerId: Int = -1
-    private var lowPopupDragPointerId: Int = -1
+    private var highPopupDragging = false
+    private var lowPopupDragging  = false
 
     var winnerSoundHasBeenPlayed = false
     private var victoryCelebrationFrame = 0
@@ -78,8 +76,8 @@ object Logic {
         leaving = false
         Settings.gameState = GameState.BallSelection
         Settings.gameOver = false
-        highPopupDragPointerId = -1
-        lowPopupDragPointerId = -1
+        highPopupDragging = false
+        lowPopupDragging  = false
         Drawing.resetTipIndices()
         applyBallStyles()
         botBrain = if (Settings.isSinglePlayer) BotBrain(highPlayer, lowPlayer, Settings.botConfig) else null
@@ -139,8 +137,8 @@ object Logic {
         if (highPlayer.charge > Settings.chargeStart && lowPlayer.charge > Settings.chargeStart) {
             highBallPopup.isOpen = false
             lowBallPopup.isOpen = false
-            highPopupDragPointerId = -1
-            lowPopupDragPointerId = -1
+            highPopupDragging = false
+            lowPopupDragging  = false
             canCollide = true
             Settings.gameState = GameState.Play
             Sounds.playGameStart()
@@ -303,8 +301,6 @@ object Logic {
             highPlayer.disableEffects = false
             Settings.canScore = false
             Settings.canScoreWallProgress = 0f
-            lowPlayer.lockedPointerId = -1
-            highPlayer.lockedPointerId = -1
             lowPlayer.shielded = false
             highPlayer.shielded = false
             lowPlayer.inertLocked = false
@@ -314,8 +310,8 @@ object Logic {
             lowPlayer.clearCharge()
             highPlayer.clearCharge()
             Settings.gameOver = false
-            highPopupDragPointerId = -1
-            lowPopupDragPointerId = -1
+            highPopupDragging = false
+            lowPopupDragging  = false
             GameEvents.gameReset.emit(Unit)
             timerMark = null
             timerStarted = false
@@ -525,93 +521,54 @@ object Logic {
     // Compose pointer input API (platform-agnostic touch routing)
     // -------------------------------------------------------------------------
 
-    fun onPointerDown(x: Float, y: Float, pointerId: Int) {
-        if (Settings.screenWidth == 0f) return
-        if (interceptBallMenuDown(x, y, pointerId)) return
+    // GameScreen passes semantic player IDs: 0 = high player, 1 = low player.
+    // All pointer-to-player assignment and lifetime tracking lives in GameScreen.
 
+    fun onPointerDown(x: Float, y: Float, playerId: Int) {
+        if (Settings.screenWidth == 0f) return
+        if (interceptBallMenuDown(x, y, playerId)) return
+        val player = if (playerId == 0) highPlayer else lowPlayer
         if (Settings.gameState == GameState.BallSelection) {
-            val isHighSide = y < Settings.middleY
-            if (isHighSide && !Settings.isSinglePlayer) {
-                Drawing.cycleHighTip()
-                if (highPlayer.lockedPointerId == -1) {
-                    highPlayer.lockedPointerId = pointerId
-                    startFling(highPlayer, x, y)
-                    highPlayer.touch = TouchState.Down
-                }
-            } else if (!isHighSide) {
-                Drawing.cycleLowTip()
-                if (lowPlayer.lockedPointerId == -1) {
-                    lowPlayer.lockedPointerId = pointerId
-                    startFling(lowPlayer, x, y)
-                    lowPlayer.touch = TouchState.Down
-                }
-            }
+            if (playerId == 0) Drawing.cycleHighTip() else Drawing.cycleLowTip()
+            startFling(player, x, y)
+            player.touch = TouchState.Down
             return
         }
-
-        val isHighSide = y < Settings.middleY
-        if (isHighSide && !Settings.isSinglePlayer && highPlayer.lockedPointerId == -1) {
-            if (lowPlayer.lockedPointerId == -1) highTouchedFirst = true
-            highPlayer.lockedPointerId = pointerId
-            startFling(highPlayer, x, y)
-            highPlayer.touch = TouchState.Down
-            Sounds.playHighPlayerSound(highPlayer.fx)
-        } else if (!isHighSide && lowPlayer.lockedPointerId == -1) {
-            if (highPlayer.lockedPointerId != -1) highTouchedFirst = false
-            lowPlayer.lockedPointerId = pointerId
-            startFling(lowPlayer, x, y)
-            lowPlayer.touch = TouchState.Down
-            Sounds.playLowPlayerSound(lowPlayer.fx)
-        }
+        startFling(player, x, y)
+        player.touch = TouchState.Down
+        if (playerId == 0) Sounds.playHighPlayerSound(player.fx)
+        else Sounds.playLowPlayerSound(player.fx)
     }
 
-    fun onPointerMove(x: Float, y: Float, pointerId: Int) {
+    fun onPointerMove(x: Float, y: Float, playerId: Int) {
         if (Settings.screenWidth == 0f) return
-        if (interceptBallMenuMove(x, y, pointerId)) return
-        if (pointerId == highPlayer.lockedPointerId) updateFlingCurrent(highPlayer, x, y)
-        if (pointerId == lowPlayer.lockedPointerId) updateFlingCurrent(lowPlayer, x, y)
+        if (interceptBallMenuMove(x, y, playerId)) return
+        updateFlingCurrent(if (playerId == 0) highPlayer else lowPlayer, x, y)
     }
 
-    fun onPointerUp(x: Float, y: Float, pointerId: Int) {
+    fun onPointerUp(x: Float, y: Float, playerId: Int) {
         if (Settings.screenWidth == 0f) return
-        if (interceptBallMenuUp(x, y, pointerId)) return
-
+        if (interceptBallMenuUp(x, y, playerId)) return
+        val player = if (playerId == 0) highPlayer else lowPlayer
         if (Settings.gameState == GameState.BallSelection) {
-            if (pointerId == highPlayer.lockedPointerId) {
-                endFling(highPlayer, x, y)
-                highPlayer.lockedPointerId = -1
-                highPlayer.touch = TouchState.Ready
-                highPlayer.shouldReleaseCharge = true
-            } else if (pointerId == lowPlayer.lockedPointerId) {
-                endFling(lowPlayer, x, y)
-                lowPlayer.lockedPointerId = -1
-                lowPlayer.touch = TouchState.Ready
-                lowPlayer.shouldReleaseCharge = true
-            }
+            endFling(player, x, y)
+            player.touch = TouchState.Ready
+            player.shouldReleaseCharge = true
             return
         }
-
-        if (pointerId == highPlayer.lockedPointerId) {
-            Sounds.playHighPlayerSound(highPlayer.fx)
-            endFling(highPlayer, x, y)
-            highPlayer.lockedPointerId = -1
-            if (Settings.gameState == GameState.Play) highPlayer.shouldReleaseCharge = true
-            highPlayer.touch = TouchState.Ready
-        } else if (pointerId == lowPlayer.lockedPointerId) {
-            Sounds.playLowPlayerSound(lowPlayer.fx)
-            endFling(lowPlayer, x, y)
-            lowPlayer.lockedPointerId = -1
-            if (Settings.gameState == GameState.Play) lowPlayer.shouldReleaseCharge = true
-            lowPlayer.touch = TouchState.Ready
-        }
+        if (playerId == 0) Sounds.playHighPlayerSound(player.fx)
+        else Sounds.playLowPlayerSound(player.fx)
+        endFling(player, x, y)
+        if (Settings.gameState == GameState.Play) player.shouldReleaseCharge = true
+        player.touch = TouchState.Ready
     }
 
-    private fun interceptBallMenuDown(x: Float, y: Float, pointerId: Int): Boolean {
+    private fun interceptBallMenuDown(x: Float, y: Float, playerId: Int): Boolean {
         if (Settings.gameState != GameState.BallSelection) return false
-        if (y < Settings.middleY) {
+        if (playerId == 0) {
             if (highBallPopup.isOpen && highBallPopup.hitTest(x, y)) {
-                if (highPopupDragPointerId == -1) {
-                    highPopupDragPointerId = pointerId
+                if (!highPopupDragging) {
+                    highPopupDragging = true
                     highBallPopup.handleTouchEvent(BallSelectionPopup.ACTION_DOWN, x, y)
                 }
                 Drawing.cycleHighTip()
@@ -619,8 +576,8 @@ object Logic {
             }
         } else {
             if (lowBallPopup.isOpen && lowBallPopup.hitTest(x, y)) {
-                if (lowPopupDragPointerId == -1) {
-                    lowPopupDragPointerId = pointerId
+                if (!lowPopupDragging) {
+                    lowPopupDragging = true
                     lowBallPopup.handleTouchEvent(BallSelectionPopup.ACTION_DOWN, x, y)
                 }
                 Drawing.cycleLowTip()
@@ -630,56 +587,53 @@ object Logic {
         return false
     }
 
-    private fun interceptBallMenuMove(x: Float, y: Float, pointerId: Int): Boolean {
+    private fun interceptBallMenuMove(x: Float, y: Float, playerId: Int): Boolean {
         if (Settings.gameState != GameState.BallSelection) return false
         var consumed = false
-        if (highBallPopup.isOpen && pointerId == highPopupDragPointerId) {
+        if (playerId == 0 && highBallPopup.isOpen && highPopupDragging) {
             highBallPopup.handleTouchEvent(BallSelectionPopup.ACTION_MOVE, x, y)
             consumed = true
         }
-        if (lowBallPopup.isOpen && pointerId == lowPopupDragPointerId) {
+        if (playerId == 1 && lowBallPopup.isOpen && lowPopupDragging) {
             lowBallPopup.handleTouchEvent(BallSelectionPopup.ACTION_MOVE, x, y)
             consumed = true
         }
         return consumed
     }
 
-    private fun interceptBallMenuUp(x: Float, y: Float, pointerId: Int): Boolean {
+    private fun interceptBallMenuUp(x: Float, y: Float, playerId: Int): Boolean {
         if (Settings.gameState != GameState.BallSelection) return false
         var consumed = false
-        if (pointerId == highPopupDragPointerId) {
-            highPopupDragPointerId = -1
+        if (playerId == 0 && highPopupDragging) {
+            highPopupDragging = false
             if (highBallPopup.isOpen) highBallPopup.handleTouchEvent(BallSelectionPopup.ACTION_UP, x, y)
             consumed = true
         }
-        if (pointerId == lowPopupDragPointerId) {
-            lowPopupDragPointerId = -1
+        if (playerId == 1 && lowPopupDragging) {
+            lowPopupDragging = false
             if (lowBallPopup.isOpen) lowBallPopup.handleTouchEvent(BallSelectionPopup.ACTION_UP, x, y)
             consumed = true
         }
         return consumed
     }
 
-    /** Clear any stale pointer locks — call when the app foregrounds or touch state is unknown. */
+    /** Reset all touch state — call when the app foregrounds or pointer state is unknown. */
     fun releaseAllPointers() {
         if (!isInitialized) return
         listOf(highPlayer, lowPlayer).forEach { player ->
-            if (player.lockedPointerId != -1) {
-                player.lockedPointerId = -1
-                player.touch = TouchState.Ready
-                player.isFlingHeld = false
-                player.shouldReleaseCharge = true
-            }
+            player.touch = TouchState.Ready
+            player.isFlingHeld = false
+            player.shouldReleaseCharge = true
         }
-        highPopupDragPointerId = -1
-        lowPopupDragPointerId = -1
+        highPopupDragging = false
+        lowPopupDragging  = false
     }
 
     fun closeBallPopups() {
         highBallPopup.close()
         lowBallPopup.close()
-        highPopupDragPointerId = -1
-        lowPopupDragPointerId = -1
+        highPopupDragging = false
+        lowPopupDragging  = false
     }
 
     fun resetGame() {

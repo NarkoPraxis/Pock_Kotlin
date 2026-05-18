@@ -16,7 +16,8 @@
       "Bash(./gradlew :app:compileKotlinIosSimulatorArm64)",
       "Bash(xargs -I{} bash -c 'jar tf {} 2>/dev/null | grep -i \"SyncCompose\"')",
       "Bash(Get-ChildItem \"C:\\\\Users\\\\zwery\\\\OneDrive\\\\Documents\\\\Android Studio\\\\Pock_Kotlin\\\\app\\\\src\\\\main\\\\java\" -Recurse -Filter \"*.kt\")",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(./gradlew :app:compileKotlinIosSimulatorArm64 :app:compileDebugKotlin)"
     ]
   }
 }
