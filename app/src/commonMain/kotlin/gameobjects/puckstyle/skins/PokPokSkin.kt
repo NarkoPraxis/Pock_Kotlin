@@ -25,6 +25,7 @@ import physics.Point
 import utility.Effects
 import utility.PaintBucket
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
@@ -147,11 +148,11 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     // Oval is bigger than the part and sits above centre so the shadow crescent falls at the bottom.
     // ABOVE_K moves the oval centre upward (negative Y). Larger ABOVE_K = thinner bottom crescent.
     // LIT_R controls size: must be > part radius at centre or the whole part is always in shadow.
-    private val SHADOW_LIT_BODY_R       = 1.20f // lit oval radius for body (r; > 1.0 = larger than body)
-    private val SHADOW_LIT_BODY_ABOVE_K = 0.30f // oval centre above ball centre (r units)
-    private val SHADOW_LIT_WING_R       = 0.55f // lit oval radius for wings (r units)
-    private val SHADOW_LIT_WING_ABOVE_K = 0.25f // oval centre above wing centre (r units)
-    private val SHADOW_FEATHER_LIT_R    = 0.55f // radius of fixed lit zone above ball for feathers (r units)
+    private val SHADOW_LIT_BODY_R       = 1.4f // lit oval radius for body (r; > 1.0 = larger than body)
+    private val SHADOW_LIT_BODY_ABOVE_K = 0.5f // oval centre above ball centre (r units)
+    private val SHADOW_LIT_WING_R_MIN   = 0.8f // lit oval min radius for wings (r units); grows 2× toward side
+    private val SHADOW_LIT_WING_ABOVE_K = 0.55f // oval centre above wing centre (r units)
+    private val SHADOW_FEATHER_LIT_R    = 0.65f // radius of fixed lit zone above ball for feathers (r units)
     private val SHADOW_ALPHA            = 0.25f  // shadow darkness 0–1; tweak for intensity
 
     // ── animation state machine ────────────────────────────────────────────────
@@ -273,9 +274,9 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         // Lateral shift: shadow crescent leans in the same direction the bird looks.
         shadowDx = lerp(shadowDx, irisOffX * r * SHADOW_LATERAL_K, 0.12f)
 
-        // Z-order: wings → body → feathers → [face group: eyes + mouth]
+        // Z-order: wings → feathers → body → [face group: eye SVGs → mouth → eye pupils]
         drawWingsForState()
-        drawBodyLayer()
+
         // Feather group: saveLayer wraps the rotating feathers AND the fixed lit-circle mask so the
         // shadow boundary stays anchored to ball-centre space while feathers orbit through it.
         // Bounds wide enough for feathers at max orbit (20°) plus individual counter-rotation (40°).
@@ -284,6 +285,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         withTransform({ rotate(featherOrbitAngle, pivot = Offset.Zero) }) {
             drawFeathersForState()
         }
+
         // Lit zone: circle directly above ball centre.  Feathers inside it are unaffected;
         // pixels outside it (sides) get the shadow overlay via SrcAtop.
         val litPath = Path().apply {
@@ -303,8 +305,11 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             )
         }
         drawContext.canvas.restore()
+
+        drawBodyLayer()
+
         withTransform({ translate(faceOffX, faceOffY) }) {
-            drawEyesForState()
+            drawEyesSvgLayer()
 
             // Beak tilts toward look direction around a pivot above its centre.
             withTransform({
@@ -312,6 +317,8 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             }) {
                 drawMouthForState()
             }
+
+            drawEyesPupilsLayer()
         }
 
         canvas.restore()
@@ -372,7 +379,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
                 color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                 topLeft = Offset(-r * 1.2f, -r * 1.2f),
                 size = Size(r * 2.4f, r * 2.4f),
-                blendMode = BlendMode.SrcOver
+                blendMode = BlendMode.SrcAtop
             )
         }
         drawContext.canvas.restore()
@@ -381,26 +388,26 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     // ── wings ──────────────────────────────────────────────────────────────────
 
     private fun DrawScope.drawWingsForState() {
-        val baseScale = when (currentAnim) {
+        val animAngleOffset = when (currentAnim) {
             PokPokAnim.AlmostHit, PokPokAnim.JustHit -> {
                 val t = if (animFrame >= DELAY_WINGS) easeIn((animFrame - DELAY_WINGS).toFloat(), 3f) else 0f
-                lerp(1f, 0.82f, t)
+                lerp(0f, -15f, t)   // tuck wings toward body
             }
             PokPokAnim.Celebration -> {
                 val t = if (animFrame >= DELAY_WINGS) easeIn((animFrame - DELAY_WINGS).toFloat(), 8f) else 0f
-                lerp(1f, 1.1f, t)
+                lerp(0f, 15f, t)    // spread wings away from body
             }
             PokPokAnim.Yawn -> {
                 val t = easeIn(animFrame.toFloat(), 8f)
-                lerp(1f, 1.1f, t)
+                lerp(0f, 15f, t)    // spread wings away from body
             }
-            else -> 1f
+            else -> 0f
         }
-        drawWing(left = true,  angleDeg = displayedWingAngle, scale = baseScale)
-        drawWing(left = false, angleDeg = displayedWingAngle, scale = baseScale)
+        drawWing(left = true,  angleDeg = displayedWingAngle, animAngleOffset = animAngleOffset)
+        drawWing(left = false, angleDeg = displayedWingAngle, animAngleOffset = animAngleOffset)
     }
 
-    private fun DrawScope.drawWing(left: Boolean, angleDeg: Float, scale: Float) {
+    private fun DrawScope.drawWing(left: Boolean, angleDeg: Float, animAngleOffset: Float) {
         val painter = if (left) PokPokSkinPainters.wingLeft else PokPokSkinPainters.wingRight
         if (painter == null) return
         val sign = if (left) -1f else 1f
@@ -411,8 +418,8 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val h = r * WING_H_K
         // Perspective: nearer wing (sign matches irisOffX sign) tilts toward body and shrinks;
         // farther wing tilts away and grows.  -sign*irisOffX gives the correct ±direction.
-        val rotation     = sign * -angleDeg + (-sign * irisOffX * WING_PERSPECTIVE_ANGLE_MAX)
-        val perspScale   = scale  * (1f - sign * irisOffX * WING_PERSPECTIVE_SCALE_K)
+        val rotation     = sign * -(angleDeg + animAngleOffset) + (-sign * irisOffX * WING_PERSPECTIVE_ANGLE_MAX)
+        val perspScale   = 1f - sign * irisOffX * WING_PERSPECTIVE_SCALE_K
         withTransform({
             rotate(rotation, pivot = Offset(pivotX, 0f))
         }) {
@@ -422,7 +429,9 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             drawSvgPart(painter, centerX, centerY, w, h, scaleX = perspScale, scaleY = perspScale,
                 tint = Color(frameColors.secondary))
             // Lit window: larger than wing, above wing centre, moves with look direction.
-            val litR = r * SHADOW_LIT_WING_R
+            // Grows 2× min when bird looks toward this wing, shrinks to min when looking away.
+            val growFactor = ((sign * irisOffX + 1f) / 2f).coerceIn(0f, 1f)
+            val litR = r * SHADOW_LIT_WING_R_MIN * lerp(1f, 2f, growFactor)
             val litPath = Path().apply {
                 addOval(Rect(
                     centerX + shadowDx - litR,
@@ -436,7 +445,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
                     color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                     topLeft = Offset(centerX - w - r * 0.15f, centerY - h - r * 0.15f),
                     size = Size(w * 2f + r * 0.3f, h * 2f + r * 0.3f),
-                    blendMode = BlendMode.SrcOver
+                    blendMode = BlendMode.SrcAtop
                 )
             }
             drawContext.canvas.restore()
@@ -496,23 +505,19 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         // Anchor point: bottom-center of the feather where it meets the head.
         val anchorY = cy + h * 0.5f
         val rot: Float
-        val scaleX: Float
-        val scaleY: Float
         when {
             droopy -> {
-                rot    = lerp(rotDeg, rotDeg * 1.36f, t)
-                scaleX = 1f
-                scaleY = lerp(1f, 0.75f, t)
+                rot = lerp(rotDeg, rotDeg * 1.36f + kotlin.math.sign(rotDeg) * 10f, t)
             }
             flared -> {
-                rot    = rotDeg
-                scaleX = lerp(1f, 1.15f, t)
-                scaleY = lerp(1f, 1.25f, t)
+                rot = lerp(rotDeg, rotDeg - kotlin.math.sign(rotDeg) * 10f, t)
             }
             else -> {
-                rot = rotDeg; scaleX = 1f; scaleY = 1f
+                rot = rotDeg
             }
         }
+        val scaleX = 1f
+        val scaleY = 1f
         val tint = ColorFilter.tint(Color(frameColors.secondary))
         withTransform({
             translate(cx - w / 2f, cy - h / 2f)
@@ -526,44 +531,77 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     // ── eyes ───────────────────────────────────────────────────────────────────
 
-    private fun DrawScope.drawEyesForState() {
+    // Set by drawEyesSvgLayer each frame; read by drawEyesPupilsLayer to match scale.
+    private var currentEyeScaleX = 1f
+    private var currentEyeScaleY = 1f
+
+    private fun DrawScope.drawEyesSvgLayer() {
+        currentEyeScaleX = 1f
+        currentEyeScaleY = 1f
         when (currentAnim) {
-            PokPokAnim.Taunt       -> drawWinkEyes()
-            PokPokAnim.AlmostHit   -> drawWideEyes()
+            PokPokAnim.Taunt       -> drawWinkEyesSvgLayer()
+            PokPokAnim.AlmostHit   -> {
+                val t = easeIn(animFrame.toFloat(), 8f)
+                currentEyeScaleX = lerp(1f, 0.75f, t)
+                currentEyeScaleY = lerp(1f, 1.35f, t)
+                drawOpenEyesSvgPart(currentEyeScaleX, currentEyeScaleY)
+            }
             PokPokAnim.JustHit     -> drawWinceEyes()
-            PokPokAnim.Celebration -> drawHappyEyes()
+            PokPokAnim.Celebration -> {
+                val t = easeIn(animFrame.toFloat(), 8f)
+                currentEyeScaleX = lerp(1f, 1.3f, t)
+                currentEyeScaleY = lerp(1f, 0.75f, t)
+                drawOpenEyesSvgPart(currentEyeScaleX, currentEyeScaleY)
+                val cy = r * EYES_OFFSET_Y_K
+                val w  = r * EYES_WORLD_W_K
+                val h  = r * EYES_WORLD_H_K
+                withTransform({ scale(currentEyeScaleX, currentEyeScaleY, pivot = Offset(0f, cy)) }) {
+                    drawRect(Color(frameColors.secondary),
+                        topLeft = Offset(-w / 2f, cy + h * 0.1f), size = Size(w, h * 0.6f))
+                }
+            }
             PokPokAnim.Yawn        -> drawClosedEyes()
-            else                   -> if (eyeOpen) drawOpenEyes() else drawClosedEyes()
+            else                   -> if (eyeOpen) drawOpenEyesSvgPart(1f, 1f) else drawClosedEyes()
         }
     }
 
-    private fun DrawScope.drawOpenEyes(scaleX: Float = 1f, scaleY: Float = 1f) {
+    private fun DrawScope.drawEyesPupilsLayer() {
+        val showPupils = when (currentAnim) {
+            PokPokAnim.JustHit, PokPokAnim.Yawn -> false
+            PokPokAnim.Default -> eyeOpen
+            else -> true
+        }
+        if (!showPupils) return
+        if (currentAnim == PokPokAnim.Taunt) {
+            drawWinkEyesPupilsLayer()
+        } else {
+            drawOpenEyesPupils(currentEyeScaleX, currentEyeScaleY)
+        }
+    }
+
+    private fun DrawScope.drawOpenEyesSvgPart(scaleX: Float, scaleY: Float) {
         val painter = PokPokSkinPainters.eyesOpen ?: return
-        val w      = r * EYES_WORLD_W_K
-        val h      = r * EYES_WORLD_H_K
-        val cy     = r * EYES_OFFSET_Y_K
+        val w = r * EYES_WORLD_W_K
+        val h = r * EYES_WORLD_H_K
+        val cy = r * EYES_OFFSET_Y_K
         drawSvgPart(painter, 0f, cy, w, h, scaleX = scaleX, scaleY = scaleY)
+    }
 
-        // PUPIL_CENTRE_Y_OFFSET_K shifts the orbit centre; more negative = higher on the eye.
-        val pupilCy = cy + r * PUPIL_OFFSET_Y_K + r * PUPIL_CENTRE_Y_OFFSET_K
-        val coverR  = r * PUPIL_COVER_R_K
-        val pupilR  = r * PUPIL_R_K
-        val hlR     = r * PUPIL_HIGHLIGHT_R_K
-        val maxOff  = r * PUPIL_MAX_FOLLOW_K
-        val ix      = irisOffX * maxOff
-        val iy      = irisOffY * maxOff
+    private fun DrawScope.drawOpenEyesPupils(scaleX: Float, scaleY: Float) {
+        val cy = r * EYES_OFFSET_Y_K
+        val rawPupilOffY = r * PUPIL_OFFSET_Y_K + r * PUPIL_CENTRE_Y_OFFSET_K
+        val pupilCy    = cy + rawPupilOffY * scaleY
+        val pupilR     = r * PUPIL_R_K
+        val hlR        = r * PUPIL_HIGHLIGHT_R_K
+        val maxOff     = r * PUPIL_MAX_FOLLOW_K
+        val ix         = irisOffX * maxOff * scaleX
+        val iy         = irisOffY * maxOff * scaleY
+        val scaledEyeX = eyeX * scaleX
 
-        // Erase the SVG's fixed pupils so the dynamic ones have a clean base.
-        drawCircle(Color.White, coverR, Offset(r * STATIC_PUPIL_LEFT_X_K,  pupilCy))
-        drawCircle(Color.White, coverR, Offset(r * STATIC_PUPIL_RIGHT_X_K, pupilCy))
-
-        // Dynamic black pupils that follow the look-at direction (eyeX centres them symmetrically).
-        drawCircle(Color.Black, pupilR, Offset(-eyeX + ix, pupilCy + iy))
-        drawCircle(Color.Black, pupilR, Offset( eyeX + ix, pupilCy + iy))
-
-        // White shine highlights.  Tweak the -0.2f/-0.25f offsets to reposition the glint.
-        drawCircle(Color.White, hlR, Offset(-eyeX + ix, pupilCy + iy - pupilR * 0.6f))
-        drawCircle(Color.White, hlR, Offset( eyeX + ix, pupilCy + iy - pupilR * 0.6f))
+        drawCircle(Color.Black, pupilR, Offset(-scaledEyeX + ix, pupilCy + iy))
+        drawCircle(Color.Black, pupilR, Offset( scaledEyeX + ix, pupilCy + iy))
+        drawCircle(Color.White, hlR,    Offset(-scaledEyeX + ix, pupilCy + iy - pupilR * 0.6f))
+        drawCircle(Color.White, hlR,    Offset( scaledEyeX + ix, pupilCy + iy - pupilR * 0.6f))
     }
 
     private fun DrawScope.drawClosedEyes() {
@@ -571,13 +609,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val w = r * EYES_WORLD_W_K
         val h = r * EYES_WORLD_H_K
         val cy = r * EYES_OFFSET_Y_K
-        // Tint with responsive secondary so the eyelid band changes colour during inert/shielded.
         drawSvgPart(painter, 0f, cy, w, h, tint = Color(frameColors.secondary))
-    }
-
-    private fun DrawScope.drawWideEyes() {
-        val t = easeIn(animFrame.toFloat(), 8f)
-        drawOpenEyes(scaleX = lerp(1f, 0.75f, t), scaleY = lerp(1f, 1.35f, t))
     }
 
     private fun DrawScope.drawWinceEyes() {
@@ -590,40 +622,33 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         drawSvgPart(painter, 0f, cy + shudder, w, h, tint = Color(frameColors.secondary))
     }
 
-    private fun DrawScope.drawHappyEyes() {
-        val t = easeIn(animFrame.toFloat(), 8f)
-        val scaleX = lerp(1f, 1.3f, t)
-        val scaleY = lerp(1f, 0.75f, t)
+    private fun DrawScope.drawWinkEyesSvgLayer() {
+        drawOpenEyesSvgPart(1f, 1f)
+        if (animFrame > 25) return
+        val painter = PokPokSkinPainters.eyesClosed ?: return
+        val w  = r * EYES_WORLD_W_K
+        val h  = r * EYES_WORLD_H_K
         val cy = r * EYES_OFFSET_Y_K
-        val w = r * EYES_WORLD_W_K
-        val h = r * EYES_WORLD_H_K
-        drawOpenEyes(scaleX = scaleX, scaleY = scaleY)
-        // Overdraw lower half of the eye region with the body color to create a grin shape.
-        withTransform({ scale(scaleX, scaleY, pivot = Offset(0f, cy)) }) {
-            drawRect(
-                Color(frameColors.secondary),
-                topLeft = Offset(-w / 2f, cy + h * 0.1f),
-                size = Size(w, h * 0.6f)
-            )
+        val halfW = w / 2f
+        val left = if (winkRight) 0f else -halfW
+        withTransform({ clipRect(left, cy - h / 2f, left + halfW, cy + h / 2f) }) {
+            drawSvgPart(painter, 0f, cy, w, h, tint = Color(frameColors.secondary))
         }
     }
 
-    /** Wink: alternates between eyes each Taunt; the closed eye reopens after frame 25. */
-    private fun DrawScope.drawWinkEyes() {
-        // Draw both eyes open first (with iris), then overlay just one eye with eyesClosed.
-        drawOpenEyes()
-        val painter = PokPokSkinPainters.eyesClosed ?: return
-        val w = r * EYES_WORLD_W_K
-        val h = r * EYES_WORLD_H_K
-        val cy = r * EYES_OFFSET_Y_K
-        if (animFrame > 25) return
-        // The eyes SVG is a single combined drawable. To wink only one side, clip to half.
-        withTransform({
+    private fun DrawScope.drawWinkEyesPupilsLayer() {
+        if (animFrame > 25) {
+            drawOpenEyesPupils(1f, 1f)
+        } else {
+            val w  = r * EYES_WORLD_W_K
+            val h  = r * EYES_WORLD_H_K
+            val cy = r * EYES_OFFSET_Y_K
             val halfW = w / 2f
-            val left = if (winkRight) 0f else -halfW
-            clipRect(left, cy - h / 2f, left + halfW, cy + h / 2f)
-        }) {
-            drawSvgPart(painter, 0f, cy, w, h, tint = Color(frameColors.secondary))
+            val clipLeft  = if (winkRight) -halfW else 0f
+            val clipRight = if (winkRight) 0f      else halfW
+            withTransform({ clipRect(clipLeft, cy - h / 2f, clipRight, cy + h / 2f) }) {
+                drawOpenEyesPupils(1f, 1f)
+            }
         }
     }
 
