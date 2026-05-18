@@ -1,15 +1,11 @@
 package gameobjects.puckstyle.skins
 
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.painter.Painter
 import gameobjects.Settings
@@ -49,63 +45,61 @@ import kotlin.random.Random
  */
 class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
 
-    // ── world-scale conversion ─────────────────────────────────────────────────
-    // Standalone Body.svg is 111.68 units across; the puck diameter is 2*r. So world-per-svg
-    // = (2 * r) / 111.68 = r / 55.84.
-    private val BODY_SVG_HALF = 55.84f
-
     // ── part world sizes (multiples of radius) ─────────────────────────────────
-    // Body: full puck diameter.
-    private val BODY_WORLD_DIAM_K = 2f          // × r
+    // All parts are sized proportionally to the body: (standalone size / 55.84) × r,
+    // where 55.84 is the standalone Body.svg radius. The body fills the puck (diameter 2r),
+    // so every other part inherits the same world-per-svg scale.
+    private val BODY_WORLD_DIAM_K = 2f                       // × r
 
-    // Eyes SVG is 83.23×42.98 → world (83.23/55.84)r × (42.98/55.84)r ≈ 1.49r × 0.77r.
-    // We scale slightly down so the eye region fits on the face without crowding the beak.
-    private val EYES_WORLD_W_K = (83.23f / 55.84f) * 0.72f   // ≈ 1.073 r
-    private val EYES_WORLD_H_K = (42.98f / 55.84f) * 0.72f   // ≈ 0.554 r
+    // Eyes_Opened.svg: 83.23 × 42.98.
+    private val EYES_WORLD_W_K = 83.23f / 55.84f             // ≈ 1.491 r
+    private val EYES_WORLD_H_K = 42.98f / 55.84f             // ≈ 0.770 r
     private val EYES_OFFSET_Y_K = -0.18f                     // slightly above body center
+    // Vertical offset from the eye-art center to the built-in pupil center (XML pupils sit
+    // in the lower half of the eye-whites art). Used to align the dynamic iris dots.
+    private val PUPIL_OFFSET_Y_K = (30f - 42.98f / 2f) / 42.98f * EYES_WORLD_H_K  // ≈ +0.152 r
 
-    // Mouth_Open SVG: 29.07×29.59. Drawn smaller — same on-face presence as the math beak.
-    private val MOUTH_W_K = (29.07f / 55.84f) * 0.55f        // ≈ 0.286 r
-    private val MOUTH_H_K = (29.59f / 55.84f) * 0.55f        // ≈ 0.291 r
-    // Mouth top of art sits just below the eyes (same place as math beakTop ~ 0.14 r).
-    // Center-y therefore = beakTop + halfHeight = 0.14 r + 0.145 r ≈ 0.29 r.
+    // Mouth_Open.svg: 29.07 × 29.59.
+    private val MOUTH_W_K = 29.07f / 55.84f                  // ≈ 0.521 r
+    private val MOUTH_H_K = 29.59f / 55.84f                  // ≈ 0.530 r
+    // Mouth_Closed.svg: 24.23 × 32.08 (taller, narrower teardrop than Mouth_Open).
+    private val MOUTH_CLOSED_W_K = 24.23f / 55.84f           // ≈ 0.434 r
+    private val MOUTH_CLOSED_H_K = 32.08f / 55.84f           // ≈ 0.575 r
+    // Beak top in the SVG composition sits at body center; center-y therefore ≈ half-height.
     private val MOUTH_OFFSET_Y_K = 0.29f
 
-    // Head feather native size: square 28.9. Middle is taller (24.46×38.99).
-    private val FEATHER_SIDE_W_K   = (28.9f  / 55.84f) * 0.55f   // ≈ 0.285 r
-    private val FEATHER_SIDE_H_K   = (28.9f  / 55.84f) * 0.55f
-    private val FEATHER_MID_W_K    = (24.46f / 55.84f) * 0.60f   // ≈ 0.263 r
-    private val FEATHER_MID_H_K    = (38.99f / 55.84f) * 0.60f   // ≈ 0.419 r
-    // Feather anchor centers — match ChickenSkin attach points.
-    private val FEATHER_MID_CY_K   = -0.95f
-    private val FEATHER_SIDE_CY_K  = -0.85f
-    private val FEATHER_SIDE_CX_K  =  0.22f      // left = -, right = +
-    private val FEATHER_SIDE_ROT   = 28f         // degrees, left = -, right = +
+    // Head feathers — side art is square 28.9, middle is 24.46×38.99.
+    private val FEATHER_SIDE_W_K   = 28.9f  / 55.84f         // ≈ 0.518 r
+    private val FEATHER_SIDE_H_K   = 28.9f  / 55.84f
+    private val FEATHER_MID_W_K    = 24.46f / 55.84f         // ≈ 0.438 r
+    private val FEATHER_MID_H_K    = 38.99f / 55.84f         // ≈ 0.698 r
+    // Feathers form a crown at the top of the body. Anchor (bottom-center of art) sits at
+    // the body top curve, so the art's centre-y is one half-height above that anchor.
+    private val FEATHER_MID_CY_K   = -1f - FEATHER_MID_H_K / 2f      // ≈ -1.349 r
+    private val FEATHER_SIDE_CX_K  =  0.30f                          // left = -, right = +
+    private val FEATHER_SIDE_CY_K  = -0.95f - FEATHER_SIDE_H_K / 2f  // ≈ -1.209 r
+    private val FEATHER_SIDE_ROT   = 30f                             // degrees outward tilt
 
-    // Wing native 28.9×28.9. Drawn larger so they stick out past the body.
-    private val WING_W_K = (28.9f / 55.84f) * 1.10f          // ≈ 0.569 r
-    private val WING_H_K = (28.9f / 55.84f) * 1.10f
-    private val WING_PIVOT_X_K = 0.72f                       // shoulder attach (matches ChickenSkin)
-    private val WING_CENTER_OFFSET = 0.42f                   // wing center sits this far past the pivot
+    // Wing native 28.9×28.9 — proportional to body.
+    private val WING_W_K = 28.9f / 55.84f                    // ≈ 0.518 r
+    private val WING_H_K = 28.9f / 55.84f
+    private val WING_PIVOT_X_K = 0.85f                       // shoulder pivot (just inside body edge)
+    private val WING_CENTER_OFFSET = 0.45f                   // wing center sits this far past the pivot
 
     // ── cached per-frame state ─────────────────────────────────────────────────
     private var cachedRadius = -1f
     private var r = 0f
-    private var sw = 0f
     private var eyeR = 0f
     private var eyeX = 0f
-    private var eyeY = 0f
-    private var beakTopY = 0f
 
     private fun ensureCache() {
         val newR = renderer.radius
         if (cachedRadius != newR) {
             cachedRadius = newR
-            sw       = renderer.strokeWidth
-            eyeR     = newR * 0.25f
-            eyeX     = newR * 0.30f
-            eyeY     = -newR * 0.28f
-            beakTopY = newR * 0.14f
+            eyeR = newR * 0.25f
+            // Pupil horizontal spacing matches the XML art (pupil centres sit at ±0.176 of the
+            // eye-art width, which becomes ±0.262 r given EYES_WORLD_W_K).
+            eyeX = newR * (0.176f * EYES_WORLD_W_K)
         }
     }
 
@@ -156,9 +150,6 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     private var irisOffY = 0f
     private var wingAngle = 0f
     private var eyeOpen = true
-
-    // Reusable path for the programmatic shadow crescent — keeps the hot path allocation-free.
-    private val shadowPath = Path()
 
     override fun DrawScope.drawBody() {
         ensureCache()
@@ -230,12 +221,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         r = cachedRadius
 
-        // Z-order, bottom to top:
-        //   1. wings (behind body), each with its shadow
-        //   2. body, plus body shadow
-        //   3. head feathers (behind eyes), each with its shadow
-        //   4. eyes
-        //   5. mouth
+        // Z-order, bottom to top: wings (behind body) → body → head feathers → eyes → mouth.
         drawWingsForState()
         drawBodyLayer()
         drawFeathersForState()
@@ -274,19 +260,16 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     // ── body ───────────────────────────────────────────────────────────────────
 
     private fun DrawScope.drawBodyLayer() {
-        // Solid colored disc behind the SVG so the body inherits the live theme colors.
-        drawCircle(Color(frameColors.primary), r, Offset.Zero)
-        // SVG overlay (gives any internal shading from the asset its chance to show; if the
-        // standalone Body.svg is a flat circle this draws nothing visible).
+        // Body SVG is a flat-fill circle tinted to the live primary colour. Falls back to a
+        // plain disc if the painter hasn't loaded yet so the puck never renders empty.
         val body = PokPokSkinPainters.body
+        val primary = Color(frameColors.primary)
         if (body != null) {
             val w = r * BODY_WORLD_DIAM_K
-            drawSvgPart(body, 0f, 0f, w, w)
+            drawSvgPart(body, 0f, 0f, w, w, tint = primary)
+        } else {
+            drawCircle(primary, r, Offset.Zero)
         }
-        // Outline to match other skins.
-        drawCircle(Color(frameColors.secondary), r, Offset.Zero, style = Stroke(width = sw))
-        // Static lower-right body shadow crescent.
-        drawShadowCrescent(0f, 0f, r * 0.95f, angleDeg = 135f, outerK = 0.66f, innerK = 0.50f, gapK = 0.18f)
     }
 
     // ── wings ──────────────────────────────────────────────────────────────────
@@ -320,14 +303,12 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val centerY = 0f
         val w = r * WING_W_K
         val h = r * WING_H_K
-        // Mirror axis for the left wing so the same SVG flips horizontally.
         val rotation = sign * -angleDeg
         withTransform({
             rotate(rotation, pivot = Offset(pivotX, 0f))
         }) {
-            drawSvgPart(painter, centerX, centerY, w, h, scaleX = scale, scaleY = scale)
-            drawShadowCrescent(centerX, centerY, w * 0.5f, angleDeg = 135f,
-                outerK = 0.62f, innerK = 0.46f, gapK = 0.18f)
+            drawSvgPart(painter, centerX, centerY, w, h, scaleX = scale, scaleY = scale,
+                tint = Color(frameColors.primary))
         }
     }
 
@@ -400,23 +381,14 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
                 rot = rotDeg; scaleX = 1f; scaleY = 1f
             }
         }
+        val tint = ColorFilter.tint(Color(frameColors.primary))
         withTransform({
             translate(cx - w / 2f, cy - h / 2f)
             val pivot = Offset(w / 2f, anchorY - (cy - h / 2f))
             if (rot != 0f) rotate(rot, pivot = pivot)
             if (scaleX != 1f || scaleY != 1f) scale(scaleX, scaleY, pivot = pivot)
         }) {
-            with(painter) { draw(Size(w, h)) }
-        }
-        // Shadow crescent moves with the feather (static within its transform).
-        withTransform({
-            translate(cx, cy)
-            val pivot = Offset.Zero
-            if (rot != 0f) rotate(rot, pivot = pivot)
-            if (scaleX != 1f || scaleY != 1f) scale(scaleX, scaleY, pivot = pivot)
-        }) {
-            drawShadowCrescent(0f, 0f, w * 0.45f, angleDeg = 135f,
-                outerK = 0.65f, innerK = 0.50f, gapK = 0.18f)
+            with(painter) { draw(Size(w, h), colorFilter = tint) }
         }
     }
 
@@ -440,17 +412,18 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val cy = r * EYES_OFFSET_Y_K
         drawSvgPart(painter, 0f, cy, w, h, scaleX = scaleX, scaleY = scaleY)
         // Iris overlay — a small solid circle per eye that drifts with paddle direction.
+        // Centred on the XML's built-in pupil location so the overlay and underlying art line up.
         val maxOff = eyeR * 0.45f
         val ix = irisOffX * maxOff
         val iy = irisOffY * maxOff
         val pupilR = eyeR * 0.30f
         val leftEyeCx  = -eyeX
         val rightEyeCx =  eyeX
-        val eyesCy = cy
+        val pupilCy = cy + r * PUPIL_OFFSET_Y_K
         drawCircle(Color(frameColors.secondary), pupilR,
-            Offset(leftEyeCx  + ix, eyesCy + iy))
+            Offset(leftEyeCx  + ix, pupilCy + iy))
         drawCircle(Color(frameColors.secondary), pupilR,
-            Offset(rightEyeCx + ix, eyesCy + iy))
+            Offset(rightEyeCx + ix, pupilCy + iy))
     }
 
     private fun DrawScope.drawClosedEyes() {
@@ -528,9 +501,10 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     private fun DrawScope.drawMouthClosed() {
         val painter = PokPokSkinPainters.mouthClosed ?: return
-        val w = r * MOUTH_W_K
-        val h = r * MOUTH_H_K
-        drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h)
+        val w = r * MOUTH_CLOSED_W_K
+        val h = r * MOUTH_CLOSED_H_K
+        drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h,
+            tint = Color(frameColors.secondary))
     }
 
     private fun DrawScope.drawMouthGape(yawn: Boolean = false) {
@@ -540,15 +514,17 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val growth = if (yawn) 1.45f else 1.15f
         val w = r * MOUTH_W_K * lerp(1f, growth, gapeT)
         val h = r * MOUTH_H_K * lerp(1f, growth, gapeT)
-        drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h)
+        drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h,
+            tint = Color(frameColors.secondary))
     }
 
     private fun DrawScope.drawMouthGrimace() {
         val painter = PokPokSkinPainters.mouthClosed ?: return
         val t = easeIn(animFrame.toFloat(), 6f)
-        val w = r * MOUTH_W_K * lerp(1f, 0.8f, t)
-        val h = r * MOUTH_H_K * lerp(1f, 1.2f, t)
-        drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h)
+        val w = r * MOUTH_CLOSED_W_K * lerp(1f, 0.8f, t)
+        val h = r * MOUTH_CLOSED_H_K * lerp(1f, 1.2f, t)
+        drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h,
+            tint = Color(frameColors.secondary))
     }
 
     // ── painter helpers ────────────────────────────────────────────────────────
@@ -559,43 +535,18 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         w: Float, h: Float,
         angleDeg: Float = 0f,
         scaleX: Float = 1f,
-        scaleY: Float = 1f
+        scaleY: Float = 1f,
+        tint: Color? = null
     ) {
+        val filter = tint?.let { ColorFilter.tint(it) }
         withTransform({
             translate(cx - w / 2f, cy - h / 2f)
             val pivot = Offset(w / 2f, h / 2f)
             if (angleDeg != 0f) rotate(angleDeg, pivot = pivot)
             if (scaleX != 1f || scaleY != 1f) scale(scaleX, scaleY, pivot = pivot)
         }) {
-            with(painter) { draw(Size(w, h)) }
+            with(painter) { draw(Size(w, h), colorFilter = filter) }
         }
-    }
-
-    /**
-     * Static lower-right crescent suggesting volume. Two concentric ovals combined with the
-     * even-odd fill rule create the crescent shape. Color is a fixed semi-transparent black —
-     * shadow does not animate on its own; it inherits any caller transform via [withTransform].
-     */
-    private fun DrawScope.drawShadowCrescent(
-        cx: Float, cy: Float,
-        partRadius: Float,
-        angleDeg: Float,
-        outerK: Float,
-        innerK: Float,
-        gapK: Float
-    ) {
-        val outer = partRadius * outerK
-        val inner = partRadius * innerK
-        val gap   = partRadius * gapK
-        val rad = angleDeg * (PI.toFloat() / 180f)
-        val offX = cos(rad) * gap
-        val offY = sin(rad) * gap
-
-        shadowPath.reset()
-        shadowPath.fillType = PathFillType.EvenOdd
-        shadowPath.addOval(Rect(cx + offX - outer, cy + offY - outer, cx + offX + outer, cy + offY + outer))
-        shadowPath.addOval(Rect(cx - inner, cy - inner, cx + inner, cy + inner))
-        drawPath(shadowPath, Color(0f, 0f, 0f, 0.22f), style = Fill)
     }
 
     // ── PuckSkin hooks ─────────────────────────────────────────────────────────
