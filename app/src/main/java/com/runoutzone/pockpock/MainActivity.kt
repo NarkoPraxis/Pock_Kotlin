@@ -59,7 +59,8 @@ class MainActivity : AppCompatActivity() {
             recreate()
             return
         }
-        Sounds.autoResumeSfx()
+        // muteForAd() / unmuteForAd() should be called from ad lifecycle callbacks here
+        Sounds.resumeAll()
         Sounds.playMenuAmbiance()
         Settings.unlockProgress = Storage.unlockProgress
     }

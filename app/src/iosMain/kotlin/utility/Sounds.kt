@@ -12,11 +12,18 @@ actual object Sounds {
     private val sfxChannels = mutableListOf<SfxChannel>()
     private val sfxBuffers = mutableMapOf<String, AVAudioPCMBuffer>()
     private val engine = AVAudioEngine()
+
     private var ambientPlayer: AVAudioPlayer? = null
     private var incomingPlayer: AVAudioPlayer? = null
+    private var currentAmbienceName: String? = null
+    private var crossfadeGeneration = 0
+    private var isPaused = false
+    private var adMuted = false
 
     private enum class AmbienceMode { MENU, GAME }
     private var ambienceMode: AmbienceMode? = null
+
+    private const val CROSSFADE_SECS = 3.0
 
     private val effectiveSfxVol: Float
         get() {
@@ -34,6 +41,7 @@ actual object Sounds {
         setupAudioSession()
         setupSfxPool()
         loadSounds()
+        registerLifecycleObservers()
     }
 
     actual fun initializeGame() {}
@@ -42,6 +50,19 @@ actual object Sounds {
         val session = AVAudioSession.sharedInstance()
         session.setCategory(AVAudioSessionCategoryAmbient, error = null)
         session.setActive(true, error = null)
+    }
+
+    private fun registerLifecycleObservers() {
+        NSNotificationCenter.defaultCenter.addObserverForName(
+            name = "UIApplicationDidEnterBackgroundNotification",
+            `object` = null,
+            queue = NSOperationQueue.mainQueue
+        ) { _ -> pauseAll() }
+        NSNotificationCenter.defaultCenter.addObserverForName(
+            name = "UIApplicationWillEnterForegroundNotification",
+            `object` = null,
+            queue = NSOperationQueue.mainQueue
+        ) { _ -> if (!adMuted) resumeAll() }
     }
 
     private fun setupSfxPool() {
@@ -57,16 +78,28 @@ actual object Sounds {
         try { engine.startAndReturnError(null) } catch (_: Exception) {}
     }
 
+    // Resolves a sound file name to an NSURL via the KMP compose-resources bundle path.
+    // Files from commonMain/composeResources/files/sounds/ land at compose-resources/files/sounds/
+    // inside the iOS app bundle.
+    private fun soundUrl(name: String): NSURL? {
+        for (ext in listOf("mp3", "wav", "m4a")) {
+            val url = NSBundle.mainBundle.URLForResource(
+                name = name,
+                withExtension = ext,
+                subdirectory = "compose-resources/files/sounds"
+            ) ?: continue
+            return url
+        }
+        return null
+    }
+
     private fun loadSounds() {
         listOf(
             "high_synth", "low_synth", "wall", "goal",
             "sheilds_up", "sheilded_collision", "charge_activated", "sweet_spot",
             "we_have_a_winner", "game_start"
         ).forEach { name ->
-            val url = NSBundle.mainBundle.URLForResource(name, withExtension = "mp3")
-                ?: NSBundle.mainBundle.URLForResource(name, withExtension = "wav")
-                ?: NSBundle.mainBundle.URLForResource(name, withExtension = "m4a")
-                ?: return@forEach
+            val url = soundUrl(name) ?: return@forEach
             val file = AVAudioFile(forReading = url, error = null) ?: return@forEach
             val buffer = AVAudioPCMBuffer(
                 pCMFormat = file.processingFormat,
@@ -78,6 +111,7 @@ actual object Sounds {
     }
 
     private fun playSfx(name: String, rate: Float = 1f, volume: Float = effectiveSfxVol) {
+        if (isPaused || adMuted) return
         val buffer = sfxBuffers[name] ?: return
         val channel = sfxChannels.firstOrNull { !it.player.isPlaying() } ?: sfxChannels[0]
         channel.pitch.rate = rate
@@ -142,38 +176,89 @@ actual object Sounds {
     }
 
     private fun startAmbience(name: String) {
-        val url = NSBundle.mainBundle.URLForResource(name, withExtension = "mp3")
-            ?: NSBundle.mainBundle.URLForResource(name, withExtension = "m4a")
-            ?: return
+        currentAmbienceName = name
+        crossfadeGeneration++
+        val gen = crossfadeGeneration
+
         val outgoing = ambientPlayer
+        val url = soundUrl(name) ?: return
         val incoming = AVAudioPlayer(contentsOfURL = url, error = null) ?: return
-        incoming.numberOfLoops = -1
+        incoming.numberOfLoops = 0
         incoming.volume = 0f
+        incoming.prepareToPlay()
         incoming.play()
         incomingPlayer = incoming
 
-        outgoing?.setVolume(0f, fadeDuration = 3.0)
-        incoming.setVolume(effectiveBgVol, fadeDuration = 3.0)
+        outgoing?.setVolume(0f, fadeDuration = CROSSFADE_SECS)
+        incoming.setVolume(effectiveBgVol, fadeDuration = CROSSFADE_SECS)
 
-        dispatch_after(
-            dispatch_time(DISPATCH_TIME_NOW, 3_100_000_000L),
-            dispatch_get_main_queue()
-        ) {
+        val completeNs = ((CROSSFADE_SECS + 0.1) * 1_000_000_000.0).toLong()
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, completeNs), dispatch_get_main_queue()) {
+            if (crossfadeGeneration != gen) return@dispatch_after
             outgoing?.stop()
             ambientPlayer = incoming
             incomingPlayer = null
+            scheduleNextCrossfade()
+        }
+    }
+
+    // Schedules beginCrossfade() to fire CROSSFADE_SECS before the current ambient track ends.
+    // Uses a generation counter so stale dispatch_after callbacks (e.g. after backgrounding) are no-ops.
+    private fun scheduleNextCrossfade() {
+        val player = ambientPlayer ?: return
+        val gen = ++crossfadeGeneration
+        val remaining = player.duration - player.currentTime
+        val delay = (remaining - CROSSFADE_SECS).coerceAtLeast(0.0)
+        val delayNs = (delay * 1_000_000_000.0).toLong()
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayNs), dispatch_get_main_queue()) {
+            if (!isPaused && crossfadeGeneration == gen) beginCrossfade(gen)
+        }
+    }
+
+    private fun beginCrossfade(gen: Int) {
+        if (isPaused || crossfadeGeneration != gen) return
+        val name = currentAmbienceName ?: return
+        val outgoing = ambientPlayer ?: return
+        val url = soundUrl(name) ?: return
+        val incoming = AVAudioPlayer(contentsOfURL = url, error = null) ?: return
+        incoming.numberOfLoops = 0
+        incoming.volume = 0f
+        incoming.prepareToPlay()
+        incoming.play()
+        incomingPlayer = incoming
+
+        outgoing.setVolume(0f, fadeDuration = CROSSFADE_SECS)
+        incoming.setVolume(effectiveBgVol, fadeDuration = CROSSFADE_SECS)
+
+        val completeNs = ((CROSSFADE_SECS + 0.1) * 1_000_000_000.0).toLong()
+        val newGen = ++crossfadeGeneration
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, completeNs), dispatch_get_main_queue()) {
+            if (crossfadeGeneration != newGen) return@dispatch_after
+            outgoing.stop()
+            ambientPlayer = incoming
+            incomingPlayer = null
+            scheduleNextCrossfade()
         }
     }
 
     actual fun pauseAll() {
+        isPaused = true
         try { engine.pause() } catch (_: Exception) {}
         ambientPlayer?.pause()
         incomingPlayer?.pause()
     }
 
     actual fun resumeAll() {
+        if (adMuted) return
+        isPaused = false
         try { engine.startAndReturnError(null) } catch (_: Exception) {}
-        ambientPlayer?.let { if (!it.playing) it.play() }
+        ambientPlayer?.let { player ->
+            if (!player.playing) {
+                player.play()
+                // Reschedule crossfade from current playback position only if not mid-fade
+                if (incomingPlayer == null) scheduleNextCrossfade()
+            }
+        }
         incomingPlayer?.let { if (!it.playing) it.play() }
     }
 
@@ -189,6 +274,17 @@ actual object Sounds {
         val vol = effectiveBgVol
         ambientPlayer?.volume = vol
         incomingPlayer?.volume = vol
+    }
+
+    actual fun muteForAd() {
+        adMuted = true
+        pauseAll()
+    }
+
+    actual fun unmuteForAd() {
+        adMuted = false
+        isPaused = false
+        resumeAll()
     }
 
     actual fun abandonAudioFocus() {
