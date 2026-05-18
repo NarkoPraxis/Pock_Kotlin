@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PokPok open mouth — middle/cavity path only (secondary tint).
+    viewBox 0 0 29.07 29.59.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="29.07dp"
+    android:height="29.59dp"
+    android:viewportWidth="29.07"
+    android:viewportHeight="29.59">
+
+    <!-- Mouth cavity -->
+    <path
+        android:fillColor="#0b83ad"
+        android:pathData="M14.53,4.72c6.88,0 10.07,3.89 10.07,9.34c0,5.45 -10.07,12.68 -10.07,12.68c0,0 -10.07,-7.23 -10.07,-12.68c0,-5.45 3.19,-9.34 10.07,-9.34Z" />
+
+</vector>

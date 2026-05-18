@@ -80,6 +80,9 @@
     <string name="unlocked">已解锁</string>
     <string name="reach_percent">达到%1$d%%</string>
 
+    <!-- Ball type names -->
+    <string name="ball_type_pokpok">啵啵</string>
+
     <!-- In-game tips -->
     <string name="tip_title">准备好后按住此处</string>
     <string name="tip_controls">触摸屏幕并向后拉手指，将你的冰球弹射向前。</string>

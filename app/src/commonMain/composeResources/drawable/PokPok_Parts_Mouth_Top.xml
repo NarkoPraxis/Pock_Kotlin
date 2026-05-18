@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PokPok open mouth — converted from PokPok_Parts_Mouth_Open.svg.
+    viewBox 0 0 29.07 29.59.
+
+    Paint order matches the SVG:
+      1. Outer light-blue teardrop (the lower beak).
+      2. Inner dark-blue mouth cavity.
+      3. Upper light-blue beak overlay (the top beak).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="29.07dp"
+    android:height="29.59dp"
+    android:viewportWidth="29.07"
+    android:viewportHeight="29.59">
+    
+    <!-- Upper beak -->
+    <path
+        android:fillColor="#9dd3f5"
+        android:pathData="M14.53,0c8.21,0 14.53,3.33 14.53,8c0,4.67 -14.53,10.86 -14.53,10.86C14.53,18.86 0,12.67 0,8C0,3.33 6.32,0 14.53,0Z" />
+</vector>

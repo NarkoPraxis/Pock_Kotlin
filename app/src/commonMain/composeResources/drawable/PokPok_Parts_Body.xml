@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PokPok body — converted from PokPok_Parts_Body.svg.
+    viewBox 0 0 111.68 111.68. Single filled circle cx=55.84 cy=55.84 r=55.84.
+    Circle expressed as two relative arcs.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="111.68dp"
+    android:height="111.68dp"
+    android:viewportWidth="111.68"
+    android:viewportHeight="111.68">
+
+    <path
+        android:fillColor="#52b6f2"
+        android:pathData="M0,55.84a55.84,55.84 0 1,0 111.68,0a55.84,55.84 0 1,0 -111.68,0Z" />
+</vector>

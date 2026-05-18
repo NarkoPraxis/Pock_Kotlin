@@ -80,6 +80,9 @@
     <string name="unlocked">Desbloqueado</string>
     <string name="reach_percent">Llega al %1$d%%</string>
 
+    <!-- Ball type names -->
+    <string name="ball_type_pokpok">Pok Pok</string>
+
     <!-- In-game tips -->
     <string name="tip_title">Mantén Aquí Cuando Estés Listo</string>
     <string name="tip_controls">Toca la pantalla y arrastra el dedo hacia atrás para lanzar tu pock hacia adelante.</string>

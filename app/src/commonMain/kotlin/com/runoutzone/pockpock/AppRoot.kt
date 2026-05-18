@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import enums.GameState
 import gameobjects.BotConfig
 import gameobjects.Settings
+import gameobjects.puckstyle.skins.PokPokSkinPainters
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
 import utility.Drawing
@@ -34,6 +35,10 @@ fun AppRoot() {
     val navController = rememberNavController()
     var showDifficultyDialog by remember { mutableStateOf(false) }
     var darkMode by remember { mutableStateOf(Storage.darkMode) }
+
+    // SVG painters used by PokPokSkin must be created in a composable scope. `painterResource`
+    // is internally remembered, so this is effectively a one-time cost per app session.
+    PokPokSkinPainters.load()
 
     CompositionLocalProvider(LocalDarkMode provides darkMode) {
         NavHost(navController, startDestination = Screen.MainMenu.name) {

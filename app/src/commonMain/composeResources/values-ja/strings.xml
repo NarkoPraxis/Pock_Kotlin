@@ -80,6 +80,9 @@
     <string name="unlocked">アンロック済み</string>
     <string name="reach_percent">%1$d%%を達成</string>
 
+    <!-- Ball type names -->
+    <string name="ball_type_pokpok">ポクポク</string>
+
     <!-- In-game tips -->
     <string name="tip_title">準備できたらここを押してください</string>
     <string name="tip_controls">画面をタッチして指を引き、パックを前方に弾き飛ばしましょう。</string>

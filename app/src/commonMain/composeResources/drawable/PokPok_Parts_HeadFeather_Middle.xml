@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PokPok middle head feather — converted from PokPok_Parts_HeadFeather_Middle.svg.
+    viewBox 0 0 24.46 38.99. Single light-blue vertical eye-leaf shape.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24.46dp"
+    android:height="38.99dp"
+    android:viewportWidth="24.46"
+    android:viewportHeight="38.99">
+
+    <path
+        android:fillColor="#52b6f2"
+        android:pathData="M12.23,0s12.23,7.44 12.23,19.49c0,12.05 -12.23,19.49 -12.23,19.49C12.23,38.99 0,31.55 0,19.49C0,7.44 12.23,0 12.23,0Z" />
+</vector>
