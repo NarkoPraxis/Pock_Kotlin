@@ -156,14 +156,13 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val SHADOW_ALPHA            = 0.25f  // shadow darkness 0–1; tweak for intensity
 
     // ── animation state machine ────────────────────────────────────────────────
-    private enum class PokPokAnim { Default, AlmostHit, JustHit, Celebration, Taunt, Yawn }
+    private enum class PokPokAnim { Default, AlmostHit, JustHit, Celebration, Chatter, Yawn }
 
     private var currentAnim = PokPokAnim.Default
     private var animFrame   = 0
     private var animLoop    = false
     private var dangerFromSweetSpot = false
     private var lastPhase   = ChargePhase.Idle
-    private var winkRight   = true
 
     // Frames since any reactive animation last triggered (drives the idle Yawn).
     private var framesSinceTrigger = 0
@@ -176,14 +175,15 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val ANIM_ALMOST_HIT   = 35
     private val ANIM_JUST_HIT     = 30
     private val ANIM_CELEBRATION  = 50
-    private val ANIM_TAUNT        = 40
+    private val ANIM_CHATTER      = 50
     private val ANIM_YAWN         = 100
     private val YAWN_THRESHOLD    = 30000
+    private val IDLE_FLAP_SPEED   = 0.03f  // baseline radians per frame for idle wing bob
 
     // Stagger offsets
-    private val DELAY_MOUTH   = 3
-    private val DELAY_WINGS   = 10
-    private val DELAY_FEATHERS = 10
+    private val DELAY_MOUTH   = 0
+    private val DELAY_WINGS   = 0
+    private val DELAY_FEATHERS = 0
 
     // Per-frame state hoisted so sub-draw methods can read them
     private var frameColors: ColorGroup = theme.main
@@ -197,6 +197,11 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     private var wingAngle = 0f
     private var eyeOpen = true
 
+    // Smoothed animation blend values — lerp toward their target each frame so transitions ease out.
+    private var wingAnimOffset    = 0f
+    private var featherDroopyBlend = 0f
+    private var featherFlaredBlend = 0f
+
     override fun DrawScope.drawBody() {
         ensureCache()
         frameColors = responsiveGroup
@@ -205,15 +210,17 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         if (lastX.isNaN()) { lastX = renderer.x; lastY = renderer.y }
         val speed = hypot(renderer.x - lastX, renderer.y - lastY)
         lastX = renderer.x; lastY = renderer.y
-        wingPhase += speed * 0.012f
-        wingAngle = sin(wingPhase) * 22f
+        wingPhase += IDLE_FLAP_SPEED + speed * 0.025f
+        wingAngle = sin(wingPhase) * 40f
         val targetWingAngle = when (currentAnim) {
             PokPokAnim.AlmostHit, PokPokAnim.JustHit -> 0f
             PokPokAnim.Celebration -> 22f
             PokPokAnim.Yawn -> 22f
+            PokPokAnim.Chatter -> sin(animFrame.toFloat() * 0.6f) * 30f
             else -> wingAngle
         }
-        displayedWingAngle = lerp(displayedWingAngle, targetWingAngle, 0.18f)
+        val wingLerpRate = if (currentAnim == PokPokAnim.Chatter) 0.5f else 0.18f
+        displayedWingAngle = lerp(displayedWingAngle, targetWingAngle, wingLerpRate)
 
         // Blink
         blinkCountdown--
@@ -250,7 +257,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
                 PokPokAnim.AlmostHit   -> ANIM_ALMOST_HIT
                 PokPokAnim.JustHit     -> ANIM_JUST_HIT
                 PokPokAnim.Celebration -> ANIM_CELEBRATION
-                PokPokAnim.Taunt       -> ANIM_TAUNT
+                PokPokAnim.Chatter     -> ANIM_CHATTER
                 PokPokAnim.Yawn        -> ANIM_YAWN
                 else                   -> 0
             }
@@ -388,23 +395,24 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     // ── wings ──────────────────────────────────────────────────────────────────
 
     private fun DrawScope.drawWingsForState() {
-        val animAngleOffset = when (currentAnim) {
+        val targetAnimOffset = when (currentAnim) {
             PokPokAnim.AlmostHit, PokPokAnim.JustHit -> {
                 val t = if (animFrame >= DELAY_WINGS) easeIn((animFrame - DELAY_WINGS).toFloat(), 3f) else 0f
-                lerp(0f, -15f, t)   // tuck wings toward body
+                lerp(0f, -15f, t)
             }
             PokPokAnim.Celebration -> {
                 val t = if (animFrame >= DELAY_WINGS) easeIn((animFrame - DELAY_WINGS).toFloat(), 8f) else 0f
-                lerp(0f, 15f, t)    // spread wings away from body
+                lerp(0f, 15f, t)
             }
             PokPokAnim.Yawn -> {
                 val t = easeIn(animFrame.toFloat(), 8f)
-                lerp(0f, 15f, t)    // spread wings away from body
+                lerp(0f, 15f, t)
             }
             else -> 0f
         }
-        drawWing(left = true,  angleDeg = displayedWingAngle, animAngleOffset = animAngleOffset)
-        drawWing(left = false, angleDeg = displayedWingAngle, animAngleOffset = animAngleOffset)
+        wingAnimOffset = lerp(wingAnimOffset, targetAnimOffset, 0.12f)
+        drawWing(left = true,  angleDeg = displayedWingAngle, animAngleOffset = wingAnimOffset)
+        drawWing(left = false, angleDeg = displayedWingAngle, animAngleOffset = wingAnimOffset)
     }
 
     private fun DrawScope.drawWing(left: Boolean, angleDeg: Float, animAngleOffset: Float) {
@@ -455,16 +463,20 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     // ── feathers ───────────────────────────────────────────────────────────────
 
     private fun DrawScope.drawFeathersForState() {
-        val droopy = currentAnim == PokPokAnim.AlmostHit || currentAnim == PokPokAnim.JustHit
-        val flared = currentAnim == PokPokAnim.Celebration
-        val t = when {
-            droopy -> if (animFrame >= DELAY_FEATHERS) easeIn((animFrame - DELAY_FEATHERS).toFloat(), 8f) else 0f
-            flared -> if (animFrame >= DELAY_FEATHERS) easeIn((animFrame - DELAY_FEATHERS).toFloat(), 8f) else 0f
-            else   -> 0f
+        val droopyTarget = when (currentAnim) {
+            PokPokAnim.AlmostHit, PokPokAnim.JustHit ->
+                if (animFrame >= DELAY_FEATHERS) easeIn((animFrame - DELAY_FEATHERS).toFloat(), 8f) else 0f
+            PokPokAnim.Chatter -> 0.35f
+            else -> 0f
         }
+        val flaredTarget = when (currentAnim) {
+            PokPokAnim.Celebration ->
+                if (animFrame >= DELAY_FEATHERS) easeIn((animFrame - DELAY_FEATHERS).toFloat(), 8f) else 0f
+            else -> 0f
+        }
+        featherDroopyBlend = lerp(featherDroopyBlend, droopyTarget, 0.12f)
+        featherFlaredBlend = lerp(featherFlaredBlend, flaredTarget, 0.12f)
 
-        // Middle feather first so the side feathers overlap it (matches composition layering).
-        // featherFollowAngle adds a counter-rotation opposite to where the eyes are looking.
         drawHeadFeather(
             painter = PokPokSkinPainters.featherMiddle,
             cx = 0f,
@@ -472,7 +484,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             w = r * FEATHER_MID_W_K,
             h = r * FEATHER_MID_H_K,
             rotDeg = featherFollowAngle,
-            droopy = droopy, flared = flared, t = t
+            droopyBlend = featherDroopyBlend, flaredBlend = featherFlaredBlend
         )
         drawHeadFeather(
             painter = PokPokSkinPainters.featherLeft,
@@ -481,7 +493,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             w = r * FEATHER_SIDE_W_K,
             h = r * FEATHER_SIDE_H_K,
             rotDeg = -FEATHER_SIDE_ROT + featherFollowAngle,
-            droopy = droopy, flared = flared, t = t
+            droopyBlend = featherDroopyBlend, flaredBlend = featherFlaredBlend
         )
         drawHeadFeather(
             painter = PokPokSkinPainters.featherRight,
@@ -490,7 +502,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             w = r * FEATHER_SIDE_W_K,
             h = r * FEATHER_SIDE_H_K,
             rotDeg = FEATHER_SIDE_ROT + featherFollowAngle,
-            droopy = droopy, flared = flared, t = t
+            droopyBlend = featherDroopyBlend, flaredBlend = featherFlaredBlend
         )
     }
 
@@ -499,31 +511,22 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         cx: Float, cy: Float,
         w: Float, h: Float,
         rotDeg: Float,
-        droopy: Boolean, flared: Boolean, t: Float
+        droopyBlend: Float, flaredBlend: Float
     ) {
         if (painter == null) return
-        // Anchor point: bottom-center of the feather where it meets the head.
         val anchorY = cy + h * 0.5f
-        val rot: Float
-        when {
-            droopy -> {
-                rot = lerp(rotDeg, rotDeg * 1.36f + kotlin.math.sign(rotDeg) * 10f, t)
-            }
-            flared -> {
-                rot = lerp(rotDeg, rotDeg - kotlin.math.sign(rotDeg) * 10f, t)
-            }
-            else -> {
-                rot = rotDeg
-            }
+        val rot = when {
+            droopyBlend > 0.001f ->
+                lerp(rotDeg, rotDeg * 1.36f + kotlin.math.sign(rotDeg) * 10f, droopyBlend)
+            flaredBlend > 0.001f ->
+                lerp(rotDeg, rotDeg - kotlin.math.sign(rotDeg) * 10f, flaredBlend)
+            else -> rotDeg
         }
-        val scaleX = 1f
-        val scaleY = 1f
         val tint = ColorFilter.tint(Color(frameColors.secondary))
         withTransform({
             translate(cx - w / 2f, cy - h / 2f)
             val pivot = Offset(w / 2f, anchorY - (cy - h / 2f))
             if (rot != 0f) rotate(rot, pivot = pivot)
-            if (scaleX != 1f || scaleY != 1f) scale(scaleX, scaleY, pivot = pivot)
         }) {
             with(painter) { draw(Size(w, h), colorFilter = tint) }
         }
@@ -539,7 +542,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         currentEyeScaleX = 1f
         currentEyeScaleY = 1f
         when (currentAnim) {
-            PokPokAnim.Taunt       -> drawWinkEyesSvgLayer()
+            PokPokAnim.Chatter     -> drawOpenEyesSvgPart(1f, 1f)
             PokPokAnim.AlmostHit   -> {
                 val t = easeIn(animFrame.toFloat(), 8f)
                 currentEyeScaleX = lerp(1f, 0.75f, t)
@@ -572,8 +575,8 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             else -> true
         }
         if (!showPupils) return
-        if (currentAnim == PokPokAnim.Taunt) {
-            drawWinkEyesPupilsLayer()
+        if (currentAnim == PokPokAnim.Celebration) {
+            drawOpenEyesPupils(currentEyeScaleX, currentEyeScaleY, irisX = 0f, irisY = 0f)
         } else {
             drawOpenEyesPupils(currentEyeScaleX, currentEyeScaleY)
         }
@@ -587,15 +590,18 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         drawSvgPart(painter, 0f, cy, w, h, scaleX = scaleX, scaleY = scaleY)
     }
 
-    private fun DrawScope.drawOpenEyesPupils(scaleX: Float, scaleY: Float) {
+    private fun DrawScope.drawOpenEyesPupils(
+        scaleX: Float, scaleY: Float,
+        irisX: Float = irisOffX, irisY: Float = irisOffY
+    ) {
         val cy = r * EYES_OFFSET_Y_K
         val rawPupilOffY = r * PUPIL_OFFSET_Y_K + r * PUPIL_CENTRE_Y_OFFSET_K
         val pupilCy    = cy + rawPupilOffY * scaleY
         val pupilR     = r * PUPIL_R_K
         val hlR        = r * PUPIL_HIGHLIGHT_R_K
         val maxOff     = r * PUPIL_MAX_FOLLOW_K
-        val ix         = irisOffX * maxOff * scaleX
-        val iy         = irisOffY * maxOff * scaleY
+        val ix         = irisX * maxOff * scaleX
+        val iy         = irisY * maxOff * scaleY
         val scaledEyeX = eyeX * scaleX
 
         drawCircle(Color.Black, pupilR, Offset(-scaledEyeX + ix, pupilCy + iy))
@@ -622,46 +628,26 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         drawSvgPart(painter, 0f, cy + shudder, w, h, tint = Color(frameColors.secondary))
     }
 
-    private fun DrawScope.drawWinkEyesSvgLayer() {
-        drawOpenEyesSvgPart(1f, 1f)
-        if (animFrame > 25) return
-        val painter = PokPokSkinPainters.eyesClosed ?: return
-        val w  = r * EYES_WORLD_W_K
-        val h  = r * EYES_WORLD_H_K
-        val cy = r * EYES_OFFSET_Y_K
-        val halfW = w / 2f
-        val left = if (winkRight) 0f else -halfW
-        withTransform({ clipRect(left, cy - h / 2f, left + halfW, cy + h / 2f) }) {
-            drawSvgPart(painter, 0f, cy, w, h, tint = Color(frameColors.secondary))
-        }
-    }
-
-    private fun DrawScope.drawWinkEyesPupilsLayer() {
-        if (animFrame > 25) {
-            drawOpenEyesPupils(1f, 1f)
-        } else {
-            val w  = r * EYES_WORLD_W_K
-            val h  = r * EYES_WORLD_H_K
-            val cy = r * EYES_OFFSET_Y_K
-            val halfW = w / 2f
-            val clipLeft  = if (winkRight) -halfW else 0f
-            val clipRight = if (winkRight) 0f      else halfW
-            withTransform({ clipRect(clipLeft, cy - h / 2f, clipRight, cy + h / 2f) }) {
-                drawOpenEyesPupils(1f, 1f)
-            }
-        }
-    }
-
     // ── mouth ──────────────────────────────────────────────────────────────────
 
     private fun DrawScope.drawMouthForState() {
         when {
+            currentAnim == PokPokAnim.Chatter                                  -> drawMouthChatter()
             currentAnim == PokPokAnim.AlmostHit   && animFrame >= DELAY_MOUTH -> drawMouthGape()
             currentAnim == PokPokAnim.JustHit                                  -> drawMouthGrimace()
             currentAnim == PokPokAnim.Celebration && animFrame >= DELAY_MOUTH -> drawMouthGape()
-            currentAnim == PokPokAnim.Taunt       && animFrame >= DELAY_MOUTH -> drawMouthGape()
             currentAnim == PokPokAnim.Yawn                                    -> drawMouthGape(yawn = true)
             else -> drawMouthClosed()
+        }
+    }
+
+    private fun DrawScope.drawMouthChatter() {
+        if ((animFrame / 5) % 2 == 0) {
+            val painter = PokPokSkinPainters.mouthOpen ?: return
+            drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, r * MOUTH_W_K, r * MOUTH_H_K,
+                tint = Color(frameColors.primary))
+        } else {
+            drawMouthClosed()
         }
     }
 
@@ -680,7 +666,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val growth = if (yawn) 1.45f else 1.15f
         val w = r * MOUTH_W_K * lerp(1f, growth, gapeT)
         val h = r * MOUTH_H_K * lerp(1f, growth, gapeT)
-        drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h,
+        drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, r * MOUTH_W_K, r * MOUTH_W_K,
             tint = Color(frameColors.primary))
     }
 
@@ -732,8 +718,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
                 startAnim(PokPokAnim.AlmostHit)
             }
             ChargePhase.Inert -> {
-                winkRight = !winkRight
-                startAnim(PokPokAnim.Taunt)
+                startAnim(PokPokAnim.Chatter)
             }
             ChargePhase.Idle -> {
                 if (lastPhase == ChargePhase.SweetSpot) {
@@ -771,7 +756,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     override val explosionFrequency get() = 20
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        startAnim(PokPokAnim.Taunt)
+        startAnim(PokPokAnim.Chatter)
         Effects.addPersistentEffect(
             FeatherCelebration(position.x, position.y, renderer.radius, highGoal,
                 theme.main.primary, theme.main.secondary, fullCircle = false)
