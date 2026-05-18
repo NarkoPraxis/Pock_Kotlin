@@ -97,6 +97,11 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val WING_H_K           = 0.7f
     private val WING_PIVOT_X_K     = 0.78f   // was 0.85; shoulder closer to body
     private val WING_CENTER_OFFSET = 0.38f   // was 0.45; wing centre closer in
+    // Perspective response to look direction (x-only).
+    // WING_PERSPECTIVE_ANGLE_MAX: extra tilt toward/away from body for nearer/farther wing.
+    // WING_PERSPECTIVE_SCALE_K: scale adjustment — nearer wing shrinks, farther wing grows.
+    private val WING_PERSPECTIVE_ANGLE_MAX = 14f   // degrees; tweak for stronger/weaker tilt
+    private val WING_PERSPECTIVE_SCALE_K   = 0.05f // fraction; tweak for stronger/weaker size change
 
     // Face follow — tweak X for lateral range, Y for vertical (keep small).
     private val FACE_FOLLOW_X_K = 0.15f
@@ -115,7 +120,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             eyeR = newR * 0.25f
             // Pupil horizontal spacing matches the XML art (pupil centres sit at ±0.176 of the
             // eye-art width, which becomes ±0.262 r given EYES_WORLD_W_K).
-            eyeX = newR * (0.176f * EYES_WORLD_W_K)
+            eyeX = newR * (0.22f * EYES_WORLD_W_K)
         }
     }
 
@@ -256,6 +261,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         }
         withTransform({ translate(faceOffX, faceOffY) }) {
             drawEyesForState()
+
             // Beak tilts toward look direction around a pivot above its centre.
             withTransform({
                 rotate(beakRotAngle, pivot = Offset(0f, r * MOUTH_OFFSET_Y_K - r * BEAK_PIVOT_ABOVE_K))
@@ -338,11 +344,14 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val centerY = 0f
         val w = r * WING_W_K
         val h = r * WING_H_K
-        val rotation = sign * -angleDeg
+        // Perspective: nearer wing (sign matches irisOffX sign) tilts toward body and shrinks;
+        // farther wing tilts away and grows.  -sign*irisOffX gives the correct ±direction.
+        val rotation     = sign * -angleDeg + (-sign * irisOffX * WING_PERSPECTIVE_ANGLE_MAX)
+        val perspScale   = scale  * (1f - sign * irisOffX * WING_PERSPECTIVE_SCALE_K)
         withTransform({
             rotate(rotation, pivot = Offset(pivotX, 0f))
         }) {
-            drawSvgPart(painter, centerX, centerY, w, h, scaleX = scale, scaleY = scale,
+            drawSvgPart(painter, centerX, centerY, w, h, scaleX = perspScale, scaleY = perspScale,
                 tint = Color(frameColors.secondary))
         }
     }
