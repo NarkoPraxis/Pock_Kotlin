@@ -440,13 +440,20 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             // Grows 2× min when bird looks toward this wing, shrinks to min when looking away.
             val growFactor = ((sign * irisOffX + 1f) / 2f).coerceIn(0f, 1f)
             val litR = r * SHADOW_LIT_WING_R_MIN * lerp(1f, 2f, growFactor)
+            // The lit window must stay fixed in world space regardless of wing rotation.
+            // Inverse-rotate the world-space oval centre by -rotation around (pivotX, 0f)
+            // so its position in the already-rotated canvas doesn't track the flap.
+            val worldLitCx = centerX + shadowDx
+            val worldLitCy = centerY - r * SHADOW_LIT_WING_ABOVE_K
+            val invRad = -rotation * (PI.toFloat() / 180f)
+            val cosInv = cos(invRad)
+            val sinInv = sin(invRad)
+            val dxLit = worldLitCx - pivotX
+            val dyLit = worldLitCy   // pivotY is 0
+            val localLitCx = pivotX + dxLit * cosInv - dyLit * sinInv
+            val localLitCy = dxLit * sinInv + dyLit * cosInv
             val litPath = Path().apply {
-                addOval(Rect(
-                    centerX + shadowDx - litR,
-                    centerY - r * SHADOW_LIT_WING_ABOVE_K - litR,
-                    centerX + shadowDx + litR,
-                    centerY - r * SHADOW_LIT_WING_ABOVE_K + litR
-                ))
+                addOval(Rect(localLitCx - litR, localLitCy - litR, localLitCx + litR, localLitCy + litR))
             }
             withTransform({ clipPath(litPath, ClipOp.Difference) }) {
                 drawRect(
