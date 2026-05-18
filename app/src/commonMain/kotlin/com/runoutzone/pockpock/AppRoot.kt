@@ -1,14 +1,21 @@
 package com.runoutzone.pockpock
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -16,6 +23,7 @@ import enums.GameState
 import gameobjects.BotConfig
 import gameobjects.Settings
 import gameobjects.puckstyle.skins.PokPokSkinPainters
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
 import utility.Drawing
@@ -24,6 +32,7 @@ import utility.Logic
 import utility.PaintBucket
 import utility.Sounds
 import utility.Storage
+import utility.edgeSwipeBack
 
 /** Provides the current dark-mode flag to any composable in the tree. */
 val LocalDarkMode = compositionLocalOf { false }
@@ -64,17 +73,23 @@ fun AppRoot() {
                 IosGameHost(onBack = { navController.popBackStack() })
             }
             composable(Screen.Settings.name) {
-                SettingsScreen(
-                    onBack = { navController.popBackStack() },
-                    onDarkModeChanged = { darkMode = it },
-                    onScoreCalibrationTapped = { navController.navigate(Screen.ScoreCalibration.name) }
-                )
+                Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStack() }) {
+                    SettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        onDarkModeChanged = { darkMode = it },
+                        onScoreCalibrationTapped = { navController.navigate(Screen.ScoreCalibration.name) }
+                    )
+                }
             }
             composable(Screen.ScoreCalibration.name) {
-                ScoreCalibrationScreen(onBack = { navController.popBackStack() })
+                Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStack() }) {
+                    ScoreCalibrationScreen(onBack = { navController.popBackStack() })
+                }
             }
             composable(Screen.BallUnlock.name) {
-                BallUnlockScreen(onBack = { navController.popBackStack() })
+                Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStack() }) {
+                    BallUnlockScreen(onBack = { navController.popBackStack() })
+                }
             }
         }
 
@@ -117,6 +132,15 @@ fun AppRoot() {
 private fun IosGameHost(onBack: () -> Unit) {
     val tickState = remember { mutableIntStateOf(0) }
     var initialized by remember { mutableStateOf(false) }
+    var backWarnShown by remember { mutableStateOf(false) }
+    val swipeAgainText = stringResource(Res.string.swipe_again_to_exit)
+
+    LaunchedEffect(backWarnShown) {
+        if (backWarnShown) {
+            delay(3000)
+            backWarnShown = false
+        }
+    }
 
     val gameLoop = remember {
         GameLoop(
@@ -164,7 +188,13 @@ private fun IosGameHost(onBack: () -> Unit) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().edgeSwipeBack {
+        if (backWarnShown) {
+            onBack()
+        } else {
+            backWarnShown = true
+        }
+    }) {
         GameScreen(
             gameLoopTick = tickState,
             onSizeKnown = { w, h ->
@@ -189,5 +219,22 @@ private fun IosGameHost(onBack: () -> Unit) {
                 }
             }
         )
+
+        if (backWarnShown) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = swipeAgainText,
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 22.dp, vertical = 10.dp),
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }

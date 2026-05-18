@@ -55,7 +55,7 @@ fun BallUnlockScreen(onBack: () -> Unit) {
     val textPrimary = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
     val dividerColor = if (isDark) PaintBucket.dividerDark else PaintBucket.dividerLight
 
-    val displayTypes = remember { BallType.entries.filter { it != BallType.Random } }
+    val displayTypes = remember { BallType.entries.toList() }
     val count = displayTypes.size
     val textMeasurer = rememberTextMeasurer()
 
