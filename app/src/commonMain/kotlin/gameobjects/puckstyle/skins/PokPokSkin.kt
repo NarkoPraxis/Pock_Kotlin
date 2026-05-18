@@ -545,11 +545,11 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             PokPokAnim.Chatter     -> drawOpenEyesSvgPart(1f, 1f)
             PokPokAnim.AlmostHit   -> {
                 val t = easeIn(animFrame.toFloat(), 8f)
-                currentEyeScaleX = lerp(1f, 0.75f, t)
-                currentEyeScaleY = lerp(1f, 1.35f, t)
+                currentEyeScaleX = lerp(1f, 0.8f, t)
+                currentEyeScaleY = lerp(1f, 1.3f, t)
                 drawOpenEyesSvgPart(currentEyeScaleX, currentEyeScaleY)
             }
-            PokPokAnim.JustHit     -> drawWinceEyes()
+            PokPokAnim.JustHit     -> drawOpenEyesSvgPart(1f, 1f)
             PokPokAnim.Celebration -> {
                 val t = easeIn(animFrame.toFloat(), 8f)
                 currentEyeScaleX = lerp(1f, 1.3f, t)
@@ -570,7 +570,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     private fun DrawScope.drawEyesPupilsLayer() {
         val showPupils = when (currentAnim) {
-            PokPokAnim.JustHit, PokPokAnim.Yawn -> false
+            PokPokAnim.JustHit, PokPokAnim.Yawn -> true
             PokPokAnim.Default -> eyeOpen
             else -> true
         }
@@ -615,7 +615,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val w = r * EYES_WORLD_W_K
         val h = r * EYES_WORLD_H_K
         val cy = r * EYES_OFFSET_Y_K
-        drawSvgPart(painter, 0f, cy, w, h, tint = Color(frameColors.secondary))
+        drawSvgPart(painter, 0f, cy, w, h, tint = Color(frameColors.primary))
     }
 
     private fun DrawScope.drawWinceEyes() {
@@ -643,9 +643,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     private fun DrawScope.drawMouthChatter() {
         if ((animFrame / 5) % 2 == 0) {
-            val painter = PokPokSkinPainters.mouthOpen ?: return
-            drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, r * MOUTH_W_K, r * MOUTH_H_K,
-                tint = Color(frameColors.primary))
+            drawMouthOpen(r * MOUTH_W_K, r * MOUTH_H_K)
         } else {
             drawMouthClosed()
         }
@@ -655,19 +653,18 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val painter = PokPokSkinPainters.mouthClosed ?: return
         val w = r * MOUTH_CLOSED_W_K
         val h = r * MOUTH_CLOSED_H_K
+
         drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h,
             tint = Color(frameColors.primary))
     }
 
     private fun DrawScope.drawMouthGape(yawn: Boolean = false) {
-        val painter = PokPokSkinPainters.mouthOpen ?: return
         val lf = (animFrame - DELAY_MOUTH).coerceAtLeast(0)
         val gapeT = easeIn(lf.toFloat(), if (yawn) 15f else 5f)
         val growth = if (yawn) 1.45f else 1.15f
         val w = r * MOUTH_W_K * lerp(1f, growth, gapeT)
         val h = r * MOUTH_H_K * lerp(1f, growth, gapeT)
-        drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, r * MOUTH_W_K, r * MOUTH_W_K,
-            tint = Color(frameColors.primary))
+        drawMouthOpen(w, h)
     }
 
     private fun DrawScope.drawMouthGrimace() {
@@ -677,6 +674,19 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val h = r * MOUTH_CLOSED_H_K * lerp(1f, 1.2f, t)
         drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h,
             tint = Color(frameColors.primary))
+    }
+
+    // Open-mouth render: bottom + top = primary, middle = secondary.
+    // All three parts share the same position/size so they compose as one drawing.
+    private fun DrawScope.drawMouthOpen(w: Float, h: Float) {
+        val bottom = PokPokSkinPainters.mouthBottom ?: return
+        val middle = PokPokSkinPainters.mouthMiddle ?: return
+        val top    = PokPokSkinPainters.mouthTop    ?: return
+        val cy = r * MOUTH_OFFSET_Y_K
+
+        drawSvgPart(bottom, 0f, cy, w, h, tint = Color(frameColors.primary))
+        drawSvgPart(middle, 0f, cy, w, h, tint = Color(frameColors.secondary))
+        drawSvgPart(top,    0f, cy, w, h, tint = Color(frameColors.primary))
     }
 
     // ── painter helpers ────────────────────────────────────────────────────────

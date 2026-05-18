@@ -10,8 +10,10 @@ import pock_kotlin.app.generated.resources.PokPok_Parts_Eyes_Opened
 import pock_kotlin.app.generated.resources.PokPok_Parts_HeadFeather_Left
 import pock_kotlin.app.generated.resources.PokPok_Parts_HeadFeather_Middle
 import pock_kotlin.app.generated.resources.PokPok_Parts_HeadFeather_Right
+import pock_kotlin.app.generated.resources.PokPok_Parts_Mouth_Top
 import pock_kotlin.app.generated.resources.PokPok_Parts_Mouth_Closed
-import pock_kotlin.app.generated.resources.PokPok_Parts_Mouth_Open
+import pock_kotlin.app.generated.resources.PokPok_Parts_Mouth_Middle
+import pock_kotlin.app.generated.resources.PokPok_Parts_Mouth_Bottom
 import pock_kotlin.app.generated.resources.PokPok_Parts_Wing_Left
 import pock_kotlin.app.generated.resources.PokPok_Parts_Wing_Right
 
@@ -31,7 +33,9 @@ object PokPokSkinPainters {
     var body: Painter? = null
     var eyesOpen: Painter? = null
     var eyesClosed: Painter? = null
-    var mouthOpen: Painter? = null
+    var mouthBottom: Painter? = null
+    var mouthMiddle: Painter? = null
+    var mouthTop: Painter? = null
     var mouthClosed: Painter? = null
     var wingLeft: Painter? = null
     var wingRight: Painter? = null
@@ -41,15 +45,17 @@ object PokPokSkinPainters {
 
     @Composable
     fun load() {
-        body          = painterResource(Res.drawable.PokPok_Parts_Body)
-        eyesOpen      = painterResource(Res.drawable.PokPok_Parts_Eyes_Opened)
-        eyesClosed    = painterResource(Res.drawable.PokPok_Parts_Eyes_Closed)
-        mouthOpen     = painterResource(Res.drawable.PokPok_Parts_Mouth_Open)
-        mouthClosed   = painterResource(Res.drawable.PokPok_Parts_Mouth_Closed)
-        wingLeft      = painterResource(Res.drawable.PokPok_Parts_Wing_Left)
-        wingRight     = painterResource(Res.drawable.PokPok_Parts_Wing_Right)
-        featherLeft   = painterResource(Res.drawable.PokPok_Parts_HeadFeather_Left)
+        body         = painterResource(Res.drawable.PokPok_Parts_Body)
+        eyesOpen     = painterResource(Res.drawable.PokPok_Parts_Eyes_Opened)
+        eyesClosed   = painterResource(Res.drawable.PokPok_Parts_Eyes_Closed)
+        mouthBottom  = painterResource(Res.drawable.PokPok_Parts_Mouth_Bottom)
+        mouthMiddle  = painterResource(Res.drawable.PokPok_Parts_Mouth_Middle)
+        mouthTop     = painterResource(Res.drawable.PokPok_Parts_Mouth_Top)
+        mouthClosed  = painterResource(Res.drawable.PokPok_Parts_Mouth_Closed)
+        wingLeft     = painterResource(Res.drawable.PokPok_Parts_Wing_Left)
+        wingRight    = painterResource(Res.drawable.PokPok_Parts_Wing_Right)
+        featherLeft  = painterResource(Res.drawable.PokPok_Parts_HeadFeather_Left)
         featherMiddle = painterResource(Res.drawable.PokPok_Parts_HeadFeather_Middle)
-        featherRight  = painterResource(Res.drawable.PokPok_Parts_HeadFeather_Right)
+        featherRight = painterResource(Res.drawable.PokPok_Parts_HeadFeather_Right)
     }
 }
