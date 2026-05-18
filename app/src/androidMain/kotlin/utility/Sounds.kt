@@ -37,6 +37,8 @@ actual object Sounds {
     private enum class AmbienceMode { MENU, GAME }
     private var ambienceMode: AmbienceMode? = null
     private var audioFocusRequest: AudioFocusRequest? = null
+    private var adMuted = false
+    private var sfxPaused = false
 
     private const val CROSSFADE_MS = 3000L
     private const val STEP_MS = 16L
@@ -88,65 +90,56 @@ actual object Sounds {
         try { secondaryPlayer?.setVolume(vol, vol) } catch (e: Exception) {}
     }
 
+    // SoundPool.autoPause() only freezes already-playing streams; new play() calls bypass it.
+    // This guard ensures no new SFX fire while the app is paused or an ad is showing.
+    private fun playSfx(soundId: Int, vol: Float, rate: Float) {
+        if (sfxPaused) return
+        soundPool.play(soundId, vol, vol, 1, 0, rate)
+    }
+
     actual fun playHighPlayerSound(x: Float) {
-        soundPool.play(highPlayerSoundId, effectiveSfxVol, effectiveSfxVol, 1, 0, SoundSpatializer.getXRate(x))
+        playSfx(highPlayerSoundId, effectiveSfxVol, SoundSpatializer.getXRate(x))
     }
 
     actual fun playLowPlayerSound(x: Float) {
-        soundPool.play(lowPlayerSoundId, effectiveSfxVol, effectiveSfxVol, 1, 0, SoundSpatializer.getXRate(x))
+        playSfx(lowPlayerSoundId, effectiveSfxVol, SoundSpatializer.getXRate(x))
     }
 
     actual fun playLowPlayerSweetSpotSound(x: Float) {
-        soundPool.play(sweetSpotSoundId, effectiveSfxVol * .9f, effectiveSfxVol * .9f, 1, 0, SoundSpatializer.rates[2])
+        playSfx(sweetSpotSoundId, effectiveSfxVol * .9f, SoundSpatializer.rates[2])
     }
 
     actual fun playHighPlayerSweetSpotSound(y: Float) {
-        soundPool.play(sweetSpotSoundId, effectiveSfxVol * .9f, effectiveSfxVol * .9f, 1, 0, SoundSpatializer.rates[0])
+        playSfx(sweetSpotSoundId, effectiveSfxVol * .9f, SoundSpatializer.rates[0])
     }
 
     actual fun playGameStart() {
-        //soundPool.play(gameStartSoundId, effectiveSfxVol, effectiveSfxVol, 1, 0, SoundSpatializer.getYRate(Settings.middleY))
+        //playSfx(gameStartSoundId, effectiveSfxVol, SoundSpatializer.getYRate(Settings.middleY))
     }
 
-    actual fun playWallSound(y: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(wallSoundId, v, v, 1, 0, SoundSpatializer.getYRate(y))
-    }
+    actual fun playWallSound(y: Float) =
+        playSfx(wallSoundId, effectiveSfxVol, SoundSpatializer.getYRate(y))
 
-    actual fun playGoalSound(y: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(goalSoundId, v, v, 1, 0, SoundSpatializer.getYRate(y))
-    }
+    actual fun playGoalSound(y: Float) =
+        playSfx(goalSoundId, effectiveSfxVol, SoundSpatializer.getYRate(y))
 
-    actual fun playScoreSound(y: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(scoreId, v, v, 1, 0, SoundSpatializer.getYRate(y))
-    }
+    actual fun playScoreSound(y: Float) =
+        playSfx(scoreId, effectiveSfxVol, SoundSpatializer.getYRate(y))
 
-    actual fun playChargeCollision(x: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(chargeCollisionId, v, v, 1, 0, SoundSpatializer.getXRate(x))
-    }
+    actual fun playChargeCollision(x: Float) =
+        playSfx(chargeCollisionId, effectiveSfxVol, SoundSpatializer.getXRate(x))
 
-    actual fun playDoubleChargeCollision(x: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(twoChargeCollisionId, v, v, 1, 0, SoundSpatializer.getXRate(x))
-    }
+    actual fun playDoubleChargeCollision(x: Float) =
+        playSfx(twoChargeCollisionId, effectiveSfxVol, SoundSpatializer.getXRate(x))
 
-    actual fun playChargeBlastOff(x: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(chargeBlastoffId, v, v, 1, 0, SoundSpatializer.getXRate(x))
-    }
+    actual fun playChargeBlastOff(x: Float) =
+        playSfx(chargeBlastoffId, effectiveSfxVol, SoundSpatializer.getXRate(x))
 
-    actual fun playTeleportStart(y: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(teleportId, v, v, 1, 0, SoundSpatializer.getYRate(y))
-    }
+    actual fun playTeleportStart(y: Float) =
+        playSfx(teleportId, effectiveSfxVol, SoundSpatializer.getYRate(y))
 
-    actual fun playTeleportFinish(x: Float) {
-        val v = effectiveSfxVol
-        soundPool.play(teleportId, v, v, 1, 0, SoundSpatializer.getXRate(x))
-    }
+    actual fun playTeleportFinish(x: Float) =
+        playSfx(teleportId, effectiveSfxVol, SoundSpatializer.getXRate(x))
 
     actual fun playGameAmbiance() {
         if (ambienceMode == AmbienceMode.GAME) return
@@ -157,6 +150,7 @@ actual object Sounds {
     actual fun playMenuAmbiance() {
         if (ambienceMode == AmbienceMode.MENU) {
             try { if (primaryPlayer?.isPlaying == false) primaryPlayer?.start() } catch (e: Exception) { }
+            if (scheduleRunnable == null && fadeRunnable == null) scheduleNextCrossfade()
             return
         }
         ambienceMode = AmbienceMode.MENU
@@ -164,6 +158,7 @@ actual object Sounds {
     }
 
     actual fun pauseAll() {
+        sfxPaused = true
         soundPool.autoPause()
         if (fadeRunnable != null) {
             fadePauseOffset += System.currentTimeMillis() - fadeStartTime
@@ -174,6 +169,8 @@ actual object Sounds {
     }
 
     actual fun resumeAll() {
+        if (adMuted) return
+        sfxPaused = false
         soundPool.autoResume()
         val pri = primaryPlayer ?: return
         val sec = secondaryPlayer
@@ -188,16 +185,29 @@ actual object Sounds {
     }
 
     actual fun autoPauseSfx() {
+        sfxPaused = true
         soundPool.autoPause()
     }
 
     actual fun autoResumeSfx() {
+        sfxPaused = false
         soundPool.autoResume()
     }
 
-    actual fun playWeHaveAWinner() {
-        val v = effectiveSfxVol
-        soundPool.play(weHaveAWinnerId, v, v, 1, 0, 1f)
+    actual fun playWeHaveAWinner() =
+        playSfx(weHaveAWinnerId, effectiveSfxVol, 1f)
+
+    actual fun muteForAd() {
+        adMuted = true
+        sfxPaused = true
+        pauseAll()
+    }
+
+    actual fun unmuteForAd() {
+        adMuted = false
+        sfxPaused = false
+        resumeAll()
+        playMenuAmbiance()
     }
 
     actual fun abandonAudioFocus() {

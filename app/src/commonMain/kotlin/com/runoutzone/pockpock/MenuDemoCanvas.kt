@@ -38,6 +38,7 @@ fun MenuDemoCanvas() {
         GameLoop(
             intervalMs = { Settings.refreshRate.toLong() },
             onTick = {
+                if (Settings.adIsPlaying) return@GameLoop
                 // Guard with isDemoMode only — isInitialized is intentionally not checked here
                 // because IosGameHost.onDispose (which resets it) can fire after our onSizeChanged
                 // due to Compose's compose-before-dispose ordering.

@@ -48,6 +48,7 @@ import pock_kotlin.app.generated.resources.*
 import utility.PaintBucket
 import utility.PurchaseManager
 import utility.ShareHelper
+import utility.Sounds
 import utility.Storage
 
 @Composable
@@ -102,7 +103,13 @@ actual fun PlatformMenuExtras() {
                 onClick = {
                     val ad = rewardedAd ?: return@Button
                     ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                        override fun onAdShowedFullScreenContent() {
+                            Settings.adIsPlaying = true
+                            Sounds.muteForAd()
+                        }
                         override fun onAdDismissedFullScreenContent() {
+                            Settings.adIsPlaying = false
+                            Sounds.unmuteForAd()
                             rewardedAd = null
                             if (Storage.canWatchAdNow()) {
                                 loadRewardedAd(activity) { newAd -> rewardedAd = newAd }
@@ -236,7 +243,13 @@ actual fun PlatformBallUnlockBottom() {
             onClick = {
                 val ad = rewardedAd ?: return@Button
                 ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                    override fun onAdShowedFullScreenContent() {
+                        Settings.adIsPlaying = true
+                        Sounds.muteForAd()
+                    }
                     override fun onAdDismissedFullScreenContent() {
+                        Settings.adIsPlaying = false
+                        Sounds.unmuteForAd()
                         rewardedAd = null
                         if (canLoadAdNow()) loadRewardedAd(activity) { newAd -> rewardedAd = newAd }
                     }

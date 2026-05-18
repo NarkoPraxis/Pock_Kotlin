@@ -25,4 +25,6 @@ expect object Sounds {
     fun applyBackgroundVolume()
     fun playWeHaveAWinner()
     fun abandonAudioFocus()
+    fun muteForAd()
+    fun unmuteForAd()
 }
