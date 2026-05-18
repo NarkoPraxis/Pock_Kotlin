@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorGroup
+import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import utility.PaintBucket
@@ -182,10 +183,10 @@ class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
             wx = threatX - renderer.x
             wy = threatY - renderer.y
         } else {
-            val paddle = renderer.effect as? ChickenLaunch
+            val paddle = renderer.effect as? PaddleLaunchEffect
             if (paddle != null) {
-                wx = paddle.exposedPaddleX - renderer.x
-                wy = paddle.exposedPaddleY - renderer.y
+                wx = paddle.paddleX - renderer.x
+                wy = paddle.paddleY - renderer.y
             } else {
                 wx = 0f; wy = r
             }

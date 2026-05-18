@@ -60,8 +60,7 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
     }
 
-    val exposedPaddleX: Float get() = paddleX
-    val exposedPaddleY: Float get() = paddleY
+
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
         Effects.addPersistentEffect(ChickenPersistentEffect(EggSplat(rx, ry, renderer.radius, theme)))

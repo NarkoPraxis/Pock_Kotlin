@@ -19,7 +19,7 @@ import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
-import gameobjects.puckstyle.paddles.ChickenLaunch
+import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.paddles.ChickenLaunch.Companion.spawnFeatherExplosion
 import physics.Point
 import utility.Effects
@@ -153,7 +153,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val SHADOW_LIT_WING_R_MIN   = 0.8f // lit oval min radius for wings (r units); grows 2× toward side
     private val SHADOW_LIT_WING_ABOVE_K = 0.55f // oval centre above wing centre (r units)
     private val SHADOW_FEATHER_LIT_R    = 0.65f // radius of fixed lit zone above ball for feathers (r units)
-    private val SHADOW_ALPHA            = 0.25f  // shadow darkness 0–1; tweak for intensity
+    private val SHADOW_ALPHA            = 0.244f // V-matched to #2e89b7 shadow vs #52b6f2 body: 1 - (183/242)
 
     // ── animation state machine ────────────────────────────────────────────────
     private enum class PokPokAnim { Default, AlmostHit, JustHit, Celebration, Chatter, Yawn }
@@ -343,10 +343,10 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             wx = threatX - renderer.x
             wy = threatY - renderer.y
         } else {
-            val paddle = renderer.effect as? ChickenLaunch
+            val paddle = renderer.effect as? PaddleLaunchEffect
             if (paddle != null) {
-                wx = paddle.exposedPaddleX - renderer.x
-                wy = paddle.exposedPaddleY - renderer.y
+                wx = paddle.paddleX - renderer.x
+                wy = paddle.paddleY - renderer.y
             } else {
                 wx = 0f; wy = renderer.radius
             }
