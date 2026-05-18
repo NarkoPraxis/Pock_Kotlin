@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PokPok left wing — converted from PokPok_Parts_Wing_Left.svg.
+    viewBox 0 0 28.9 28.9. Single light-blue eye-leaf shape (up-right diagonal).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28.9dp"
+    android:height="28.9dp"
+    android:viewportWidth="28.9"
+    android:viewportHeight="28.9">
+
+    <path
+        android:fillColor="#52b6f2"
+        android:pathData="M28.23,28.23s-13.91,3.39 -22.43,-5.14C-2.72,14.57 0.66,0.66 0.66,0.66c0,0 13.91,-3.39 22.43,5.14c8.52,8.52 5.14,22.43 5.14,22.43Z" />
+</vector>

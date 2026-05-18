@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PokPok closed mouth — converted from PokPok_Parts_Mouth_Closed.svg.
+    viewBox 0 0 24.23 32.08. Single light-blue teardrop path.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24.23dp"
+    android:height="32.08dp"
+    android:viewportWidth="24.23"
+    android:viewportHeight="32.08">
+
+    <path
+        android:fillColor="#9dd3f5"
+        android:pathData="M12.11,0c8.28,0 12.11,5.67 12.11,13.61c0,7.94 -12.11,18.47 -12.11,18.47C12.11,32.08 0,21.55 0,13.61C0,5.67 3.84,0 12.11,0Z" />
+</vector>

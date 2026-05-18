@@ -3,6 +3,7 @@ package enums
 enum class BallType {
     Classic,
     Chicken,
+    PokPok,
     Neon,
     Ghost,
     Fire,

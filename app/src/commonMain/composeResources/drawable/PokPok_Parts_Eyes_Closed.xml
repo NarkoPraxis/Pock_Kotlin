@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PokPok closed eyes — converted from PokPok_Parts_Eyes_Closed.svg.
+    viewBox 0 0 83.23 42.98.
+
+    Layering matches the SVG paint order:
+      1. White peanut-shaped eye background.
+      2. Inside a clip of that same shape (clipPath#clippath in the SVG):
+           - Two black "smile lash" paths.
+           - A #0b83ad rect that covers everything above y≈38.26, leaving only
+             the bottom strip of the black smiles visible (the closed-eye look).
+    Rect <-11.36,-4.92> 102.17×43.18 expressed as a path.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="83.23dp"
+    android:height="42.98dp"
+    android:viewportWidth="83.23"
+    android:viewportHeight="42.98">
+
+    <!-- Eye whites -->
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M63.49,0.07c-6.45,-0.51 -12.35,1.83 -16.6,5.88c-2.96,2.83 -7.6,2.83 -10.56,0C32.09,1.89 26.18,-0.44 19.74,0.07C9.24,0.9 0.79,9.44 0.05,19.95c-0.88,12.57 9.06,23.03 21.44,23.03c5.77,0 11.01,-2.28 14.88,-5.98c2.93,-2.81 7.56,-2.81 10.5,0c3.86,3.71 9.1,5.98 14.88,5.98c12.38,0 22.31,-10.47 21.44,-23.03C82.44,9.44 73.99,0.9 63.49,0.07Z" />
+
+    <group>
+        <clip-path
+            android:pathData="M63.49,0.07c-6.45,-0.51 -12.35,1.83 -16.6,5.88c-2.96,2.83 -7.6,2.83 -10.56,0C32.09,1.89 26.18,-0.44 19.74,0.07C9.24,0.9 0.79,9.44 0.05,19.95c-0.88,12.57 9.06,23.03 21.44,23.03c5.77,0 11.01,-2.28 14.88,-5.98c2.93,-2.81 7.56,-2.81 10.5,0c3.86,3.71 9.1,5.98 14.88,5.98c12.38,0 22.31,-10.47 21.44,-23.03C82.44,9.44 73.99,0.9 63.49,0.07Z" />
+
+        <!-- Right smile lash -->
+        <path
+            android:fillColor="#000000"
+            android:pathData="M59.44,30.52c0.09,0.38 0.16,0.77 0.16,1.17c0,2.73 -2.21,4.93 -4.93,4.93s-4.93,-2.21 -4.93,-4.93c0,-0.41 0.06,-0.79 0.16,-1.17c-2.44,1.57 -4.07,4.31 -4.07,7.44c0,4.89 3.96,8.85 8.85,8.85s8.85,-3.96 8.85,-8.85c0,-3.12 -1.62,-5.86 -4.07,-7.44Z" />
+
+        <!-- Left smile lash -->
+        <path
+            android:fillColor="#000000"
+            android:pathData="M32.39,30.52c0.09,0.38 0.16,0.77 0.16,1.17c0,2.73 -2.21,4.93 -4.93,4.93s-4.93,-2.21 -4.93,-4.93c0,-0.41 0.06,-0.79 0.16,-1.17c-2.44,1.57 -4.07,4.31 -4.07,7.44c0,4.89 3.96,8.85 8.85,8.85s8.85,-3.96 8.85,-8.85c0,-3.12 -1.62,-5.86 -4.07,-7.44Z" />
+
+        <!-- Upper eyelid band (rect) -->
+        <path
+            android:fillColor="#0b83ad"
+            android:pathData="M-11.36,-4.92h102.17v43.18h-102.17z" />
+    </group>
+</vector>
