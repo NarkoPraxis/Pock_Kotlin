@@ -4,9 +4,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -139,10 +141,18 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val BLINK_DURATION = 4
 
     // ── directional shadow ─────────────────────────────────────────────────────
-    private var shadowDx = 0f
-    private var shadowDy = 0f
-    private val SHADOW_TRAVEL_K = 0.55f  // max shadow shift as fraction of r; tweak for drama
-    private val SHADOW_ALPHA    = 0.40f  // shadow darkness 0–1; tweak for intensity
+    private var shadowDx = 0f               // smoothed lateral crescent shift; follows look direction
+    private val SHADOW_LATERAL_K       = 0.50f // left/right shift of lit window with look direction
+    // Lit-window approach: full shadow covers the part; a moving oval exempts the lit zone.
+    // Oval is bigger than the part and sits above centre so the shadow crescent falls at the bottom.
+    // ABOVE_K moves the oval centre upward (negative Y). Larger ABOVE_K = thinner bottom crescent.
+    // LIT_R controls size: must be > part radius at centre or the whole part is always in shadow.
+    private val SHADOW_LIT_BODY_R       = 1.20f // lit oval radius for body (r; > 1.0 = larger than body)
+    private val SHADOW_LIT_BODY_ABOVE_K = 0.30f // oval centre above ball centre (r units)
+    private val SHADOW_LIT_WING_R       = 0.55f // lit oval radius for wings (r units)
+    private val SHADOW_LIT_WING_ABOVE_K = 0.25f // oval centre above wing centre (r units)
+    private val SHADOW_FEATHER_LIT_R    = 0.55f // radius of fixed lit zone above ball for feathers (r units)
+    private val SHADOW_ALPHA            = 0.25f  // shadow darkness 0–1; tweak for intensity
 
     // ── animation state machine ────────────────────────────────────────────────
     private enum class PokPokAnim { Default, AlmostHit, JustHit, Celebration, Taunt, Yawn }
@@ -260,22 +270,39 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         if (renderer.isHigh) canvas.scale(-1f, -1f)
 
         r = cachedRadius
-        // Shadow direction is opposite to the look target (light source = paddle side).
-        val targetShadowDx = -irisOffX * r * SHADOW_TRAVEL_K
-        val targetShadowDy = -irisOffY * r * SHADOW_TRAVEL_K * 0.35f
-        shadowDx = lerp(shadowDx, targetShadowDx, 0.12f)
-        shadowDy = lerp(shadowDy, targetShadowDy, 0.12f)
+        // Lateral shift: shadow crescent leans in the same direction the bird looks.
+        shadowDx = lerp(shadowDx, irisOffX * r * SHADOW_LATERAL_K, 0.12f)
 
         // Z-order: wings → body → feathers → [face group: eyes + mouth]
         drawWingsForState()
         drawBodyLayer()
-        // Feather group orbits ball centre (featherOrbitAngle) AND each feather counter-rotates (featherFollowAngle).
+        // Feather group: saveLayer wraps the rotating feathers AND the fixed lit-circle mask so the
+        // shadow boundary stays anchored to ball-centre space while feathers orbit through it.
+        // Bounds wide enough for feathers at max orbit (20°) plus individual counter-rotation (40°).
+        val fBounds = Rect(-r * 1.4f, -r * 2.0f, r * 1.4f, -r * 0.6f)
+        drawContext.canvas.saveLayer(fBounds, Paint())
         withTransform({ rotate(featherOrbitAngle, pivot = Offset.Zero) }) {
-            val fBounds = Rect(-r * 0.85f, -r * 1.85f, r * 0.85f, -r * 0.65f)
-            drawGroupWithBlendShadow(fBounds, shadowDx * 0.8f, r * FEATHER_MID_CY_K + shadowDy * 0.4f, r * 0.8f, SHADOW_ALPHA * 0.85f) {
-                drawFeathersForState()
-            }
+            drawFeathersForState()
         }
+        // Lit zone: circle directly above ball centre.  Feathers inside it are unaffected;
+        // pixels outside it (sides) get the shadow overlay via SrcAtop.
+        val litPath = Path().apply {
+            addOval(Rect(
+                -r * SHADOW_FEATHER_LIT_R,
+                r * FEATHER_MID_CY_K - r * SHADOW_FEATHER_LIT_R,
+                r * SHADOW_FEATHER_LIT_R,
+                r * FEATHER_MID_CY_K + r * SHADOW_FEATHER_LIT_R
+            ))
+        }
+        withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+            drawRect(
+                color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                topLeft = Offset(-r * 1.4f, -r * 2.0f),
+                size = Size(r * 2.8f, r * 1.4f),
+                blendMode = BlendMode.SrcAtop
+            )
+        }
+        drawContext.canvas.restore()
         withTransform({ translate(faceOffX, faceOffY) }) {
             drawEyesForState()
 
@@ -322,14 +349,33 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val body = PokPokSkinPainters.body
         val secondary = Color(frameColors.secondary)
         val bounds = Rect(-r * 1.2f, -r * 1.2f, r * 1.2f, r * 1.2f)
-        drawGroupWithBlendShadow(bounds, shadowDx, shadowDy, r * 1.15f) {
-            if (body != null) {
-                val w = r * BODY_WORLD_DIAM_K
-                drawSvgPart(body, 0f, 0f, w, w, tint = secondary)
-            } else {
-                drawCircle(secondary, r, Offset.Zero)
-            }
+        drawContext.canvas.saveLayer(bounds, Paint())
+        if (body != null) {
+            val w = r * BODY_WORLD_DIAM_K
+            drawSvgPart(body, 0f, 0f, w, w, tint = secondary)
+        } else {
+            drawCircle(secondary, r, Offset.Zero)
         }
+        // Lit window: larger than body, above centre, moves left/right with look direction.
+        // Shadow fills everything OUTSIDE this window (SrcAtop clips to body pixels).
+        val litR = r * SHADOW_LIT_BODY_R
+        val litPath = Path().apply {
+            addOval(Rect(
+                shadowDx - litR,
+                -r * SHADOW_LIT_BODY_ABOVE_K - litR,
+                shadowDx + litR,
+                -r * SHADOW_LIT_BODY_ABOVE_K + litR
+            ))
+        }
+        withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+            drawRect(
+                color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                topLeft = Offset(-r * 1.2f, -r * 1.2f),
+                size = Size(r * 2.4f, r * 2.4f),
+                blendMode = BlendMode.SrcOver
+            )
+        }
+        drawContext.canvas.restore()
     }
 
     // ── wings ──────────────────────────────────────────────────────────────────
@@ -372,10 +418,28 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         }) {
             val wBounds = Rect(centerX - w - r * 0.15f, centerY - h - r * 0.15f,
                                centerX + w + r * 0.15f, centerY + h + r * 0.15f)
-            drawGroupWithBlendShadow(wBounds, centerX + shadowDx, centerY + shadowDy, r * WING_W_K * 1.2f) {
-                drawSvgPart(painter, centerX, centerY, w, h, scaleX = perspScale, scaleY = perspScale,
-                    tint = Color(frameColors.secondary))
+            drawContext.canvas.saveLayer(wBounds, Paint())
+            drawSvgPart(painter, centerX, centerY, w, h, scaleX = perspScale, scaleY = perspScale,
+                tint = Color(frameColors.secondary))
+            // Lit window: larger than wing, above wing centre, moves with look direction.
+            val litR = r * SHADOW_LIT_WING_R
+            val litPath = Path().apply {
+                addOval(Rect(
+                    centerX + shadowDx - litR,
+                    centerY - r * SHADOW_LIT_WING_ABOVE_K - litR,
+                    centerX + shadowDx + litR,
+                    centerY - r * SHADOW_LIT_WING_ABOVE_K + litR
+                ))
             }
+            withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+                drawRect(
+                    color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                    topLeft = Offset(centerX - w - r * 0.15f, centerY - h - r * 0.15f),
+                    size = Size(w * 2f + r * 0.3f, h * 2f + r * 0.3f),
+                    blendMode = BlendMode.SrcOver
+                )
+            }
+            drawContext.canvas.restore()
         }
     }
 
@@ -602,35 +666,6 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val h = r * MOUTH_CLOSED_H_K * lerp(1f, 1.2f, t)
         drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h,
             tint = Color(frameColors.primary))
-    }
-
-    // ── shadow helper ──────────────────────────────────────────────────────────
-
-    /**
-     * Opens an offscreen compositing layer, calls [draw], then overlays a solid dark circle
-     * using [BlendMode.SrcAtop] so the shadow only appears over already-drawn pixels — giving
-     * a crisp crescent edge that perfectly follows the part's silhouette.
-     *
-     * [shadowCx]/[shadowCy] is the shadow circle centre in the current canvas space.
-     * Shift it opposite the look direction so the dark crescent falls on the unlit side.
-     */
-    private fun DrawScope.drawGroupWithBlendShadow(
-        bounds: Rect,
-        shadowCx: Float,
-        shadowCy: Float,
-        shadowR: Float,
-        alpha: Float = SHADOW_ALPHA,
-        draw: DrawScope.() -> Unit
-    ) {
-        drawContext.canvas.saveLayer(bounds, Paint())
-        draw()
-        drawCircle(
-            color = Color(0f, 0f, 0f, alpha),
-            radius = shadowR,
-            center = Offset(shadowCx, shadowCy),
-            blendMode = BlendMode.SrcAtop
-        )
-        drawContext.canvas.restore()
     }
 
     // ── painter helpers ────────────────────────────────────────────────────────
