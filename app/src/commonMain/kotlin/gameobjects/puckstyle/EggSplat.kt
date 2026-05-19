@@ -1,8 +1,12 @@
 package gameobjects.puckstyle
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Matrix
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
 import kotlin.math.PI
@@ -21,6 +25,13 @@ class EggSplat(
 
     private data class Blob(val dx: Float, val dy: Float, val rx: Float, val ry: Float, val rot: Float)
     private val blobs: List<Blob>
+    private val whitePath: Path
+
+    private val yolkDx: Float
+    private val yolkDy: Float
+    private val yolkRx: Float
+    private val yolkRy: Float
+    private val yolkRot: Float
 
     init {
         blobs = List(3) { i ->
@@ -34,6 +45,31 @@ class EggSplat(
                 rot = Random.nextFloat() * 180f
             )
         }
+
+        whitePath = Path()
+        for ((i, blob) in blobs.withIndex()) {
+            val temp = Path().apply {
+                addOval(Rect(-blob.rx, -blob.ry, blob.rx, blob.ry))
+            }
+            val m = Matrix().apply {
+                rotateZ(blob.rot)
+            }
+            temp.transform(m)
+            temp.translate(Offset(cx + blob.dx, cy + blob.dy))
+            if (i == 0) {
+                whitePath.addPath(temp)
+            } else {
+                whitePath.op(whitePath, temp, PathOperation.Union)
+            }
+        }
+
+        val baseR = radius * 0.61f
+        val offsetMax = baseR * 0.18f
+        yolkDx = (Random.nextFloat() * 2f - 1f) * offsetMax
+        yolkDy = (Random.nextFloat() * 2f - 1f) * offsetMax
+        yolkRx = baseR * (0.92f + Random.nextFloat() * 0.16f)
+        yolkRy = baseR * (0.92f + Random.nextFloat() * 0.16f)
+        yolkRot = Random.nextFloat() * 360f
     }
 
     fun step() { frame++ }
@@ -47,26 +83,19 @@ class EggSplat(
     }
 
     private fun drawSplat(scope: DrawScope, alpha: Int) {
-        // Draw three overlapping ovals (no Path.Op.UNION in Compose — overlapping produces same visual)
-        val white = Color(Palette.withAlpha(Palette.WHITE, alpha))
-        for (blob in blobs) {
-            scope.withTransform({
-                rotate(blob.rot, pivot = Offset(cx + blob.dx, cy + blob.dy))
-            }) {
-                drawOval(
-                    color = white,
-                    topLeft = Offset(cx + blob.dx - blob.rx, cy + blob.dy - blob.ry),
-                    size = Size(blob.rx * 2, blob.ry * 2)
-                )
-            }
-        }
-
-        // Yolk
-        val yolkR = radius * 0.61f
-        scope.drawCircle(
-            color = Color(Palette.withAlpha(theme.main.primary, alpha)),
-            radius = yolkR,
-            center = Offset(cx, cy)
+        scope.drawPath(
+            path = whitePath,
+            color = Color(Palette.withAlpha(Palette.WHITE, alpha))
         )
+
+        val yolkCx = cx + yolkDx
+        val yolkCy = cy + yolkDy
+        scope.withTransform({ rotate(yolkRot, pivot = Offset(yolkCx, yolkCy)) }) {
+            drawOval(
+                color = Color(Palette.withAlpha(theme.main.primary, alpha)),
+                topLeft = Offset(yolkCx - yolkRx, yolkCy - yolkRy),
+                size = Size(yolkRx * 2, yolkRy * 2)
+            )
+        }
     }
 }
