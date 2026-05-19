@@ -167,12 +167,16 @@ actual object Sounds {
     actual fun playWeHaveAWinner() = playSfx("we_have_a_winner")
 
     actual fun playGameAmbiance() {
+        isPaused = false
+        try { engine.startAndReturnError(null) } catch (_: Exception) {}
         if (ambienceMode == AmbienceMode.GAME) return
         ambienceMode = AmbienceMode.GAME
         startAmbience("game_ambient_sound")
     }
 
     actual fun playMenuAmbiance() {
+        isPaused = false
+        try { engine.startAndReturnError(null) } catch (_: Exception) {}
         if (ambienceMode == AmbienceMode.MENU) {
             ambientPlayer?.let { if (!it.playing) it.play() }
             return
