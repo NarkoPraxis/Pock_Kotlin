@@ -8,7 +8,13 @@ import platform.darwin.*
 import utility.Logic
 
 actual object Sounds {
-    private class SfxChannel(val player: AVAudioPlayerNode, val pitch: AVAudioUnitTimePitch)
+    // endTimeSec is the wall-clock time (NSDate.timeIntervalSinceReferenceDate) when this
+    // channel's currently-scheduled buffer is expected to finish playing. Channels are
+    // selected by minimum endTimeSec so the new sound always lands on the longest-idle
+    // node — mirroring SoundPool's auto-reuse of finished streams.
+    private class SfxChannel(val player: AVAudioPlayerNode, val pitch: AVAudioUnitTimePitch) {
+        var endTimeSec: Double = 0.0
+    }
 
     private val sfxChannels = mutableListOf<SfxChannel>()
     private val sfxBuffers = mutableMapOf<String, AVAudioPCMBuffer>()
@@ -119,11 +125,39 @@ actual object Sounds {
     private fun playSfx(name: String, rate: Float = 1f, volume: Float = effectiveSfxVol) {
         if (isPaused || adMuted) return
         val buffer = sfxBuffers[name] ?: return
-        val channel = sfxChannels.firstOrNull { !it.player.isPlaying() } ?: sfxChannels[0]
+
+        val now = NSDate.timeIntervalSinceReferenceDate
+        // Pick the channel whose scheduled buffer finished longest ago (or finishes
+        // soonest, if every channel is still busy). Cannot use AVAudioPlayerNode.isPlaying
+        // for this — it returns true from the first play() onward and never flips back
+        // to false on its own, which is what caused both the "queue grows forever" bug
+        // and the "all channels appear busy, drop everything" bug.
+        val channel = sfxChannels.minByOrNull { it.endTimeSec } ?: return
+
+        val playbackRate = rate.toDouble().coerceAtLeast(0.001)
+        val format = buffer.format
+        val sampleRate = format.sampleRate
+        val frames = buffer.frameLength.toDouble()
+        val durationSec = if (sampleRate > 0.0) frames / sampleRate / playbackRate else 0.0
+        channel.endTimeSec = now + durationSec
+
+        // stop() before each schedule guarantees the node holds exactly one buffer
+        // (no internal queue), and resets the node so the new play() starts immediately.
+        // Under saturation this evicts the oldest in-flight sound — SoundPool parity.
+        channel.player.stop()
         channel.pitch.rate = rate
         channel.player.volume = volume
         channel.player.scheduleBuffer(buffer, completionHandler = null)
         channel.player.play()
+    }
+
+    actual fun stopAllSfx() {
+        // Stop every channel and zero its end-time so a subsequent playSfx sees all
+        // channels as idle and rotates fresh from index 0.
+        sfxChannels.forEach {
+            it.player.stop()
+            it.endTimeSec = 0.0
+        }
     }
 
     actual fun playHighPlayerSound(x: Float) =

@@ -34,14 +34,18 @@ fun MenuDemoCanvas() {
     val demoBotHigh = remember { mutableStateOf<BotBrain?>(null) }
     val demoBotLow  = remember { mutableStateOf<BotBrain?>(null) }
 
+    // Local kill switch. Set to false in onDispose BEFORE stopping the GameLoop, so any
+    // already-queued tick that slips past coroutine cancellation will hard-exit before it
+    // can run game logic and emit sounds. Captured by reference in the onTick lambda below
+    // so writes from onDispose are visible immediately on the next tick.
+    val active = remember { mutableStateOf(true) }
+
     val gameLoop = remember {
         GameLoop(
             intervalMs = { Settings.refreshRate.toLong() },
             onTick = {
+                if (!active.value) return@GameLoop
                 if (Settings.adIsPlaying) return@GameLoop
-                // Guard with isDemoMode only — isInitialized is intentionally not checked here
-                // because IosGameHost.onDispose (which resets it) can fire after our onSizeChanged
-                // due to Compose's compose-before-dispose ordering.
                 if (Settings.isDemoMode) {
                     demoBotHigh.value?.tick()
                     demoBotLow.value?.tick()
@@ -65,8 +69,12 @@ fun MenuDemoCanvas() {
 
     DisposableEffect(Unit) {
         onDispose {
-            gameLoop.stop()
+            // Order matters: flip the kill switch first so the lambda short-circuits
+            // even if the coroutine hasn't observed cancellation yet.
+            active.value = false
             Settings.isDemoMode = false
+            gameLoop.stop()
+            Sounds.stopAllSfx()
         }
     }
 

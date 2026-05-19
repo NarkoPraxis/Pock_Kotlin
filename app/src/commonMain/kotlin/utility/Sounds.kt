@@ -19,6 +19,7 @@ expect object Sounds {
     fun playGameAmbiance()
     fun playMenuAmbiance()
     fun pauseAll()
+    fun stopAllSfx()
     fun resumeAll()
     fun autoPauseSfx()
     fun autoResumeSfx()

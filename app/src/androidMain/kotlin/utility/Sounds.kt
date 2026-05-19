@@ -168,6 +168,12 @@ actual object Sounds {
         try { if (secondaryPlayer?.isPlaying == true) secondaryPlayer?.pause() } catch (e: Exception) { }
     }
 
+    actual fun stopAllSfx() {
+        // SoundPool drops play() calls when all streams are saturated (setMaxStreams=10),
+        // so there's no buildup to clear like there is on iOS. In-flight SFX are
+        // short and self-terminating; no action needed.
+    }
+
     actual fun resumeAll() {
         if (adMuted) return
         sfxPaused = false
