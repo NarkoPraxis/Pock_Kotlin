@@ -2,6 +2,8 @@
 package utility
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.pointed
+import kotlinx.cinterop.value
 import platform.AVFAudio.*
 import platform.Foundation.*
 import platform.darwin.*
@@ -12,13 +14,22 @@ actual object Sounds {
     // channel's currently-scheduled buffer is expected to finish playing. Channels are
     // selected by minimum endTimeSec so the new sound always lands on the longest-idle
     // node — mirroring SoundPool's auto-reuse of finished streams.
-    private class SfxChannel(val player: AVAudioPlayerNode, val pitch: AVAudioUnitTimePitch) {
+    private class SfxChannel(val player: AVAudioPlayerNode, val varispeed: AVAudioUnitVarispeed) {
         var endTimeSec: Double = 0.0
     }
 
     private val sfxChannels = mutableListOf<SfxChannel>()
     private val sfxBuffers = mutableMapOf<String, AVAudioPCMBuffer>()
     private val engine = AVAudioEngine()
+
+    // Canonical PCM format that every channel speaks. Source MP3s ship at mixed sample
+    // rates (some 44.1 kHz, some 48 kHz); AVAudioPlayerNode silently drops scheduleBuffer
+    // calls whose format doesn't match the connection format, which is what made
+    // sheilded_collision and other 44.1 kHz sounds inaudible. Converting every buffer to
+    // this single format at load time keeps the connection format stable for every node.
+    private val canonicalFormat: AVAudioFormat by lazy {
+        AVAudioFormat(standardFormatWithSampleRate = 44100.0, channels = 2u)!!
+    }
 
     private var ambientPlayer: AVAudioPlayer? = null
     private var incomingPlayer: AVAudioPlayer? = null
@@ -80,12 +91,15 @@ actual object Sounds {
     private fun setupSfxPool() {
         repeat(10) {
             val player = AVAudioPlayerNode()
-            val pitch = AVAudioUnitTimePitch()
+            // AVAudioUnitVarispeed couples pitch to playback rate (resampling), matching
+            // Android SoundPool.play(..., rate). AVAudioUnitTimePitch keeps pitch constant
+            // while changing tempo — the wrong behavior for the spatializer.
+            val varispeed = AVAudioUnitVarispeed()
             engine.attachNode(player)
-            engine.attachNode(pitch)
-            engine.connect(player, pitch, format = null)
-            engine.connect(pitch, engine.mainMixerNode, format = null)
-            sfxChannels.add(SfxChannel(player, pitch))
+            engine.attachNode(varispeed)
+            engine.connect(player, varispeed, format = canonicalFormat)
+            engine.connect(varispeed, engine.mainMixerNode, format = canonicalFormat)
+            sfxChannels.add(SfxChannel(player, varispeed))
         }
         try { engine.startAndReturnError(null) } catch (_: Exception) {}
     }
@@ -113,12 +127,45 @@ actual object Sounds {
         ).forEach { name ->
             val url = soundUrl(name) ?: return@forEach
             val file = AVAudioFile(forReading = url, error = null) ?: return@forEach
-            val buffer = AVAudioPCMBuffer(
+            val srcBuffer = AVAudioPCMBuffer(
                 pCMFormat = file.processingFormat,
                 frameCapacity = file.length.toUInt()
             ) ?: return@forEach
-            file.readIntoBuffer(buffer, error = null)
-            sfxBuffers[name] = buffer
+            file.readIntoBuffer(srcBuffer, error = null)
+
+            // Resample/reformat into canonicalFormat so every sfxBuffer matches the
+            // channel's connection format. Without this step, files whose sample rate
+            // differs from the first-played file get dropped by scheduleBuffer.
+            val srcFormat = file.processingFormat
+            if (srcFormat.sampleRate == canonicalFormat.sampleRate &&
+                srcFormat.channelCount == canonicalFormat.channelCount &&
+                srcFormat.commonFormat == canonicalFormat.commonFormat) {
+                sfxBuffers[name] = srcBuffer
+                return@forEach
+            }
+            val converter = AVAudioConverter(fromFormat = srcFormat, toFormat = canonicalFormat)
+                ?: return@forEach
+            val ratio = canonicalFormat.sampleRate / srcFormat.sampleRate
+            val outCapacity = (srcBuffer.frameLength.toDouble() * ratio).toULong().toUInt() + 1024u
+            val dstBuffer = AVAudioPCMBuffer(
+                pCMFormat = canonicalFormat,
+                frameCapacity = outCapacity
+            ) ?: return@forEach
+            // Block-based API is required for sample-rate conversion. The simpler
+            // convertToBuffer:fromBuffer: form asserts outputCapacity >= inputFrameLength
+            // and does not actually resample, so it crashes when rates differ.
+            var consumed = false
+            converter.convertToBuffer(dstBuffer, error = null) { _, outStatus ->
+                if (consumed) {
+                    outStatus?.pointed?.value = AVAudioConverterInputStatus_EndOfStream
+                    null
+                } else {
+                    consumed = true
+                    outStatus?.pointed?.value = AVAudioConverterInputStatus_HaveData
+                    srcBuffer
+                }
+            }
+            sfxBuffers[name] = dstBuffer
         }
     }
 
@@ -145,7 +192,7 @@ actual object Sounds {
         // (no internal queue), and resets the node so the new play() starts immediately.
         // Under saturation this evicts the oldest in-flight sound — SoundPool parity.
         channel.player.stop()
-        channel.pitch.rate = rate
+        channel.varispeed.rate = rate
         channel.player.volume = volume
         channel.player.scheduleBuffer(buffer, completionHandler = null)
         channel.player.play()

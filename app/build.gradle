@@ -29,6 +29,12 @@ android {
         dataBinding true
         viewBinding true
     }
+    // SoundPool requires seekable PCM; if the build compresses WAVs in res/raw the
+    // load fails at runtime. AGP's default no-compress list already covers wav, but
+    // make it explicit so it can't be lost to a future config change.
+    androidResources {
+        noCompress 'wav'
+    }
 }
 
 kotlin {
