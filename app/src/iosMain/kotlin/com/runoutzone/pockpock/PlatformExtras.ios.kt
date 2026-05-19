@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import gameobjects.Settings
@@ -107,7 +108,7 @@ actual fun PlatformMenuExtras() {
                 modifier = Modifier.width(200.dp),
                 colors = menuButtonColors
             ) {
-                Text(adButtonText)
+                Text(adButtonText.uppercase(), fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -128,7 +129,7 @@ actual fun PlatformMenuExtras() {
             modifier = Modifier.width(200.dp),
             colors = menuButtonColors
         ) {
-            Text(stringResource(Res.string.share))
+            Text(stringResource(Res.string.share).uppercase(), fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
 
         TextButton(onClick = { showPicker = true }) {

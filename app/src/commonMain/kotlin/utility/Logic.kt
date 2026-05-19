@@ -527,6 +527,9 @@ object Logic {
     fun onPointerDown(x: Float, y: Float, playerId: Int) {
         if (Settings.screenWidth == 0f) return
         if (interceptBallMenuDown(x, y, playerId)) return
+        // In single-player, the high side belongs to the bot. Touches only exist there
+        // to interact with the ball-selection popup (handled above); never engage fling.
+        if (Settings.isSinglePlayer && playerId == 0) return
         val player = if (playerId == 0) highPlayer else lowPlayer
         if (Settings.gameState == GameState.BallSelection) {
             if (playerId == 0) Drawing.cycleHighTip() else Drawing.cycleLowTip()
@@ -543,12 +546,14 @@ object Logic {
     fun onPointerMove(x: Float, y: Float, playerId: Int) {
         if (Settings.screenWidth == 0f) return
         if (interceptBallMenuMove(x, y, playerId)) return
+        if (Settings.isSinglePlayer && playerId == 0) return
         updateFlingCurrent(if (playerId == 0) highPlayer else lowPlayer, x, y)
     }
 
     fun onPointerUp(x: Float, y: Float, playerId: Int) {
         if (Settings.screenWidth == 0f) return
         if (interceptBallMenuUp(x, y, playerId)) return
+        if (Settings.isSinglePlayer && playerId == 0) return
         val player = if (playerId == 0) highPlayer else lowPlayer
         if (Settings.gameState == GameState.BallSelection) {
             endFling(player, x, y)

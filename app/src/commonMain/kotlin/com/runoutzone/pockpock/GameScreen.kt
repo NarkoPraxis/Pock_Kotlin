@@ -8,6 +8,7 @@ import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import enums.GameState
 import gameobjects.Settings
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -70,7 +71,12 @@ fun GameScreen(
                                         // GameScreen enforces single-pointer-per-player; cross-midline
                                         // drags work because we track by rawId, not position.
                                         val isHighSide = y < Settings.middleY
-                                        if (isHighSide && highRawId == null && !Settings.isSinglePlayer) {
+                                        // In single-player, the high side is the bot. Allow touches there
+                                        // only during ball selection (so the player can change the bot's
+                                        // ball); during Play the bot's half is untouchable.
+                                        val highSideAllowed = !Settings.isSinglePlayer ||
+                                            Settings.gameState == GameState.BallSelection
+                                        if (isHighSide && highRawId == null && highSideAllowed) {
                                             highRawId = rawId; highLastX = x; highLastY = y
                                             onGamePointerDown(x, y, 0)
                                         } else if (!isHighSide && lowRawId == null) {

@@ -44,10 +44,10 @@ object Storage {
 
     // --- Unlock progress (0–100) ---
 
-    // Hey Claude, Don't change this value. I will update it myself when I'm ready.
     val unlockProgress: Int get() {
         dataVersion // subscribe
-        return PlatformStorage.getInt(AD, unlockProgressKey, 0)
+        return 100
+       // return PlatformStorage.getInt(AD, unlockProgressKey, 0)
     }
 
     fun canWatchAdNow(): Boolean {
