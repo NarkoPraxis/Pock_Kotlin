@@ -57,7 +57,7 @@ actual fun PlatformMenuExtras() {
     val activity = context as? Activity ?: return
 
     var rewardedAd by remember { mutableStateOf<RewardedAd?>(null) }
-    var unlockProgress by remember { mutableIntStateOf(Storage.unlockProgress) }
+    val unlockProgress = Storage.unlockProgress
     var languageFlag by remember { mutableStateOf(getCurrentLanguageFlag()) }
 
     LaunchedEffect(Unit) {
@@ -119,7 +119,6 @@ actual fun PlatformMenuExtras() {
                     ad.show(activity, OnUserEarnedRewardListener { _ ->
                         Storage.recordAdWatched()
                         Settings.unlockProgress = Storage.unlockProgress
-                        unlockProgress = Storage.unlockProgress
                     })
                 },
                 enabled = adEnabled,
@@ -139,7 +138,6 @@ actual fun PlatformMenuExtras() {
                         Storage.markShareRewardClaimed()
                         Storage.addBonusProgress(10)
                         Settings.unlockProgress = Storage.unlockProgress
-                        unlockProgress = Storage.unlockProgress
                         Toast.makeText(activity, strShareThanks, Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -160,7 +158,7 @@ actual fun PlatformMenuExtras() {
 
 @Composable
 actual fun PlatformBallUnlockTop() {
-    var unlockProgress by remember { mutableIntStateOf(Storage.unlockProgress) }
+    val unlockProgress = Storage.unlockProgress
     if (unlockProgress >= 100) return
 
     Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -177,7 +175,7 @@ actual fun PlatformBallUnlockBottom() {
     val activity = context as? Activity ?: return
 
     var rewardedAd by remember { mutableStateOf<RewardedAd?>(null) }
-    var unlockProgress by remember { mutableIntStateOf(Storage.unlockProgress) }
+    val unlockProgress = Storage.unlockProgress
 
     LaunchedEffect(Unit) {
         if (Storage.unlockProgress < 100 && canLoadAdNow()) {
@@ -222,7 +220,7 @@ actual fun PlatformBallUnlockBottom() {
                     PurchaseManager.restorePurchases(activity) { success ->
                         if (success) {
                             Settings.unlockProgress = Storage.unlockProgress
-                            unlockProgress = Storage.unlockProgress
+                            Storage.notifyDataChanged()
                         }
                     }
                 },
@@ -257,7 +255,6 @@ actual fun PlatformBallUnlockBottom() {
                 ad.show(activity, OnUserEarnedRewardListener { _ ->
                     Storage.recordAdWatched()
                     Settings.unlockProgress = Storage.unlockProgress
-                    unlockProgress = Storage.unlockProgress
                 })
             },
             enabled = adEnabled,

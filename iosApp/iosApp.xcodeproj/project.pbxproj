@@ -10,6 +10,8 @@
 		B5001012B5001012B5001012 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5001002B5001002B5001002 /* ContentView.swift */; };
 		B5001013B5001013B5001013 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5001003B5001003B5001003 /* iOSApp.swift */; };
 		B5001021B5001021B5001021 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B5001020B5001020B5001020 /* Assets.xcassets */; };
+		B5002002B5002002B5002002 /* AdMobBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5002001B5002001B5002001 /* AdMobBridge.swift */; };
+		B5002005B5002005B5002005 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = B5002004B5002004B5002004 /* GoogleMobileAds */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +20,7 @@
 		B5001003B5001003B5001003 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		B5001016B5001016B5001016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B5001020B5001020B5001020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B5002001B5002001B5002001 /* AdMobBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMobBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -25,6 +28,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B5002005B5002005B5002005 /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -44,6 +48,7 @@
 			children = (
 				B5001002B5001002B5001002 /* ContentView.swift */,
 				B5001003B5001003B5001003 /* iOSApp.swift */,
+				B5002001B5002001B5002001 /* AdMobBridge.swift */,
 				B5001016B5001016B5001016 /* Info.plist */,
 				B5001020B5001020B5001020 /* Assets.xcassets */,
 			);
@@ -75,6 +80,9 @@
 			dependencies = (
 			);
 			name = iosApp;
+			packageProductDependencies = (
+				B5002004B5002004B5002004 /* GoogleMobileAds */,
+			);
 			productName = iosApp;
 			productReference = B5001001B5001001B5001001 /* iosApp.app */;
 			productType = "com.apple.product-type.application";
@@ -103,6 +111,9 @@
 				Base,
 			);
 			mainGroup = B5001007B5001007B5001007;
+			packageReferences = (
+				B5002003B5002003B5002003 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+			);
 			productRefGroup = B5001009B5001009B5001009 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -152,6 +163,7 @@
 			files = (
 				B5001013B5001013B5001013 /* iOSApp.swift in Sources */,
 				B5001012B5001012B5001012 /* ContentView.swift in Sources */,
+				B5002002B5002002B5002002 /* AdMobBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -360,6 +372,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B5002003B5002003B5002003 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B5002004B5002004B5002004 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B5002003B5002003B5002003 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B500100BB500100BB500100B /* Project object */;
 }

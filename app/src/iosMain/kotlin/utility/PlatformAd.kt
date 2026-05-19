@@ -1,20 +1,25 @@
 package utility
 
-// iOS Google Mobile Ads SDK is not yet integrated. To enable real rewarded ads:
-// 1. Add `pod 'Google-Mobile-Ads-SDK'` to iosApp/Podfile and run `pod install`
-// 2. Add GADApplicationIdentifier to iosApp/iosApp/Info.plist
-// 3. Create a Swift @objc class wrapping GADRewardedAd with load/show callbacks
-// 4. Expose it to Kotlin via cinterop or a Kotlin companion object bridge
-// 5. Replace the stub bodies below with real SDK calls
+// iOS rewarded-ad integration. The actual Google Mobile Ads SDK calls live in
+// Swift (iosApp/iosApp/AdMobBridge.swift). On app launch Swift assigns handlers
+// to IosAdProvider; this object delegates the commonMain expect calls to them.
+object IosAdProvider {
+    var loadHandler: ((adUnitId: String, onLoaded: () -> Unit, onFailed: () -> Unit) -> Unit)? = null
+    var showHandler: ((onEarned: () -> Unit, onDismissed: () -> Unit) -> Unit)? = null
+    var readyProvider: () -> Boolean = { false }
+}
+
 actual object PlatformAd {
     actual val TEST_REWARDED_AD_UNIT_ID = "ca-app-pub-3940256099942544/1712485313"
-    actual val isReady: Boolean get() = false
+    actual val isReady: Boolean get() = IosAdProvider.readyProvider()
 
     actual fun loadRewardedAd(adUnitId: String, onLoaded: () -> Unit, onFailed: () -> Unit) {
-        onFailed()
+        val h = IosAdProvider.loadHandler
+        if (h == null) onFailed() else h(adUnitId, onLoaded, onFailed)
     }
 
     actual fun showRewardedAd(onEarned: () -> Unit, onDismissed: () -> Unit) {
-        onDismissed()
+        val h = IosAdProvider.showHandler
+        if (h == null) onDismissed() else h(onEarned, onDismissed)
     }
 }

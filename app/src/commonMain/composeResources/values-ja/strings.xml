@@ -18,8 +18,8 @@
     <string name="watch_ad_loading">広告（読込中…）</string>
     <string name="come_back_tomorrow">明日また来てね</string>
     <string name="next_ad_in">次の広告まで%1$s</string>
-    <string name="percent_unlocked">%1$d%% アンロック済み</string>
-    <string name="share_thanks">シェアありがとう！進捗 +10%%。</string>
+    <string name="percent_unlocked">%1$d% アンロック済み</string>
+    <string name="share_thanks">シェアありがとう！進捗 +10%。</string>
     <string name="share_already_claimed">またシェアしてくれてありがとう！報酬はすでに受け取り済みです。</string>
 
     <!-- Difficulty dialog -->
@@ -72,13 +72,13 @@
     <!-- Ball unlock -->
     <string name="ball_types_title">ボールをアンロック</string>
     <string name="watch_ads_to_unlock_more">広告を見てボールをアンロックしよう</string>
-    <string name="watch_ad_earn">広告を見る (+2%%)</string>
+    <string name="watch_ad_earn">広告を見る (+2%)</string>
     <string name="get_pro">Proを取得</string>
     <string name="restore_purchases">購入を復元</string>
     <string name="purchase">購入</string>
     <string name="restore">復元</string>
     <string name="unlocked">アンロック済み</string>
-    <string name="reach_percent">%1$d%%を達成</string>
+    <string name="reach_percent">%1$d%を達成</string>
 
     <!-- Ball type names -->
     <string name="ball_type_pokpok">ポクポク</string>

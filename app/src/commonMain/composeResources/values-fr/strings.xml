@@ -18,8 +18,8 @@
     <string name="watch_ad_loading">Regarder pub (Chargement…)</string>
     <string name="come_back_tomorrow">Reviens demain</string>
     <string name="next_ad_in">Prochaine pub dans %1$s</string>
-    <string name="percent_unlocked">%1$d%% débloqué</string>
-    <string name="share_thanks">Merci de partager ! Progression +10%%.</string>
+    <string name="percent_unlocked">%1$d% débloqué</string>
+    <string name="share_thanks">Merci de partager ! Progression +10%.</string>
     <string name="share_already_claimed">Merci de partager à nouveau ! La récompense a déjà été réclamée.</string>
 
     <!-- Difficulty dialog -->
@@ -72,13 +72,13 @@
     <!-- Ball unlock -->
     <string name="ball_types_title">Débloquer les balles</string>
     <string name="watch_ads_to_unlock_more">Regarder des pubs pour débloquer plus de types de balles</string>
-    <string name="watch_ad_earn">Regarder pub (+2%%)</string>
+    <string name="watch_ad_earn">Regarder pub (+2%)</string>
     <string name="get_pro">Obtenir Pro</string>
     <string name="restore_purchases">Restaurer les achats</string>
     <string name="purchase">Acheter</string>
     <string name="restore">Restaurer</string>
     <string name="unlocked">Débloqué</string>
-    <string name="reach_percent">Atteindre %1$d%%</string>
+    <string name="reach_percent">Atteindre %1$d%</string>
 
     <!-- Ball type names -->
     <string name="ball_type_pokpok">Pok Pok</string>

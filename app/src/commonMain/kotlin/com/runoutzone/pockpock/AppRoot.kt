@@ -75,6 +75,15 @@ fun AppRoot() {
         if (isOnMainMenu) Sounds.playMenuAmbiance()
     }
 
+    // Drive Storage's time-derived getters (minutesUntilNextAd, canWatchAdNow)
+    // so the "Next ad in X" label ticks down without leaving the screen.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000L)
+            Storage.notifyTimeChanged()
+        }
+    }
+
     CompositionLocalProvider(LocalDarkMode provides darkMode) {
         Box(modifier = Modifier.fillMaxSize()) {
             // MenuDemoCanvas lives outside NavHost so its lifecycle is controlled entirely
@@ -84,6 +93,7 @@ fun AppRoot() {
                 MenuDemoCanvas()
             }
 
+            key(LocaleController.version) {
             NavHost(navController, startDestination = Screen.MainMenu.name) {
                 composable(Screen.MainMenu.name) {
                     MainMenuScreen(
@@ -126,6 +136,7 @@ fun AppRoot() {
                         BallUnlockScreen(onBack = { navController.popBackStack() })
                     }
                 }
+            }
             }
         }
 

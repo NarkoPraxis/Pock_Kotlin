@@ -29,12 +29,11 @@ fun MainMenuScreen(
 ) {
     val isDark = LocalDarkMode.current
 
-    var unlockProgress by remember { mutableIntStateOf(Storage.unlockProgress) }
+    val unlockProgress = Storage.unlockProgress
     var adReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        unlockProgress = Storage.unlockProgress
-        if (unlockProgress < 100 && Storage.canWatchAdNow()) {
+        if (Storage.unlockProgress < 100 && Storage.canWatchAdNow()) {
             PlatformAd.loadRewardedAd(
                 adUnitId = PlatformAd.TEST_REWARDED_AD_UNIT_ID,
                 onLoaded = { adReady = true },

@@ -208,10 +208,10 @@ actual object Sounds {
     }
 
     actual fun playHighPlayerSound(x: Float) =
-        playSfx("high_synth", rate = SoundSpatializer.getXRate(x))
+        playSfx("high_synth", rate = SoundSpatializer.getYRate(x))
 
     actual fun playLowPlayerSound(x: Float) =
-        playSfx("low_synth", rate = SoundSpatializer.getXRate(x))
+        playSfx("low_synth", rate = SoundSpatializer.getYRate(x))
 
     actual fun playLowPlayerSweetSpotSound(x: Float) =
         playSfx("sweet_spot", rate = SoundSpatializer.rates[2], volume = effectiveSfxVol * 0.9f)

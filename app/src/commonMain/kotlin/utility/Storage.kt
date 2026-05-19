@@ -1,9 +1,22 @@
 package utility
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import enums.BallType
 import enums.ChargeMeterStyle
 
 object Storage {
+
+    // Bumped whenever a persisted value changes. Composables that read storage
+    // through this object will recompose automatically.
+    private var dataVersion by mutableIntStateOf(0)
+    // Bumped on a periodic schedule from AppRoot so time-derived getters
+    // (canWatchAdNow, minutesUntilNextAd) refresh while a screen is open.
+    private var timeVersion by mutableIntStateOf(0)
+
+    fun notifyDataChanged() { dataVersion++ }
+    fun notifyTimeChanged() { timeVersion++ }
 
     private const val AD = "ad"
     private const val SETTINGS = "settings"
@@ -32,9 +45,13 @@ object Storage {
     // --- Unlock progress (0–100) ---
 
     // Hey Claude, Don't change this value. I will update it myself when I'm ready.
-    val unlockProgress: Int get() = PlatformStorage.getInt(AD, unlockProgressKey, 0)
+    val unlockProgress: Int get() {
+        dataVersion // subscribe
+        return PlatformStorage.getInt(AD, unlockProgressKey, 0)
+    }
 
     fun canWatchAdNow(): Boolean {
+        dataVersion; timeVersion
         if (unlockProgress >= 100) return false
         val today = PlatformStorage.currentTimeMs() / 86_400_000L
         val lastDay = PlatformStorage.getLong(AD, lastAdDayKey, -1L)
@@ -45,12 +62,14 @@ object Storage {
     }
 
     fun adsWatchedToday(): Int {
+        dataVersion; timeVersion
         val today = PlatformStorage.currentTimeMs() / 86_400_000L
         val lastDay = PlatformStorage.getLong(AD, lastAdDayKey, -1L)
         return if (lastDay == today) PlatformStorage.getInt(AD, adsWatchedTodayKey, 0) else 0
     }
 
     fun minutesUntilNextAd(): Long {
+        dataVersion; timeVersion
         val lastTimestamp = PlatformStorage.getLong(AD, lastAdTimestampKey, 0L)
         val msLeft = lastTimestamp + HOURLY_COOLDOWN_MS - PlatformStorage.currentTimeMs()
         return if (msLeft > 0) (msLeft / 60_000L) + 1 else 0
@@ -64,14 +83,17 @@ object Storage {
         PlatformStorage.saveLong(AD, lastAdTimestampKey, PlatformStorage.currentTimeMs())
         PlatformStorage.saveInt(AD, adsWatchedTodayKey, watchedToday + 1)
         PlatformStorage.saveLong(AD, lastAdDayKey, today)
+        notifyDataChanged()
     }
 
     fun saveUnlockProgress(progress: Int) {
         PlatformStorage.saveInt(AD, unlockProgressKey, progress.coerceIn(0, 100))
+        notifyDataChanged()
     }
 
     fun addBonusProgress(percent: Int) {
         PlatformStorage.saveInt(AD, unlockProgressKey, (unlockProgress + percent).coerceAtMost(100))
+        notifyDataChanged()
     }
 
     // --- Share reward ---
@@ -80,6 +102,7 @@ object Storage {
 
     fun markShareRewardClaimed() {
         PlatformStorage.saveBoolean(AD, shareRewardClaimedKey, true)
+        notifyDataChanged()
     }
 
     // --- Ball type persistence ---

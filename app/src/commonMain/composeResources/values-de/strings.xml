@@ -18,8 +18,8 @@
     <string name="watch_ad_loading">Werbung (Lädt…)</string>
     <string name="come_back_tomorrow">Komm morgen wieder</string>
     <string name="next_ad_in">Nächste Werbung in %1$s</string>
-    <string name="percent_unlocked">%1$d%% freigeschaltet</string>
-    <string name="share_thanks">Danke fürs Teilen! Fortschritt +10%%.</string>
+    <string name="percent_unlocked">%1$d% freigeschaltet</string>
+    <string name="share_thanks">Danke fürs Teilen! Fortschritt +10%.</string>
     <string name="share_already_claimed">Danke fürs Teilen! Die Belohnung wurde bereits beansprucht.</string>
 
     <!-- Difficulty dialog -->
@@ -72,13 +72,13 @@
     <!-- Ball unlock -->
     <string name="ball_types_title">Bälle freischalten</string>
     <string name="watch_ads_to_unlock_more">Werbung ansehen, um mehr Balltypen freizuschalten</string>
-    <string name="watch_ad_earn">Werbung ansehen (+2%%)</string>
+    <string name="watch_ad_earn">Werbung ansehen (+2%)</string>
     <string name="get_pro">Pro kaufen</string>
     <string name="restore_purchases">Käufe wiederherstellen</string>
     <string name="purchase">Kaufen</string>
     <string name="restore">Wiederherstellen</string>
     <string name="unlocked">Freigeschaltet</string>
-    <string name="reach_percent">%1$d%% erreichen</string>
+    <string name="reach_percent">%1$d% erreichen</string>
 
     <!-- Ball type names -->
     <string name="ball_type_pokpok">Pok Pok</string>

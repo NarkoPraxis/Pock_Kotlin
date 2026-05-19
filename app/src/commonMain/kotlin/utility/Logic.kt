@@ -457,11 +457,6 @@ object Logic {
                 applyHitStun(highPlayer, highPlayer.puck.impactPower)
                 applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
 
-                if (highPlayer.power > lowPlayer.power) {
-                    Sounds.playLowPlayerSound(collisionPoint.x)
-                } else {
-                    Sounds.playHighPlayerSound(collisionPoint.x)
-                }
                 val highSpeed = highPlayer.movementSpeed
                 val lowSpeed = lowPlayer.movementSpeed
                 if (highSpeed >= lowSpeed && highSpeed >= Settings.minLaunchPower) {
@@ -478,6 +473,11 @@ object Logic {
             resetTails(highPlayer, lowPlayer)
             if (!Settings.isDemoMode) {
                 GameEvents.canScore.emit(Unit)
+            }
+            if (highPlayer.power > lowPlayer.power) {
+                Sounds.playLowPlayerSound(collisionPoint.y)
+            } else {
+                Sounds.playHighPlayerSound(collisionPoint.y)
             }
             return true
         }

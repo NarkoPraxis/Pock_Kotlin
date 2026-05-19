@@ -68,7 +68,7 @@ fun BallUnlockScreen(onBack: () -> Unit) {
     var screenHeight by remember { mutableIntStateOf(0) }
 
     // Read unlock progress from Storage (not Settings, which requires game init first)
-    var unlockProgress by remember { mutableIntStateOf(Storage.unlockProgress) }
+    val unlockProgress = Storage.unlockProgress
     Settings.unlockProgress = unlockProgress
 
     var adReady by remember { mutableStateOf(false) }
@@ -90,9 +90,7 @@ fun BallUnlockScreen(onBack: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        unlockProgress = Storage.unlockProgress
-        Settings.unlockProgress = unlockProgress
-        if (unlockProgress < 100 && Storage.canWatchAdNow()) {
+        if (Storage.unlockProgress < 100 && Storage.canWatchAdNow()) {
             PlatformAd.loadRewardedAd(
                 adUnitId = PlatformAd.TEST_REWARDED_AD_UNIT_ID,
                 onLoaded = { adReady = true },
@@ -156,10 +154,9 @@ fun BallUnlockScreen(onBack: () -> Unit) {
         ) {
             itemsIndexed(displayTypes) { index, type ->
                 val isUnlocked = BallStyleFactory.isUnlocked(type, unlockProgress)
-                val strUnlocked = stringResource(Res.string.unlocked)
                 val threshold = BallStyleFactory.unlockThreshold(type)
-                val statusText = if (isUnlocked) strUnlocked
-                    else if (threshold != null) stringResource(Res.string.reach_percent, threshold) else strUnlocked
+                val statusText = if (isUnlocked) ""
+                    else if (threshold != null) stringResource(Res.string.reach_percent, threshold) else ""
 
                 Box(
                     modifier = Modifier
@@ -244,19 +241,21 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                             )
                         )
 
-                        val subStyle = TextStyle(
-                            color = subColor,
-                            fontSize = (ratio * 0.45f / pxPerSp).sp,
-                            textAlign = TextAlign.Center
-                        )
-                        val subMeasured = textMeasurer.measure(statusText, subStyle)
-                        drawText(
-                            subMeasured,
-                            topLeft = Offset(
-                                cx - subMeasured.size.width / 2f,
-                                size.height - ratio * 0.3f - subMeasured.size.height
+                        if (statusText.isNotEmpty()) {
+                            val subStyle = TextStyle(
+                                color = subColor,
+                                fontSize = (ratio * 0.45f / pxPerSp).sp,
+                                textAlign = TextAlign.Center
                             )
-                        )
+                            val subMeasured = textMeasurer.measure(statusText, subStyle)
+                            drawText(
+                                subMeasured,
+                                topLeft = Offset(
+                                    cx - subMeasured.size.width / 2f,
+                                    size.height - ratio * 0.3f - subMeasured.size.height
+                                )
+                            )
+                        }
 
                         Settings.screenRatio = savedRatio
                         Settings.strokeWidth = savedStroke
