@@ -92,7 +92,7 @@ actual object Sounds {
             val url = NSBundle.mainBundle.URLForResource(
                 name = name,
                 withExtension = ext,
-                subdirectory = "compose-resources/files/sounds"
+                subdirectory = "compose-resources/composeResources/pock_kotlin.app.generated.resources/files/sounds"
             ) ?: continue
             return url
         }
