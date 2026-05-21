@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import enums.BallType
 import enums.ChargeMeterStyle
+import gameobjects.puckstyle.CustomBallConfig
 
 object Storage {
 
@@ -112,6 +113,62 @@ object Storage {
 
     fun saveHighBallType(type: BallType) = PlatformStorage.saveString(AD, highBallTypeKey, type.name)
     fun saveLowBallType(type: BallType) = PlatformStorage.saveString(AD, lowBallTypeKey, type.name)
+
+    // --- Custom ball index (which custom slot is selected per player) ---
+
+    fun saveHighCustomBallIndex(index: Int) = PlatformStorage.saveInt(AD, "high_custom_ball_idx", index)
+    fun saveLowCustomBallIndex(index: Int) = PlatformStorage.saveInt(AD, "low_custom_ball_idx", index)
+    fun clearHighCustomBallIndex() = PlatformStorage.saveInt(AD, "high_custom_ball_idx", -1)
+    fun clearLowCustomBallIndex() = PlatformStorage.saveInt(AD, "low_custom_ball_idx", -1)
+
+    fun loadHighCustomBallIndex(): Int? {
+        val v = PlatformStorage.getInt(AD, "high_custom_ball_idx", -1)
+        return if (v < 0) null else v
+    }
+
+    fun loadLowCustomBallIndex(): Int? {
+        val v = PlatformStorage.getInt(AD, "low_custom_ball_idx", -1)
+        return if (v < 0) null else v
+    }
+
+    // --- Custom ball slots (0–4) ---
+
+    fun loadCustomBall(index: Int): CustomBallConfig? {
+        val skin = PlatformStorage.getString(AD, "cb${index}_skin", "")
+        if (skin.isEmpty()) return null
+        val tail = PlatformStorage.getString(AD, "cb${index}_tail", "")
+        val paddle = PlatformStorage.getString(AD, "cb${index}_paddle", "")
+        if (tail.isEmpty() || paddle.isEmpty()) return null
+        return try {
+            CustomBallConfig(
+                skinType   = BallType.valueOf(skin),
+                tailType   = BallType.valueOf(tail),
+                paddleType = BallType.valueOf(paddle),
+                skinZRank   = PlatformStorage.getInt(AD, "cb${index}_sz", 0),
+                tailZRank   = PlatformStorage.getInt(AD, "cb${index}_tz", 1),
+                paddleZRank = PlatformStorage.getInt(AD, "cb${index}_pz", 2)
+            )
+        } catch (_: IllegalArgumentException) { null }
+    }
+
+    fun saveCustomBall(index: Int, config: CustomBallConfig) {
+        PlatformStorage.saveString(AD, "cb${index}_skin",   config.skinType.name)
+        PlatformStorage.saveString(AD, "cb${index}_tail",   config.tailType.name)
+        PlatformStorage.saveString(AD, "cb${index}_paddle", config.paddleType.name)
+        PlatformStorage.saveInt(AD, "cb${index}_sz", config.skinZRank)
+        PlatformStorage.saveInt(AD, "cb${index}_tz", config.tailZRank)
+        PlatformStorage.saveInt(AD, "cb${index}_pz", config.paddleZRank)
+        notifyDataChanged()
+    }
+
+    fun deleteCustomBall(index: Int) {
+        PlatformStorage.saveString(AD, "cb${index}_skin", "")
+        PlatformStorage.saveString(AD, "cb${index}_tail", "")
+        PlatformStorage.saveString(AD, "cb${index}_paddle", "")
+        notifyDataChanged()
+    }
+
+    fun countCustomBalls(): Int = (0 until 5).count { loadCustomBall(it) != null }
 
     // --- Score position offsets ---
 

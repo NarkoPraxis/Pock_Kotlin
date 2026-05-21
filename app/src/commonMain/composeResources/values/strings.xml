@@ -85,6 +85,11 @@
     <string name="unlocked">Unlocked</string>
     <string name="reach_percent">Reach %1$d%</string>
 
+    <!-- Custom ball creator -->
+    <string name="custom_ball">CUSTOM BALL</string>
+    <string name="custom_ball_title">CUSTOM BALL CREATOR</string>
+    <string name="custom_ball_save_blocked">Unlock all three parts to save</string>
+
     <!-- Ball type names -->
     <string name="ball_type_pokpok">Pok Pok</string>
 

@@ -36,7 +36,17 @@ class PuckRenderer(var theme: ColorTheme) {
         this.skin = skin
         this.tail = tail
         this.effect = effect
-        rebuildLayerOrder()
+        rebuildLayerOrder(skin.zIndex, tail.zIndex, effect.zIndex)
+    }
+
+    internal fun attach(
+        skin: PuckSkin, tail: TailRenderer, effect: PaddleLaunchEffect,
+        skinZ: Int, tailZ: Int, effectZ: Int
+    ) {
+        this.skin = skin
+        this.tail = tail
+        this.effect = effect
+        rebuildLayerOrder(skinZ, tailZ, effectZ)
     }
 
     var x: Float = 0f
@@ -77,12 +87,12 @@ class PuckRenderer(var theme: ColorTheme) {
     var flingCurrentX: Float = 0f
     var flingCurrentY: Float = 0f
 
-    private fun rebuildLayerOrder() {
+    private fun rebuildLayerOrder(skinZ: Int, tailZ: Int, effectZ: Int) {
         layerOrder.clear()
         val slots = ArrayList<Pair<Int, Any>>(3)
-        skin.let   { slots.add(it.zIndex to it) }
-        tail.let   { slots.add(it.zIndex to it) }
-        effect.let { slots.add(it.zIndex to it) }
+        slots.add(skinZ to skin)
+        slots.add(tailZ to tail)
+        slots.add(effectZ to effect)
         slots.sortBy { it.first }
         for ((_, component) in slots) layerOrder.add(component)
     }

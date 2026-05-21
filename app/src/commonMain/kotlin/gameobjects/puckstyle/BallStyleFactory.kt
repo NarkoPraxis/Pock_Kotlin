@@ -102,6 +102,29 @@ object BallStyleFactory {
         }
     }
 
+    fun buildCustomBall(config: CustomBallConfig, renderer: PuckRenderer): BallStyle {
+        val skin = buildSkin(config.skinType, renderer)
+        val tail = buildTail(config.tailType, renderer)
+        val paddle = buildPaddle(config.paddleType, renderer)
+        return BallStyle(skin, tail, paddle)
+    }
+
+    fun buildCustomRenderer(config: CustomBallConfig, theme: ColorTheme): PuckRenderer {
+        val renderer = PuckRenderer(theme)
+        val style = buildCustomBall(config, renderer)
+        renderer.attach(style.skin, style.tail, style.effect, config.skinZRank, config.tailZRank, config.paddleZRank)
+        return renderer
+    }
+
+    fun buildSkinOnlyRenderer(skinType: BallType, theme: ColorTheme): PuckRenderer {
+        val renderer = PuckRenderer(theme)
+        val skin = buildSkin(skinType, renderer)
+        val tail = InvisibleTail(renderer)
+        val paddle = buildPaddle(skinType, renderer)
+        renderer.attach(skin, tail, paddle)
+        return renderer
+    }
+
     fun buildRenderer(type: BallType, theme: ColorTheme, existingRoll: RandomRoll? = null): PuckRenderer {
         val renderer = PuckRenderer(theme)
         val style = if (type == BallType.Random && existingRoll != null)
