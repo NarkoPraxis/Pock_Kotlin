@@ -14,13 +14,13 @@ data class ColorTheme(
     companion object {
         val Warm get() = ColorTheme(
             main = ColorGroup(PaintBucket.highBallFill.toArgb(), PaintBucket.highBallStroke.toArgb()),
-            shield = ColorGroup(PaintBucket.effectColor.toArgb(), PaintBucket.effectSecondaryColor.toArgb()),
+            shield = ColorGroup(PaintBucket.highShieldPrimary.toArgb(), PaintBucket.highShieldSecondary.toArgb()),
             inert = ColorGroup(PaintBucket.inertPrimaryColor.toArgb(), PaintBucket.inertSecondaryColor.toArgb()),
             isWarm = true
         )
         val Cold get() = ColorTheme(
             main = ColorGroup(PaintBucket.lowBallFill.toArgb(), PaintBucket.lowBallStroke.toArgb()),
-            shield = ColorGroup(PaintBucket.effectColor.toArgb(), PaintBucket.effectSecondaryColor.toArgb()),
+            shield = ColorGroup(PaintBucket.lowShieldPrimary.toArgb(), PaintBucket.lowShieldSecondary.toArgb()),
             inert = ColorGroup(PaintBucket.inertPrimaryColor.toArgb(), PaintBucket.inertSecondaryColor.toArgb()),
             isWarm = false
         )

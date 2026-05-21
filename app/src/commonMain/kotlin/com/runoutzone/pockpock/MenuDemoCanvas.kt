@@ -88,6 +88,7 @@ fun MenuDemoCanvas() {
                     Logic.initializeSettings(size.width, size.height)
                     PaintBucket.initialize(Settings.screenRatio)
                     PaintBucket.initializePlatformColors(isDark)
+                    PaintBucket.applyPlayerHues()
                     Sounds.initializeGame()
                     Drawing.initialize()
 

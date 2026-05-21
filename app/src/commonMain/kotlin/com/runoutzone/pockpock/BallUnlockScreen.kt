@@ -81,6 +81,7 @@ fun BallUnlockScreen(onBack: () -> Unit) {
                 Settings.strokeWidth = r / 4f
                 PaintBucket.initialize(r)
             }
+            PaintBucket.applyPlayerHues()
             for (i in 0 until count) {
                 val theme = if (warmFlags[i]) ColorTheme.Warm else ColorTheme.Cold
                 renderers[i] = BallStyleFactory.buildRenderer(displayTypes[i], theme)

@@ -35,10 +35,16 @@ object PaintBucket {
     /** Low (cold) player puck stroke. */
     var lowPlayerSecondary: Color = Color(0xFF52b6f2)
 
-    /** Shield/effect primary color. */
+    /** Shield/effect primary color (arena walls / goal zones). */
     var shieldPrimary: Color = Color(0xFFc09df5)
-    /** Shield/effect secondary color. */
+    /** Shield/effect secondary color (arena walls / goal zones). */
     var shieldSecondary: Color = Color(0xFF9356ee)
+
+    /** Per-player shield colors — driven by Storage hue settings. */
+    var highShieldPrimary: Color = Color(0xFFc09df5)
+    var highShieldSecondary: Color = Color(0xFF9356ee)
+    var lowShieldPrimary: Color = Color(0xFFc09df5)
+    var lowShieldSecondary: Color = Color(0xFF9356ee)
 
     /** Inert/neutral puck primary (light grey). */
     var inertPrimary: Color = Color(0xFFD9D9D9)
@@ -184,6 +190,26 @@ object PaintBucket {
     var chargeAlpha: Float = 1f
 
     // ── Initialization ────────────────────────────────────────────────────────
+
+    /**
+     * Apply stored player hue selections to all player/shield color fields.
+     * Secondary: HSV(hue, 66.1%, 96.1%). Primary: HSV(hue, 35.9%, 96.1%).
+     * Call after [initialize] (and [initializePlatformColors] on iOS).
+     */
+    fun applyPlayerHues() {
+        val highHue = Storage.highPlayerColorHue
+        val lowHue = Storage.lowPlayerColorHue
+        val highShieldHue = Storage.highShieldColorHue
+        val lowShieldHue = Storage.lowShieldColorHue
+        highPlayerSecondary = Color.hsv(highHue, 0.661f, 0.961f)
+        highPlayerPrimary = Color.hsv(highHue, 0.359f, 0.961f)
+        lowPlayerSecondary = Color.hsv(lowHue, 0.661f, 0.961f)
+        lowPlayerPrimary = Color.hsv(lowHue, 0.359f, 0.961f)
+        highShieldSecondary = Color.hsv(highShieldHue, 0.661f, 0.961f)
+        highShieldPrimary = Color.hsv(highShieldHue, 0.359f, 0.961f)
+        lowShieldSecondary = Color.hsv(lowShieldHue, 0.661f, 0.961f)
+        lowShieldPrimary = Color.hsv(lowShieldHue, 0.359f, 0.961f)
+    }
 
     /**
      * Set arena colors for iOS based on dark mode. Call after [initialize].

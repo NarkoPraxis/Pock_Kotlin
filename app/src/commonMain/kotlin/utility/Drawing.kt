@@ -118,14 +118,16 @@ object Drawing {
     // -------------------------------------------------------------------------
 
     fun DrawScope.drawArenaForeground() {
-        val goalColor = PaintBucket.goalColor
+        val canScore = Settings.canScore
+        val highGoalColor = if (canScore) PaintBucket.highShieldPrimary else PaintBucket.highShieldSecondary
+        val lowGoalColor = if (canScore) PaintBucket.lowShieldPrimary else PaintBucket.lowShieldSecondary
         drawRect(
-            color = goalColor,
+            color = highGoalColor,
             topLeft = Offset(highZoneLeft, highZoneTop),
             size = Size(highZoneRight - highZoneLeft, highZoneBottom - highZoneTop)
         )
         drawRect(
-            color = goalColor,
+            color = lowGoalColor,
             topLeft = Offset(lowZoneLeft, lowZoneTop),
             size = Size(lowZoneRight - lowZoneLeft, lowZoneBottom - lowZoneTop)
         )
@@ -139,14 +141,15 @@ object Drawing {
         val highPlayer = Logic.highPlayer
         val lowPlayer = Logic.lowPlayer
         val baseAlpha = 255
-        val defaultColorInt = PaintBucket.canScoreWallColor.toArgb()
+        val highDefaultColorInt = PaintBucket.highShieldSecondary.toArgb()
+        val lowDefaultColorInt = PaintBucket.lowShieldSecondary.toArgb()
 
         for (x in 0..wallWidthParticleCount) {
             val xPos = x * Settings.longParticleSide
 
             val highDist = highPlayer.puck.distanceTo(xPos, Settings.topGoalBottom) - Settings.screenRatio
             val lowDist  = lowPlayer.puck.distanceTo(xPos, Settings.topGoalBottom)  - Settings.screenRatio
-            var wallColorInt = defaultColorInt
+            var wallColorInt = highDefaultColorInt
             var proximityAlpha = 0f
             if (highDist < minDistance) {
                 proximityAlpha = getAlpha(highDist)
@@ -160,7 +163,7 @@ object Drawing {
                 }
             }
             val topAlpha = maxOf(baseAlpha, proximityAlpha.toInt())
-            val resolvedTop = if (proximityAlpha > baseAlpha) wallColorInt else defaultColorInt
+            val resolvedTop = if (proximityAlpha > baseAlpha) wallColorInt else highDefaultColorInt
             val topColor = Color(resolvedTop).copy(alpha = topAlpha.coerceIn(0, 255) / 255f)
             drawRect(
                 color = topColor,
@@ -170,7 +173,7 @@ object Drawing {
 
             val highDistB = highPlayer.puck.distanceTo(xPos, Settings.bottomGoalTop) - Settings.screenRatio
             val lowDistB  = lowPlayer.puck.distanceTo(xPos, Settings.bottomGoalTop)  - Settings.screenRatio
-            var wallColorIntB = defaultColorInt
+            var wallColorIntB = lowDefaultColorInt
             var proximityAlphaB = 0f
             if (highDistB < minDistance) {
                 proximityAlphaB = getAlpha(highDistB)
@@ -184,7 +187,7 @@ object Drawing {
                 }
             }
             val botAlpha = maxOf(baseAlpha, proximityAlphaB.toInt())
-            val resolvedBot = if (proximityAlphaB > baseAlpha) wallColorIntB else defaultColorInt
+            val resolvedBot = if (proximityAlphaB > baseAlpha) wallColorIntB else lowDefaultColorInt
             val botColor = Color(resolvedBot).copy(alpha = botAlpha.coerceIn(0, 255) / 255f)
             drawRect(
                 color = botColor,
@@ -425,7 +428,7 @@ object Drawing {
         if (dist < Settings.screenRatio * 0.3f) return
 
         val themeColor = if (isHigh) PaintBucket.highBallStroke else PaintBucket.lowBallStroke
-        val chargeColor = PaintBucket.effectColor
+        val chargeColor = if (isHigh) PaintBucket.highShieldSecondary else PaintBucket.lowShieldSecondary
 
         val range = (Settings.sweetSpotMin - Settings.chargeStart).toFloat()
         val ratio = ((player.charge - Settings.chargeStart) / range).coerceIn(0f, 1f)

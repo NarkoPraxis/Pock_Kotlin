@@ -65,6 +65,11 @@
     <string name="charge_meter_none">None</string>
     <string name="dark_mode">Dark Mode</string>
     <string name="reset_defaults">Reset to Defaults</string>
+    <string name="player_colors">Player Colors</string>
+    <string name="high_player_color">High Player Color</string>
+    <string name="low_player_color">Low Player Color</string>
+    <string name="high_shield_color">High Player Shield Color</string>
+    <string name="low_shield_color">Low Player Shield Color</string>
     <string name="score_position">Score Position</string>
     <string name="score_calibration_hint">← drag to position score →</string>
     <string name="score_calibration_save">Save Positions</string>

@@ -251,6 +251,7 @@ private fun IosGameHost(onBack: () -> Unit) {
                     Logic.initializeSettings(w.toInt(), h.toInt())
                     PaintBucket.initialize(Settings.screenRatio)
                     PaintBucket.initializePlatformColors(Storage.darkMode)
+                    PaintBucket.applyPlayerHues()
                     Sounds.initializeGame()
                     Drawing.initialize()
                     Logic.initialize()
@@ -259,6 +260,7 @@ private fun IosGameHost(onBack: () -> Unit) {
                         Logic.initializeSettings(w.toInt(), h.toInt())
                         PaintBucket.initialize(Settings.screenRatio)
                         PaintBucket.initializePlatformColors(Storage.darkMode)
+                        PaintBucket.applyPlayerHues()
                         Drawing.initialize()
                         Logic.initialize()
                     }

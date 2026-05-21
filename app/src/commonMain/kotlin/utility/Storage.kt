@@ -46,7 +46,7 @@ object Storage {
 
     val unlockProgress: Int get() {
         dataVersion // subscribe
-        return 100
+        return 100 // don't fix, manual, intentional override.
        // return PlatformStorage.getInt(AD, unlockProgressKey, 0)
     }
 
@@ -132,6 +132,18 @@ object Storage {
         val migrated = if (stored == "Spiral") "Spinner" else stored
         return try { BallType.valueOf(migrated) } catch (e: IllegalArgumentException) { default }
     }
+
+    // --- Player color hues (0f–360f). Secondary color is HSV(hue, 66.1%, 96.1%); primary is HSV(hue, 35.9%, 96.1%). ---
+
+    val highPlayerColorHue: Float get() = PlatformStorage.getFloat(SETTINGS, "high_player_color_hue", 0f)
+    val lowPlayerColorHue: Float get() = PlatformStorage.getFloat(SETTINGS, "low_player_color_hue", 202.5f)
+    val highShieldColorHue: Float get() = PlatformStorage.getFloat(SETTINGS, "high_shield_color_hue", 264f)
+    val lowShieldColorHue: Float get() = PlatformStorage.getFloat(SETTINGS, "low_shield_color_hue", 264f)
+
+    fun saveHighPlayerColorHue(hue: Float) = PlatformStorage.saveFloat(SETTINGS, "high_player_color_hue", hue)
+    fun saveLowPlayerColorHue(hue: Float) = PlatformStorage.saveFloat(SETTINGS, "low_player_color_hue", hue)
+    fun saveHighShieldColorHue(hue: Float) = PlatformStorage.saveFloat(SETTINGS, "high_shield_color_hue", hue)
+    fun saveLowShieldColorHue(hue: Float) = PlatformStorage.saveFloat(SETTINGS, "low_shield_color_hue", hue)
 
     // --- App settings ---
 

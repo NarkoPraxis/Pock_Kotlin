@@ -280,7 +280,7 @@ class BallSelectionPopup(val isHigh: Boolean) {
     }
 
     private fun DrawScope.drawLock(lx: Float, ly: Float, radius: Float) {
-        val lockColor = utility.PaintBucket.shieldPrimary
+        val lockColor = if (isHigh) utility.PaintBucket.highShieldPrimary else utility.PaintBucket.lowShieldPrimary
         val strokeWidth = Settings.screenRatio * 0.2f
         val bodyW = radius * 0.8f
         val bodyH = radius * 0.7f

@@ -1,6 +1,9 @@
 package com.runoutzone.pockpock
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -9,7 +12,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +58,11 @@ fun SettingsScreen(
     var highChargeMeter by remember { mutableStateOf(Storage.highPlayerChargeMeterStyle) }
     var lowChargeMeter by remember { mutableStateOf(Storage.lowPlayerChargeMeterStyle) }
     var darkMode by remember { mutableStateOf(Storage.darkMode) }
+    var highPlayerColorHue by remember { mutableStateOf(Storage.highPlayerColorHue) }
+    var lowPlayerColorHue by remember { mutableStateOf(Storage.lowPlayerColorHue) }
+    var highShieldColorHue by remember { mutableStateOf(Storage.highShieldColorHue) }
+    var lowShieldColorHue by remember { mutableStateOf(Storage.lowShieldColorHue) }
+    val isColorCustomizationUnlocked = Storage.unlockProgress >= 100
 
     fun resetToDefaults() {
         PlatformStorage.saveString("settings", "ball_sizes", "default")
@@ -130,6 +142,11 @@ fun SettingsScreen(
     val strDarkMode = stringResource(Res.string.dark_mode)
     val strScorePosition = stringResource(Res.string.score_position)
     val strResetDefaults = stringResource(Res.string.reset_defaults)
+    val strPlayerColors = stringResource(Res.string.player_colors)
+    val strHighPlayerColor = stringResource(Res.string.high_player_color)
+    val strLowPlayerColor = stringResource(Res.string.low_player_color)
+    val strHighShieldColor = stringResource(Res.string.high_shield_color)
+    val strLowShieldColor = stringResource(Res.string.low_shield_color)
 
     Column(
         modifier = Modifier
@@ -300,6 +317,31 @@ fun SettingsScreen(
             selected = lowChargeMeter,
             onSelect = { lowChargeMeter = it; Storage.saveLowPlayerChargeMeterStyle(it) }
         )
+        if (isColorCustomizationUnlocked) {
+            HorizontalDivider(color = dividerColor)
+            SettingsSectionLabel(strPlayerColors, textSecondary)
+            HueSliderRow(strHighPlayerColor, highPlayerColorHue, labelColor) {
+                highPlayerColorHue = it
+                Storage.saveHighPlayerColorHue(it)
+                PaintBucket.applyPlayerHues()
+            }
+            HueSliderRow(strLowPlayerColor, lowPlayerColorHue, labelColor) {
+                lowPlayerColorHue = it
+                Storage.saveLowPlayerColorHue(it)
+                PaintBucket.applyPlayerHues()
+            }
+            HueSliderRow(strHighShieldColor, highShieldColorHue, labelColor) {
+                highShieldColorHue = it
+                Storage.saveHighShieldColorHue(it)
+                PaintBucket.applyPlayerHues()
+            }
+            HueSliderRow(strLowShieldColor, lowShieldColorHue, labelColor) {
+                lowShieldColorHue = it
+                Storage.saveLowShieldColorHue(it)
+                PaintBucket.applyPlayerHues()
+            }
+        }
+
         ToggleRow(strDarkMode, darkMode, textSecondary) {
             darkMode = it
             PlatformStorage.saveBoolean("settings", "darkmode", it)
@@ -418,6 +460,66 @@ private fun NavigationRow(label: String, onClick: () -> Unit) {
         ) {
             Text(label, fontSize = 14.sp)
             Text("›", fontSize = 18.sp)
+        }
+    }
+}
+
+@Composable
+private fun HueSliderRow(
+    label: String,
+    hue: Float,
+    labelColor: Color,
+    onHueChange: (Float) -> Unit
+) {
+    val rainbowColors = remember {
+        (0..36).map { Color.hsv(it * 10f, 1f, 1f) }
+    }
+    val previewSecondary = Color.hsv(hue, 0.661f, 0.961f)
+    val previewPrimary = Color.hsv(hue, 0.359f, 0.961f)
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(label, color = labelColor, fontSize = 13.sp)
+            Canvas(modifier = Modifier.size(22.dp)) {
+                drawCircle(previewPrimary)
+                drawCircle(previewSecondary, style = Stroke(width = 3.dp.toPx()))
+            }
+        }
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        onHueChange((offset.x / size.width * 360f).coerceIn(0f, 360f))
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, _ ->
+                        onHueChange((change.position.x / size.width * 360f).coerceIn(0f, 360f))
+                    }
+                }
+        ) {
+            drawRect(
+                brush = Brush.linearGradient(
+                    colors = rainbowColors,
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width, 0f)
+                )
+            )
+            val thumbX = (hue / 360f) * size.width
+            val thumbR = 10.dp.toPx()
+            drawCircle(
+                color = Color.White,
+                radius = thumbR,
+                center = Offset(thumbX, size.height / 2f)
+            )
+            drawCircle(
+                color = Color.Black,
+                radius = thumbR,
+                center = Offset(thumbX, size.height / 2f),
+                style = Stroke(width = 2.dp.toPx())
+            )
         }
     }
 }
