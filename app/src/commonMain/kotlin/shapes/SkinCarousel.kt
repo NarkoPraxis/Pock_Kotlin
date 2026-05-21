@@ -8,6 +8,8 @@ import gameobjects.puckstyle.paddles.ClassicLaunch
 
 class SkinCarousel : ComponentCarousel() {
 
+    override val animateBounce: Boolean = false
+
     override fun buildRendererForType(type: BallType, renderer: PuckRenderer): PuckRenderer {
         val skin = BallStyleFactory.buildSkin(type, renderer)
         val tail = InvisibleTail(renderer)

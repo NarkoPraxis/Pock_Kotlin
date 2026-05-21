@@ -27,7 +27,10 @@ abstract class ComponentCarousel : ScrollSnapCarousel() {
 
     val selectedType: BallType get() = availableTypes.getOrElse(snapIndex) { BallType.Classic }
 
-    protected val theme: ColorTheme = ColorTheme.Warm
+    protected var theme: ColorTheme = ColorTheme.Cold
+
+    /** Whether carousel items bob up and down. Override to false for static carousels. */
+    open val animateBounce: Boolean = true
 
     val w: Float get() = Settings.screenWidth
     val h: Float get() = Settings.screenRatio * 5f
@@ -36,13 +39,28 @@ abstract class ComponentCarousel : ScrollSnapCarousel() {
     fun initRenderers() {
         for (i in availableTypes.indices) {
             val r = PuckRenderer(theme)
-            r.isHigh = true
+            r.isHigh = false
             renderers[i] = buildRendererForType(availableTypes[i], r)
         }
     }
 
     fun clearTailAt(index: Int) {
         renderers.getOrNull(index)?.tail?.clear()
+    }
+
+    fun updateTheme(newTheme: ColorTheme) {
+        theme = newTheme
+        for (r in renderers) {
+            r?.theme = newTheme
+            r?.isHigh = newTheme.isWarm
+        }
+    }
+
+    fun updateStateFlags(shielded: Boolean, inert: Boolean) {
+        for (r in renderers) {
+            r?.shielded = shielded
+            r?.inertLocked = inert
+        }
     }
 
     abstract fun buildRendererForType(type: BallType, renderer: PuckRenderer): PuckRenderer
@@ -108,7 +126,10 @@ abstract class ComponentCarousel : ScrollSnapCarousel() {
             val renderer = renderers.getOrNull(i) ?: continue
             val amplitude = if (isCenter) Settings.screenRatio * 0.6f else Settings.screenRatio * 0.3f
             val phase = i * 0.7f
-            puckYs[i] = centerY + amplitude * sin(2 * kotlin.math.PI.toFloat() * frame / 80f + phase)
+            puckYs[i] = if (animateBounce)
+                centerY + amplitude * sin(2 * kotlin.math.PI.toFloat() * frame / 80f + phase)
+            else
+                centerY
         }
 
         canvas.restore()

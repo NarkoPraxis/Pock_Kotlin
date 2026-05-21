@@ -2,10 +2,17 @@ package com.runoutzone.pockpock
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -17,6 +24,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import enums.BallType
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
@@ -43,13 +53,18 @@ private const val ID_SKIN   = 0
 private const val ID_TAIL   = 1
 private const val ID_PADDLE = 2
 
-private const val GESTURE_IDLE      = 0
-private const val GESTURE_DETECTING = 1
+private const val GESTURE_IDLE       = 0
+private const val GESTURE_DETECTING  = 1
 private const val GESTURE_HORIZONTAL = 2
-private const val GESTURE_VERTICAL  = 3
+private const val GESTURE_VERTICAL   = 3
 
 // 3 seconds at 16 ms/frame ≈ 188 frames
 private const val LONG_PRESS_FRAMES = 188
+
+// Preview state
+private const val STATE_NORMAL = 0
+private const val STATE_SHIELD = 1
+private const val STATE_INERT  = 2
 
 private data class SavedBall(val storageIndex: Int, val config: CustomBallConfig)
 
@@ -80,6 +95,14 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
     var savedBalls by remember { mutableStateOf(loadBalls()) }
     var selectedStorageIdx by remember { mutableIntStateOf(savedBalls.firstOrNull()?.storageIndex ?: -1) }
 
+    // Color theme and state toggles for preview
+    var previewTheme by remember { mutableStateOf(ColorTheme.Cold) }
+    var previewState by remember { mutableIntStateOf(STATE_NORMAL) }
+
+    // Slot mini-preview renderers (one per storage slot 0–4)
+    val slotRenderers = remember { arrayOfNulls<PuckRenderer>(5) }
+    var slotVersion by remember { mutableIntStateOf(0) }
+
     // carouselRanks: skin=.first, tail=.second, paddle=.third  (0=back, 2=front)
     var carouselRanks by remember { mutableStateOf(Triple(0, 1, 2)) }
 
@@ -90,7 +113,6 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
     }
 
     fun withNewRank(movingId: Int, newRank: Int): Triple<Int, Int, Int> {
-        // Others maintain relative order and fill remaining ranks
         val others = (0..2).filter { it != movingId }.sortedBy { rankOf(it) }
         val free = (0..2).filter { it != newRank }.sorted()
         val newSkin = when {
@@ -141,8 +163,23 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
 
     fun rebuildPreview(cfg: CustomBallConfig) {
         previewRenderer?.tail?.clear()
-        previewRenderer = BallStyleFactory.buildCustomRenderer(cfg, ColorTheme.Warm)
+        val r = BallStyleFactory.buildCustomRenderer(cfg, previewTheme)
+        r.isHigh = previewTheme.isWarm
+        previewRenderer = r
         lastPreviewConfig = cfg
+    }
+
+    fun rebuildSlotRenderers() {
+        for (i in 0..4) {
+            slotRenderers[i]?.tail?.clear()
+            val cfg = Storage.loadCustomBall(i)
+            slotRenderers[i] = if (cfg != null) {
+                val r = BallStyleFactory.buildCustomRenderer(cfg, previewTheme)
+                r.isHigh = previewTheme.isWarm
+                r
+            } else null
+        }
+        slotVersion++
     }
 
     fun loadSlot(config: CustomBallConfig) {
@@ -158,8 +195,8 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
     var animVersion   by remember { mutableIntStateOf(0) }
 
     // Reorder drag state
-    var reorderingId  by remember { mutableIntStateOf(-1) }
-    var reorderDragY  by remember { mutableFloatStateOf(0f) }
+    var reorderingId by remember { mutableIntStateOf(-1) }
+    var reorderDragY by remember { mutableFloatStateOf(0f) }
 
     // Gesture state
     var gesturePhase      by remember { mutableIntStateOf(GESTURE_IDLE) }
@@ -174,7 +211,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
     var longPressStart    by remember { mutableIntStateOf(-1) }
     var longPressProgress by remember { mutableFloatStateOf(0f) }
 
-    // ── Layout helpers (local funs read live state at call time) ─────────────
+    // ── Layout helpers ────────────────────────────────────────────────────────
     fun carouselH()       = if (Settings.screenRatio > 0f) Settings.screenRatio * 5f else 80f
     fun carouselAreaTop() = canvasH * 0.38f
     fun targetYForRank(rank: Int) = carouselAreaTop() + (2 - rank) * carouselH() + carouselH() / 2f
@@ -193,13 +230,12 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
         return raw.coerceIn(0, 2)
     }
 
-    // ── Animation loop ───────────────────────────────────────────────────────
+    // ── Animation loop ────────────────────────────────────────────────────────
     LaunchedEffect(Unit) {
         while (true) {
             delay(16L)
             frame++
 
-            // Lerp carousel Y toward target
             if (carouselH() > 0f) {
                 var anyMoved = false
                 for (id in 0..2) {
@@ -211,7 +247,6 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 if (anyMoved) animVersion++
             }
 
-            // Long press countdown
             if (longPressIdx >= 0 && longPressStart >= 0) {
                 val elapsed = frame - longPressStart
                 longPressProgress = (elapsed.toFloat() / LONG_PRESS_FRAMES).coerceIn(0f, 1f)
@@ -227,7 +262,6 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 }
             }
 
-            // Rebuild preview and auto-save when config changes
             val cfg = currentConfig()
             if (cfg != lastPreviewConfig && initDone) {
                 rebuildPreview(cfg)
@@ -236,7 +270,13 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
         }
     }
 
-    // ── Init ─────────────────────────────────────────────────────────────────
+    // Rebuild slot mini-renderers whenever saved balls or preview theme change
+    LaunchedEffect(savedBalls, previewTheme, initDone) {
+        if (!initDone) return@LaunchedEffect
+        rebuildSlotRenderers()
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
     LaunchedEffect(canvasW, canvasH) {
         if (!initDone && canvasW > 0 && canvasH > 0) {
             val ratio = max(1f, min(canvasW.toFloat(), canvasH.toFloat()) / 18f)
@@ -266,7 +306,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
         }
     }
 
-    // ── UI ───────────────────────────────────────────────────────────────────
+    // ── UI ────────────────────────────────────────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -293,8 +333,8 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                                     gesturePhase     = GESTURE_DETECTING
                                     gestureTouchedId = carouselIdAtY(y)
 
-                                    val slotHit = slotHitTest(x, y, savedBalls.map { it.storageIndex }, canvasW.toFloat())
-                                    if (slotHit >= 0) {
+                                    val slotHit = cbcSlotHitTest(x, y, canvasW.toFloat())
+                                    if (slotHit >= 0 && savedBalls.any { it.storageIndex == slotHit }) {
                                         longPressIdx   = slotHit
                                         longPressStart = frame
                                         longPressProgress = 0f
@@ -305,7 +345,6 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                                 }
 
                                 PointerEventType.Move -> {
-                                    val dx   = x - gesturePrevX
                                     val dy   = y - gesturePrevY
                                     val cumX = abs(x - gestureStartX)
                                     val cumY = abs(y - gestureStartY)
@@ -314,7 +353,12 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                                         val slop = viewConfiguration.touchSlop
                                         if (cumX > slop || cumY > slop) {
                                             gesturePhase = if (cumX >= cumY) GESTURE_HORIZONTAL else GESTURE_VERTICAL
-                                            if (gesturePhase == GESTURE_VERTICAL && gestureTouchedId >= 0) {
+                                            if (gesturePhase == GESTURE_HORIZONTAL && gestureTouchedId >= 0) {
+                                                // Send ACTION_DOWN so the carousel starts tracking the drag
+                                                carousel(gestureTouchedId).handleScrollTouchEvent(
+                                                    ScrollSnapCarousel.ACTION_DOWN, gestureStartX, gestureStartY
+                                                )
+                                            } else if (gesturePhase == GESTURE_VERTICAL && gestureTouchedId >= 0) {
                                                 reorderingId = gestureTouchedId
                                                 reorderDragY = carouselAnimY[reorderingId]
                                             }
@@ -325,7 +369,9 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                                     when (gesturePhase) {
                                         GESTURE_HORIZONTAL -> {
                                             if (gestureTouchedId >= 0)
-                                                carousel(gestureTouchedId).handleScrollTouchEvent(ScrollSnapCarousel.ACTION_MOVE, x, y)
+                                                carousel(gestureTouchedId).handleScrollTouchEvent(
+                                                    ScrollSnapCarousel.ACTION_MOVE, x, y
+                                                )
                                             longPressIdx = -1; longPressStart = -1; longPressProgress = 0f
                                         }
                                         GESTURE_VERTICAL -> {
@@ -345,25 +391,26 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                                     when (gesturePhase) {
                                         GESTURE_HORIZONTAL -> {
                                             if (gestureTouchedId >= 0)
-                                                carousel(gestureTouchedId).handleScrollTouchEvent(ScrollSnapCarousel.ACTION_UP, x, y)
+                                                carousel(gestureTouchedId).handleScrollTouchEvent(
+                                                    ScrollSnapCarousel.ACTION_UP, x, y
+                                                )
                                         }
                                         GESTURE_VERTICAL -> { reorderingId = -1 }
                                         GESTURE_DETECTING -> {
-                                            // Tap
-                                            val slotHit = slotHitTest(x, y, savedBalls.map { it.storageIndex }, canvasW.toFloat())
+                                            val slotHit = cbcSlotHitTest(x, y, canvasW.toFloat())
                                             if (slotHit >= 0 && longPressProgress < 0.05f) {
-                                                selectedStorageIdx = slotHit
-                                                lastSavedConfig    = null
-                                                savedBalls.firstOrNull { it.storageIndex == slotHit }?.let { loadSlot(it.config) }
-                                                rebuildPreview(currentConfig())
-                                            } else if (slotHit < 0 && isAddButtonHit(x, y, savedBalls.size, canvasW.toFloat())) {
-                                                val newIdx = (0 until 5).firstOrNull { i -> savedBalls.none { it.storageIndex == i } }
-                                                if (newIdx != null) {
+                                                val existing = savedBalls.firstOrNull { it.storageIndex == slotHit }
+                                                if (existing != null) {
+                                                    selectedStorageIdx = slotHit
+                                                    lastSavedConfig    = null
+                                                    loadSlot(existing.config)
+                                                    rebuildPreview(currentConfig())
+                                                } else {
                                                     val cfg = currentConfig()
                                                     if (allUnlocked(cfg)) {
-                                                        Storage.saveCustomBall(newIdx, cfg)
+                                                        Storage.saveCustomBall(slotHit, cfg)
                                                         savedBalls = loadBalls()
-                                                        selectedStorageIdx = newIdx
+                                                        selectedStorageIdx = slotHit
                                                         lastSavedConfig    = cfg
                                                     }
                                                 }
@@ -380,20 +427,37 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 }
         ) {
             if (!initDone || Settings.screenRatio == 0f) return@Canvas
-            @Suppress("UNUSED_EXPRESSION") animVersion // recompose when positions update
+            @Suppress("UNUSED_EXPRESSION") animVersion
+            @Suppress("UNUSED_EXPRESSION") slotVersion
 
             val ratio = Settings.screenRatio
             val cw    = size.width
 
+            // Apply current state to carousel renderers every frame
+            val shielded = previewState == STATE_SHIELD
+            val inert    = previewState == STATE_INERT
+            skinCarousel.updateStateFlags(shielded, inert)
+            tailCarousel.updateStateFlags(shielded, inert)
+            paddleCarousel.updateStateFlags(shielded, inert)
+
+            // Slot mini-renderers: apply state flags
+            for (r in slotRenderers) {
+                r?.shielded = shielded
+                r?.inertLocked = inert
+            }
+
             // ── Slot header ──────────────────────────────────────────────
-            drawSlotHeader(
-                savedBalls      = savedBalls.map { it.storageIndex },
-                selectedIdx     = selectedStorageIdx,
-                longPressIdx    = longPressIdx,
+            drawCbcSlotHeader(
+                savedBalls        = savedBalls,
+                selectedIdx       = selectedStorageIdx,
+                longPressIdx      = longPressIdx,
                 longPressProgress = longPressProgress,
-                canvasW         = cw,
-                ratio           = ratio,
-                isDark          = isDark
+                slotRenderers     = slotRenderers,
+                canvasW           = cw,
+                ratio             = ratio,
+                frame             = frame,
+                previewTheme      = previewTheme,
+                isDark            = isDark
             )
 
             // ── Preview ball ─────────────────────────────────────────────
@@ -408,9 +472,11 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 pr.strokeWidth = ratio / 4f
                 pr.frame       = frame
                 pr.effectEnabled = true
-                pr.fillColor   = ColorTheme.Warm.main.primary
-                pr.strokeColor = ColorTheme.Warm.main.secondary
-                pr.baseFillColor = ColorTheme.Warm.main.primary
+                pr.shielded    = shielded
+                pr.inertLocked = inert
+                pr.fillColor   = previewTheme.main.primary
+                pr.strokeColor = previewTheme.main.secondary
+                pr.baseFillColor = previewTheme.main.primary
                 pr.effect.increaseCharge()
                 if (pr.effect.phase == ChargePhase.Inert) pr.effect.reset()
                 with(pr) { draw() }
@@ -421,91 +487,176 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 val car = carousel(id)
                 val cy  = carouselAnimY[id]
                 with(car) { drawTo(cy, frame) }
-                drawCarouselLabel(
-                    label  = when (id) { ID_SKIN -> "BALL"; ID_TAIL -> "TAIL"; else -> "PADDLE" },
-                    carouselTopY = cy - carouselH() / 2f,
-                    ratio  = ratio,
-                    isDark = isDark
+            }
+        }
+
+        // ── Toggle buttons (Compose overlay, below carousels) ────────────────
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 28.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            val btnColors = ButtonDefaults.buttonColors(
+                containerColor = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuButtonLight,
+                contentColor   = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
+            )
+            Button(
+                onClick = {
+                    val newTheme = if (previewTheme.isWarm) ColorTheme.Cold else ColorTheme.Warm
+                    previewTheme = newTheme
+                    skinCarousel.updateTheme(newTheme)
+                    tailCarousel.updateTheme(newTheme)
+                    paddleCarousel.updateTheme(newTheme)
+                    rebuildPreview(currentConfig())
+                },
+                colors = btnColors
+            ) {
+                Text(
+                    text       = if (previewTheme.isWarm) "WARM" else "COLD",
+                    fontSize   = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Button(
+                onClick = { previewState = (previewState + 1) % 3 },
+                colors = btnColors
+            ) {
+                Text(
+                    text = when (previewState) {
+                        STATE_SHIELD -> "SHIELD"
+                        STATE_INERT  -> "INERT"
+                        else         -> "NORMAL"
+                    },
+                    fontSize   = 14.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
     }
 }
 
-// ── Hit testing ──────────────────────────────────────────────────────────────
+// ── Hit testing ───────────────────────────────────────────────────────────────
 
-private fun slotHitTest(x: Float, y: Float, storageIndices: List<Int>, canvasW: Float): Int {
+/** Always tests all 5 fixed slot positions; returns slot index 0–4, or -1 if miss. */
+private fun cbcSlotHitTest(x: Float, y: Float, canvasW: Float): Int {
     val ratio    = Settings.screenRatio
     val slotSize = ratio * 3f
     val gap      = ratio * 0.5f
-    val totalW   = storageIndices.size * (slotSize + gap) - gap
+    val totalW   = 5 * (slotSize + gap) - gap
     var sx       = (canvasW - totalW) / 2f
     val topY     = ratio * 0.4f
-    for (idx in storageIndices) {
-        if (x in sx..(sx + slotSize) && y in topY..(topY + slotSize)) return idx
+    for (i in 0..4) {
+        if (x in sx..(sx + slotSize) && y in topY..(topY + slotSize)) return i
         sx += slotSize + gap
     }
     return -1
 }
 
-private fun isAddButtonHit(x: Float, y: Float, count: Int, canvasW: Float): Boolean {
-    if (count >= 5) return false
-    val ratio    = Settings.screenRatio
-    val slotSize = ratio * 3f
-    val gap      = ratio * 0.5f
-    val totalW   = count * (slotSize + gap) + slotSize
-    val sx       = (canvasW - totalW) / 2f + count * (slotSize + gap)
-    val topY     = ratio * 0.4f
-    return x in sx..(sx + slotSize) && y in topY..(topY + slotSize)
-}
-
 // ── Drawing helpers ───────────────────────────────────────────────────────────
 
-private fun DrawScope.drawSlotHeader(
-    savedBalls: List<Int>,
+private fun DrawScope.drawCbcSlotHeader(
+    savedBalls: List<SavedBall>,
     selectedIdx: Int,
     longPressIdx: Int,
     longPressProgress: Float,
+    slotRenderers: Array<PuckRenderer?>,
     canvasW: Float,
     ratio: Float,
+    frame: Int,
+    previewTheme: ColorTheme,
     isDark: Boolean
 ) {
     val slotSize = ratio * 3f
     val gap      = ratio * 0.5f
-    val count    = savedBalls.size
-    val addCount = if (count < 5) 1 else 0
-    val totalW   = (count + addCount) * (slotSize + gap) - gap
+    val totalW   = 5 * (slotSize + gap) - gap
     var sx       = (canvasW - totalW) / 2f
     val topY     = ratio * 0.4f
     val cr       = CornerRadius(ratio * 0.35f)
 
-    for ((uiIdx, storageIdx) in savedBalls.withIndex()) {
-        val isSelected    = storageIdx == selectedIdx
-        val isLongPressed = storageIdx == longPressIdx
-        val borderColor   = if (isSelected) Color(ColorTheme.Warm.main.primary) else Color(0x66FFFFFF)
-        val bgColor       = if (isSelected) Color(0x44FFAA44.toInt()) else if (isDark) Color(0xFF1A1A2E.toInt()) else Color(0xFFF0EEFF.toInt())
+    for (i in 0..4) {
+        val populated = savedBalls.any { it.storageIndex == i }
+        val isSelected    = i == selectedIdx
+        val isLongPressed = i == longPressIdx
 
-        drawRoundRect(color = bgColor,       topLeft = Offset(sx, topY), size = Size(slotSize, slotSize), cornerRadius = cr)
-        drawRoundRect(color = borderColor,   topLeft = Offset(sx, topY), size = Size(slotSize, slotSize), cornerRadius = cr, style = Stroke(ratio * 0.18f))
+        // Background
+        val bgColor = when {
+            isSelected && populated ->
+                Color(previewTheme.main.primary).copy(alpha = 0.28f)
+            populated && isDark  -> Color(0xFF1A2A3E.toInt())
+            populated            -> Color(0xFFE0EEF8.toInt())
+            isDark               -> Color(0xFF111118.toInt())
+            else                 -> Color(0xFFE8E8F0.toInt())
+        }
+        val borderColor = when {
+            isSelected  -> Color(previewTheme.main.primary)
+            populated   -> Color(previewTheme.main.primary).copy(alpha = 0.4f)
+            else        -> Color(if (isDark) 0x44FFFFFF else 0x66000000.toInt())
+        }
+        val strokeW = if (isSelected) ratio * 0.22f else ratio * 0.12f
 
-        // Slot index dot
-        drawCircle(
-            color  = if (isSelected) Color(ColorTheme.Warm.main.primary).copy(alpha = 0.6f) else Color(0x33FFFFFF),
-            radius = slotSize * 0.18f,
-            center = Offset(sx + slotSize / 2f, topY + slotSize / 2f)
+        drawRoundRect(
+            color       = bgColor,
+            topLeft     = Offset(sx, topY),
+            size        = Size(slotSize, slotSize),
+            cornerRadius = cr
+        )
+        drawRoundRect(
+            color       = borderColor,
+            topLeft     = Offset(sx, topY),
+            size        = Size(slotSize, slotSize),
+            cornerRadius = cr,
+            style       = Stroke(strokeW)
         )
 
-        // Long press ring
+        if (populated) {
+            // Draw mini ball preview
+            val miniR = slotRenderers[i]
+            if (miniR != null) {
+                miniR.x = sx + slotSize / 2f
+                miniR.y = topY + slotSize / 2f
+                miniR.radius = slotSize * 0.27f
+                miniR.strokeWidth = slotSize * 0.045f
+                miniR.frame = frame
+                miniR.effectEnabled = false
+                miniR.fillColor = previewTheme.main.primary
+                miniR.strokeColor = previewTheme.main.secondary
+                miniR.baseFillColor = previewTheme.main.primary
+                with(miniR) { draw() }
+            } else {
+                // Fallback: simple colored dot
+                drawCircle(
+                    color  = Color(previewTheme.main.primary).copy(alpha = 0.7f),
+                    radius = slotSize * 0.27f,
+                    center = Offset(sx + slotSize / 2f, topY + slotSize / 2f)
+                )
+            }
+        } else {
+            // Empty slot indicator
+            drawCircle(
+                color  = Color(if (isDark) 0x22FFFFFF else 0x22000000.toInt()),
+                radius = slotSize * 0.18f,
+                center = Offset(sx + slotSize / 2f, topY + slotSize / 2f)
+            )
+            val bLen = slotSize * 0.32f
+            val cxp  = sx + slotSize / 2f
+            val cyp  = topY + slotSize / 2f
+            val plusColor = Color(if (isDark) 0x55FFFFFF else 0x55000000.toInt())
+            drawLine(plusColor, Offset(cxp - bLen / 2f, cyp), Offset(cxp + bLen / 2f, cyp), ratio * 0.2f, StrokeCap.Round)
+            drawLine(plusColor, Offset(cxp, cyp - bLen / 2f), Offset(cxp, cyp + bLen / 2f), ratio * 0.2f, StrokeCap.Round)
+        }
+
+        // Long press deletion ring
         if (isLongPressed && longPressProgress > 0f) {
             val ringR = slotSize * 0.42f
-            val cx2   = sx + slotSize / 2f
-            val cy2   = topY + slotSize / 2f
+            val cxp   = sx + slotSize / 2f
+            val cyp   = topY + slotSize / 2f
             drawArc(
                 color      = Color(0xFFFF4444.toInt()),
                 startAngle = -90f,
                 sweepAngle = longPressProgress * 360f,
                 useCenter  = false,
-                topLeft    = Offset(cx2 - ringR, cy2 - ringR),
+                topLeft    = Offset(cxp - ringR, cyp - ringR),
                 size       = Size(ringR * 2f, ringR * 2f),
                 style      = Stroke(ratio * 0.25f, cap = StrokeCap.Round)
             )
@@ -513,28 +664,4 @@ private fun DrawScope.drawSlotHeader(
 
         sx += slotSize + gap
     }
-
-    // "+" button
-    if (count < 5) {
-        drawRoundRect(color = Color(0x22FFFFFF), topLeft = Offset(sx, topY), size = Size(slotSize, slotSize), cornerRadius = cr)
-        drawRoundRect(color = Color(0x66FFFFFF), topLeft = Offset(sx, topY), size = Size(slotSize, slotSize), cornerRadius = cr, style = Stroke(ratio * 0.15f))
-        val bLen = slotSize * 0.4f
-        val cx2  = sx + slotSize / 2f
-        val cy2  = topY + slotSize / 2f
-        drawLine(Color(0xAAFFFFFF.toInt()), Offset(cx2 - bLen / 2f, cy2), Offset(cx2 + bLen / 2f, cy2), ratio * 0.22f, StrokeCap.Round)
-        drawLine(Color(0xAAFFFFFF.toInt()), Offset(cx2, cy2 - bLen / 2f), Offset(cx2, cy2 + bLen / 2f), ratio * 0.22f, StrokeCap.Round)
-    }
-}
-
-private fun DrawScope.drawCarouselLabel(label: String, carouselTopY: Float, ratio: Float, isDark: Boolean) {
-    val tabW = ratio * 3.5f
-    val tabH = ratio * 1.0f
-    val tabX = ratio * 0.3f
-    val tabY = carouselTopY - tabH - ratio * 0.15f
-    drawRoundRect(
-        color       = Color(ColorTheme.Warm.main.primary).copy(alpha = 0.25f),
-        topLeft     = Offset(tabX, tabY),
-        size        = Size(tabW, tabH),
-        cornerRadius = CornerRadius(ratio * 0.2f)
-    )
 }

@@ -24,6 +24,9 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
     protected var frame = 0
         private set
 
+    /** When true, the frame counter does not advance — keeps paddle fully static. */
+    var frozen: Boolean = false
+
     val theme: ColorTheme
         get() = renderer.theme
 
@@ -125,7 +128,7 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
     }
 
     override fun draw(scope: DrawScope) {
-        frame++
+        if (!frozen) frame++
         updateState()
 
         if (releaseFrames > 0) {
