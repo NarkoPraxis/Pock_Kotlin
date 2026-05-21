@@ -18,6 +18,7 @@ class PaddleCarousel : ComponentCarousel() {
         // Prime to Building at chargeStart (paddle bar visible), then freeze so it never advances.
         renderer.effect.increaseCharge()
         renderer.effect.frozen = true
+        renderer.effect.cbcCarouselMode = true
         return renderer
     }
 

@@ -90,4 +90,9 @@
     <string name="tip_charging">Mantén tu disparo para cargar poder. ¡Suelta cuando esté morado para obtener un escudo!</string>
     <string name="tip_shields">¡Un puck morado está protegido y gana cada colisión!</string>
     <string name="tip_overcharge">¡Si te golpean mientras cargas, perderás el control, no seas imprudente!</string>
+
+    <!-- Custom ball creator -->
+    <string name="cbc_showing">Mostrando:</string>
+    <string name="cbc_high_player">Jugador Alto</string>
+    <string name="cbc_low_player">Jugador Bajo</string>
 </resources>

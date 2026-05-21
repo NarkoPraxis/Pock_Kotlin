@@ -32,8 +32,14 @@ import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.CustomBallConfig
+import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.stringResource
+import pock_kotlin.app.generated.resources.Res
+import pock_kotlin.app.generated.resources.cbc_high_player
+import pock_kotlin.app.generated.resources.cbc_low_player
+import pock_kotlin.app.generated.resources.cbc_showing
 import shapes.PaddleCarousel
 import shapes.SkinCarousel
 import shapes.TailCarousel
@@ -97,6 +103,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
     // Color theme and state toggles for preview
     var previewTheme by remember { mutableStateOf(ColorTheme.Cold) }
     var previewState by remember { mutableIntStateOf(STATE_NORMAL) }
+    var previewOrbitAngle by remember { mutableFloatStateOf(0f) }
 
     // Slot mini-preview renderers (one per storage slot 0–4)
     val slotRenderers = remember { arrayOfNulls<PuckRenderer>(5) }
@@ -212,7 +219,10 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
 
     // ── Layout helpers ────────────────────────────────────────────────────────
     fun carouselH()       = if (Settings.screenRatio > 0f) Settings.screenRatio * 5f else 80f
-    fun carouselAreaTop() = canvasH * 0.38f
+    // Carousels sit just above the toggle button area (estimated at ratio*4 from bottom)
+    fun carouselAreaTop() = canvasH - Settings.screenRatio * 5f - carouselH() * 3f
+    fun slotTopY()        = carouselAreaTop() - Settings.screenRatio * 0.5f - Settings.screenRatio * 3f
+    fun previewCenterY()  = slotTopY() / 2f
     fun targetYForRank(rank: Int) = carouselAreaTop() + (2 - rank) * carouselH() + carouselH() / 2f
     fun targetY(id: Int)  = if (id == reorderingId) reorderDragY else targetYForRank(rankOf(id))
     fun carouselIdAtY(y: Float): Int {
@@ -234,6 +244,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
         while (true) {
             delay(16L)
             frame++
+            previewOrbitAngle = (previewOrbitAngle + 1.2f) % 360f
 
             if (carouselH() > 0f) {
                 var anyMoved = false
@@ -332,7 +343,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                                     gesturePhase     = GESTURE_DETECTING
                                     gestureTouchedId = carouselIdAtY(y)
 
-                                    val slotHit = cbcSlotHitTest(x, y, canvasW.toFloat())
+                                    val slotHit = cbcSlotHitTest(x, y, canvasW.toFloat(), canvasH.toFloat())
                                     if (slotHit >= 0 && savedBalls.any { it.storageIndex == slotHit }) {
                                         longPressIdx   = slotHit
                                         longPressStart = frame
@@ -396,7 +407,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                                         }
                                         GESTURE_VERTICAL -> { reorderingId = -1 }
                                         GESTURE_DETECTING -> {
-                                            val slotHit = cbcSlotHitTest(x, y, canvasW.toFloat())
+                                            val slotHit = cbcSlotHitTest(x, y, canvasW.toFloat(), canvasH.toFloat())
                                             if (slotHit >= 0 && longPressProgress < 0.05f) {
                                                 val existing = savedBalls.firstOrNull { it.storageIndex == slotHit }
                                                 if (existing != null) {
@@ -445,22 +456,8 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 r?.inertLocked = inert
             }
 
-            // ── Slot header ──────────────────────────────────────────────
-            drawCbcSlotHeader(
-                savedBalls        = savedBalls,
-                selectedIdx       = selectedStorageIdx,
-                longPressIdx      = longPressIdx,
-                longPressProgress = longPressProgress,
-                slotRenderers     = slotRenderers,
-                canvasW           = cw,
-                ratio             = ratio,
-                frame             = frame,
-                previewTheme      = previewTheme,
-                isDark            = isDark
-            )
-
             // ── Preview ball ─────────────────────────────────────────────
-            val previewCy        = canvasH * 0.22f
+            val previewCy        = previewCenterY()
             val previewAmplitude = ratio * 1.5f
             val previewY         = previewCy + previewAmplitude * sin(2f * PI.toFloat() * frame / 70f)
             val pr = previewRenderer
@@ -478,8 +475,24 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 pr.baseFillColor = previewTheme.main.primary
                 pr.effect.increaseCharge()
                 if (pr.effect.phase == ChargePhase.Inert) pr.effect.reset()
+                (pr.effect as? PaddleLaunchEffect)?.cbcOrbitAngleDeg = previewOrbitAngle
                 with(pr) { draw() }
             }
+
+            // ── Slot header ──────────────────────────────────────────────
+            drawCbcSlotHeader(
+                savedBalls        = savedBalls,
+                selectedIdx       = selectedStorageIdx,
+                longPressIdx      = longPressIdx,
+                longPressProgress = longPressProgress,
+                slotRenderers     = slotRenderers,
+                canvasW           = cw,
+                slotTopY          = slotTopY(),
+                ratio             = ratio,
+                frame             = frame,
+                previewTheme      = previewTheme,
+                isDark            = isDark
+            )
 
             // ── Three carousels ──────────────────────────────────────────
             for (id in 0..2) {
@@ -494,11 +507,18 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 28.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             val btnColors = ButtonDefaults.buttonColors(
                 containerColor = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuButtonLight,
                 contentColor   = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
+            )
+            Text(
+                text       = stringResource(Res.string.cbc_showing).uppercase(),
+                color      = if (isDark) PaintBucket.white else Color(0xFF333333.toInt()),
+                fontSize   = 13.sp,
+                fontWeight = FontWeight.Bold
             )
             Button(
                 onClick = {
@@ -512,8 +532,9 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 colors = btnColors
             ) {
                 Text(
-                    text       = if (previewTheme.isWarm) "WARM" else "COLD",
-                    fontSize   = 14.sp,
+                    text       = if (previewTheme.isWarm) stringResource(Res.string.cbc_high_player).uppercase()
+                                 else stringResource(Res.string.cbc_low_player).uppercase(),
+                    fontSize   = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -527,7 +548,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                         STATE_INERT  -> "INERT"
                         else         -> "NORMAL"
                     },
-                    fontSize   = 14.sp,
+                    fontSize   = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -538,18 +559,25 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
 // ── Hit testing ───────────────────────────────────────────────────────────────
 
 /** Always tests all 5 fixed slot positions; returns slot index 0–4, or -1 if miss. */
-private fun cbcSlotHitTest(x: Float, y: Float, canvasW: Float): Int {
+private fun cbcSlotHitTest(x: Float, y: Float, canvasW: Float, canvasH: Float): Int {
     val ratio    = Settings.screenRatio
     val slotSize = ratio * 3f
     val gap      = ratio * 0.5f
     val totalW   = 5 * (slotSize + gap) - gap
     var sx       = (canvasW - totalW) / 2f
-    val topY     = ratio * 0.4f
+    val topY     = cbcSlotTopY(canvasH, ratio)
     for (i in 0..4) {
         if (x in sx..(sx + slotSize) && y in topY..(topY + slotSize)) return i
         sx += slotSize + gap
     }
     return -1
+}
+
+private fun cbcSlotTopY(canvasH: Float, ratio: Float): Float {
+    if (ratio == 0f) return 0f
+    val carouselH = ratio * 5f
+    val carouselAreaTop = canvasH - ratio * 6f - carouselH * 3f
+    return carouselAreaTop - ratio * 0.5f - ratio * 3f
 }
 
 // ── Drawing helpers ───────────────────────────────────────────────────────────
@@ -561,6 +589,7 @@ private fun DrawScope.drawCbcSlotHeader(
     longPressProgress: Float,
     slotRenderers: Array<PuckRenderer?>,
     canvasW: Float,
+    slotTopY: Float,
     ratio: Float,
     frame: Int,
     previewTheme: ColorTheme,
@@ -570,7 +599,7 @@ private fun DrawScope.drawCbcSlotHeader(
     val gap      = ratio * 0.5f
     val totalW   = 5 * (slotSize + gap) - gap
     var sx       = (canvasW - totalW) / 2f
-    val topY     = ratio * 0.4f
+    val topY     = slotTopY
     val cr       = CornerRadius(ratio * 0.35f)
 
     for (i in 0..4) {

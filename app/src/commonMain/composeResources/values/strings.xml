@@ -89,6 +89,9 @@
     <string name="custom_ball">CUSTOM BALL</string>
     <string name="custom_ball_title">CUSTOM BALL CREATOR</string>
     <string name="custom_ball_save_blocked">Unlock all three parts to save</string>
+    <string name="cbc_showing">Showing:</string>
+    <string name="cbc_high_player">High Player</string>
+    <string name="cbc_low_player">Low Player</string>
 
     <!-- Ball type names -->
     <string name="ball_type_pokpok">Pok Pok</string>
