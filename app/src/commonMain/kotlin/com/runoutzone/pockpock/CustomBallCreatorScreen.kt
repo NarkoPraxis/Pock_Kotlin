@@ -27,7 +27,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import enums.BallType
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ChargePhase
@@ -468,8 +467,8 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
             if (pr != null) {
                 pr.x = cw / 2f
                 pr.y = previewY
-                pr.radius      = Settings.ballRadius * 1.3f
-                pr.strokeWidth = ratio / 4f
+                pr.radius      = Settings.ballRadius
+                pr.strokeWidth = Settings.strokeWidth
                 pr.frame       = frame
                 pr.effectEnabled = true
                 pr.shielded    = shielded
@@ -615,8 +614,8 @@ private fun DrawScope.drawCbcSlotHeader(
             if (miniR != null) {
                 miniR.x = sx + slotSize / 2f
                 miniR.y = topY + slotSize / 2f
-                miniR.radius = slotSize * 0.27f
-                miniR.strokeWidth = slotSize * 0.045f
+                miniR.radius = Settings.ballRadius
+                miniR.strokeWidth = Settings.strokeWidth
                 miniR.frame = frame
                 miniR.effectEnabled = false
                 miniR.fillColor = previewTheme.main.primary
