@@ -65,6 +65,7 @@
     <string name="charge_meter_none">None</string>
     <string name="dark_mode">Dark Mode</string>
     <string name="reset_defaults">Reset to Defaults</string>
+    <string name="reset_colors">Reset Colors to Default</string>
     <string name="player_colors">Player Colors</string>
     <string name="high_player_color">High Player Color</string>
     <string name="low_player_color">Low Player Color</string>

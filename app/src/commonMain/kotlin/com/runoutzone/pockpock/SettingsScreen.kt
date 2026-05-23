@@ -142,6 +142,7 @@ fun SettingsScreen(
     val strDarkMode = stringResource(Res.string.dark_mode)
     val strScorePosition = stringResource(Res.string.score_position)
     val strResetDefaults = stringResource(Res.string.reset_defaults)
+    val strResetColors = stringResource(Res.string.reset_colors)
     val strPlayerColors = stringResource(Res.string.player_colors)
     val strHighPlayerColor = stringResource(Res.string.high_player_color)
     val strLowPlayerColor = stringResource(Res.string.low_player_color)
@@ -339,6 +340,22 @@ fun SettingsScreen(
                 lowShieldColorHue = it
                 Storage.saveLowShieldColorHue(it)
                 PaintBucket.applyPlayerHues()
+            }
+            TextButton(
+                onClick = {
+                    highPlayerColorHue = 0f
+                    lowPlayerColorHue = 202.5f
+                    highShieldColorHue = 264f
+                    lowShieldColorHue = 264f
+                    Storage.saveHighPlayerColorHue(0f)
+                    Storage.saveLowPlayerColorHue(202.5f)
+                    Storage.saveHighShieldColorHue(264f)
+                    Storage.saveLowShieldColorHue(264f)
+                    PaintBucket.applyPlayerHues()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(strResetColors, color = PaintBucket.dangerRed, fontSize = 14.sp)
             }
         }
 

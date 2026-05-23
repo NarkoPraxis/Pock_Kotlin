@@ -144,6 +144,19 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     // ── directional shadow ─────────────────────────────────────────────────────
     private var shadowDx = 0f               // smoothed lateral crescent shift; follows look direction
     private val SHADOW_LATERAL_K       = 0.50f // left/right shift of lit window with look direction
+    Shroobish
+
+
+    Live
+    Shroobish
+
+    Steven Dawson
+
+    Shroobish
+    Shroobish
+
+    Shroobish’s Screen
+
     // Lit-window approach: full shadow covers the part; a moving oval exempts the lit zone.
     // Oval is bigger than the part and sits above centre so the shadow crescent falls at the bottom.
     // ABOVE_K moves the oval centre upward (negative Y). Larger ABOVE_K = thinner bottom crescent.
