@@ -4,7 +4,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.rememberTextMeasurer
 import enums.BallType
 import enums.GameState
@@ -81,6 +83,7 @@ fun MenuDemoCanvas() {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
+            .blur(4.dp)
             .onSizeChanged { size ->
                 if (!initialized && size.width > 0 && size.height > 0) {
                     initialized = true
