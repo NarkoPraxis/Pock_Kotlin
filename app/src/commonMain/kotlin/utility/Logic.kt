@@ -117,15 +117,47 @@ object Logic {
     }
 
     fun applyBallStyles() {
-        if (Settings.highBallType == BallType.Random) Settings.highRandomRoll = BallStyleFactory.rollRandom()
-        if (Settings.lowBallType == BallType.Random) Settings.lowRandomRoll = BallStyleFactory.rollRandom()
+        val highCustomIdx = Settings.highCustomBallIndex
+        val lowCustomIdx = Settings.lowCustomBallIndex
+
+        if (Settings.highBallType == BallType.Random) {
+            if (highCustomIdx != null) {
+                Settings.highRandomRoll = null
+            } else {
+                Settings.highRandomRoll = BallStyleFactory.rollRandom()
+            }
+        }
+        if (Settings.lowBallType == BallType.Random) {
+            if (lowCustomIdx != null) {
+                Settings.lowRandomRoll = null
+            } else {
+                Settings.lowRandomRoll = BallStyleFactory.rollRandom()
+            }
+        }
+
+        val highRenderer = if (Settings.highBallType == BallType.Random && highCustomIdx != null) {
+            val config = Storage.loadCustomBall(highCustomIdx)
+            if (config != null) BallStyleFactory.buildCustomRenderer(config, ColorTheme.getTheme(true))
+            else BallStyleFactory.buildRenderer(Settings.highBallType, ColorTheme.getTheme(true), BallStyleFactory.rollRandom())
+        } else {
+            BallStyleFactory.buildRenderer(Settings.highBallType, ColorTheme.getTheme(true), Settings.highRandomRoll)
+        }
+
+        val lowRenderer = if (Settings.lowBallType == BallType.Random && lowCustomIdx != null) {
+            val config = Storage.loadCustomBall(lowCustomIdx)
+            if (config != null) BallStyleFactory.buildCustomRenderer(config, ColorTheme.getTheme(false))
+            else BallStyleFactory.buildRenderer(Settings.lowBallType, ColorTheme.getTheme(false), BallStyleFactory.rollRandom())
+        } else {
+            BallStyleFactory.buildRenderer(Settings.lowBallType, ColorTheme.getTheme(false), Settings.lowRandomRoll)
+        }
+
         highPlayer = Player(
-            Puck(Settings.ballRadius, highStartX, Settings.middleY, BallStyleFactory.buildRenderer(Settings.highBallType, ColorTheme.getTheme(true), Settings.highRandomRoll)),
+            Puck(Settings.ballRadius, highStartX, Settings.middleY, highRenderer),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight / 5, PaintBucket.highBallFill.toArgb(), PaintBucket.highBallStroke.toArgb()),
             true
         )
         lowPlayer = Player(
-            Puck(Settings.ballRadius, lowStartX, Settings.middleY, BallStyleFactory.buildRenderer(Settings.lowBallType, ColorTheme.getTheme(false), Settings.lowRandomRoll)),
+            Puck(Settings.ballRadius, lowStartX, Settings.middleY, lowRenderer),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight - Settings.screenHeight / 5, PaintBucket.lowBallFill.toArgb(), PaintBucket.lowBallStroke.toArgb()),
             false
         )

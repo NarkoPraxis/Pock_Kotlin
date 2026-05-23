@@ -11,6 +11,8 @@ object Settings {
     var lowBallType: BallType = BallType.Classic
     var highRandomRoll: RandomRoll? = null
     var lowRandomRoll: RandomRoll? = null
+    var highCustomBallIndex: Int? = null
+    var lowCustomBallIndex: Int? = null
     val scoreFlashEnabled = true
     val scoreBurstEnabled = true
     val scorePopEnabled = true
@@ -104,6 +106,8 @@ object Settings {
         timeLimitMinutes = utility.Storage.loadTimeLimit()
         highBallType = utility.Storage.loadHighBallType(highBallType)
         lowBallType = utility.Storage.loadLowBallType(lowBallType)
+        if (highBallType == BallType.Random) highCustomBallIndex = utility.Storage.loadHighCustomBallIndex()
+        if (lowBallType == BallType.Random) lowCustomBallIndex = utility.Storage.loadLowCustomBallIndex()
         unlockProgress = utility.Storage.unlockProgress
         highPlayerArrow = utility.Storage.highPlayerArrow
         lowPlayerArrow = utility.Storage.lowPlayerArrow

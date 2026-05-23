@@ -90,4 +90,9 @@
     <string name="tip_charging">Halte deinen Schuss zum Aufladen. Lasse bei Lila los, um ein Schild zu bekommen!</string>
     <string name="tip_shields">Ein lila Pock ist geschützt und gewinnt jeden Zusammenstoß!</string>
     <string name="tip_overcharge">Wenn du beim Aufladen getroffen wirst, verlierst du die Kontrolle – sei nicht leichtsinnig!</string>
+
+    <!-- Custom ball creator -->
+    <string name="cbc_showing">Zeige:</string>
+    <string name="cbc_high_player">Oberer Spieler</string>
+    <string name="cbc_low_player">Unterer Spieler</string>
 </resources>

@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.unit.LayoutDirection
 import gameobjects.Settings
 import gameobjects.puckstyle.TailRenderer.Companion.previewLayerPaint
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -23,6 +25,18 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
 
     protected var frame = 0
         private set
+
+    /** When true, the frame counter does not advance — keeps paddle fully static. */
+    var frozen: Boolean = false
+
+    /** When true (carousel display), the paddle is forced to draw at the ball center. */
+    var cbcCarouselMode: Boolean = false
+
+    /**
+     * When set to a valid angle in degrees, overrides aim direction and orbit distance
+     * so the paddle orbits around the ball (CBC preview mode). NaN = disabled.
+     */
+    var cbcOrbitAngleDeg: Float = Float.NaN
 
     val theme: ColorTheme
         get() = renderer.theme
@@ -125,7 +139,7 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
     }
 
     override fun draw(scope: DrawScope) {
-        frame++
+        if (!frozen) frame++
         updateState()
 
         if (releaseFrames > 0) {
@@ -243,6 +257,17 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
 
         paddleX = renderer.x - aimX * paddleDistance
         paddleY = renderer.y - aimY * paddleDistance
+
+        if (!cbcOrbitAngleDeg.isNaN()) {
+            val rad = cbcOrbitAngleDeg * PI.toFloat() / 180f
+            aimX = cos(rad); aimY = sin(rad)
+            paddleDistance = renderer.radius * 2.5f
+            paddleX = renderer.x - aimX * paddleDistance
+            paddleY = renderer.y - aimY * paddleDistance
+        } else if (cbcCarouselMode) {
+            paddleDistance = 0f
+            paddleX = renderer.x; paddleY = renderer.y
+        }
     }
 
     protected open fun drawChargingPaddle(scope: DrawScope) {

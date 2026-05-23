@@ -90,4 +90,9 @@
     <string name="tip_charging">按住射击以积蓄力量。变成紫色时松开可获得护盾！</string>
     <string name="tip_shields">紫色冰球受到保护，赢得每次碰撞！</string>
     <string name="tip_overcharge">充能时被击中将失去控制，不要鲁莽！</string>
+
+    <!-- Custom ball creator -->
+    <string name="cbc_showing">显示:</string>
+    <string name="cbc_high_player">上方玩家</string>
+    <string name="cbc_low_player">下方玩家</string>
 </resources>

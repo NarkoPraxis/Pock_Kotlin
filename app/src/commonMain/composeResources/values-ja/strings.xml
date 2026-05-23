@@ -90,4 +90,9 @@
     <string name="tip_charging">押し続けてパワーをチャージ。紫になったら放してシールドを得よう！</string>
     <string name="tip_shields">紫のパックはシールドされており、すべての衝突に勝ちます！</string>
     <string name="tip_overcharge">チャージ中に当たると制御を失います、無謀にならないで！</string>
+
+    <!-- Custom ball creator -->
+    <string name="cbc_showing">表示:</string>
+    <string name="cbc_high_player">上のプレイヤー</string>
+    <string name="cbc_low_player">下のプレイヤー</string>
 </resources>

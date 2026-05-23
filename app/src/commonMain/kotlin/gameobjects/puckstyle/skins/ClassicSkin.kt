@@ -22,9 +22,9 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     override fun DrawScope.drawBody() {
         val center = Offset(renderer.x, renderer.y)
-        drawCircle(Color(renderer.fillColor), renderer.radius, center)
+        drawCircle(Color(responsivePrimary), renderer.radius, center)
         drawCircle(
-            color = Color(renderer.strokeColor),
+            color = Color(responsiveSecondary),
             radius = renderer.radius,
             center = center,
             style = Stroke(width = renderer.strokeWidth)

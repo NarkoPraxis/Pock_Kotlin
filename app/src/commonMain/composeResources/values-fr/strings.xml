@@ -90,4 +90,9 @@
     <string name="tip_charging">Maintiens ton tir pour charger de la puissance. Relâche quand c\'est violet pour obtenir un bouclier !</string>
     <string name="tip_shields">Un puck violet est protégé et gagne chaque collision !</string>
     <string name="tip_overcharge">Si tu es touché en chargeant tu perdras le contrôle, ne sois pas imprudent !</string>
+
+    <!-- Custom ball creator -->
+    <string name="cbc_showing">Affichage :</string>
+    <string name="cbc_high_player">Joueur Haut</string>
+    <string name="cbc_low_player">Joueur Bas</string>
 </resources>
