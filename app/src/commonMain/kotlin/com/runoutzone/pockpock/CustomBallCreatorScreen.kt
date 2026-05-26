@@ -25,6 +25,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import gameobjects.Settings
@@ -74,8 +75,9 @@ private const val STATE_INERT  = 2
 private data class SavedBall(val storageIndex: Int, val config: CustomBallConfig)
 
 @Composable
-fun CustomBallCreatorScreen(onBack: () -> Unit) {
-    val isDark = LocalDarkMode.current
+fun CustomBallCreatorScreen(onBack: () -> Unit, onNavigateToCcp: () -> Unit) {
+    val isDark  = LocalDarkMode.current
+    val density = LocalDensity.current
     val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
 
     var frame by remember { mutableIntStateOf(0) }
@@ -479,7 +481,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 with(pr) { draw() }
             }
 
-            // ── Slot header ──────────────────────────────────────────────
+            // ── Slot header ───────────────────────────────────────────
             drawCbcSlotHeader(
                 savedBalls        = savedBalls,
                 selectedIdx       = selectedStorageIdx,
@@ -494,7 +496,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                 isDark            = isDark
             )
 
-            // ── Three carousels ──────────────────────────────────────────
+            // ── Three carousels ───────────────────────────────────────
             for (id in 0..2) {
                 val car = carousel(id)
                 val cy  = carouselAnimY[id]
@@ -502,7 +504,28 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── Toggle buttons (Compose overlay, below carousels) ────────────────
+        // ── PALETTE button — pinned to right side, level with the preset slot row ──
+        val overlayBtnColors = ButtonDefaults.buttonColors(
+            containerColor = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuButtonLight,
+            contentColor   = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
+        )
+        val paletteBtnTopDp = with(density) {
+            if (initDone && Settings.screenRatio > 0f) {
+                val slotTopPx = cbcSlotTopY(canvasH.toFloat(), Settings.screenRatio)
+                (slotTopPx - 48.dp.toPx()).toDp().coerceAtLeast(8.dp)
+            } else 0.dp
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = paletteBtnTopDp, end = 12.dp)
+        ) {
+            Button(onClick = onNavigateToCcp, colors = overlayBtnColors) {
+                Text(text = "PALETTE", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // ── Toggle buttons ────────────────────────────────────────────────────
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -510,10 +533,6 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val btnColors = ButtonDefaults.buttonColors(
-                containerColor = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuButtonLight,
-                contentColor   = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
-            )
             Text(
                 text       = stringResource(Res.string.cbc_showing).uppercase(),
                 color      = if (isDark) PaintBucket.white else Color(0xFF333333.toInt()),
@@ -529,7 +548,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
                     paddleCarousel.updateTheme(newTheme)
                     rebuildPreview(currentConfig())
                 },
-                colors = btnColors
+                colors = overlayBtnColors
             ) {
                 Text(
                     text       = if (previewTheme.isWarm) stringResource(Res.string.cbc_high_player).uppercase()
@@ -540,7 +559,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit) {
             }
             Button(
                 onClick = { previewState = (previewState + 1) % 3 },
-                colors = btnColors
+                colors = overlayBtnColors
             ) {
                 Text(
                     text = when (previewState) {
@@ -608,20 +627,9 @@ private fun DrawScope.drawCbcSlotHeader(
         val isLongPressed = i == longPressIdx
 
         // Background
-        val bgColor = when {
-            isSelected && populated ->
-                Color(previewTheme.main.primary).copy(alpha = 0.28f)
-            populated && isDark  -> Color(0xFF1A2A3E.toInt())
-            populated            -> Color(0xFFE0EEF8.toInt())
-            isDark               -> Color(0xFF111118.toInt())
-            else                 -> Color(0xFFE8E8F0.toInt())
-        }
-        val borderColor = when {
-            isSelected  -> Color(previewTheme.main.primary)
-            populated   -> Color(previewTheme.main.primary).copy(alpha = 0.4f)
-            else        -> Color(if (isDark) 0x44FFFFFF else 0x66000000.toInt())
-        }
-        val strokeW = if (isSelected) ratio * 0.22f else ratio * 0.12f
+        val bgColor     = if (isDark) Color(0xFF1A2A3E.toInt()) else Color(0xFFE8E8F0.toInt())
+        val borderColor = if (isSelected) Color(0xFF52B6F2.toInt()) else Color(0xFFF25252.toInt())
+        val strokeW     = if (isSelected) ratio * 0.22f else ratio * 0.12f
 
         drawRoundRect(
             color       = bgColor,
@@ -693,3 +701,4 @@ private fun DrawScope.drawCbcSlotHeader(
         sx += slotSize + gap
     }
 }
+

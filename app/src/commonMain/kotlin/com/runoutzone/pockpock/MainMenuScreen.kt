@@ -27,6 +27,7 @@ fun MainMenuScreen(
     onSettingsTapped: () -> Unit,
     onBallsTapped: () -> Unit,
     onCustomBallTapped: () -> Unit,
+    onCustomColorTapped: () -> Unit,
 ) {
     val isDark = LocalDarkMode.current
 
@@ -71,6 +72,7 @@ fun MainMenuScreen(
             MenuButton(text = stringResource(Res.string.settings), onClick = onSettingsTapped)
             MenuButton(text = stringResource(Res.string.ball_types), onClick = onBallsTapped)
             MenuButton(text = stringResource(Res.string.custom_ball), onClick = onCustomBallTapped)
+            MenuButton(text = stringResource(Res.string.custom_color), onClick = onCustomColorTapped)
             PlatformMenuExtras()
         }
     }

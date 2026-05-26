@@ -86,8 +86,9 @@
     <string name="unlocked">Unlocked</string>
     <string name="reach_percent">Reach %1$d%</string>
 
-    <!-- Custom ball creator -->
+    <!-- Custom ball creator / color picker -->
     <string name="custom_ball">CUSTOM BALL</string>
+    <string name="custom_color">CUSTOM COLORS</string>
     <string name="custom_ball_title">CUSTOM BALL CREATOR</string>
     <string name="custom_ball_save_blocked">Unlock all three parts to save</string>
     <string name="cbc_showing">Showing:</string>

@@ -38,7 +38,7 @@ import utility.edgeSwipeBack
 /** Provides the current dark-mode flag to any composable in the tree. */
 val LocalDarkMode = compositionLocalOf { false }
 
-private enum class Screen { MainMenu, Game, Settings, BallUnlock, ScoreCalibration, CustomBallCreator }
+private enum class Screen { MainMenu, Game, Settings, BallUnlock, ScoreCalibration, CustomBallCreator, CustomColorPicker }
 
 @Composable
 fun AppRoot() {
@@ -116,6 +116,10 @@ fun AppRoot() {
                             Settings.isDemoMode = false
                             navController.navigate(Screen.CustomBallCreator.name)
                         },
+                        onCustomColorTapped = {
+                            Settings.isDemoMode = false
+                            navController.navigate(Screen.CustomColorPicker.name)
+                        },
                     )
                 }
                 composable(Screen.Game.name) {
@@ -141,7 +145,24 @@ fun AppRoot() {
                     }
                 }
                 composable(Screen.CustomBallCreator.name) {
-                    CustomBallCreatorScreen(onBack = { navController.popBackStack() })
+                    CustomBallCreatorScreen(
+                        onBack = { navController.popBackStack() },
+                        onNavigateToCcp = {
+                            navController.navigate(Screen.CustomColorPicker.name) {
+                                popUpTo(Screen.MainMenu.name) { inclusive = false }
+                            }
+                        }
+                    )
+                }
+                composable(Screen.CustomColorPicker.name) {
+                    CustomColorPickerScreen(
+                        onBack = { navController.popBackStack() },
+                        onNavigateToCbc = {
+                            navController.navigate(Screen.CustomBallCreator.name) {
+                                popUpTo(Screen.MainMenu.name) { inclusive = false }
+                            }
+                        }
+                    )
                 }
             }
             }

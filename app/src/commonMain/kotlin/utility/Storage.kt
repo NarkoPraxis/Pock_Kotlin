@@ -7,6 +7,13 @@ import enums.BallType
 import enums.ChargeMeterStyle
 import gameobjects.puckstyle.CustomBallConfig
 
+data class CcpPreset(
+    val highHue: Float,
+    val highShieldHue: Float,
+    val lowHue: Float,
+    val lowShieldHue: Float
+)
+
 object Storage {
 
     // Bumped whenever a persisted value changes. Composables that read storage
@@ -271,6 +278,34 @@ object Storage {
         val stored = PlatformStorage.getString(SETTINGS, key, "")
         if (stored.isNotEmpty()) return try { ChargeMeterStyle.valueOf(stored) } catch (e: IllegalArgumentException) { ChargeMeterStyle.SideBar }
         return ChargeMeterStyle.SideBar
+    }
+
+    // --- CCP preset slots (0–4) ---
+    val ccpSelectedSlot: Int get() = PlatformStorage.getInt(AD, "ccp_selected_slot", -1)
+    fun saveCcpSelectedSlot(index: Int) = PlatformStorage.saveInt(AD, "ccp_selected_slot", index)
+
+    fun loadCcpPreset(index: Int): CcpPreset? {
+        val h = PlatformStorage.getFloat(SETTINGS, "ccp${index}_h", Float.MIN_VALUE)
+        if (h == Float.MIN_VALUE) return null
+        return CcpPreset(
+            highHue       = h,
+            highShieldHue = PlatformStorage.getFloat(SETTINGS, "ccp${index}_hs", 264f),
+            lowHue        = PlatformStorage.getFloat(SETTINGS, "ccp${index}_l",  202.5f),
+            lowShieldHue  = PlatformStorage.getFloat(SETTINGS, "ccp${index}_ls", 264f)
+        )
+    }
+
+    fun saveCcpPreset(index: Int, preset: CcpPreset) {
+        PlatformStorage.saveFloat(SETTINGS, "ccp${index}_h",  preset.highHue)
+        PlatformStorage.saveFloat(SETTINGS, "ccp${index}_hs", preset.highShieldHue)
+        PlatformStorage.saveFloat(SETTINGS, "ccp${index}_l",  preset.lowHue)
+        PlatformStorage.saveFloat(SETTINGS, "ccp${index}_ls", preset.lowShieldHue)
+        notifyDataChanged()
+    }
+
+    fun deleteCcpPreset(index: Int) {
+        PlatformStorage.saveFloat(SETTINGS, "ccp${index}_h", Float.MIN_VALUE)
+        notifyDataChanged()
     }
 
     // --- Sound volume settings ---
