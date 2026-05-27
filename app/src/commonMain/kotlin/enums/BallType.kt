@@ -15,5 +15,8 @@ enum class BallType {
     Rainbow,
     Prism,
     Plasma,
+    Dragon,
+    Axolotl,
+    Cat,
     Random
 }

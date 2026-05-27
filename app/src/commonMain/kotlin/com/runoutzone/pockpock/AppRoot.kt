@@ -23,6 +23,9 @@ import androidx.navigation.compose.rememberNavController
 import enums.GameState
 import gameobjects.BotConfig
 import gameobjects.Settings
+import gameobjects.puckstyle.skins.AxolotlSkinPainters
+import gameobjects.puckstyle.skins.CatSkinPainters
+import gameobjects.puckstyle.skins.DragonSkinPainters
 import gameobjects.puckstyle.skins.PokPokSkinPainters
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -69,6 +72,9 @@ fun AppRoot() {
     // SVG painters used by PokPokSkin must be created in a composable scope. `painterResource`
     // is internally remembered, so this is effectively a one-time cost per app session.
     PokPokSkinPainters.load()
+    DragonSkinPainters.load()
+    AxolotlSkinPainters.load()
+    CatSkinPainters.load()
 
     // Fire playMenuAmbiance every time MainMenu becomes the active route.
     LaunchedEffect(isOnMainMenu) {

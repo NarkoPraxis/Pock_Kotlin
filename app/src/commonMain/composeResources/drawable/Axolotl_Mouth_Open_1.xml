@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Axolotl open mouth lips — converted from Axolotl_Mouth_Open_1.svg.
+    viewBox 0 0 97.34 35.95. Lips outline for open mouth.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="97.34dp"
+    android:height="35.95dp"
+    android:viewportWidth="97.34"
+    android:viewportHeight="35.95">
+
+    <path
+        android:fillColor="#0b83ad"
+        android:pathData="M97.16,7.6c-10.82,9.36 -29.31,-7.6 -48.49,-7.6S10.83,16.98 0.18,7.6c-5.22,37.79 102.19,37.81 96.98,0Z" />
+</vector>

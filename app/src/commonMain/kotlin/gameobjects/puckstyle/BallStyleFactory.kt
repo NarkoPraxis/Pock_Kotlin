@@ -26,6 +26,9 @@ object BallStyleFactory {
             BallType.Plasma   -> BallStyle(PlasmaSkin(renderer),   PlasmaTail(renderer),   PlasmaLaunch(renderer))
 //            BallType.Chicken  -> BallStyle(ChickenSkin(renderer),  ChickenTail(renderer),  ChickenLaunch(renderer))
             BallType.PokPok   -> BallStyle(PokPokSkin(renderer),   ChickenTail(renderer),  ChickenLaunch(renderer))
+            BallType.Dragon   -> BallStyle(DragonSkin(renderer),  DragonTail(renderer),   FireLaunch(renderer))
+            BallType.Axolotl  -> BallStyle(AxolotlSkin(renderer), AxolotlTail(renderer),  BubbleLaunch(renderer))
+            BallType.Cat      -> BallStyle(CatSkin(renderer),     CatTail(renderer),      RainbowLaunch(renderer))
             BallType.Random   -> buildRandom(renderer)
         }
     }
@@ -58,6 +61,9 @@ object BallStyleFactory {
             BallType.Plasma   -> PlasmaSkin(renderer)
 //            BallType.Chicken  -> ChickenSkin(renderer)
             BallType.PokPok   -> PokPokSkin(renderer)
+            BallType.Dragon   -> DragonSkin(renderer)
+            BallType.Axolotl  -> AxolotlSkin(renderer)
+            BallType.Cat      -> CatSkin(renderer)
             BallType.Random -> buildSkin(BallType.entries.random(), renderer)
         }
     }
@@ -78,6 +84,9 @@ object BallStyleFactory {
             BallType.Plasma   -> PlasmaTail(renderer)
 //            BallType.Chicken  -> ChickenTail(renderer)
             BallType.PokPok   -> ChickenTail(renderer)
+            BallType.Dragon   -> DragonTail(renderer)
+            BallType.Axolotl  -> AxolotlTail(renderer)
+            BallType.Cat      -> CatTail(renderer)
             BallType.Random   -> buildTail(BallType.entries.random(), renderer)
         }
     }
@@ -98,6 +107,9 @@ object BallStyleFactory {
             BallType.Plasma   -> PlasmaLaunch(renderer)
 //            BallType.Chicken  -> ChickenLaunch(renderer)
             BallType.PokPok   -> ChickenLaunch(renderer)
+            BallType.Dragon   -> FireLaunch(renderer)
+            BallType.Axolotl  -> BubbleLaunch(renderer)
+            BallType.Cat      -> RainbowLaunch(renderer)
             BallType.Random   -> buildPaddle(BallType.entries.random(), renderer)
         }
     }
@@ -139,7 +151,7 @@ object BallStyleFactory {
 
     /** Returns the unlock threshold percentage, or null if always free. */
     fun unlockThreshold(type: BallType): Int? = when (type) {
-        BallType.Classic, BallType.PokPok -> null
+        BallType.Classic, BallType.PokPok, BallType.Dragon, BallType.Axolotl, BallType.Cat -> null
         BallType.Neon    -> 10
         BallType.Ghost   -> 20
         BallType.Fire    -> 30

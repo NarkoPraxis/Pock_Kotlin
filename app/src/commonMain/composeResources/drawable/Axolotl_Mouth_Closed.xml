@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Axolotl closed mouth — converted from Axolotl_Mouth_Closed.svg.
+    viewBox 0 0 97.83 11.94. Wavy closed smile line.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="97.83dp"
+    android:height="11.94dp"
+    android:viewportWidth="97.83"
+    android:viewportHeight="11.94">
+
+    <path
+        android:fillColor="#0b83ad"
+        android:pathData="M97.4,0s-0.86,7.94 -13.3,7.94c-9.95,0 -17.43,-3.94 -35.04,-3.94s-25.39,3.94 -35.34,3.94C1.29,7.94 0.42,0.04 0.42,0C0.42,0 -3.69,11.94 13.72,11.94c4.73,0 17.31,-3.94 35.34,-3.94s30.32,3.94 35.04,3.94c17.42,0 13.3,-11.94 13.3,-11.94Z" />
+</vector>

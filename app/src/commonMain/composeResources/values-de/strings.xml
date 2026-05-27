@@ -82,6 +82,9 @@
 
     <!-- Ball type names -->
     <string name="ball_type_pokpok">Pok Pok</string>
+    <string name="ball_type_dragon">Drache</string>
+    <string name="ball_type_axolotl">Axolotl</string>
+    <string name="ball_type_cat">Katze</string>
 
     <!-- In-game tips -->
     <string name="tip_title">Hier Festhalten wenn Bereit</string>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Axolotl right gill — converted from Axolotl_Gill_R.svg.
+    viewBox 0 0 52.43 60.21. Branching frond shape (mirrored).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="52.43dp"
+    android:height="60.21dp"
+    android:viewportWidth="52.43"
+    android:viewportHeight="60.21">
+
+    <path
+        android:fillColor="#52b6f2"
+        android:pathData="M21.38,28.38c19.07,7.3 29.65,8.53 30.92,5.64s-6.79,-9.89 -25,-19.04c12.65,-5.92 15.72,-8.8 14.16,-12.84C38.82,-4.64 5.5,6.87 5.5,6.87C1.08,8.17 -1.26,13.58 0.7,17.74c0,0 18.33,44.98 25.11,42.36c4.04,-1.57 -0.28,-18.38 -4.43,-31.72Z" />
+</vector>

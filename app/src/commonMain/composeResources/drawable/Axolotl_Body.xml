@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Axolotl body — converted from Axolotl_Body_2.svg.
+    viewBox 0 0 109.93 90.57. Oval body shape, wider than tall.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="109.93dp"
+    android:height="90.57dp"
+    android:viewportWidth="109.93"
+    android:viewportHeight="90.57">
+
+    <path
+        android:fillColor="#52b6f2"
+        android:pathData="M100.34,21.92C93.8,12.35 78.88,0 55.01,0L54.93,0C31.05,0 16.13,12.35 9.59,21.92C0.29,35.52 -3.95,59.81 4.73,69.91c8.15,9.49 22.11,20.66 49.94,20.66s42.38,-11.17 50.54,-20.66c8.68,-10.1 4.44,-34.39 -4.86,-47.99Z" />
+</vector>

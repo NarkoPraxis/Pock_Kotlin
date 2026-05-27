@@ -97,6 +97,9 @@
 
     <!-- Ball type names -->
     <string name="ball_type_pokpok">Pok Pok</string>
+    <string name="ball_type_dragon">Dragon</string>
+    <string name="ball_type_axolotl">Axolotl</string>
+    <string name="ball_type_cat">Cat</string>
 
     <!-- Navigation -->
     <string name="swipe_again_to_exit">Swipe edge again to exit</string>

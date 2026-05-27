@@ -82,6 +82,9 @@
 
     <!-- Ball type names -->
     <string name="ball_type_pokpok">ポクポク</string>
+    <string name="ball_type_dragon">ドラゴン</string>
+    <string name="ball_type_axolotl">ウーパールーパー</string>
+    <string name="ball_type_cat">ネコ</string>
 
     <!-- In-game tips -->
     <string name="tip_title">準備できたらここを押してください</string>
