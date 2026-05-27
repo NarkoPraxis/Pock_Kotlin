@@ -102,7 +102,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val MOUTH_OPEN2_W_K = 19.87f / SVG_BODY_R
     private val MOUTH_OPEN2_H_K = 5.63f / SVG_BODY_R
     // Mouth_Open2 center in composition: ~(74.84, 130.53) -> offset: (0, 48.89)
-    private val MOUTH2_CY_K = 0.779f
+    private val MOUTH2_CY_K = 0.805f
 
     // Mouth closed (viewBox 18.2 x 21.71)
     private val MOUTH_CLOSED_W_K = 18.2f / SVG_BODY_R
@@ -118,35 +118,36 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val FUR_TOP_CY_K = -1.02f
     private val FUR_TOP_COUNTER_MAX = 25f
 
-    private val FUR_SIDE_SCALE_K = 1.2f
+    private val FUR_SIDE_SCALE_K = 1.30f
+    private val FUR_TOP_SCALE_K = 1.2f
 
     // Side fur L1 (viewBox 72.53 x 40.81)
     private val FUR_L1_W_K = 72.53f / SVG_BODY_R
     private val FUR_L1_H_K = 40.81f / SVG_BODY_R
     // Fur_L1 center in composition: ~(36.27, 67.24) -> offset: (-38.58, -14.4)
-    private val FUR_L1_CX_K = -0.614f
-    private val FUR_L1_CY_K = -0.229f
+    private val FUR_L1_CX_K = -0.56f
+    private val FUR_L1_CY_K = -0.17f
 
     // Side fur L2 (viewBox 68.01 x 51.75)
     private val FUR_L2_W_K = 68.01f / SVG_BODY_R
     private val FUR_L2_H_K = 51.75f / SVG_BODY_R
     // Fur_L2 center in composition: ~(42.13, 78.47) -> offset: (-32.72, -3.17)
-    private val FUR_L2_CX_K = -0.521f
-    private val FUR_L2_CY_K = -0.050f
+    private val FUR_L2_CX_K = -0.41f
+    private val FUR_L2_CY_K = 0.07f
 
     // Side fur R1 (viewBox 72.53 x 40.81)
     private val FUR_R1_W_K = 72.53f / SVG_BODY_R
     private val FUR_R1_H_K = 40.81f / SVG_BODY_R
     // Fur_R1 center in composition: ~(113.42, 67.24) -> offset: (38.57, -14.4)
-    private val FUR_R1_CX_K = 0.614f
-    private val FUR_R1_CY_K = -0.229f
+    private val FUR_R1_CX_K = 0.56f
+    private val FUR_R1_CY_K = -0.17f
 
     // Side fur R2 (viewBox 68.01 x 51.75)
     private val FUR_R2_W_K = 68.01f / SVG_BODY_R
     private val FUR_R2_H_K = 51.75f / SVG_BODY_R
     // Fur_R2 center in composition: ~(107.56, 78.47)
-    private val FUR_R2_CX_K = 0.521f
-    private val FUR_R2_CY_K = -0.050f
+    private val FUR_R2_CX_K = 0.41f
+    private val FUR_R2_CY_K = 0.07f
 
     // Face follow
     private val FACE_FOLLOW_X_K = 0.12f
@@ -549,8 +550,8 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         val painter = CatSkinPainters.furTop ?: return
         val cx = r * FUR_TOP_CX_K
         val cy = r * FUR_TOP_CY_K
-        val w = r * FUR_TOP_W_K
-        val h = r * FUR_TOP_H_K
+        val w = r * FUR_TOP_W_K * FUR_TOP_SCALE_K
+        val h = r * FUR_TOP_H_K * FUR_TOP_SCALE_K
 
         val fBounds = Rect(cx - w, cy - h, cx + w, cy + h)
         drawContext.canvas.saveLayer(fBounds, Paint())
