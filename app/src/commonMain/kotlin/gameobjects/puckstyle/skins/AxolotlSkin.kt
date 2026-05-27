@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorGroup
+import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import physics.Point
@@ -30,6 +31,13 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
     // Body: viewBox 109.93 x 90.57, half-width = 54.965 = radius
     private val BODY_W_K = 2f           // 109.93 / 54.965
     private val BODY_H_K = 90.57f / 54.965f  // ~1.648
+
+    // Torso: viewBox 100.6 x 73.99, positioned below head center
+    private val TORSO_W_K = 100.6f / 54.965f   // ~1.830
+    private val TORSO_H_K = 73.99f / 54.965f   // ~1.346
+    private val TORSO_BASE_Y_K = 0.50f          // anatomical Y offset below center (rest position)
+    private val TORSO_FOLLOW_X_K = 0.15f        // max lateral trail/track offset
+    private val TORSO_FOLLOW_Y_K = 0.20f        // max axial trail/track offset
 
     // Eyes_Pupil: viewBox 110.33 x 28.92
     private val EYES_PUPIL_W_K = 110.33f / 54.965f
@@ -59,17 +67,19 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
     // Gills: viewBox 52.43 x 60.21
     private val GILL_W_K = 52.43f / 54.965f
     private val GILL_H_K = 60.21f / 54.965f
-    private val GILL_L_X_K = -1.229f
-    private val GILL_R_X_K = 1.218f
+    private val GILL_L_X_K = -1.20f        // outward from head
+    private val GILL_R_X_K = 1.20f         // outward from head
     private val GILL_PIVOT_X_K = 0.75f
+    private val GILL_SIZE_K = 1.30f        // enlarged gills
+    private val GILL_PERSPECTIVE_MAX = 10f // paddle-X driven inner-side bend (degrees)
 
     // Shadow
     private val SHADOW_ALPHA = 0.244f
-    private val SHADOW_LIT_BODY_R = 1.4f
-    private val SHADOW_LIT_BODY_ABOVE_K = 0.5f
-    private val SHADOW_LIT_GILL_R = 0.9f
-    private val SHADOW_LIT_GILL_ABOVE_K = 0.4f
+    private val SHADOW_LIT_BODY_ABOVE_K = -.1f   // body-shape lit region covers ~top half of head
+    private val SHADOW_LIT_GILL_R = 1f
+    private val SHADOW_LIT_GILL_ABOVE_K = 0.6f
     private val SHADOW_LATERAL_K = 0.50f
+    private val TORSO_LIT_ABOVE_K = 0.45f
 
     // Animation state machine
     private enum class AxolotlAnim { Default, AlmostHit, JustHit, Celebration, Chatter, Yawn }
@@ -108,6 +118,13 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
     private var lastX = Float.NaN
     private var lastY = Float.NaN
 
+    // Torso paddle-tracking offset
+    private var torsoOffX = 0f
+    private var torsoOffY = 0f
+
+    // Gill paddle-X perspective follow (normalized -1..1)
+    private var gillFollowX = 0f
+
     // Eye animation
     private var currentEyeScaleX = 1f
     private var currentEyeScaleY = 1f
@@ -125,8 +142,6 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
             velocityDirY = dy / speed
         }
         lastX = renderer.x; lastY = renderer.y
-
-        shadowDx = lerp(shadowDx, velocityDirX * r * SHADOW_LATERAL_K, 0.12f)
 
         // Gill idle bob
         gillPhaseL += 0.015f
@@ -192,24 +207,86 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
             }
         }
 
+        // Torso trailing + gill follow + shadow: paddle-direction driven when active (same as CatSkin/PokPok),
+        // rawFollowX is the unlerped paddle-X used directly for shadowDx.
+        val paddle = renderer.effect as? PaddleLaunchEffect
+        val rawFollowX: Float
+        val torsoTargetX: Float
+        val torsoTargetY: Float
+        if (paddle != null) {
+            val pdx = paddle.paddleX - renderer.x
+            val pdy = paddle.paddleY - renderer.y
+            val dist = hypot(pdx, pdy).coerceAtLeast(0.001f)
+            rawFollowX = if (renderer.isHigh) -(pdx / dist) else pdx / dist
+            torsoTargetX = rawFollowX * r * TORSO_FOLLOW_X_K
+            torsoTargetY = (if (renderer.isHigh) -(pdy / dist) else pdy / dist) * r * TORSO_FOLLOW_Y_K
+            gillFollowX = lerp(gillFollowX, rawFollowX, 0.08f)
+        } else if (speed > r * 0.02f) {
+            rawFollowX = 0f
+            torsoTargetX = (if (renderer.isHigh) velocityDirX else -velocityDirX) * r * TORSO_FOLLOW_X_K
+            torsoTargetY = (if (renderer.isHigh) velocityDirY else -velocityDirY) * r * TORSO_FOLLOW_Y_K
+            gillFollowX = lerp(gillFollowX, 0f, 0.04f)
+        } else {
+            rawFollowX = 0f
+            torsoTargetX = 0f
+            torsoTargetY = 0f
+            gillFollowX = lerp(gillFollowX, 0f, 0.04f)
+        }
+        torsoOffX = lerp(torsoOffX, torsoTargetX, 0.08f)
+        torsoOffY = lerp(torsoOffY, torsoTargetY, 0.08f)
+        // shadowDx follows raw paddle-X directly (no double-lag), identical to CatSkin/PokPok
+        shadowDx = lerp(shadowDx, rawFollowX * r * SHADOW_LATERAL_K, 0.12f)
+
         val canvas = drawContext.canvas
         canvas.save()
         canvas.translate(renderer.x, renderer.y)
         if (renderer.isHigh) canvas.scale(-1f, -1f)
 
-        // Z-order: gills -> body -> eyes -> mouth
-        drawGill(left = true, angleDeg = displayedGillAngleL)
-        drawGill(left = false, angleDeg = displayedGillAngleR)
-        drawBodyLayer()
-        drawEyesLayer()
-        drawMouthForState()
+        // Z-order: gills -> torso -> body + eyes + mouth + head shadow (shadow drawn last to cover face)
+        drawGill(left = true, angleDeg = displayedGillAngleL, followX = gillFollowX)
+        drawGill(left = false, angleDeg = displayedGillAngleR, followX = gillFollowX)
+        drawTorsoLayer()
+        drawHeadWithShadow()
 
         canvas.restore()
     }
 
-    // -- Body --
+    // -- Torso (drawn behind head, tracks paddle position) --
 
-    private fun DrawScope.drawBodyLayer() {
+    private fun DrawScope.drawTorsoLayer() {
+        val torso = AxolotlSkinPainters.torso ?: return
+        val primary = Color(frameColors.primary)
+        val tw = r * TORSO_W_K
+        val th = r * TORSO_H_K
+        val cx = torsoOffX
+        val cy = r * TORSO_BASE_Y_K + torsoOffY
+        val bounds = Rect(cx - tw / 2f - r * 0.1f, cy - th / 2f - r * 0.1f,
+            cx + tw / 2f + r * 0.1f, cy + th / 2f + r * 0.1f)
+        drawContext.canvas.saveLayer(bounds, Paint())
+        drawSvgPart(torso, cx, cy, tw, th, tint = primary)
+        // Shadow: torso SVG shape used as lit region (shifted above torso center)
+        val litCx = shadowDx
+        val litCy = cy - r * TORSO_LIT_ABOVE_K
+        val litBounds = Rect(
+            minOf(bounds.left, litCx - tw / 2f - r * 0.1f),
+            minOf(bounds.top, litCy - th / 2f - r * 0.1f),
+            maxOf(bounds.right, litCx + tw / 2f + r * 0.1f),
+            maxOf(bounds.bottom, litCy + th / 2f + r * 0.1f)
+        )
+        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+        drawContext.canvas.saveLayer(bounds, srcAtopPaint)
+        drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA), topLeft = bounds.topLeft, size = bounds.size)
+        val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+        drawContext.canvas.saveLayer(litBounds, dstOutPaint)
+        drawSvgPart(torso, litCx, litCy, tw, th)
+        drawContext.canvas.restore()  // close lit erase layer
+        drawContext.canvas.restore()  // close shadow layer
+        drawContext.canvas.restore()  // close torso layer
+    }
+
+    // -- Head (body SVG + eyes + mouth, shadow applied last to cover face elements) --
+
+    private fun DrawScope.drawHeadWithShadow() {
         val body = AxolotlSkinPainters.body
         val secondary = Color(frameColors.secondary)
         val bw = r * BODY_W_K
@@ -222,38 +299,43 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
         } else {
             drawOval(secondary, topLeft = Offset(-bw / 2f, -bh / 2f), size = Size(bw, bh))
         }
-        val litR = r * SHADOW_LIT_BODY_R
-        val litPath = Path().apply {
-            addOval(Rect(
-                shadowDx - litR,
-                -r * SHADOW_LIT_BODY_ABOVE_K - litR,
-                shadowDx + litR,
-                -r * SHADOW_LIT_BODY_ABOVE_K + litR
-            ))
+        drawEyesLayer()
+        drawMouthForState()
+        // Shadow drawn last so it covers eyes and mouth; body SVG shape defines the lit region
+        val litCx = shadowDx
+        val litCy = r * SHADOW_LIT_BODY_ABOVE_K
+        val litBounds = Rect(
+            minOf(bounds.left, litCx - bw / 2f - r * 0.1f),
+            minOf(bounds.top, litCy - bh / 2f - r * 0.1f),
+            maxOf(bounds.right, litCx + bw / 2f + r * 0.1f),
+            maxOf(bounds.bottom, litCy + bh / 2f + r * 0.1f)
+        )
+        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+        drawContext.canvas.saveLayer(bounds, srcAtopPaint)
+        drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA), topLeft = bounds.topLeft, size = bounds.size)
+        if (body != null) {
+            val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+            drawContext.canvas.saveLayer(litBounds, dstOutPaint)
+            drawSvgPart(body, litCx, litCy, bw, bh)
+            drawContext.canvas.restore()  // close lit erase layer
         }
-        withTransform({ clipPath(litPath, ClipOp.Difference) }) {
-            drawRect(
-                color = Color(0f, 0f, 0f, SHADOW_ALPHA),
-                topLeft = bounds.topLeft,
-                size = bounds.size,
-                blendMode = BlendMode.SrcAtop
-            )
-        }
-        drawContext.canvas.restore()
+        drawContext.canvas.restore()  // close shadow layer
+        drawContext.canvas.restore()  // close head layer
     }
 
     // -- Gills --
 
-    private fun DrawScope.drawGill(left: Boolean, angleDeg: Float) {
+    private fun DrawScope.drawGill(left: Boolean, angleDeg: Float, followX: Float = 0f) {
         val painter = if (left) AxolotlSkinPainters.gillLeft else AxolotlSkinPainters.gillRight
         if (painter == null) return
         val sign = if (left) -1f else 1f
         val centerX = if (left) r * GILL_L_X_K else r * GILL_R_X_K
         val centerY = 0f
-        val w = r * GILL_W_K
-        val h = r * GILL_H_K
+        val w = r * GILL_W_K * GILL_SIZE_K
+        val h = r * GILL_H_K * GILL_SIZE_K
         val pivotX = -sign * r * GILL_PIVOT_X_K
-        val rotation = sign * -angleDeg
+        // Half the original orbit; inner-side bend driven by paddle X (same pattern as DragonSkin wings)
+        val rotation = sign * -(angleDeg * 0.5f) + (-sign * followX * GILL_PERSPECTIVE_MAX)
 
         withTransform({
             rotate(rotation, pivot = Offset(pivotX, 0f))
@@ -324,15 +406,15 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
     private fun DrawScope.drawEyes(scaleX: Float, scaleY: Float) {
         val whiteP = AxolotlSkinPainters.eyesWhite
         val pupilP = AxolotlSkinPainters.eyesPupil
-        if (whiteP != null) {
-            val w = r * EYES_WHITE_W_K
-            val h = r * EYES_WHITE_H_K
-            drawSvgPart(whiteP, 0f, r * EYES_WHITE_Y_K, w, h, scaleX = scaleX, scaleY = scaleY)
-        }
-        if (pupilP != null) {
-            val w = r * EYES_PUPIL_W_K
-            val h = r * EYES_PUPIL_H_K
-            drawSvgPart(pupilP, 0f, r * EYES_PUPIL_Y_K, w, h, scaleX = scaleX, scaleY = scaleY)
+        // Both painters scaled together around the same pivot so whites squash/stretch with pupils
+        val pivot = Offset(0f, r * EYES_PUPIL_Y_K)
+        withTransform({ scale(scaleX, scaleY, pivot = pivot) }) {
+            if (pupilP != null) {
+                drawSvgPart(pupilP, 0f, r * EYES_PUPIL_Y_K, r * EYES_PUPIL_W_K, r * EYES_PUPIL_H_K)
+            }
+            if (whiteP != null) {
+                drawSvgPart(whiteP, 0f, r * EYES_WHITE_Y_K, r * EYES_WHITE_W_K, r * EYES_WHITE_H_K)
+            }
         }
     }
 
@@ -382,12 +464,20 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
     private fun DrawScope.drawMouthOpen(scale: Float) {
         val open1 = AxolotlSkinPainters.mouthOpen1 ?: return
         val open2 = AxolotlSkinPainters.mouthOpen2 ?: return
-        drawSvgPart(open1, 0f, r * MOUTH_OPEN1_Y_K,
-            r * MOUTH_OPEN1_W_K * scale, r * MOUTH_OPEN1_H_K * scale,
-            tint = Color(frameColors.primary))
+        // open1 = inside of mouth: secondary tint with full (uniform) shadow
+        val mw1 = r * MOUTH_OPEN1_W_K
+        val mh1 = r * MOUTH_OPEN1_H_K * scale
+        val bounds1 = Rect(-mw1 / 2f - r * 0.05f, r * MOUTH_OPEN1_Y_K - mh1 / 2f - r * 0.05f,
+            mw1 / 2f + r * 0.05f, r * MOUTH_OPEN1_Y_K + mh1 / 2f + r * 0.05f)
+        drawContext.canvas.saveLayer(bounds1, Paint())
+        drawSvgPart(open1, 0f, r * MOUTH_OPEN1_Y_K, mw1, mh1, tint = Color(frameColors.secondary))
+        drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA), topLeft = bounds1.topLeft,
+            size = bounds1.size, blendMode = BlendMode.SrcAtop)
+        drawContext.canvas.restore()
+        // open2 = tongue: primary tint, no shadow, width unchanged
         drawSvgPart(open2, 0f, r * MOUTH_OPEN2_Y_K,
-            r * MOUTH_OPEN2_W_K * scale, r * MOUTH_OPEN2_H_K * scale,
-            tint = Color(frameColors.secondary))
+            r * MOUTH_OPEN2_W_K, r * MOUTH_OPEN2_H_K * scale,
+            tint = Color(frameColors.primary))
     }
 
     // -- Painter helper --

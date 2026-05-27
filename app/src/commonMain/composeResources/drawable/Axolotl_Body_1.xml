@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Axolotl torso — converted from Axolotl_Body_1.svg.
+    viewBox 0 0 100.6 73.99. Oval torso shape drawn behind the head.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100.6dp"
+    android:height="73.99dp"
+    android:viewportWidth="100.6"
+    android:viewportHeight="73.99">
+
+    <path
+        android:fillColor="#0b83ad"
+        android:pathData="M50.3,0C15.23,0-1.17,16.47.07,34.46c1.75,25.42,29.36,39.53,50.24,39.53s48.48-14.11,50.24-39.53C101.78,16.47,85.38,0,50.3,0Z" />
+</vector>

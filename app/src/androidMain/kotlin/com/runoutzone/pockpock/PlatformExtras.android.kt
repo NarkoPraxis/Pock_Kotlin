@@ -306,7 +306,7 @@ private fun showSystemUI(activity: Activity) {
 }
 
 private fun loadRewardedAd(activity: Activity, onLoaded: (RewardedAd?) -> Unit) {
-    val id = "ca-app-pub-3940256099942544/5224354917" // TODO replace with live rewarded ad ID before launch
+    val id = BuildConfig.ADMOB_REWARDED_UNIT_ID
     RewardedAd.load(
         activity,
         id,

@@ -26,8 +26,9 @@ final class AdMobBridge: NSObject, GADFullScreenContentDelegate {
     }
 
     private func loadRewarded(adUnitId: String, onLoaded: @escaping () -> KotlinUnit, onFailed: @escaping () -> KotlinUnit) {
+        let unitId = Bundle.main.infoDictionary?["AdMobRewardedUnitID"] as? String ?? adUnitId
         let request = GADRequest()
-        GADRewardedAd.load(withAdUnitID: adUnitId, request: request) { [weak self] ad, error in
+        GADRewardedAd.load(withAdUnitID: unitId, request: request) { [weak self] ad, error in
             if let error = error {
                 NSLog("[AdMob] rewarded load failed: \(error.localizedDescription)")
                 _ = onFailed()

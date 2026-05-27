@@ -21,6 +21,8 @@
 		B5001016B5001016B5001016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B5001020B5001020B5001020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B5002001B5002001B5002001 /* AdMobBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMobBridge.swift; sourceTree = "<group>"; };
+		B500SECR0000000B500SECR00 /* SecretsDebug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SecretsDebug.xcconfig; sourceTree = "<group>"; };
+		B500SECR1111111B500SECR11 /* SecretsRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SecretsRelease.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -40,6 +42,8 @@
 			children = (
 				B5001008B5001008B5001008 /* iosApp */,
 				B5001009B5001009B5001009 /* Products */,
+				B500SECR0000000B500SECR00 /* SecretsDebug.xcconfig */,
+				B500SECR1111111B500SECR11 /* SecretsRelease.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -288,6 +292,7 @@
 		};
 		B500100EB500100EB500100E /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B500SECR0000000B500SECR00 /* SecretsDebug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -320,6 +325,7 @@
 		};
 		B500100FB500100FB500100F /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B500SECR1111111B500SECR11 /* SecretsRelease.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

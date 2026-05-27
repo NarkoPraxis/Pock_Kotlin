@@ -33,7 +33,9 @@
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>$(ADMOB_APP_ID)</string>
+	<key>AdMobRewardedUnitID</key>
+	<string>$(ADMOB_REWARDED_UNIT_ID)</string>
 	<key>GADIsAdManagerApp</key>
 	<true/>
 	<key>NSUserTrackingUsageDescription</key>

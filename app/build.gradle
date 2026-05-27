@@ -4,6 +4,19 @@ apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 apply plugin: 'org.jetbrains.compose'
 apply plugin: 'kotlin-kapt'
 
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream { localProps.load(it) }
+}
+// Release IDs come from local.properties (gitignored). Falls back to test IDs so CI still compiles.
+def releaseAdmobAppId = localProps.getProperty('admob.app.id', 'ca-app-pub-3940256099942544~3347511713')
+def releaseAdmobRewardedUnitId = localProps.getProperty('admob.rewarded.unit.id', 'ca-app-pub-3940256099942544/5224354917')
+
+// Test IDs are Google's official public test IDs — safe to hardcode here.
+def testAdmobAppId = 'ca-app-pub-3940256099942544~3347511713'
+def testAdmobRewardedUnitId = 'ca-app-pub-3940256099942544/5224354917'
+
 android {
     namespace 'com.runoutzone.pockpock'
     compileSdk 35
@@ -16,7 +29,13 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
+        debug {
+            manifestPlaceholders = [admobAppId: testAdmobAppId]
+            buildConfigField "String", "ADMOB_REWARDED_UNIT_ID", "\"$testAdmobRewardedUnitId\""
+        }
         release {
+            manifestPlaceholders = [admobAppId: releaseAdmobAppId]
+            buildConfigField "String", "ADMOB_REWARDED_UNIT_ID", "\"$releaseAdmobRewardedUnitId\""
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -28,6 +47,7 @@ android {
     buildFeatures {
         dataBinding true
         viewBinding true
+        buildConfig true
     }
     // SoundPool requires seekable PCM; if the build compresses WAVs in res/raw the
     // load fails at runtime. AGP's default no-compress list already covers wav, but
