@@ -11,6 +11,9 @@ import pock_kotlin.app.generated.resources.Dragon_Eye_Open_L2
 import pock_kotlin.app.generated.resources.Dragon_Eye_Open_R1
 import pock_kotlin.app.generated.resources.Dragon_Eye_Open_R2
 import pock_kotlin.app.generated.resources.Dragon_Horn_Left
+import pock_kotlin.app.generated.resources.Dragon_Horn_Mid_Bot
+import pock_kotlin.app.generated.resources.Dragon_Horn_Mid_Mid
+import pock_kotlin.app.generated.resources.Dragon_Horn_Mid_Top
 import pock_kotlin.app.generated.resources.Dragon_Horn_Middle
 import pock_kotlin.app.generated.resources.Dragon_Horn_Right
 import pock_kotlin.app.generated.resources.Dragon_Mouth_Closed_1
@@ -38,6 +41,9 @@ object DragonSkinPainters {
     var hornLeft: Painter? = null
     var hornMiddle: Painter? = null
     var hornRight: Painter? = null
+    var hornMidTop: Painter? = null
+    var hornMidMid: Painter? = null
+    var hornMidBot: Painter? = null
 
     @Composable
     fun load() {
@@ -57,5 +63,8 @@ object DragonSkinPainters {
         hornLeft    = painterResource(Res.drawable.Dragon_Horn_Left)
         hornMiddle  = painterResource(Res.drawable.Dragon_Horn_Middle)
         hornRight   = painterResource(Res.drawable.Dragon_Horn_Right)
+        hornMidTop  = painterResource(Res.drawable.Dragon_Horn_Mid_Top)
+        hornMidMid  = painterResource(Res.drawable.Dragon_Horn_Mid_Mid)
+        hornMidBot  = painterResource(Res.drawable.Dragon_Horn_Mid_Bot)
     }
 }

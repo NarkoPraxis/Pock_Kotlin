@@ -35,7 +35,7 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
     // Torso: viewBox 100.6 x 73.99, positioned below head center
     private val TORSO_W_K = 100.6f / 54.965f   // ~1.830
     private val TORSO_H_K = 73.99f / 54.965f   // ~1.346
-    private val TORSO_BASE_Y_K = 0.50f          // anatomical Y offset below center (rest position)
+    private val TORSO_BASE_Y_K = 0.40f          // anatomical Y offset below center (rest position)
     private val TORSO_FOLLOW_X_K = 0.15f        // max lateral trail/track offset
     private val TORSO_FOLLOW_Y_K = 0.20f        // max axial trail/track offset
 
@@ -76,10 +76,10 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
     // Shadow
     private val SHADOW_ALPHA = 0.244f
     private val SHADOW_LIT_BODY_ABOVE_K = -.1f   // body-shape lit region covers ~top half of head
-    private val SHADOW_LIT_GILL_R = 1f
+    private val SHADOW_LIT_GILL_R_MIN = 0.8f     // min lit radius for gills (r); grows 2× toward paddle side
     private val SHADOW_LIT_GILL_ABOVE_K = 0.6f
     private val SHADOW_LATERAL_K = 0.50f
-    private val TORSO_LIT_ABOVE_K = 0.45f
+    private val TORSO_LIT_ABOVE_K = 0.4f
 
     // Animation state machine
     private enum class AxolotlAnim { Default, AlmostHit, JustHit, Celebration, Chatter, Yawn }
@@ -242,10 +242,10 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
         canvas.translate(renderer.x, renderer.y)
         if (renderer.isHigh) canvas.scale(-1f, -1f)
 
-        // Z-order: gills -> torso -> body + eyes + mouth + head shadow (shadow drawn last to cover face)
+        // Z-order: torso -> gills -> body + eyes + mouth + head shadow (shadow drawn last to cover face)
+        drawTorsoLayer()
         drawGill(left = true, angleDeg = displayedGillAngleL, followX = gillFollowX)
         drawGill(left = false, angleDeg = displayedGillAngleR, followX = gillFollowX)
-        drawTorsoLayer()
         drawHeadWithShadow()
 
         canvas.restore()
@@ -344,7 +344,8 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
                 centerX + w * 0.6f, centerY + h * 0.6f)
             drawContext.canvas.saveLayer(gBounds, Paint())
             drawSvgPart(painter, centerX, centerY, w, h, tint = Color(frameColors.secondary))
-            val litR = r * SHADOW_LIT_GILL_R
+            val growFactor = ((sign * followX + 1f) / 2f).coerceIn(0f, 1f)
+            val litR = r * SHADOW_LIT_GILL_R_MIN * lerp(1f, 2f, growFactor)
             val worldLitCx = centerX + shadowDx
             val worldLitCy = centerY - r * SHADOW_LIT_GILL_ABOVE_K
             val invRad = -rotation * (PI.toFloat() / 180f)

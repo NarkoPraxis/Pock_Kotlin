@@ -79,27 +79,37 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val MOUTH_OFFSET_Y_K = 0.40f
 
     // Horns (map to PokPok feathers but subtler)
-    // Horn Left: viewBox 28.94 x 41.7
+    // Horn Left/Right: viewBox 28.94 x 41.7
     private val HORN_SIDE_W_K = 28.94f / 55.86f    // ~0.518
     private val HORN_SIDE_H_K = 41.7f / 55.86f     // ~0.746
-    // Horn Middle: viewBox 20.12 x 54.52
-    private val HORN_MID_W_K = 20.12f / 55.86f     // ~0.360
-    private val HORN_MID_H_K = 54.52f / 55.86f     // ~0.976
+    // TUNE side horn spread: increase CX_K to push horns further apart (0.0=center, ~1.0=ball edge)
+    private val HORN_SIDE_CX_K = 0.6f
+    // TUNE side horn height: the first value is the bottom anchor; 0.0=ball center, -1.0=ball top
+    private val HORN_SIDE_CY_K = -0.35f - HORN_SIDE_H_K / 2f
 
-    // Horn positions: from composite, horns sit on top of body
-    // Middle horn: center roughly at (90.43, 0-15) → offset (0, (7 - 55.79)/55.86) = (0, -0.873)
-    private val HORN_MID_CY_K = -0.85f - HORN_MID_H_K / 2f
-    private val HORN_SIDE_CX_K = 0.25f
-    private val HORN_SIDE_CY_K = -0.80f - HORN_SIDE_H_K / 2f
+    // Three independent middle nubs (split from Dragon_Horn_Middle)
+    // Sizes in body-radius units, heights from original painter nub extents
+    private val NUB_TOP_W_K = 20.12f / 55.86f   // ~0.360
+    private val NUB_TOP_H_K = 11.66f / 55.86f   // ~0.209
+    private val NUB_MID_W_K = 20.12f / 55.86f   // ~0.360
+    private val NUB_MID_H_K = 19.9f  / 55.86f   // ~0.356
+    private val NUB_BOT_W_K = 20.12f / 55.86f   // ~0.360
+    private val NUB_BOT_H_K = 12.93f / 55.86f   // ~0.231
+    // TUNE nub heights: more negative = higher on the head; adjust all three to shift the stack
+    private val NUB_TOP_CY_K = -0.98f
+    private val NUB_MID_CY_K = -0.64f
+    private val NUB_BOT_CY_K = -0.23f
+    // TUNE arc intensity: how far the middle nub bends toward the gaze (0=rigid, 0.2=dramatic)
+    private val NUB_ARC_K = 0.10f
 
-    // 40% of PokPok feather intensity
-    private val HORN_SIDE_ROT = 10f         // was 18 in PokPok
-    private val HORN_COUNTER_MAX = 16f      // was 40 in PokPok
-    private val HORN_ORBIT_MAX = 8f         // was 20 in PokPok
+    // TUNE: HORN_SIDE_ROT = static lean of each side horn; COUNTER = tilt with gaze; ORBIT = whole-group rotation around center
+    private val HORN_SIDE_ROT = 10f
+    private val HORN_COUNTER_MAX = 6f       // was 16 — how much each horn tilts individually with gaze
+    private val HORN_ORBIT_MAX = 2f         // was 8  — how much all side horns orbit around the ball center
 
     // Wings: viewBox 43.53 x 28.28
-    private val WING_W_K = 43.53f / 55.86f         // ~0.779
-    private val WING_H_K = 28.28f / 55.86f         // ~0.506
+    private val WING_W_K = 43.53f / 55.86f * 1.3f  // ~1.013
+    private val WING_H_K = 28.28f / 55.86f * 1.3f  // ~0.658
     private val WING_PIVOT_X_K = 0.78f
     private val WING_CENTER_OFFSET = 0.38f
     private val WING_PERSPECTIVE_ANGLE_MAX = 14f
@@ -112,7 +122,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
     // Shadow
     private val SHADOW_LATERAL_K = 0.50f
     private val SHADOW_LIT_BODY_R = 1.4f
-    private val SHADOW_LIT_BODY_ABOVE_K = 0.5f
+    private val SHADOW_LIT_BODY_ABOVE_K = 0.7f
     private val SHADOW_LIT_WING_R_MIN = 0.8f
     private val SHADOW_LIT_WING_ABOVE_K = 0.55f
     private val SHADOW_HORN_LIT_R = 0.65f
@@ -254,30 +264,12 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         drawWingsForState()
 
-        val fBounds = Rect(-r * 1.4f, -r * 2.0f, r * 1.4f, -r * 0.6f)
-        drawContext.canvas.saveLayer(fBounds, Paint())
-        withTransform({ rotate(hornOrbitAngle, pivot = Offset.Zero) }) {
-            drawHornsForState()
-        }
-        val litPath = Path().apply {
-            addOval(Rect(
-                -r * SHADOW_HORN_LIT_R,
-                r * HORN_MID_CY_K - r * SHADOW_HORN_LIT_R,
-                r * SHADOW_HORN_LIT_R,
-                r * HORN_MID_CY_K + r * SHADOW_HORN_LIT_R
-            ))
-        }
-        withTransform({ clipPath(litPath, ClipOp.Difference) }) {
-            drawRect(
-                color = Color(0f, 0f, 0f, SHADOW_ALPHA),
-                topLeft = Offset(-r * 1.4f, -r * 2.0f),
-                size = Size(r * 2.8f, r * 1.4f),
-                blendMode = BlendMode.SrcAtop
-            )
-        }
-        drawContext.canvas.restore()
-
         drawBodyLayer()
+
+        withTransform({ rotate(hornOrbitAngle, pivot = Offset.Zero) }) {
+            drawSideHorns()
+        }
+        drawMiddleNubs()
 
         withTransform({ translate(faceOffX, faceOffY) }) {
             drawEyesLayer()
@@ -419,7 +411,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     // ── horns ──────────────────────────────────────────────────────────────────
 
-    private fun DrawScope.drawHornsForState() {
+    private fun DrawScope.drawSideHorns() {
         val droopyTarget = when (currentAnim) {
             DragonAnim.AlmostHit, DragonAnim.JustHit ->
                 easeIn(animFrame.toFloat(), 8f)
@@ -434,22 +426,14 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         hornFlaredBlend = lerp(hornFlaredBlend, flaredTarget, 0.12f)
 
         drawHorn(
-            painter = DragonSkinPainters.hornMiddle,
-            cx = 0f,
-            cy = r * HORN_MID_CY_K,
-            w = r * HORN_MID_W_K,
-            h = r * HORN_MID_H_K,
-            rotDeg = hornFollowAngle,
-            droopyBlend = hornDroopyBlend, flaredBlend = hornFlaredBlend
-        )
-        drawHorn(
             painter = DragonSkinPainters.hornLeft,
             cx = -r * HORN_SIDE_CX_K,
             cy = r * HORN_SIDE_CY_K,
             w = r * HORN_SIDE_W_K,
             h = r * HORN_SIDE_H_K,
             rotDeg = -HORN_SIDE_ROT + hornFollowAngle,
-            droopyBlend = hornDroopyBlend, flaredBlend = hornFlaredBlend
+            droopyBlend = hornDroopyBlend, flaredBlend = hornFlaredBlend,
+            shadowSign = -1f
         )
         drawHorn(
             painter = DragonSkinPainters.hornRight,
@@ -458,7 +442,47 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
             w = r * HORN_SIDE_W_K,
             h = r * HORN_SIDE_H_K,
             rotDeg = HORN_SIDE_ROT + hornFollowAngle,
-            droopyBlend = hornDroopyBlend, flaredBlend = hornFlaredBlend
+            droopyBlend = hornDroopyBlend, flaredBlend = hornFlaredBlend,
+            shadowSign = 1f
+        )
+    }
+
+    private fun DrawScope.drawMiddleNubs() {
+        // Arc displacement: middle nub bends most toward gaze, top stays centered
+        val arcX = irisOffX * r * NUB_ARC_K
+
+        // Bottom nub: tracks horizontal midpoint between the eyes, no rotation
+        drawHorn(
+            painter = DragonSkinPainters.hornMidBot,
+            cx = faceOffX,
+            cy = r * NUB_BOT_CY_K,
+            w = r * NUB_BOT_W_K,
+            h = r * NUB_BOT_H_K,
+            rotDeg = 0f,
+            droopyBlend = 0f, flaredBlend = 0f,
+            shadowSign = 0f
+        )
+        // Middle nub: arcs the most, barely rotates
+        drawHorn(
+            painter = DragonSkinPainters.hornMidMid,
+            cx = arcX,
+            cy = r * NUB_MID_CY_K,
+            w = r * NUB_MID_W_K,
+            h = r * NUB_MID_H_K,
+            rotDeg = hornFollowAngle * 0.2f,
+            droopyBlend = hornDroopyBlend * 0.4f, flaredBlend = hornFlaredBlend * 0.4f,
+            shadowSign = 0f
+        )
+        // Top nub: stays at x=0 (midpoint of left/right horns), full rotation
+        drawHorn(
+            painter = DragonSkinPainters.hornMidTop,
+            cx = 0f,
+            cy = r * NUB_TOP_CY_K,
+            w = r * NUB_TOP_W_K,
+            h = r * NUB_TOP_H_K,
+            rotDeg = hornFollowAngle,
+            droopyBlend = hornDroopyBlend, flaredBlend = hornFlaredBlend,
+            shadowSign = 0f
         )
     }
 
@@ -467,7 +491,8 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         cx: Float, cy: Float,
         w: Float, h: Float,
         rotDeg: Float,
-        droopyBlend: Float, flaredBlend: Float
+        droopyBlend: Float, flaredBlend: Float,
+        shadowSign: Float = 0f
     ) {
         if (painter == null) return
         val anchorY = cy + h * 0.5f
@@ -478,13 +503,44 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
                 lerp(rotDeg, rotDeg - kotlin.math.sign(rotDeg) * 6f, flaredBlend)
             else -> rotDeg
         }
-        val tint = ColorFilter.tint(Color(frameColors.secondary))
-        withTransform({
-            translate(cx - w / 2f, cy - h / 2f)
-            val pivot = Offset(w / 2f, anchorY - (cy - h / 2f))
-            if (rot != 0f) rotate(rot, pivot = pivot)
-        }) {
-            with(painter) { draw(Size(w, h), colorFilter = tint) }
+        val tint = ColorFilter.tint(Color(frameColors.primary))
+
+        if (shadowSign != 0f) {
+            val margin = r * 0.25f
+            val bounds = Rect(cx - w / 2f - margin, cy - h / 2f - margin,
+                              cx + w / 2f + margin, cy + h / 2f + margin)
+            drawContext.canvas.saveLayer(bounds, Paint())
+            withTransform({
+                translate(cx - w / 2f, cy - h / 2f)
+                val pivot = Offset(w / 2f, anchorY - (cy - h / 2f))
+                if (rot != 0f) rotate(rot, pivot = pivot)
+            }) {
+                with(painter) { draw(Size(w, h), colorFilter = tint) }
+            }
+            // Lit side grows when the eye looks toward this horn; dark side shrinks
+            val growFactor = ((shadowSign * irisOffX + 1f) / 2f).coerceIn(0f, 1f)
+            val litR = r * SHADOW_HORN_LIT_R * lerp(0.6f, 1.8f, growFactor)
+            val litPath = Path().apply {
+                addOval(Rect(cx + shadowDx * 0.5f - litR, cy - h * 0.2f - litR,
+                             cx + shadowDx * 0.5f + litR, cy - h * 0.2f + litR))
+            }
+            withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+                drawRect(
+                    color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                    topLeft = Offset(cx - w / 2f - margin, cy - h / 2f - margin),
+                    size = Size(w + margin * 2f, h + margin * 2f),
+                    blendMode = BlendMode.SrcAtop
+                )
+            }
+            drawContext.canvas.restore()
+        } else {
+            withTransform({
+                translate(cx - w / 2f, cy - h / 2f)
+                val pivot = Offset(w / 2f, anchorY - (cy - h / 2f))
+                if (rot != 0f) rotate(rot, pivot = pivot)
+            }) {
+                with(painter) { draw(Size(w, h), colorFilter = tint) }
+            }
         }
     }
 
