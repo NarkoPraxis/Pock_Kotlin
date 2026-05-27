@@ -58,6 +58,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     // Ear animation (subtle, like dragon horns at ~40% PokPok feather intensity)
     private val EAR_COUNTER_MAX = 16f
     private val EAR_ORBIT_MAX = 6f
+    private val EAR_INNER_ROT_K = 1.45f
 
     // Eye whites (viewBox 43.75 x 33.58)
     private val EYE_WHITE_W_K = 43.75f / SVG_BODY_R
@@ -95,7 +96,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val MOUTH_OPEN1_H_K = 33.94f / SVG_BODY_R
     // Mouth center in composition: ~(74.87, 117.77) -> offset from body center: (0.02, 36.13)
     private val MOUTH_CX_K = 0f
-    private val MOUTH_CY_K = 0.575f
+    private val MOUTH_CY_K = 0.610f
 
     // Mouth open 2 (viewBox 19.87 x 5.63)
     private val MOUTH_OPEN2_W_K = 19.87f / SVG_BODY_R
@@ -107,6 +108,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val MOUTH_CLOSED_W_K = 18.2f / SVG_BODY_R
     private val MOUTH_CLOSED_H_K = 21.71f / SVG_BODY_R
     private val MOUTH_CLOSED_CY_K = 0.52f
+    private val MOUTH_CLOSED_SCALE_K = 1.2f
 
     // Fur top (viewBox 38.05 x 35.19)
     private val FUR_TOP_W_K = 38.05f / SVG_BODY_R
@@ -114,7 +116,9 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     // Fur_Top center in composition: ~(67.33, 17.6) -> offset from body center: (-7.52, -64.04)
     private val FUR_TOP_CX_K = -0.12f
     private val FUR_TOP_CY_K = -1.02f
-    private val FUR_TOP_COUNTER_MAX = 20f
+    private val FUR_TOP_COUNTER_MAX = 25f
+
+    private val FUR_SIDE_SCALE_K = 1.2f
 
     // Side fur L1 (viewBox 72.53 x 40.81)
     private val FUR_L1_W_K = 72.53f / SVG_BODY_R
@@ -150,6 +154,9 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     // Shadow
     private val SHADOW_ALPHA = 0.244f
+    private val SHADOW_LIT_EAR_R = 0.6f
+    private val SHADOW_LIT_EAR_ABOVE_K = 0.35f
+    private val SHADOW_EAR_LATERAL_K = 0.05f
     private val SHADOW_LIT_BODY_R = 1.4f
     private val SHADOW_LIT_BODY_ABOVE_K = 0.5f
     private val SHADOW_LATERAL_K = 0.50f
@@ -292,10 +299,10 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         shadowDx = lerp(shadowDx, irisOffX * r * SHADOW_LATERAL_K, 0.12f)
 
-        // Draw order: ears behind -> body -> fur -> face
+        // Draw order: ears behind -> side fur behind -> body -> fur top -> face
         drawEarsForState()
-        drawBodyLayer()
         drawSideFurForState()
+        drawBodyLayer()
         drawFurTopForState()
 
         withTransform({ translate(faceOffX, faceOffY) }) {
@@ -351,23 +358,58 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         val secondary = Color(frameColors.secondary)
         val primary = Color(frameColors.primary)
 
-        // Left ear
+        val earW = r * EAR_W_K
+        val earH = r * EAR_H_K
+
+        val earShadowDx = irisOffX * r * SHADOW_EAR_LATERAL_K
+
+        // Left ear with shadow — bounds large enough for full tilt + orbit swing
+        val lCx = r * EAR_L_CX_K
+        val lCy = r * EAR_L_CY_K
+        val lBounds = Rect(-r * 1.6f, -r * 1.5f, r * 0.2f, r * 0.1f)
+        drawContext.canvas.saveLayer(lBounds, Paint())
         withTransform({ rotate(earOrbitAngle, pivot = Offset.Zero) }) {
             val rot = computeEarRotation(-15f + earFollowAngle)
-            drawEarPart(CatSkinPainters.earL1, r * EAR_L_CX_K, r * EAR_L_CY_K,
-                r * EAR_W_K, r * EAR_H_K, rot, secondary)
+            drawEarPart(CatSkinPainters.earL1, lCx, lCy, earW, earH, rot, secondary)
             drawEarPart(CatSkinPainters.earL2, r * EAR_INNER_L_CX_K, r * EAR_INNER_L_CY_K,
-                r * EAR_INNER_W_K, r * EAR_INNER_H_K, rot, primary)
+                r * EAR_INNER_W_K, r * EAR_INNER_H_K, rot * EAR_INNER_ROT_K, primary)
+            val litR = r * SHADOW_LIT_EAR_R
+            val litPath = Path().apply {
+                addOval(Rect(lCx + earShadowDx - litR, lCy - r * SHADOW_LIT_EAR_ABOVE_K - litR,
+                    lCx + earShadowDx + litR, lCy - r * SHADOW_LIT_EAR_ABOVE_K + litR))
+            }
+            withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+                drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                    topLeft = Offset(lBounds.left, lBounds.top),
+                    size = Size(lBounds.width, lBounds.height),
+                    blendMode = BlendMode.SrcAtop)
+            }
         }
+        drawContext.canvas.restore()
 
-        // Right ear
+        // Right ear with shadow — bounds large enough for full tilt + orbit swing
+        val rCx = r * EAR_R_CX_K
+        val rCy = r * EAR_R_CY_K
+        val rBounds = Rect(-r * 0.2f, -r * 1.5f, r * 1.6f, r * 0.1f)
+        drawContext.canvas.saveLayer(rBounds, Paint())
         withTransform({ rotate(earOrbitAngle, pivot = Offset.Zero) }) {
             val rot = computeEarRotation(15f + earFollowAngle)
-            drawEarPart(CatSkinPainters.earR1, r * EAR_R_CX_K, r * EAR_R_CY_K,
-                r * EAR_W_K, r * EAR_H_K, rot, secondary)
+            drawEarPart(CatSkinPainters.earR1, rCx, rCy, earW, earH, rot, secondary)
             drawEarPart(CatSkinPainters.earR2, r * EAR_INNER_R_CX_K, r * EAR_INNER_R_CY_K,
-                r * EAR_INNER_W_K, r * EAR_INNER_H_K, rot, primary)
+                r * EAR_INNER_W_K, r * EAR_INNER_H_K, rot * EAR_INNER_ROT_K, primary)
+            val litR = r * SHADOW_LIT_EAR_R
+            val litPath = Path().apply {
+                addOval(Rect(rCx + earShadowDx - litR, rCy - r * SHADOW_LIT_EAR_ABOVE_K - litR,
+                    rCx + earShadowDx + litR, rCy - r * SHADOW_LIT_EAR_ABOVE_K + litR))
+            }
+            withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+                drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                    topLeft = Offset(rBounds.left, rBounds.top),
+                    size = Size(rBounds.width, rBounds.height),
+                    blendMode = BlendMode.SrcAtop)
+            }
         }
+        drawContext.canvas.restore()
     }
 
     private fun computeEarRotation(baseRot: Float): Float {
@@ -443,15 +485,15 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         // Left side fur with shadow
         drawSideFurPair(
-            CatSkinPainters.furL1, r * FUR_L1_CX_K, r * FUR_L1_CY_K, r * FUR_L1_W_K, r * FUR_L1_H_K,
-            CatSkinPainters.furL2, r * FUR_L2_CX_K, r * FUR_L2_CY_K, r * FUR_L2_W_K, r * FUR_L2_H_K,
+            CatSkinPainters.furL1, r * FUR_L1_CX_K, r * FUR_L1_CY_K, r * FUR_L1_W_K * FUR_SIDE_SCALE_K, r * FUR_L1_H_K * FUR_SIDE_SCALE_K,
+            CatSkinPainters.furL2, r * FUR_L2_CX_K, r * FUR_L2_CY_K, r * FUR_L2_W_K * FUR_SIDE_SCALE_K, r * FUR_L2_H_K * FUR_SIDE_SCALE_K,
             leftAngle, secondary, isLeft = true
         )
 
         // Right side fur with shadow
         drawSideFurPair(
-            CatSkinPainters.furR1, r * FUR_R1_CX_K, r * FUR_R1_CY_K, r * FUR_R1_W_K, r * FUR_R1_H_K,
-            CatSkinPainters.furR2, r * FUR_R2_CX_K, r * FUR_R2_CY_K, r * FUR_R2_W_K, r * FUR_R2_H_K,
+            CatSkinPainters.furR1, r * FUR_R1_CX_K, r * FUR_R1_CY_K, r * FUR_R1_W_K * FUR_SIDE_SCALE_K, r * FUR_R1_H_K * FUR_SIDE_SCALE_K,
+            CatSkinPainters.furR2, r * FUR_R2_CX_K, r * FUR_R2_CY_K, r * FUR_R2_W_K * FUR_SIDE_SCALE_K, r * FUR_R2_H_K * FUR_SIDE_SCALE_K,
             rightAngle, secondary, isLeft = false
         )
     }
@@ -664,7 +706,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     private fun DrawScope.drawMouthClosed() {
         val painter = CatSkinPainters.mouthClosed ?: return
         drawSvgPart(painter, r * MOUTH_CX_K, r * MOUTH_CLOSED_CY_K,
-            r * MOUTH_CLOSED_W_K, r * MOUTH_CLOSED_H_K,
+            r * MOUTH_CLOSED_W_K * MOUTH_CLOSED_SCALE_K, r * MOUTH_CLOSED_H_K * MOUTH_CLOSED_SCALE_K,
             tint = Color(frameColors.primary))
     }
 
