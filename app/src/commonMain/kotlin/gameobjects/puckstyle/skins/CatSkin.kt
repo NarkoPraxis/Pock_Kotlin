@@ -216,6 +216,8 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     private var faceOffX = 0f
     private var faceOffY = 0f
     private var eyeOpen = true
+    private var currentEyeScaleX = 1f
+    private var currentEyeScaleY = 1f
 
     // Smooth animation blends
     private var earDroopyBlend = 0f
@@ -298,7 +300,6 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         withTransform({ translate(faceOffX, faceOffY) }) {
             drawEyesLayer()
-            drawIrisLayer()
             drawMouthForState()
         }
 
@@ -541,28 +542,30 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     // ── eyes ──────────────────────────────────────────────────────────────────
 
     private fun DrawScope.drawEyesLayer() {
+        currentEyeScaleX = 1f
+        currentEyeScaleY = 1f
         when (currentAnim) {
             CatAnim.AlmostHit -> {
                 val t = easeIn(animFrame.toFloat(), 8f)
-                val scX = lerp(1f, 0.8f, t)
-                val scY = lerp(1f, 1.3f, t)
-                drawOpenEyes(scX, scY)
+                currentEyeScaleX = lerp(1f, 0.8f, t)
+                currentEyeScaleY = lerp(1f, 1.3f, t)
+                drawOpenEyes(currentEyeScaleX, currentEyeScaleY)
             }
             CatAnim.JustHit -> drawClosedEyes()
             CatAnim.Celebration -> {
                 val t = easeIn(animFrame.toFloat(), 8f)
-                val scX = lerp(1f, 1.3f, t)
-                val scY = lerp(1f, 0.75f, t)
-                drawOpenEyes(scX, scY)
+                currentEyeScaleX = lerp(1f, 1.3f, t)
+                currentEyeScaleY = lerp(1f, 0.75f, t)
+                drawOpenEyes(currentEyeScaleX, currentEyeScaleY)
                 val secondary = Color(frameColors.secondary)
                 drawRect(secondary, topLeft = Offset(
-                    r * EYE_L_CX_K - r * EYE_WHITE_W_K * scX / 2f,
-                    r * EYE_L_CY_K + r * EYE_WHITE_H_K * scY * 0.1f),
-                    size = Size(r * EYE_WHITE_W_K * scX, r * EYE_WHITE_H_K * scY * 0.6f))
+                    r * EYE_L_CX_K - r * EYE_WHITE_W_K * currentEyeScaleX / 2f,
+                    r * EYE_L_CY_K + r * EYE_WHITE_H_K * currentEyeScaleY * 0.1f),
+                    size = Size(r * EYE_WHITE_W_K * currentEyeScaleX, r * EYE_WHITE_H_K * currentEyeScaleY * 0.6f))
                 drawRect(secondary, topLeft = Offset(
-                    r * EYE_R_CX_K - r * EYE_WHITE_W_K * scX / 2f,
-                    r * EYE_R_CY_K + r * EYE_WHITE_H_K * scY * 0.1f),
-                    size = Size(r * EYE_WHITE_W_K * scX, r * EYE_WHITE_H_K * scY * 0.6f))
+                    r * EYE_R_CX_K - r * EYE_WHITE_W_K * currentEyeScaleX / 2f,
+                    r * EYE_R_CY_K + r * EYE_WHITE_H_K * currentEyeScaleY * 0.1f),
+                    size = Size(r * EYE_WHITE_W_K * currentEyeScaleX, r * EYE_WHITE_H_K * currentEyeScaleY * 0.6f))
             }
             CatAnim.Yawn -> drawClosedEyes()
             CatAnim.Chatter -> drawOpenEyes(1f, 1f)
@@ -573,13 +576,52 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     private fun DrawScope.drawOpenEyes(scaleX: Float, scaleY: Float) {
         val eyeL1 = CatSkinPainters.eyeOpenL1
         val eyeR1 = CatSkinPainters.eyeOpenR1
-        if (eyeL1 != null) {
-            drawSvgPart(eyeL1, r * EYE_L_CX_K, r * EYE_L_CY_K,
-                r * EYE_WHITE_W_K, r * EYE_WHITE_H_K, scaleX = scaleX, scaleY = scaleY)
+        val irisL = CatSkinPainters.eyeOpenL2
+        val irisR = CatSkinPainters.eyeOpenR2
+
+        val wW = r * EYE_WHITE_W_K
+        val wH = r * EYE_WHITE_H_K
+        val iW = r * EYE_IRIS_W_K
+        val iH = r * EYE_IRIS_H_K
+        val maxOff = r * IRIS_MAX_FOLLOW_K
+        val offX = irisOffX * maxOff
+        val offY = irisOffY * maxOff
+        val showIris = when (currentAnim) {
+            CatAnim.JustHit, CatAnim.Yawn -> false
+            CatAnim.Default -> eyeOpen
+            else -> true
         }
+        val layerPaint = Paint()
+        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+
+        if (eyeL1 != null) {
+            val cx = r * EYE_L_CX_K
+            val cy = r * EYE_L_CY_K
+            val hw = wW / 2f * scaleX; val hh = wH / 2f * scaleY
+            val bounds = Rect(cx - hw, cy - hh, cx + hw, cy + hh)
+            drawContext.canvas.saveLayer(bounds, layerPaint)
+            drawSvgPart(eyeL1, cx, cy, wW, wH, scaleX = scaleX, scaleY = scaleY)
+            if (showIris && irisL != null) {
+                drawContext.canvas.saveLayer(bounds, srcAtopPaint)
+                drawSvgPart(irisL, r * IRIS_L_CX_K + offX, r * IRIS_L_CY_K + offY, iW, iH)
+                drawContext.canvas.restore()
+            }
+            drawContext.canvas.restore()
+        }
+
         if (eyeR1 != null) {
-            drawSvgPart(eyeR1, r * EYE_R_CX_K, r * EYE_R_CY_K,
-                r * EYE_WHITE_W_K, r * EYE_WHITE_H_K, scaleX = scaleX, scaleY = scaleY)
+            val cx = r * EYE_R_CX_K
+            val cy = r * EYE_R_CY_K
+            val hw = wW / 2f * scaleX; val hh = wH / 2f * scaleY
+            val bounds = Rect(cx - hw, cy - hh, cx + hw, cy + hh)
+            drawContext.canvas.saveLayer(bounds, layerPaint)
+            drawSvgPart(eyeR1, cx, cy, wW, wH, scaleX = scaleX, scaleY = scaleY)
+            if (showIris && irisR != null) {
+                drawContext.canvas.saveLayer(bounds, srcAtopPaint)
+                drawSvgPart(irisR, r * IRIS_R_CX_K + offX, r * IRIS_R_CY_K + offY, iW, iH)
+                drawContext.canvas.restore()
+            }
+            drawContext.canvas.restore()
         }
     }
 
@@ -597,31 +639,6 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         }
     }
 
-    // ── iris (pupils on top of eyes) ──────────────────────────────────────────
-
-    private fun DrawScope.drawIrisLayer() {
-        val showIris = when (currentAnim) {
-            CatAnim.JustHit, CatAnim.Yawn -> false
-            CatAnim.Default -> eyeOpen
-            else -> true
-        }
-        if (!showIris) return
-
-        val irisL = CatSkinPainters.eyeOpenL2
-        val irisR = CatSkinPainters.eyeOpenR2
-        val maxOff = r * IRIS_MAX_FOLLOW_K
-        val offX = irisOffX * maxOff
-        val offY = irisOffY * maxOff
-
-        if (irisL != null) {
-            drawSvgPart(irisL, r * IRIS_L_CX_K + offX, r * IRIS_L_CY_K + offY,
-                r * EYE_IRIS_W_K, r * EYE_IRIS_H_K)
-        }
-        if (irisR != null) {
-            drawSvgPart(irisR, r * IRIS_R_CX_K + offX, r * IRIS_R_CY_K + offY,
-                r * EYE_IRIS_W_K, r * EYE_IRIS_H_K)
-        }
-    }
 
     // ── mouth ─────────────────────────────────────────────────────────────────
 

@@ -29,7 +29,7 @@ class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
             Preset( 30f,  5),   // Orange
             Preset( 60f, 15),   // Yellow
             Preset(120f, 25),   // Green
-            Preset(180f, 35),   // Cyan
+            Preset(202.5f, 35), // Sky Blue (low player default)
             Preset(240f,  0),   // Blue
             Preset(270f, 45),   // Purple
             Preset(300f, 55),   // Magenta

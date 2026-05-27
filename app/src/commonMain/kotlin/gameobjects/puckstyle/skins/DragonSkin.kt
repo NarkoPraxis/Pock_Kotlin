@@ -545,23 +545,39 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         val ix = irisOffX * maxOff
         val iy = irisOffY * maxOff
 
-        // Left sclera
+        val layerPaint = Paint()
+        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+
+        // Left eye: sclera as mask, pupil clipped to sclera shape
         if (lScl != null) {
-            drawSvgPart(lScl, -r * EYE_OFFSET_X_K, cy, sW, sH, scaleX = scaleX, scaleY = scaleY)
+            val lCx = -r * EYE_OFFSET_X_K
+            val hw = sW / 2f * scaleX; val hh = sH / 2f * scaleY
+            val bounds = Rect(lCx - hw, cy - hh, lCx + hw, cy + hh)
+            drawContext.canvas.saveLayer(bounds, layerPaint)
+            drawSvgPart(lScl, lCx, cy, sW, sH, scaleX = scaleX, scaleY = scaleY)
+            if (lPup != null) {
+                drawContext.canvas.saveLayer(bounds, srcAtopPaint)
+                drawSvgPart(lPup, lCx + ix * scaleX, cy + r * PUPIL_OFFSET_Y_K + iy * scaleY,
+                    pW, pH, scaleX = scaleX, scaleY = scaleY)
+                drawContext.canvas.restore()
+            }
+            drawContext.canvas.restore()
         }
-        // Right sclera
+
+        // Right eye: sclera as mask, pupil clipped to sclera shape
         if (rScl != null) {
-            drawSvgPart(rScl, r * EYE_OFFSET_X_K, cy, sW, sH, scaleX = scaleX, scaleY = scaleY)
-        }
-        // Left pupil with tracking
-        if (lPup != null) {
-            drawSvgPart(lPup, -r * EYE_OFFSET_X_K + ix * scaleX, cy + r * PUPIL_OFFSET_Y_K + iy * scaleY,
-                pW, pH, scaleX = scaleX, scaleY = scaleY)
-        }
-        // Right pupil with tracking
-        if (rPup != null) {
-            drawSvgPart(rPup, r * EYE_OFFSET_X_K + ix * scaleX, cy + r * PUPIL_OFFSET_Y_K + iy * scaleY,
-                pW, pH, scaleX = scaleX, scaleY = scaleY)
+            val rCx = r * EYE_OFFSET_X_K
+            val hw = sW / 2f * scaleX; val hh = sH / 2f * scaleY
+            val bounds = Rect(rCx - hw, cy - hh, rCx + hw, cy + hh)
+            drawContext.canvas.saveLayer(bounds, layerPaint)
+            drawSvgPart(rScl, rCx, cy, sW, sH, scaleX = scaleX, scaleY = scaleY)
+            if (rPup != null) {
+                drawContext.canvas.saveLayer(bounds, srcAtopPaint)
+                drawSvgPart(rPup, rCx + ix * scaleX, cy + r * PUPIL_OFFSET_Y_K + iy * scaleY,
+                    pW, pH, scaleX = scaleX, scaleY = scaleY)
+                drawContext.canvas.restore()
+            }
+            drawContext.canvas.restore()
         }
     }
 
