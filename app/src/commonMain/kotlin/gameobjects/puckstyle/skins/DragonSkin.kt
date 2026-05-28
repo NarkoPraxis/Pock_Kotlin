@@ -85,7 +85,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
     // TUNE side horn spread: increase CX_K to push horns further apart (0.0=center, ~1.0=ball edge)
     private val HORN_SIDE_CX_K = 0.6f
     // TUNE side horn height: the first value is the bottom anchor; 0.0=ball center, -1.0=ball top
-    private val HORN_SIDE_CY_K = -0.35f - HORN_SIDE_H_K / 2f
+    private val HORN_SIDE_CY_K = -0.40f - HORN_SIDE_H_K / 2f
 
     // Three independent middle nubs (split from Dragon_Horn_Middle)
     // Sizes in body-radius units, heights from original painter nub extents
@@ -96,22 +96,22 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val NUB_BOT_W_K = 20.12f / 55.86f   // ~0.360
     private val NUB_BOT_H_K = 12.93f / 55.86f   // ~0.231
     // TUNE nub heights: more negative = higher on the head; adjust all three to shift the stack
-    private val NUB_TOP_CY_K = -0.98f
-    private val NUB_MID_CY_K = -0.64f
-    private val NUB_BOT_CY_K = -0.23f
+    private val NUB_TOP_CY_K = -0.93f
+    private val NUB_MID_CY_K = -0.59f
+    private val NUB_BOT_CY_K = -0.18f
     // TUNE arc intensity: how far the middle nub bends toward the gaze (0=rigid, 0.2=dramatic)
     private val NUB_ARC_K = 0.10f
 
-    // TUNE: HORN_SIDE_ROT = static lean of each side horn; COUNTER = tilt with gaze; ORBIT = whole-group rotation around center
+    // TUNE: HORN_SIDE_ROT = static lean of each side horn; COUNTER = slight away-from-paddle tilt; ORBIT = 0 disables orbit
     private val HORN_SIDE_ROT = 10f
-    private val HORN_COUNTER_MAX = 6f       // was 16 — how much each horn tilts individually with gaze
-    private val HORN_ORBIT_MAX = 2f         // was 8  — how much all side horns orbit around the ball center
+    private val HORN_COUNTER_MAX = 10f       // very subtle: horns tip slightly away from the paddle
+    private val HORN_ORBIT_MAX = 1f         // 0 = no group orbit around body center
 
     // Wings: viewBox 43.53 x 28.28
     private val WING_W_K = 43.53f / 55.86f * 1.3f  // ~1.013
     private val WING_H_K = 28.28f / 55.86f * 1.3f  // ~0.658
     private val WING_PIVOT_X_K = 0.78f
-    private val WING_CENTER_OFFSET = 0.38f
+    private val WING_CENTER_OFFSET = 0.5f
     private val WING_PERSPECTIVE_ANGLE_MAX = 14f
     private val WING_PERSPECTIVE_SCALE_K = 0.05f
 
@@ -262,19 +262,16 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         r = cachedRadius
         shadowDx = lerp(shadowDx, irisOffX * r * SHADOW_LATERAL_K, 0.12f)
 
+
         drawWingsForState()
 
-        drawBodyLayer()
+
+        drawHeadWithShadow()
 
         withTransform({ rotate(hornOrbitAngle, pivot = Offset.Zero) }) {
             drawSideHorns()
         }
         drawMiddleNubs()
-
-        withTransform({ translate(faceOffX, faceOffY) }) {
-            drawEyesLayer()
-            drawMouthForState()
-        }
 
         canvas.restore()
     }
@@ -307,7 +304,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     // ── body ───────────────────────────────────────────────────────────────────
 
-    private fun DrawScope.drawBodyLayer() {
+    private fun DrawScope.drawHeadWithShadow() {
         val body = DragonSkinPainters.body
         val secondary = Color(frameColors.secondary)
         val bounds = Rect(-r * 1.2f, -r * 1.2f, r * 1.2f, r * 1.2f)
@@ -319,23 +316,25 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         } else {
             drawCircle(secondary, r, Offset.Zero)
         }
+        withTransform({ translate(faceOffX, faceOffY) }) {
+            drawEyesLayer()
+            drawMouthForState()
+        }
+        // Shadow drawn last so it covers eyes and mouth
         val litR = r * SHADOW_LIT_BODY_R
-        val litPath = Path().apply {
-            addOval(Rect(
-                shadowDx - litR,
-                -r * SHADOW_LIT_BODY_ABOVE_K - litR,
-                shadowDx + litR,
-                -r * SHADOW_LIT_BODY_ABOVE_K + litR
-            ))
-        }
-        withTransform({ clipPath(litPath, ClipOp.Difference) }) {
-            drawRect(
-                color = Color(0f, 0f, 0f, SHADOW_ALPHA),
-                topLeft = Offset(-r * 1.2f, -r * 1.2f),
-                size = Size(r * 2.4f, r * 2.4f),
-                blendMode = BlendMode.SrcAtop
-            )
-        }
+        val litBounds = Rect(
+            shadowDx - litR, -r * SHADOW_LIT_BODY_ABOVE_K - litR,
+            shadowDx + litR, -r * SHADOW_LIT_BODY_ABOVE_K + litR
+        )
+        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+        drawContext.canvas.saveLayer(bounds, srcAtopPaint)
+        drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA), topLeft = bounds.topLeft, size = bounds.size)
+        val litPath = Path().apply { addOval(litBounds) }
+        val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+        drawContext.canvas.saveLayer(litBounds, dstOutPaint)
+        drawPath(litPath, Color.White)
+        drawContext.canvas.restore()
+        drawContext.canvas.restore()
         drawContext.canvas.restore()
     }
 
@@ -382,7 +381,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
             )
             drawContext.canvas.saveLayer(wBounds, Paint())
             drawSvgPart(painter, centerX, centerY, w, h, scaleX = perspScale, scaleY = perspScale,
-                tint = Color(frameColors.secondary))
+                tint = Color(frameColors.primary))
             val growFactor = ((sign * irisOffX + 1f) / 2f).coerceIn(0f, 1f)
             val litR = r * SHADOW_LIT_WING_R_MIN * lerp(1f, 2f, growFactor)
             val worldLitCx = centerX + shadowDx
@@ -678,10 +677,13 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         val fangs = DragonSkinPainters.mouthClosed1
         val cy = r * MOUTH_OFFSET_Y_K
         if (lips != null) {
+
             drawSvgPart(lips, 0f, cy, r * MOUTH_CLIP_W_K, r * MOUTH_CLIP_H_K,
                 tint = Color(frameColors.primary))
         }
         if (fangs != null) {
+            drawSvgPart(fangs, 0f, cy + r * 0.1f, r * MOUTH_CFANG_W_K, r * MOUTH_CFANG_H_K,
+                tint = Color(frameColors.primary))
             drawSvgPart(fangs, 0f, cy, r * MOUTH_CFANG_W_K, r * MOUTH_CFANG_H_K,
                 tint = Color(frameColors.secondary))
         }
