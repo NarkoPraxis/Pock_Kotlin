@@ -59,7 +59,7 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     // bends sideways. 0.80 means the first 80% of the strand follows the
     // main exactly and the last 20% can drift; 0.50 means half the strand
     // is locked and half can drift.
-    private val strandCloneFractions = floatArrayOf(0.90f, 0.80f, 0.80f, 0.80f)
+    private val strandCloneFractions = floatArrayOf(0.70f, 0.70f, 0.70f, 0.70f)
 
     // How sharply each strand's deviating segments bend, in radians per
     // segment. Sign sets the bend direction (positive curls one way,
@@ -72,6 +72,15 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     // huge bend value, no strand can wander past this distance — guarantees
     // the strands always look attached to the main tail.
     private val strandMaximumDeviationFromMain = 0.90f
+
+    // How quickly each strand's tip catches up to where the constant-bend
+    // formula says it "should" be each frame. Lower values let the tip lag
+    // behind, so when the main tail wags one way the strand tip trails
+    // behind it and visibly whips back as the main reverses — like loose
+    // fur catching wind. 1.0 = no lag (stiff hair-gel look, the previous
+    // behavior); 0.5 = mild trail; 0.20 = pronounced whip; 0.10 = very
+    // floppy and loose.
+    private val strandTipChaseRates = floatArrayOf(0.20f, 0.25f, 0.22f, 0.28f)
 
     // --- Persistent state ----------------------------------------------------
     private val spineX = FloatArray(SEGMENT_COUNT)
@@ -87,11 +96,13 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     private val bodyPath = Path()
     private val strandPath = Path()
 
-    // Per-strand scratch buffers, sized per-strand so different strands can
-    // have different segment counts. Recomputed from main every frame.
+    // Per-strand spine buffers. Cloned segments are overwritten from main
+    // every frame; deviating segments persist across frames so they can lag
+    // behind the main tail's motion (see strandTipChaseRates).
     private val strandSpineX = Array(strandCount) { FloatArray(strandSegmentCounts[it]) }
     private val strandSpineY = Array(strandCount) { FloatArray(strandSegmentCounts[it]) }
     private val strandSegAngle = Array(strandCount) { FloatArray(strandSegmentCounts[it]) }
+    private val strandInitialized = BooleanArray(strandCount)
 
     override val zIndex: Int get() = -1
 
@@ -250,10 +261,16 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
 
     /**
      * Derive one strand's spine from the main spine.
+     *
      * The first `cloneCount` segments are copied verbatim (perfect overlap).
-     * The remaining segments chase forward with a constant tip-bend added to
-     * each angle, then are hard-clamped to within `maxLateralDeviation` of
-     * the corresponding main spine point so the strand stays attached.
+     *
+     * The remaining segments compute a "stiff target" — where the segment
+     * would sit if it instantly mirrored the constant tip-bend — then lerp
+     * the previous frame's position toward that target by chaseRate. The
+     * resulting position lag is converted to an angle lag by re-enforcing
+     * constant spacing, which is what makes the tip visibly trail behind
+     * the main tail's motion (the "whip"). Finally each segment is clamped
+     * to within `maxLateralDeviation` of the corresponding main spine point.
      */
     private fun computeStrandSpine(strandIndex: Int, maxLateralDeviation: Float, spacing: Float) {
         val strandX = strandSpineX[strandIndex]
@@ -264,6 +281,8 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
             .toInt()
             .coerceIn(1, segmentCount.coerceAtMost(SEGMENT_COUNT))
         val tipBend = strandTipBendRadians[strandIndex]
+        val chaseRate = strandTipChaseRates[strandIndex]
+        val firstFrame = !strandInitialized[strandIndex]
 
         for (i in 0 until cloneCount) {
             strandX[i] = spineX[i]
@@ -272,10 +291,33 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
         }
 
         for (i in cloneCount until segmentCount) {
+            // Stiff target: where this segment would sit with no lag.
             val bentAngle = strandA[i - 1] + tipBend
-            strandX[i] = strandX[i - 1] + cos(bentAngle) * spacing
-            strandY[i] = strandY[i - 1] + sin(bentAngle) * spacing
-            strandA[i] = bentAngle
+            val targetX = strandX[i - 1] + cos(bentAngle) * spacing
+            val targetY = strandY[i - 1] + sin(bentAngle) * spacing
+
+            // Lerp from last frame's stored position toward the target.
+            // First frame snaps so the strand doesn't drift in from origin.
+            val chasedX: Float
+            val chasedY: Float
+            if (firstFrame) {
+                chasedX = targetX
+                chasedY = targetY
+            } else {
+                chasedX = lerp(strandX[i], targetX, chaseRate)
+                chasedY = lerp(strandY[i], targetY, chaseRate)
+            }
+
+            // Re-enforce constant spacing from the previous segment.
+            // This turns the position lag into an angle lag — the segment
+            // ends up at the right distance from its parent but pointing
+            // behind where the "stiff" version would point.
+            val dx = chasedX - strandX[i - 1]
+            val dy = chasedY - strandY[i - 1]
+            val dist = hypot(dx, dy).coerceAtLeast(0.001f)
+            strandX[i] = strandX[i - 1] + dx / dist * spacing
+            strandY[i] = strandY[i - 1] + dy / dist * spacing
+            strandA[i] = atan2(strandY[i] - strandY[i - 1], strandX[i] - strandX[i - 1])
 
             // Cap lateral drift against the corresponding main spine point
             // (only when the main spine still has a sample at this index;
@@ -292,6 +334,8 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
                 }
             }
         }
+
+        strandInitialized[strandIndex] = true
     }
 
     /**
@@ -374,6 +418,7 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun clear() {
         initialized = false
         smoothedSpeed = 0f
+        for (k in 0 until strandCount) strandInitialized[k] = false
     }
 
     override fun fillTo(x: Float, y: Float) {
@@ -386,6 +431,7 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
         initialized = true
         lastHeadX = x
         lastHeadY = y
+        for (k in 0 until strandCount) strandInitialized[k] = false
     }
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
