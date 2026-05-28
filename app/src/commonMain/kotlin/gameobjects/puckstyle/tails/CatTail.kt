@@ -46,26 +46,33 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     // spine point so a strand can never wander off the tail's shape.
     //
     // Per-strand arrays are all `strandCount` long; index k describes strand k.
+    // Indices 0..3 are the four fur strands that hang off the main tail.
+    // Index 4 (the LAST entry) is the "centerline strand" — it visually
+    // replaces the old rigid main-tail body, using bend = 0 (no lateral
+    // lean) and the full main-tail width profile. Mechanically it's just
+    // another strand, so the whole tail now whips like the fur strands.
     // Tweak any of these to restyle the fur — see the comments above each.
-    private val strandCount = 4
+    private val strandCount = 5
 
     // How many spine segments make up each strand. Compared against the main
     // tail's SEGMENT_COUNT: smaller = strand ends before the main tip
     // (shorter fur), equal = same length, larger = extends past main tip.
-    private val strandSegmentCounts = intArrayOf(11, 10, 9, 9)
+    // The centerline (index 4) matches SEGMENT_COUNT so it spans the full tail.
+    private val strandSegmentCounts = intArrayOf(10, 10, 9, 9, 10)
 
     // What fraction of each strand's segments are locked to the main spine
     // (perfect overlap). The remaining fraction is the deviating tip that
     // bends sideways. 0.80 means the first 80% of the strand follows the
     // main exactly and the last 20% can drift; 0.50 means half the strand
     // is locked and half can drift.
-    private val strandCloneFractions = floatArrayOf(0.70f, 0.70f, 0.70f, 0.70f)
+    private val strandCloneFractions = floatArrayOf(0.70f, 0.70f, 0.80f, 0.70f, 0.80f)
 
     // How sharply each strand's deviating segments bend, in radians per
     // segment. Sign sets the bend direction (positive curls one way,
     // negative the other). Roughly: 0.05 is barely visible, 0.15 is a
-    // gentle lean, 0.25 is a strong wisp.
-    private val strandTipBendRadians = floatArrayOf(-0.10f, 0.30f, -0.30f, 0.30f)
+    // gentle lean, 0.25 is a strong wisp. The centerline strand uses 0.0
+    // so it has no lateral lean — only the whip lag, no curl.
+    private val strandTipBendRadians = floatArrayOf(-0.10f, 0.30f, -0.30f, 0.20f, 0.30f)
 
     // Hard ceiling on how far the deviating tip can drift sideways from the
     // corresponding main spine point, measured in puck radii. Even with a
@@ -80,7 +87,7 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     // fur catching wind. 1.0 = no lag (stiff hair-gel look, the previous
     // behavior); 0.5 = mild trail; 0.20 = pronounced whip; 0.10 = very
     // floppy and loose.
-    private val strandTipChaseRates = floatArrayOf(0.20f, 0.25f, 0.22f, 0.28f)
+    private val strandTipChaseRates = floatArrayOf(0.20f, 0.25f, 0.22f, 0.28f, 0.25f)
 
     // --- Persistent state ----------------------------------------------------
     private val spineX = FloatArray(SEGMENT_COUNT)
@@ -196,67 +203,14 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
         val bodyAlpha = (255f * fadeMultiplier.coerceAtMost(1f)).toInt()
         val bodyColor = Color(Palette.withAlpha(secondary, bodyAlpha))
 
-        // --- Step 2: derive & draw strand clones (behind main body) ---------
+        // --- Step 2: derive & draw the strands -------------------------------
+        // The reference spine integrated above is only used internally as the
+        // shape the strands clone from — it is never drawn directly.
         val maxLateralDeviation = r * strandMaximumDeviationFromMain
         for (k in 0 until strandCount) {
             computeStrandSpine(k, maxLateralDeviation, spacing)
             drawStrand(scope, k, headX, headY, r, bodyColor)
         }
-
-        // --- Step 3: build & draw the main tail body ------------------------
-        val edgeCount = SEGMENT_COUNT + 1
-        val leftX = FloatArray(edgeCount)
-        val leftY = FloatArray(edgeCount)
-        val rightX = FloatArray(edgeCount)
-        val rightY = FloatArray(edgeCount)
-
-        val firstAngle = segAngle[0]
-        val firstPerp = firstAngle + PI.toFloat() / 2f
-        val edgeHalfFactor = 0.5f
-        val headHalf = r * ROOT_WIDTH_K * edgeHalfFactor
-        val hpx = cos(firstPerp) * headHalf
-        val hpy = sin(firstPerp) * headHalf
-        leftX[0] = headX + hpx
-        leftY[0] = headY + hpy
-        rightX[0] = headX - hpx
-        rightY[0] = headY - hpy
-
-        for (i in 0 until SEGMENT_COUNT) {
-            val t = (i + 1f) / SEGMENT_COUNT
-            val halfWidth = widthAtRatio(t) * r * edgeHalfFactor
-            val perp = segAngle[i] + PI.toFloat() / 2f
-            val px = cos(perp) * halfWidth
-            val py = sin(perp) * halfWidth
-            leftX[i + 1] = spineX[i] + px
-            leftY[i + 1] = spineY[i] + py
-            rightX[i + 1] = spineX[i] - px
-            rightY[i + 1] = spineY[i] - py
-        }
-
-        bodyPath.reset()
-        bodyPath.moveTo(leftX[0], leftY[0])
-        for (i in 1 until edgeCount) bodyPath.lineTo(leftX[i], leftY[i])
-        for (i in edgeCount - 1 downTo 0) bodyPath.lineTo(rightX[i], rightY[i])
-        bodyPath.close()
-        scope.drawPath(bodyPath, bodyColor, style = Fill)
-
-        // --- Step 4: subtle highlight along the upper edge ------------------
-        val highlightAlpha = (bodyAlpha * 0.45f).toInt()
-        val highlightColor = Color(Palette.withAlpha(primary, highlightAlpha))
-        val highlightPath = Path()
-        highlightPath.moveTo(leftX[0], leftY[0])
-        for (i in 1 until edgeCount) highlightPath.lineTo(leftX[i], leftY[i])
-        val highlightInsetK = 0.65f
-        for (i in edgeCount - 1 downTo 0) {
-            val sx: Float
-            val sy: Float
-            if (i == 0) { sx = headX; sy = headY } else { sx = spineX[i - 1]; sy = spineY[i - 1] }
-            val ix = sx + (leftX[i] - sx) * highlightInsetK
-            val iy = sy + (leftY[i] - sy) * highlightInsetK
-            highlightPath.lineTo(ix, iy)
-        }
-        highlightPath.close()
-        scope.drawPath(highlightPath, highlightColor, style = Fill)
     }
 
     /**
