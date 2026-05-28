@@ -39,19 +39,39 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     private val MOTION_DAMP_THRESHOLD = 0.4f
     private val RESTORE_K = 0.35f
 
-    // --- Extra fur strands ---------------------------------------------------
-    // Four clones of the main tail. Each strand's first 80% of segments is
-    // copied verbatim from the main spine (perfect overlap, same width
-    // profile). The remaining ~20% deviates with a small constant tip-bias
-    // that pulls its tip toward one side. Lateral deviation is hard-capped
-    // to MAX_DEVIATION_K × radius from the corresponding main spine point,
-    // so a strand can never wander off the main tail's shape.
-    // All four strands inherit the main spine's wag/curl through the cloned
-    // portion — they only differ in which way the last two segments lean.
-    private val STRAND_COUNT = 4
-    private val CLONE_FRACTION = 0.80f
-    private val MAX_DEVIATION_K = 0.18f
-    private val strandTipBiasRad = floatArrayOf(0.20f, -0.22f, 0.14f, -0.16f)
+    // --- Fur strands (clones of the main tail) ------------------------------
+    // Each strand mirrors the main spine for the first part of its length,
+    // then the remaining tip segments bend sideways with a constant angle
+    // offset. Lateral travel is hard-capped against the corresponding main
+    // spine point so a strand can never wander off the tail's shape.
+    //
+    // Per-strand arrays are all `strandCount` long; index k describes strand k.
+    // Tweak any of these to restyle the fur — see the comments above each.
+    private val strandCount = 4
+
+    // How many spine segments make up each strand. Compared against the main
+    // tail's SEGMENT_COUNT: smaller = strand ends before the main tip
+    // (shorter fur), equal = same length, larger = extends past main tip.
+    private val strandSegmentCounts = intArrayOf(11, 10, 9, 9)
+
+    // What fraction of each strand's segments are locked to the main spine
+    // (perfect overlap). The remaining fraction is the deviating tip that
+    // bends sideways. 0.80 means the first 80% of the strand follows the
+    // main exactly and the last 20% can drift; 0.50 means half the strand
+    // is locked and half can drift.
+    private val strandCloneFractions = floatArrayOf(0.90f, 0.80f, 0.80f, 0.80f)
+
+    // How sharply each strand's deviating segments bend, in radians per
+    // segment. Sign sets the bend direction (positive curls one way,
+    // negative the other). Roughly: 0.05 is barely visible, 0.15 is a
+    // gentle lean, 0.25 is a strong wisp.
+    private val strandTipBendRadians = floatArrayOf(-0.10f, 0.30f, -0.30f, 0.30f)
+
+    // Hard ceiling on how far the deviating tip can drift sideways from the
+    // corresponding main spine point, measured in puck radii. Even with a
+    // huge bend value, no strand can wander past this distance — guarantees
+    // the strands always look attached to the main tail.
+    private val strandMaximumDeviationFromMain = 0.90f
 
     // --- Persistent state ----------------------------------------------------
     private val spineX = FloatArray(SEGMENT_COUNT)
@@ -67,11 +87,11 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     private val bodyPath = Path()
     private val strandPath = Path()
 
-    // Per-strand scratch buffers — recomputed from the main spine every frame,
-    // no persistent state of their own.
-    private val strandSpineX = Array(STRAND_COUNT) { FloatArray(SEGMENT_COUNT) }
-    private val strandSpineY = Array(STRAND_COUNT) { FloatArray(SEGMENT_COUNT) }
-    private val strandSegAngle = Array(STRAND_COUNT) { FloatArray(SEGMENT_COUNT) }
+    // Per-strand scratch buffers, sized per-strand so different strands can
+    // have different segment counts. Recomputed from main every frame.
+    private val strandSpineX = Array(strandCount) { FloatArray(strandSegmentCounts[it]) }
+    private val strandSpineY = Array(strandCount) { FloatArray(strandSegmentCounts[it]) }
+    private val strandSegAngle = Array(strandCount) { FloatArray(strandSegmentCounts[it]) }
 
     override val zIndex: Int get() = -1
 
@@ -165,11 +185,10 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
         val bodyAlpha = (255f * fadeMultiplier.coerceAtMost(1f)).toInt()
         val bodyColor = Color(Palette.withAlpha(secondary, bodyAlpha))
 
-        // --- Step 2: derive & draw the four strand clones (behind main) -----
-        val cloneCount = (SEGMENT_COUNT * CLONE_FRACTION).toInt().coerceAtLeast(1)
-        val maxDev = r * MAX_DEVIATION_K
-        for (k in 0 until STRAND_COUNT) {
-            computeStrandSpine(k, cloneCount, maxDev, spacing)
+        // --- Step 2: derive & draw strand clones (behind main body) ---------
+        val maxLateralDeviation = r * strandMaximumDeviationFromMain
+        for (k in 0 until strandCount) {
+            computeStrandSpine(k, maxLateralDeviation, spacing)
             drawStrand(scope, k, headX, headY, r, bodyColor)
         }
 
@@ -230,79 +249,115 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     }
 
     /**
-     * Derive a single strand spine from the main spine. The first cloneCount
-     * segments are copied verbatim — the strand can't drift there. The
-     * remaining segments chase forward with a small constant tip-bias added
-     * to each angle, then are hard-clamped to within maxDev of the
-     * corresponding main spine point so the strand stays on the tail's shape.
+     * Derive one strand's spine from the main spine.
+     * The first `cloneCount` segments are copied verbatim (perfect overlap).
+     * The remaining segments chase forward with a constant tip-bend added to
+     * each angle, then are hard-clamped to within `maxLateralDeviation` of
+     * the corresponding main spine point so the strand stays attached.
      */
-    private fun computeStrandSpine(k: Int, cloneCount: Int, maxDev: Float, spacing: Float) {
-        val sX = strandSpineX[k]
-        val sY = strandSpineY[k]
-        val sA = strandSegAngle[k]
-        val bias = strandTipBiasRad[k]
+    private fun computeStrandSpine(strandIndex: Int, maxLateralDeviation: Float, spacing: Float) {
+        val strandX = strandSpineX[strandIndex]
+        val strandY = strandSpineY[strandIndex]
+        val strandA = strandSegAngle[strandIndex]
+        val segmentCount = strandSegmentCounts[strandIndex]
+        val cloneCount = (segmentCount * strandCloneFractions[strandIndex])
+            .toInt()
+            .coerceIn(1, segmentCount.coerceAtMost(SEGMENT_COUNT))
+        val tipBend = strandTipBendRadians[strandIndex]
 
         for (i in 0 until cloneCount) {
-            sX[i] = spineX[i]
-            sY[i] = spineY[i]
-            sA[i] = segAngle[i]
+            strandX[i] = spineX[i]
+            strandY[i] = spineY[i]
+            strandA[i] = segAngle[i]
         }
 
-        for (i in cloneCount until SEGMENT_COUNT) {
-            val biasedAngle = sA[i - 1] + bias
-            sX[i] = sX[i - 1] + cos(biasedAngle) * spacing
-            sY[i] = sY[i - 1] + sin(biasedAngle) * spacing
-            sA[i] = biasedAngle
+        for (i in cloneCount until segmentCount) {
+            val bentAngle = strandA[i - 1] + tipBend
+            strandX[i] = strandX[i - 1] + cos(bentAngle) * spacing
+            strandY[i] = strandY[i - 1] + sin(bentAngle) * spacing
+            strandA[i] = bentAngle
 
-            val dx = sX[i] - spineX[i]
-            val dy = sY[i] - spineY[i]
-            val dist = hypot(dx, dy)
-            if (dist > maxDev) {
-                val scale = maxDev / dist
-                sX[i] = spineX[i] + dx * scale
-                sY[i] = spineY[i] + dy * scale
-                sA[i] = atan2(sY[i] - sY[i - 1], sX[i] - sX[i - 1])
+            // Cap lateral drift against the corresponding main spine point
+            // (only when the main spine still has a sample at this index;
+            // for strands longer than the main tail the tip is unconstrained).
+            if (i < SEGMENT_COUNT) {
+                val driftX = strandX[i] - spineX[i]
+                val driftY = strandY[i] - spineY[i]
+                val driftDistance = hypot(driftX, driftY)
+                if (driftDistance > maxLateralDeviation) {
+                    val pullBack = maxLateralDeviation / driftDistance
+                    strandX[i] = spineX[i] + driftX * pullBack
+                    strandY[i] = spineY[i] + driftY * pullBack
+                    strandA[i] = atan2(strandY[i] - strandY[i - 1], strandX[i] - strandX[i - 1])
+                }
             }
         }
     }
 
     /**
-     * Draw a strand body using the same width profile as the main tail.
-     * Cloned segments produce a body shape identical to the main; deviating
-     * segments produce a tapered tip that branches off slightly.
+     * Draw a strand body. Cloned segments use the main tail's width profile
+     * at the matching index — making the strand visually identical to the
+     * main where they overlap. The deviating tip tapers linearly from the
+     * width at the departure point down to a sharp point at the strand tip.
      */
     private fun drawStrand(
-        scope: DrawScope, k: Int,
+        scope: DrawScope, strandIndex: Int,
         headX: Float, headY: Float, r: Float, color: Color
     ) {
-        val sX = strandSpineX[k]
-        val sY = strandSpineY[k]
-        val sA = strandSegAngle[k]
+        val strandX = strandSpineX[strandIndex]
+        val strandY = strandSpineY[strandIndex]
+        val strandA = strandSegAngle[strandIndex]
+        val segmentCount = strandSegmentCounts[strandIndex]
+        val cloneCount = (segmentCount * strandCloneFractions[strandIndex])
+            .toInt()
+            .coerceIn(1, segmentCount.coerceAtMost(SEGMENT_COUNT))
         val edgeHalfFactor = 0.5f
 
-        val firstPerp = sA[0] + PI.toFloat() / 2f
+        val departureWidth = widthAtRatio(cloneCount.toFloat() / SEGMENT_COUNT)
+        val deviatingCount = (segmentCount - cloneCount).coerceAtLeast(1).toFloat()
+
+        val firstPerp = strandA[0] + PI.toFloat() / 2f
         val headHalf = r * ROOT_WIDTH_K * edgeHalfFactor
-        val hpx = cos(firstPerp) * headHalf
-        val hpy = sin(firstPerp) * headHalf
+        val headPerpX = cos(firstPerp) * headHalf
+        val headPerpY = sin(firstPerp) * headHalf
 
         strandPath.reset()
-        strandPath.moveTo(headX + hpx, headY + hpy)
-        for (i in 0 until SEGMENT_COUNT) {
-            val t = (i + 1f) / SEGMENT_COUNT
-            val halfWidth = widthAtRatio(t) * r * edgeHalfFactor
-            val perp = sA[i] + PI.toFloat() / 2f
-            strandPath.lineTo(sX[i] + cos(perp) * halfWidth, sY[i] + sin(perp) * halfWidth)
+        strandPath.moveTo(headX + headPerpX, headY + headPerpY)
+        for (i in 0 until segmentCount) {
+            val widthK = strandWidthAt(i, cloneCount, segmentCount, departureWidth, deviatingCount)
+            val halfWidth = widthK * r * edgeHalfFactor
+            val perp = strandA[i] + PI.toFloat() / 2f
+            strandPath.lineTo(strandX[i] + cos(perp) * halfWidth, strandY[i] + sin(perp) * halfWidth)
         }
-        for (i in SEGMENT_COUNT - 1 downTo 0) {
-            val t = (i + 1f) / SEGMENT_COUNT
-            val halfWidth = widthAtRatio(t) * r * edgeHalfFactor
-            val perp = sA[i] + PI.toFloat() / 2f
-            strandPath.lineTo(sX[i] - cos(perp) * halfWidth, sY[i] - sin(perp) * halfWidth)
+        for (i in segmentCount - 1 downTo 0) {
+            val widthK = strandWidthAt(i, cloneCount, segmentCount, departureWidth, deviatingCount)
+            val halfWidth = widthK * r * edgeHalfFactor
+            val perp = strandA[i] + PI.toFloat() / 2f
+            strandPath.lineTo(strandX[i] - cos(perp) * halfWidth, strandY[i] - sin(perp) * halfWidth)
         }
-        strandPath.lineTo(headX - hpx, headY - hpy)
+        strandPath.lineTo(headX - headPerpX, headY - headPerpY)
         strandPath.close()
 
         scope.drawPath(strandPath, color, style = Fill)
+    }
+
+    /**
+     * Width K-factor for a single strand segment.
+     *  - Cloned segments use the main tail's width at the same absolute
+     *    index (so the strand is visually identical to main there).
+     *  - Deviating segments taper linearly from the width at the departure
+     *    point down to 0 at the strand tip.
+     */
+    private fun strandWidthAt(
+        segIndex: Int, cloneCount: Int, segmentCount: Int,
+        departureWidth: Float, deviatingCount: Float
+    ): Float {
+        return if (segIndex < cloneCount) {
+            widthAtRatio((segIndex + 1f) / SEGMENT_COUNT)
+        } else {
+            val deviatingProgress = (segIndex - cloneCount + 1f) / deviatingCount
+            departureWidth * (1f - deviatingProgress)
+        }
     }
 
     private fun widthAtRatio(t: Float): Float {
