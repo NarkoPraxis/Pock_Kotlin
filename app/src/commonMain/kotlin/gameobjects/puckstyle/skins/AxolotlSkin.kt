@@ -444,7 +444,7 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
         val painter = AxolotlSkinPainters.mouthClosed ?: return
         val w = r * MOUTH_CLOSED_W_K
         val h = r * MOUTH_CLOSED_H_K
-        drawSvgPart(painter, 0f, r * MOUTH_CLOSED_Y_K, w, h, tint = Color(frameColors.primary))
+        drawSvgPart(painter, 0f, r * MOUTH_CLOSED_Y_K, w, h, tint = Color(0f, 0f, 0f, SHADOW_ALPHA))
     }
 
     private fun DrawScope.drawMouthGape(yawn: Boolean = false) {
@@ -459,7 +459,7 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
         val t = easeIn(animFrame.toFloat(), 6f)
         val w = r * MOUTH_CLOSED_W_K * lerp(1f, 0.8f, t)
         val h = r * MOUTH_CLOSED_H_K * lerp(1f, 1.2f, t)
-        drawSvgPart(painter, 0f, r * MOUTH_CLOSED_Y_K, w, h, tint = Color(frameColors.primary))
+        drawSvgPart(painter, 0f, r * MOUTH_CLOSED_Y_K, w, h, tint = Color(0f, 0f, 0f, SHADOW_ALPHA))
     }
 
     private fun DrawScope.drawMouthOpen(scale: Float) {
