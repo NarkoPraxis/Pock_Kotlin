@@ -70,28 +70,45 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
     //   section length; 3f = fins are 3× larger in both axes (centered in place).
     private val SPIKES_SCALE = 4f
 
-    // --- Shadow (lit-window matches body shape, same convention as AxolotlSkin) ----
-    // The body silhouette itself is the lit area: tail is wrapped in a layer,
-    // a dark wash is composited onto it with SrcAtop (so it only stains tail
-    // pixels), then a translated copy of the body is drawn with DstOut to
-    // erase a body-shaped hole = the lit region. Translation tracks the puck→
-    // paddle vector so light sits on the paddle side and shadow falls opposite.
-    // The translation magnitude is clamped to the root half-width so the spine
-    // center always stays lit.
-    //  SHADOW_MAX_DISTANCE_K — uncapped lit shift, in r units. The runtime
-    //   clamp below trims this to the root half-width; set this large enough
-    //   that the clamp is what actually limits the slide.
-    //  SHADOW_CLAMP_K        — fraction of root half-width used as the clamp
-    //   limit. 1.0 = lit edge can reach the spine center at max offset (half
-    //   the body in shadow). Lower values keep a wider center strip lit:
-    //   0.7 ≈ ⅓ of the body in shadow at max offset, 0.5 ≈ ¼.
-    //  SHADOW_BOUNDS_K       — half-extent of the saveLayer rect, in r units.
-    //   If you see the tail clipped at large wags, bump this up (e.g. to 9–10).
+    // --- Shadow (two independent passes, AxolotlTail convention) -------------
+    // The body and the spike SVG each get their OWN three-layer shadow pass.
+    // Both share the puck→paddle vector (shadowDx, shadowDy) but project it
+    // onto different axes and clamp against different limits:
+    //   • Body pass: perpendicular projection (lit window slides ACROSS the
+    //     tail's width). Clamped to root half-width × SHADOW_CLAMP_K so the
+    //     spine center stays lit. Drawn AFTER the spike pass, so the body's
+    //     uninterrupted shadow runs the full length of the tail.
+    //   • Spike pass: parallel projection along the rigid section heading
+    //     (lit circle slides ALONG the spine, toward/away from the head). The
+    //     lit-erase shape is a single small circle near the tip — exposes the
+    //     spike SVG lobes on the paddle-facing side. Clamped to r × SPIKE_LIT_CLAMP_K.
+    //  SHADOW_MAX_DISTANCE_K — uncapped lit shift, in r units. The per-pass
+    //   clamps trim this; set this large enough that the clamps are what
+    //   actually limit each slide.
+    //  SHADOW_CLAMP_K        — fraction of body root half-width used as the
+    //   body pass's clamp limit. 1.0 = lit edge can reach the spine center at
+    //   max offset (half the body in shadow). Lower keeps a wider center
+    //   strip lit: 0.7 ≈ ⅓ of the body in shadow, 0.5 ≈ ¼.
+    //  SHADOW_BOUNDS_K       — half-extent of each saveLayer rect, in r units.
+    //   If the tail or spikes clip at large wags, bump this up (e.g. 9–10).
     private val SHADOW_MAX_DISTANCE_K = 0.6f
-    private val SHADOW_CLAMP_K        = 0.7f
+    private val SHADOW_CLAMP_K        = 0.2f
     private val SHADOW_ALPHA          = 0.244f
     private val SHADOW_FOLLOW_RATE    = 0.12f
     private val SHADOW_BOUNDS_K       = 7f
+
+    // --- Spike pass: tip lit-window circle -----------------------------------
+    // A small round window near the tip is the spike's lit-erase shape. It
+    // exposes a bright spot on the spike SVG lobes that peek past the body.
+    //  LIT_CIRCLE_RADIUS_K — circle radius in r units.
+    //  LIT_CIRCLE_OFFSET_K — base distance from the tip in r units, measured
+    //   along the rigid section's heading. Positive pushes PAST the tip,
+    //   negative pulls back toward the root.
+    //  SPIKE_LIT_CLAMP_K   — max parallel slide of the lit circle from its
+    //   base position, in r units. Independent of the body pass clamp.
+    private val LIT_CIRCLE_RADIUS_K = 0.6f
+    private val LIT_CIRCLE_OFFSET_K = 0.2f
+    private val SPIKE_LIT_CLAMP_K   = 0.3f
 
     private var shadowDx = 0f
     private var shadowDy = 0f
@@ -246,24 +263,22 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
         shadowDx = lerp(shadowDx, targetDx, SHADOW_FOLLOW_RATE)
         shadowDy = lerp(shadowDy, targetDy, SHADOW_FOLLOW_RATE)
 
-        // Wrap spikes + body + tip cap in one layer so the dark shadow circle
-        // (drawn last with SrcAtop) clips to any tail pixel.
         val shadowBounds = Rect(
             headX - r * SHADOW_BOUNDS_K, headY - r * SHADOW_BOUNDS_K,
             headX + r * SHADOW_BOUNDS_K, headY + r * SHADOW_BOUNDS_K
         )
-        scope.drawContext.canvas.saveLayer(shadowBounds, Paint())
+        val canvas = scope.drawContext.canvas
+        val tipHalfWidth = widthAtRatio(1f) * r * 0.5f * widthMultiplier
+        val tipCenter = Offset(spineX[tipIdx], spineY[tipIdx])
 
-        // --- Step 4: draw the spike SVG *behind* the body ---------------------
-        // The body covers the SVG's central body & dimple; only the two lobes
-        // peek past the tail's lateral edges, reading as a pair of spikes.
-        // Geometry hoisted so the lit-erase pass in step 6 can replay it.
+        // --- Step 4: spike SVG shadow pass (drawn FIRST, behind body) ---------
+        // Independent three-layer stack on the spike SVG. The body fill in
+        // step 5 covers the SVG's central body & dimple; only the two lobes
+        // peek past the tail's lateral edges. The lit-erase circle near the
+        // tip slides ALONG the spine (parallel projection), so it brightens
+        // the spike lobes on the paddle-facing end without ever shifting
+        // sideways out of the lobes.
         val spikePainter = DragonSkinPainters.tailSpikes
-        var spikeSvgW = 0f
-        var spikeSvgH = 0f
-        var spikeTx = 0f
-        var spikeTy = 0f
-        var spikeAngleDeg = 0f
         if (spikePainter != null) {
             val wideX = spineX[tipIdx]
             val wideY = spineY[tipIdx]
@@ -273,16 +288,17 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             val axisDy = narrowY - wideY
             val axisLen = hypot(axisDx, axisDy).coerceAtLeast(0.001f)
 
-            spikeSvgH = axisLen * SPIKES_SCALE
-            spikeSvgW = spikeSvgH * SVG_ASPECT * SPIKES_SQUISH
+            val spikeSvgH = axisLen * SPIKES_SCALE
+            val spikeSvgW = spikeSvgH * SVG_ASPECT * SPIKES_SQUISH
             val cx = (wideX + narrowX) / 2f
             val cy = (wideY + narrowY) / 2f
-            spikeTx = cx - spikeSvgW / 2f
-            spikeTy = cy - spikeSvgH / 2f
+            val spikeTx = cx - spikeSvgW / 2f
+            val spikeTy = cy - spikeSvgH / 2f
             // SVG's natural +y (top→bottom = wide-lobe→narrow-tip) maps onto
             // the wide→narrow world vector.
-            spikeAngleDeg = atan2(-axisDx, axisDy) * (180f / PI.toFloat())
+            val spikeAngleDeg = atan2(-axisDx, axisDy) * (180f / PI.toFloat())
 
+            canvas.saveLayer(shadowBounds, Paint())
             with(scope) {
                 withTransform({
                     translate(spikeTx, spikeTy)
@@ -293,18 +309,46 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
                     with(spikePainter) { draw(Size(spikeSvgW, spikeSvgH), colorFilter = spikesTint) }
                 }
             }
+
+            // Parallel projection of the puck→paddle vector onto the rigid
+            // heading. The lit circle stays centered laterally on the spine
+            // and only slides forward/back along it.
+            val spikeRawProj = shadowDx * cosRigid + shadowDy * sinRigid
+            val spikeClampLimit = r * SPIKE_LIT_CLAMP_K
+            val spikeProj = spikeRawProj.coerceIn(-spikeClampLimit, spikeClampLimit)
+            val spikeLitDx = -spikeProj * cosRigid
+            val spikeLitDy = -spikeProj * sinRigid
+
+            val spikeSrcAtop = Paint().apply { blendMode = BlendMode.SrcAtop }
+            canvas.saveLayer(shadowBounds, spikeSrcAtop)
+            with(scope) {
+                drawRect(
+                    color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                    topLeft = shadowBounds.topLeft,
+                    size = shadowBounds.size
+                )
+                val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+                canvas.saveLayer(shadowBounds, dstOutPaint)
+                withTransform({ translate(spikeLitDx, spikeLitDy) }) {
+                    val litCx = spineX[tipIdx] + cosRigid * r * LIT_CIRCLE_OFFSET_K
+                    val litCy = spineY[tipIdx] + sinRigid * r * LIT_CIRCLE_OFFSET_K
+                    drawCircle(Color.Black, r * LIT_CIRCLE_RADIUS_K, Offset(litCx, litCy))
+                }
+                canvas.restore()  // close lit erase layer
+            }
+            canvas.restore()  // close shadow wash layer
+            canvas.restore()  // close spike content layer
         }
 
-        // --- Step 5: body on top, then the rounded tip cap --------------------
+        // --- Step 5: body + tip cap shadow pass (drawn on top of spike pass) --
+        // Body silhouette is the lit area. Perpendicular projection so the
+        // bright strip slides across the tail's width; the shadow then runs
+        // uninterrupted from root to rounded tip without any holes for the
+        // spike circle (which is handled by the separate pass above).
+        canvas.saveLayer(shadowBounds, Paint())
         scope.drawPath(bodyPath, bodyColor, style = Fill)
-
-        val tipHalfWidth = widthAtRatio(1f) * r * 0.5f * widthMultiplier
-        val tipCenter = Offset(spineX[tipIdx], spineY[tipIdx])
         scope.drawCircle(bodyColor, tipHalfWidth, tipCenter)
 
-        // --- Step 6: lit-shape shadow ----------------------------------------
-        // Clamp the (shadowDx, shadowDy) magnitude to a fraction of the root
-        // half-width so a wide center strip of the body always stays lit.
         val clampLimit = widthAtRatio(0f) * r * 0.5f * widthMultiplier * SHADOW_CLAMP_K
         val mag = hypot(shadowDx, shadowDy)
         val rawLitDx: Float
@@ -316,10 +360,6 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             rawLitDx = shadowDx; rawLitDy = shadowDy
         }
 
-        // Project onto the tail's perpendicular axis so the lit window only
-        // slides left/right across the tail, never up/down along its length.
-        // Otherwise the shift exposes/covers the rounded tip and the spike
-        // points, which reads as the shadow jumping past the silhouette.
         val perpAngle = segAngle[0] + PI.toFloat() / 2f
         val perpCos = cos(perpAngle)
         val perpSin = sin(perpAngle)
@@ -327,9 +367,8 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
         val litDx = perpProj * perpCos
         val litDy = perpProj * perpSin
 
-        val canvas = scope.drawContext.canvas
-        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
-        canvas.saveLayer(shadowBounds, srcAtopPaint)
+        val bodySrcAtop = Paint().apply { blendMode = BlendMode.SrcAtop }
+        canvas.saveLayer(shadowBounds, bodySrcAtop)
         with(scope) {
             drawRect(
                 color = Color(0f, 0f, 0f, SHADOW_ALPHA),
@@ -341,23 +380,11 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             withTransform({ translate(litDx, litDy) }) {
                 drawPath(bodyPath, Color.Black, style = Fill)
                 drawCircle(Color.Black, tipHalfWidth, tipCenter)
-                // Spike silhouette participates in the lit window so the
-                // spikes shadow on the dark side just like the body.
-                if (spikePainter != null) {
-                    withTransform({
-                        translate(spikeTx, spikeTy)
-                        val pivot = Offset(spikeSvgW / 2f, spikeSvgH / 2f)
-                        if (spikeAngleDeg != 0f) rotate(spikeAngleDeg, pivot = pivot)
-                        scale(1f, -1f, pivot = pivot)
-                    }) {
-                        with(spikePainter) { draw(Size(spikeSvgW, spikeSvgH)) }
-                    }
-                }
             }
             canvas.restore()  // close lit erase layer
         }
         canvas.restore()  // close shadow wash layer
-        canvas.restore()  // close outer tail content layer
+        canvas.restore()  // close body content layer
     }
 
     private fun widthAtRatio(t: Float): Float {

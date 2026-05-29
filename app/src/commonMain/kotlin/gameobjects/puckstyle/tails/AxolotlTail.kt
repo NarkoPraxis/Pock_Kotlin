@@ -84,10 +84,27 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
     //  SHADOW_BOUNDS_K       — half-extent of each saveLayer rect, in r units.
     //   If you see the fin or tail clipped at large wags, bump this up.
     private val SHADOW_MAX_DISTANCE_K = 0.6f
-    private val SHADOW_CLAMP_K        = 0.7f
+    private val SHADOW_CLAMP_K        = 0.3f
     private val SHADOW_ALPHA          = 0.244f
     private val SHADOW_FOLLOW_RATE    = 0.12f
     private val SHADOW_BOUNDS_K       = 6f
+
+    // Hardcoded toggle: swap the fin's wash color from black to white. The
+    // lit-window position and shape stay exactly the same; only the wash
+    // color inverts, so the side that was darkened is now brightened
+    // instead. Set to false to restore the normal dark shadow wash.
+    private val FIN_SHADOW_INVERTED = true
+    // Multiplier applied to SHADOW_ALPHA when the wash is inverted (white).
+    // Equal alpha produces unequal perceived contrast — white over a
+    // saturated fill desaturates softly, while black darkens it crisply —
+    // so the white wash gets more alpha to match the tail's shadow weight.
+    private val INVERTED_ALPHA_GAIN = 2f
+
+    // Fin's lit-erase shape is scaled along the head's perpendicular axis
+    // (local x), keeping the spine direction (local y) untouched. With the
+    // lit window narrower than the fin, the wash is visible on both edges
+    // at rest; shadowDx/Dy then biases how much wash shows on each side.
+    private val FIN_LIT_SCALE_X = 0.9f
 
     private var shadowDx = 0f
     private var shadowDy = 0f
@@ -236,7 +253,7 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
             headX - r * SHADOW_BOUNDS_K, headY - r * SHADOW_BOUNDS_K,
             headX + r * SHADOW_BOUNDS_K, headY + r * SHADOW_BOUNDS_K
         )
-        drawPartWithShadow(scope, finPath, primaryColor, finHeadHalf, shadowBounds)
+        drawPartWithShadow(scope, finPath, primaryColor, finHeadHalf, shadowBounds, invertShadow = FIN_SHADOW_INVERTED, litScaleX = FIN_LIT_SCALE_X)
         drawPartWithShadow(scope, tailPath, secondaryColor, tailHeadHalf, shadowBounds)
     }
 
@@ -252,7 +269,9 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
         path: Path,
         fillColor: Color,
         rootHalfWidth: Float,
-        bounds: Rect
+        bounds: Rect,
+        invertShadow: Boolean = false,
+        litScaleX: Float = 1f
     ) {
         val clampLimit = rootHalfWidth * SHADOW_CLAMP_K
         val mag = hypot(shadowDx, shadowDy)
@@ -280,15 +299,31 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
         scope.drawPath(path, fillColor, style = Fill)
         val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
         canvas.saveLayer(bounds, srcAtopPaint)
+        // A white wash at the same alpha as the black wash reads softer:
+        // pushing a saturated fill toward white desaturates it rather than
+        // dimming, so the contrast comes out weaker. Compensate by scaling
+        // the wash alpha when inverted so the fin's highlight matches the
+        // tail's shadow in perceived strength.
+        val washChannel = if (invertShadow) 1f else 0f
+        val washAlpha = if (invertShadow) (SHADOW_ALPHA * INVERTED_ALPHA_GAIN).coerceAtMost(1f) else SHADOW_ALPHA
         with(scope) {
             drawRect(
-                color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                color = Color(washChannel, washChannel, washChannel, washAlpha),
                 topLeft = bounds.topLeft,
                 size = bounds.size
             )
             val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
             canvas.saveLayer(bounds, dstOutPaint)
-            withTransform({ translate(litDx, litDy) }) {
+            withTransform({
+                translate(litDx, litDy)
+                if (litScaleX != 1f) {
+                    val perpDeg = perpAngle * (180f / PI.toFloat())
+                    val pivot = Offset(renderer.x, renderer.y)
+                    rotate(perpDeg, pivot = pivot)
+                    scale(litScaleX, 1f, pivot = pivot)
+                    rotate(-perpDeg, pivot = pivot)
+                }
+            }) {
                 drawPath(path, Color.Black, style = Fill)
             }
             canvas.restore()  // close lit erase layer
