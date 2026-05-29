@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.Settings
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
@@ -94,16 +95,22 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     // floppy and loose.
     private val strandTipChaseRates = floatArrayOf(0.20f, 0.25f, 0.22f, 0.28f, 0.25f)
 
-    // --- Shadow (paddle-mirrored, inverse of body shadow) -------------------
-    // Body skins use a light oval that exempts a region from full darkness; the
-    // tail flips this: the layer stays light and a single dark circle marks the
-    // shadow. SrcAtop clips the dark fill to tail pixels only. The circle sits
-    // opposite the paddle from the puck centre.
-    //  SHADOW_MAX_DISTANCE_K — how far the shadow centre can travel from the
-    //   puck centre, in r units. 0 = pinned to centre.
-    //  SHADOW_RADIUS_K       — radius of the dark circle, in r units.
+    // --- Shadow (lit-window matches strand union, AxolotlSkin convention) ---
+    // The strand-union silhouette is the lit area: every strand is drawn into
+    // an outer layer, a dark wash composites onto it with SrcAtop (only stains
+    // strand pixels), then a translated copy of the union shape is drawn with
+    // DstOut to erase a tail-shaped hole = the lit region. Translation tracks
+    // the puck→paddle vector so light sits on the paddle side and shadow falls
+    // opposite. Magnitude is clamped to the root half-width so the spine
+    // center always stays lit.
+    //  SHADOW_MAX_DISTANCE_K — uncapped lit shift, in r units (clamped below).
+    //  SHADOW_CLAMP_K        — fraction of root half-width used as the clamp
+    //   limit. 1.0 = lit edge can reach the spine center at max offset (half
+    //   the body in shadow). Lower keeps a wider center strip lit.
+    //  SHADOW_BOUNDS_K       — half-extent of the saveLayer rect, in r units.
+    //   If you see the tail clipped at large wags, bump this up.
     private val SHADOW_MAX_DISTANCE_K = 0.6f
-    private val SHADOW_RADIUS_K       = 1.1f
+    private val SHADOW_CLAMP_K        = 0.7f
     private val SHADOW_ALPHA          = 0.244f
     private val SHADOW_FOLLOW_RATE    = 0.12f
     private val SHADOW_BOUNDS_K       = 6f
@@ -124,6 +131,9 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private val bodyPath = Path()
     private val strandPath = Path()
+    // Accumulates each strand's silhouette during the draw loop; reused as the
+    // lit-erase shape for the shadow pass.
+    private val unionPath = Path()
 
     // Per-strand spine buffers. Cloned segments are overwritten from main
     // every frame; deviating segments persist across frames so they can lag
@@ -230,7 +240,7 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
         // shape the strands clone from — it is never drawn directly.
         val maxLateralDeviation = r * strandMaximumDeviationFromMain
 
-        // Shadow follows opposite the paddle (mirrors paddle position around puck).
+        // Lit window slides toward the paddle (lit on paddle side, shadow opposite).
         val effect = renderer.effect as? PaddleLaunchEffect
         val targetDx: Float
         val targetDy: Float
@@ -238,8 +248,8 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
             val wx = effect.paddleX - headX
             val wy = effect.paddleY - headY
             val dist = hypot(wx, wy).coerceAtLeast(0.001f)
-            targetDx = -wx / dist * r * SHADOW_MAX_DISTANCE_K
-            targetDy = -wy / dist * r * SHADOW_MAX_DISTANCE_K
+            targetDx = wx / dist * r * SHADOW_MAX_DISTANCE_K
+            targetDy = wy / dist * r * SHADOW_MAX_DISTANCE_K
         } else { targetDx = 0f; targetDy = 0f }
         shadowDx = lerp(shadowDx, targetDx, SHADOW_FOLLOW_RATE)
         shadowDy = lerp(shadowDy, targetDy, SHADOW_FOLLOW_RATE)
@@ -248,18 +258,55 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
             headX - r * SHADOW_BOUNDS_K, headY - r * SHADOW_BOUNDS_K,
             headX + r * SHADOW_BOUNDS_K, headY + r * SHADOW_BOUNDS_K
         )
-        scope.drawContext.canvas.saveLayer(shadowBounds, Paint())
+        val canvas = scope.drawContext.canvas
+        canvas.saveLayer(shadowBounds, Paint())
+        unionPath.reset()
         for (k in 0 until strandCount) {
             computeStrandSpine(k, maxLateralDeviation, spacing)
             drawStrand(scope, k, headX, headY, r, bodyColor)
+            unionPath.addPath(strandPath)
         }
-        scope.drawCircle(
-            color = Color(0f, 0f, 0f, SHADOW_ALPHA),
-            radius = r * SHADOW_RADIUS_K,
-            center = Offset(headX + shadowDx, headY + shadowDy),
-            blendMode = BlendMode.SrcAtop
-        )
-        scope.drawContext.canvas.restore()
+
+        // Clamp the lit-shape offset to a fraction of the root half-width so
+        // a wide center strip of the body always stays lit.
+        val clampLimit = r * ROOT_WIDTH_K * 0.5f * SHADOW_CLAMP_K
+        val mag = hypot(shadowDx, shadowDy)
+        val rawLitDx: Float
+        val rawLitDy: Float
+        if (mag > clampLimit) {
+            val s = clampLimit / mag
+            rawLitDx = shadowDx * s; rawLitDy = shadowDy * s
+        } else {
+            rawLitDx = shadowDx; rawLitDy = shadowDy
+        }
+
+        // Project onto the tail's perpendicular axis so the lit window only
+        // slides left/right across the tail, never up/down along its length —
+        // keeps the rounded tips of the fur strands consistently shaded.
+        val perpAngle = segAngle[0] + PI.toFloat() / 2f
+        val perpCos = cos(perpAngle)
+        val perpSin = sin(perpAngle)
+        val perpProj = rawLitDx * perpCos + rawLitDy * perpSin
+        val litDx = perpProj * perpCos
+        val litDy = perpProj * perpSin
+
+        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+        canvas.saveLayer(shadowBounds, srcAtopPaint)
+        with(scope) {
+            drawRect(
+                color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                topLeft = shadowBounds.topLeft,
+                size = shadowBounds.size
+            )
+            val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+            canvas.saveLayer(shadowBounds, dstOutPaint)
+            withTransform({ translate(litDx, litDy) }) {
+                drawPath(unionPath, Color.Black, style = Fill)
+            }
+            canvas.restore()  // close lit erase layer
+        }
+        canvas.restore()  // close shadow wash layer
+        canvas.restore()  // close outer tail content layer
     }
 
     /**

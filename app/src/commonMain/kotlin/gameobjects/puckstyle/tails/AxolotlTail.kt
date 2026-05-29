@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.Settings
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
@@ -70,9 +71,20 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
     // in r units. Larger = pointier nose; smaller = blunter round.
     private val TIP_APEX_EXTEND_K = 0.10f
 
-    // --- Shadow (paddle-mirrored, same convention as Cat/Dragon) ------------
+    // --- Shadow (lit-window matches part silhouette, AxolotlSkin convention) ------
+    // Fin and tail body each get their OWN three-layer shadow pass: their
+    // own silhouette serves as the lit-erase shape, translated toward the
+    // paddle. They share shadowDx/Dy (the puck→paddle vector) but each
+    // clamps the magnitude against its own root half-width so the spine
+    // center of each part always stays lit.
+    //  SHADOW_MAX_DISTANCE_K — uncapped lit shift, in r units (clamped per-part).
+    //  SHADOW_CLAMP_K        — fraction of each part's root half-width used as
+    //   the clamp limit. 1.0 = lit edge can reach the spine center at max
+    //   offset (half the part in shadow). Lower keeps a wider center strip lit.
+    //  SHADOW_BOUNDS_K       — half-extent of each saveLayer rect, in r units.
+    //   If you see the fin or tail clipped at large wags, bump this up.
     private val SHADOW_MAX_DISTANCE_K = 0.6f
-    private val SHADOW_RADIUS_K       = 1.1f
+    private val SHADOW_CLAMP_K        = 0.7f
     private val SHADOW_ALPHA          = 0.244f
     private val SHADOW_FOLLOW_RATE    = 0.12f
     private val SHADOW_BOUNDS_K       = 6f
@@ -198,7 +210,7 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
         val tailHeadHalf = widthAtRatioTail(0f) * r * edgeHalfFactor * widthMultiplier
         val finHeadHalf = widthAtRatioFin(0f) * r * edgeHalfFactor * widthMultiplier
 
-        // --- Step 3: shadow position update ---------------------------------
+        // --- Step 3: shadow position update — lit slides toward paddle -------
         val effect = renderer.effect as? PaddleLaunchEffect
         val targetDx: Float
         val targetDy: Float
@@ -206,8 +218,8 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
             val wx = effect.paddleX - headX
             val wy = effect.paddleY - headY
             val dist = hypot(wx, wy).coerceAtLeast(0.001f)
-            targetDx = -wx / dist * r * SHADOW_MAX_DISTANCE_K
-            targetDy = -wy / dist * r * SHADOW_MAX_DISTANCE_K
+            targetDx = wx / dist * r * SHADOW_MAX_DISTANCE_K
+            targetDy = wy / dist * r * SHADOW_MAX_DISTANCE_K
         } else { targetDx = 0f; targetDy = 0f }
         shadowDx = lerp(shadowDx, targetDx, SHADOW_FOLLOW_RATE)
         shadowDy = lerp(shadowDy, targetDy, SHADOW_FOLLOW_RATE)
@@ -216,21 +228,73 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
         buildBodyPath(finPath, finHalfW, headX, headY, finHeadHalf, r)
         buildBodyPath(tailPath, tailHalfW, headX, headY, tailHeadHalf, r)
 
-        // --- Step 5: draw inside a layer so shadow clips to tail pixels -----
+        // --- Step 5: draw fin and tail body each in their own shadow pass ----
+        // Each part gets an independent three-layer stack (outer content,
+        // SrcAtop dark wash, DstOut lit erase). They share shadowDx/Dy but
+        // each clamps the magnitude against its own root half-width.
         val shadowBounds = Rect(
             headX - r * SHADOW_BOUNDS_K, headY - r * SHADOW_BOUNDS_K,
             headX + r * SHADOW_BOUNDS_K, headY + r * SHADOW_BOUNDS_K
         )
-        scope.drawContext.canvas.saveLayer(shadowBounds, Paint())
-        scope.drawPath(finPath, primaryColor, style = Fill)
-        scope.drawPath(tailPath, secondaryColor, style = Fill)
-        scope.drawCircle(
-            color = Color(0f, 0f, 0f, SHADOW_ALPHA),
-            radius = r * SHADOW_RADIUS_K,
-            center = Offset(headX + shadowDx, headY + shadowDy),
-            blendMode = BlendMode.SrcAtop
-        )
-        scope.drawContext.canvas.restore()
+        drawPartWithShadow(scope, finPath, primaryColor, finHeadHalf, shadowBounds)
+        drawPartWithShadow(scope, tailPath, secondaryColor, tailHeadHalf, shadowBounds)
+    }
+
+    /**
+     * Draw one body path with the lit-window shadow treatment. The path is
+     * filled into an outer layer, a dark wash is composited onto that layer
+     * via SrcAtop (clipped to part pixels), then a copy of the same path
+     * shifted by the clamped puck→paddle vector erases a hole = the lit
+     * region. The clamp keeps the spine center of this part always lit.
+     */
+    private fun drawPartWithShadow(
+        scope: DrawScope,
+        path: Path,
+        fillColor: Color,
+        rootHalfWidth: Float,
+        bounds: Rect
+    ) {
+        val clampLimit = rootHalfWidth * SHADOW_CLAMP_K
+        val mag = hypot(shadowDx, shadowDy)
+        val rawLitDx: Float
+        val rawLitDy: Float
+        if (mag > clampLimit) {
+            val s = clampLimit / mag
+            rawLitDx = shadowDx * s; rawLitDy = shadowDy * s
+        } else {
+            rawLitDx = shadowDx; rawLitDy = shadowDy
+        }
+
+        // Project onto the tail's perpendicular axis so the lit window only
+        // slides left/right across the part, never up/down along its length —
+        // keeps the fin tip and tail rounded apex consistently shaded.
+        val perpAngle = segAngle[0] + PI.toFloat() / 2f
+        val perpCos = cos(perpAngle)
+        val perpSin = sin(perpAngle)
+        val perpProj = rawLitDx * perpCos + rawLitDy * perpSin
+        val litDx = perpProj * perpCos
+        val litDy = perpProj * perpSin
+
+        val canvas = scope.drawContext.canvas
+        canvas.saveLayer(bounds, Paint())
+        scope.drawPath(path, fillColor, style = Fill)
+        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+        canvas.saveLayer(bounds, srcAtopPaint)
+        with(scope) {
+            drawRect(
+                color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+                topLeft = bounds.topLeft,
+                size = bounds.size
+            )
+            val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+            canvas.saveLayer(bounds, dstOutPaint)
+            withTransform({ translate(litDx, litDy) }) {
+                drawPath(path, Color.Black, style = Fill)
+            }
+            canvas.restore()  // close lit erase layer
+        }
+        canvas.restore()  // close shadow wash layer
+        canvas.restore()  // close outer part layer
     }
 
     /**
