@@ -38,13 +38,14 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
     // ↓ Fraction where the aggressive (root→mid) taper finishes; must be > FLAT_END_T.
     private val QUICK_TAPER_END_T = 0.38f // was 0.18f before the flat section was added
 
-    // --- Idle flick (copied from CatTail) -------------------------------------
-    private val IDLE_FLICK_SPEED = 0.045f
-    private val IDLE_FLICK_AMPLITUDE = 0.18f
-    private val CURL_BIAS_RAD = 0.00f
-    private val CURL_PHASE_SHIFT = 0.70f
-    private val MOTION_DAMP_THRESHOLD = 0.4f
-    private val RESTORE_K = 0.35f
+    // --- Traveling wave (idle animation) -------------------------------------
+    // Wave travels from ball toward tip: sin(wavePhase - t * WAVE_FREQUENCY).
+    // Negate WAVE_FREQUENCY to reverse direction (tip → ball).
+    private val WAVE_SPEED     = 0.01f  // phase advance per frame; higher = faster wave
+    private val WAVE_AMPLITUDE = 0.1f  // peak bend per segment (radians); higher = bigger bends
+    private val WAVE_FREQUENCY = 1.0f   // spatial cycles × 2π; ~5 ≈ 0.8 crests along the tail
+    private val MOTION_DAMP_THRESHOLD = 0.4f  // ball speed at which wave fades out (× radius)
+    private val RESTORE_K = 1f       // how strongly segments snap back to straight; lower = floatier
 
     // --- Rigid section. The last segments don't whip — they extend straight
     //     along the final flexible segment's direction. This is the section the
@@ -71,7 +72,7 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
     private val segAngle = FloatArray(SEGMENT_COUNT)
     private var initialized = false
 
-    private var flickPhase = 0f
+    private var wavePhase  = 0f
     private var lastHeadX = 0f
     private var lastHeadY = 0f
     private var smoothedSpeed = 0f
@@ -105,7 +106,7 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
         lastHeadY = headY
 
         val motionGain = 1f - (smoothedSpeed / MOTION_DAMP_THRESHOLD).coerceIn(0f, 1f)
-        flickPhase += IDLE_FLICK_SPEED
+        wavePhase += WAVE_SPEED
 
         // --- Step 1: integrate the flexible portion of the spine ---------------
         var prevX = headX
@@ -147,10 +148,9 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             }
 
             if (motionGain > 0f) {
-                val wagAngle = sin(flickPhase + t * CURL_PHASE_SHIFT) * IDLE_FLICK_AMPLITUDE
-                val biasAngle = CURL_BIAS_RAD
+                val wagAngle = sin(wavePhase - t * WAVE_FREQUENCY) * WAVE_AMPLITUDE
                 val restoreAngle = -RESTORE_K * driftFromNeutral
-                val curlPerSeg = (wagAngle + biasAngle + restoreAngle) * motionGain * t
+                val curlPerSeg = (wagAngle + restoreAngle) * motionGain * (0.2f + t * 0.8f)
                 val ox = spineX[i] - prevX
                 val oy = spineY[i] - prevY
                 val cosC = cos(curlPerSeg)
