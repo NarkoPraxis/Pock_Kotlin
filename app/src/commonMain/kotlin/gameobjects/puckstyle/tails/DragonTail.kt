@@ -1,14 +1,18 @@
 package gameobjects.puckstyle.tails
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.Settings
+import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import gameobjects.puckstyle.skins.DragonSkinPainters
@@ -65,6 +69,21 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
     // ↓ Multiplies the spike SVG's drawn size uniformly. 1f = sized to the rigid
     //   section length; 3f = fins are 3× larger in both axes (centered in place).
     private val SPIKES_SCALE = 4f
+
+    // --- Shadow (paddle-mirrored, inverse of body shadow) -------------------
+    // Inverse of the body skin's lit-window: layer stays light, a single dark
+    // circle (clipped to tail pixels via SrcAtop) sits opposite the paddle.
+    //  SHADOW_MAX_DISTANCE_K — max travel of the shadow centre from the puck
+    //   centre, in r units.
+    //  SHADOW_RADIUS_K       — radius of the dark circle, in r units.
+    private val SHADOW_MAX_DISTANCE_K = 0.6f
+    private val SHADOW_RADIUS_K       = 1.1f
+    private val SHADOW_ALPHA          = 0.244f
+    private val SHADOW_FOLLOW_RATE    = 0.12f
+    private val SHADOW_BOUNDS_K       = 7f
+
+    private var shadowDx = 0f
+    private var shadowDy = 0f
 
     // --- Persistent state -----------------------------------------------------
     private val spineX = FloatArray(SEGMENT_COUNT)
@@ -202,6 +221,28 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
         bodyPath.lineTo(headX - headPerpX, headY - headPerpY)
         bodyPath.close()
 
+        // --- Shadow update: opposite-paddle direction (mirrors paddle pos) ----
+        val effect = renderer.effect as? PaddleLaunchEffect
+        val targetDx: Float
+        val targetDy: Float
+        if (effect != null) {
+            val wx = effect.paddleX - headX
+            val wy = effect.paddleY - headY
+            val dist = hypot(wx, wy).coerceAtLeast(0.001f)
+            targetDx = -wx / dist * r * SHADOW_MAX_DISTANCE_K
+            targetDy = -wy / dist * r * SHADOW_MAX_DISTANCE_K
+        } else { targetDx = 0f; targetDy = 0f }
+        shadowDx = lerp(shadowDx, targetDx, SHADOW_FOLLOW_RATE)
+        shadowDy = lerp(shadowDy, targetDy, SHADOW_FOLLOW_RATE)
+
+        // Wrap spikes + body + tip cap in one layer so the dark shadow circle
+        // (drawn last with SrcAtop) clips to any tail pixel.
+        val shadowBounds = Rect(
+            headX - r * SHADOW_BOUNDS_K, headY - r * SHADOW_BOUNDS_K,
+            headX + r * SHADOW_BOUNDS_K, headY + r * SHADOW_BOUNDS_K
+        )
+        scope.drawContext.canvas.saveLayer(shadowBounds, Paint())
+
         // --- Step 4: draw the spike SVG *behind* the body ---------------------
         // The body covers the SVG's central body & dimple; only the two lobes
         // peek past the tail's lateral edges, reading as a pair of spikes.
@@ -240,6 +281,15 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
 
         val tipHalfWidth = widthAtRatio(1f) * r * 0.5f * widthMultiplier
         scope.drawCircle(bodyColor, tipHalfWidth, Offset(spineX[tipIdx], spineY[tipIdx]))
+
+        // --- Step 6: dark shadow circle, clipped to tail via SrcAtop ----------
+        scope.drawCircle(
+            color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+            radius = r * SHADOW_RADIUS_K,
+            center = Offset(headX + shadowDx, headY + shadowDy),
+            blendMode = BlendMode.SrcAtop
+        )
+        scope.drawContext.canvas.restore()
     }
 
     private fun widthAtRatio(t: Float): Float {

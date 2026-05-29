@@ -1,10 +1,15 @@
 package gameobjects.puckstyle.tails
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import gameobjects.Settings
+import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
@@ -88,6 +93,23 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     // behavior); 0.5 = mild trail; 0.20 = pronounced whip; 0.10 = very
     // floppy and loose.
     private val strandTipChaseRates = floatArrayOf(0.20f, 0.25f, 0.22f, 0.28f, 0.25f)
+
+    // --- Shadow (paddle-mirrored, inverse of body shadow) -------------------
+    // Body skins use a light oval that exempts a region from full darkness; the
+    // tail flips this: the layer stays light and a single dark circle marks the
+    // shadow. SrcAtop clips the dark fill to tail pixels only. The circle sits
+    // opposite the paddle from the puck centre.
+    //  SHADOW_MAX_DISTANCE_K — how far the shadow centre can travel from the
+    //   puck centre, in r units. 0 = pinned to centre.
+    //  SHADOW_RADIUS_K       — radius of the dark circle, in r units.
+    private val SHADOW_MAX_DISTANCE_K = 0.6f
+    private val SHADOW_RADIUS_K       = 1.1f
+    private val SHADOW_ALPHA          = 0.244f
+    private val SHADOW_FOLLOW_RATE    = 0.12f
+    private val SHADOW_BOUNDS_K       = 6f
+
+    private var shadowDx = 0f
+    private var shadowDy = 0f
 
     // --- Persistent state ----------------------------------------------------
     private val spineX = FloatArray(SEGMENT_COUNT)
@@ -207,10 +229,37 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
         // The reference spine integrated above is only used internally as the
         // shape the strands clone from — it is never drawn directly.
         val maxLateralDeviation = r * strandMaximumDeviationFromMain
+
+        // Shadow follows opposite the paddle (mirrors paddle position around puck).
+        val effect = renderer.effect as? PaddleLaunchEffect
+        val targetDx: Float
+        val targetDy: Float
+        if (effect != null) {
+            val wx = effect.paddleX - headX
+            val wy = effect.paddleY - headY
+            val dist = hypot(wx, wy).coerceAtLeast(0.001f)
+            targetDx = -wx / dist * r * SHADOW_MAX_DISTANCE_K
+            targetDy = -wy / dist * r * SHADOW_MAX_DISTANCE_K
+        } else { targetDx = 0f; targetDy = 0f }
+        shadowDx = lerp(shadowDx, targetDx, SHADOW_FOLLOW_RATE)
+        shadowDy = lerp(shadowDy, targetDy, SHADOW_FOLLOW_RATE)
+
+        val shadowBounds = Rect(
+            headX - r * SHADOW_BOUNDS_K, headY - r * SHADOW_BOUNDS_K,
+            headX + r * SHADOW_BOUNDS_K, headY + r * SHADOW_BOUNDS_K
+        )
+        scope.drawContext.canvas.saveLayer(shadowBounds, Paint())
         for (k in 0 until strandCount) {
             computeStrandSpine(k, maxLateralDeviation, spacing)
             drawStrand(scope, k, headX, headY, r, bodyColor)
         }
+        scope.drawCircle(
+            color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+            radius = r * SHADOW_RADIUS_K,
+            center = Offset(headX + shadowDx, headY + shadowDy),
+            blendMode = BlendMode.SrcAtop
+        )
+        scope.drawContext.canvas.restore()
     }
 
     /**

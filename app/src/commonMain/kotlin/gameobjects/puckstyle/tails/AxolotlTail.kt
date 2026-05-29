@@ -1,15 +1,21 @@
 package gameobjects.puckstyle.tails
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
+import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.sin
 
 class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
@@ -27,6 +33,21 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
     private var prevY = Float.NaN
 
     private val bodyPath = Path()
+
+    // --- Shadow (paddle-mirrored, inverse of body shadow) -------------------
+    // Inverse of the body skin's lit-window: layer stays light, a single dark
+    // circle (clipped to tail pixels via SrcAtop) sits opposite the paddle.
+    //  SHADOW_MAX_DISTANCE_K — max travel of the shadow centre from the puck
+    //   centre, in r units.
+    //  SHADOW_RADIUS_K       — radius of the dark circle, in r units.
+    private val SHADOW_MAX_DISTANCE_K = 0.6f
+    private val SHADOW_RADIUS_K       = 1.1f
+    private val SHADOW_ALPHA          = 0.244f
+    private val SHADOW_FOLLOW_RATE    = 0.12f
+    private val SHADOW_BOUNDS_K       = 6f
+
+    private var shadowDx = 0f
+    private var shadowDy = 0f
 
     override val zIndex: Int get() = -1
 
@@ -60,7 +81,36 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
         }
 
         val fadeStep = (3f / Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+
+        // Shadow follows opposite the paddle (mirrors paddle position around puck).
+        val effect = renderer.effect as? PaddleLaunchEffect
+        val headX = renderer.x
+        val headY = renderer.y
+        val targetDx: Float
+        val targetDy: Float
+        if (effect != null) {
+            val wx = effect.paddleX - headX
+            val wy = effect.paddleY - headY
+            val dist = hypot(wx, wy).coerceAtLeast(0.001f)
+            targetDx = -wx / dist * r * SHADOW_MAX_DISTANCE_K
+            targetDy = -wy / dist * r * SHADOW_MAX_DISTANCE_K
+        } else { targetDx = 0f; targetDy = 0f }
+        shadowDx = lerp(shadowDx, targetDx, SHADOW_FOLLOW_RATE)
+        shadowDy = lerp(shadowDy, targetDy, SHADOW_FOLLOW_RATE)
+
+        val shadowBounds = Rect(
+            headX - r * SHADOW_BOUNDS_K, headY - r * SHADOW_BOUNDS_K,
+            headX + r * SHADOW_BOUNDS_K, headY + r * SHADOW_BOUNDS_K
+        )
+        scope.drawContext.canvas.saveLayer(shadowBounds, Paint())
         drawTailBody(scope, r, colors.secondary, colors.primary, fadeStep)
+        scope.drawCircle(
+            color = Color(0f, 0f, 0f, SHADOW_ALPHA),
+            radius = r * SHADOW_RADIUS_K,
+            center = Offset(headX + shadowDx, headY + shadowDy),
+            blendMode = BlendMode.SrcAtop
+        )
+        scope.drawContext.canvas.restore()
     }
 
     private fun drawTailBody(scope: DrawScope, r: Float, secondaryColor: Int, primaryColor: Int, fadeStep: Int) {
