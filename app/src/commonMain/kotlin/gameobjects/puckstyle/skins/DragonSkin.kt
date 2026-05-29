@@ -306,7 +306,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     private fun DrawScope.drawHeadWithShadow() {
         val body = DragonSkinPainters.body
-        val secondary = Color(frameColors.secondary)
+        val secondary = Color(frameColors.primary)
         val bounds = Rect(-r * 1.2f, -r * 1.2f, r * 1.2f, r * 1.2f)
         drawContext.canvas.saveLayer(bounds, Paint())
         if (body != null) {
@@ -381,7 +381,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
             )
             drawContext.canvas.saveLayer(wBounds, Paint())
             drawSvgPart(painter, centerX, centerY, w, h, scaleX = perspScale, scaleY = perspScale,
-                tint = Color(frameColors.primary))
+                tint = Color(frameColors.secondary))
             val growFactor = ((sign * irisOffX + 1f) / 2f).coerceIn(0f, 1f)
             val litR = r * SHADOW_LIT_WING_R_MIN * lerp(1f, 2f, growFactor)
             val worldLitCx = centerX + shadowDx
@@ -502,7 +502,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
                 lerp(rotDeg, rotDeg - kotlin.math.sign(rotDeg) * 6f, flaredBlend)
             else -> rotDeg
         }
-        val tint = ColorFilter.tint(Color(frameColors.primary))
+        val tint = ColorFilter.tint(Color(frameColors.secondary))
 
         if (shadowSign != 0f) {
             val margin = r * 0.25f
@@ -569,12 +569,12 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
                 val eyeH = r * EYE_SCLERA_H_K
                 val cy = r * EYE_OFFSET_Y_K
                 withTransform({ scale(currentEyeScaleX, currentEyeScaleY, pivot = Offset(-r * EYE_OFFSET_X_K, cy)) }) {
-                    drawRect(Color(frameColors.secondary),
+                    drawRect(Color(frameColors.primary),
                         topLeft = Offset(-r * EYE_OFFSET_X_K - eyeW / 2f, cy + eyeH * 0.1f),
                         size = Size(eyeW, eyeH * 0.6f))
                 }
                 withTransform({ scale(currentEyeScaleX, currentEyeScaleY, pivot = Offset(r * EYE_OFFSET_X_K, cy)) }) {
-                    drawRect(Color(frameColors.secondary),
+                    drawRect(Color(frameColors.primary),
                         topLeft = Offset(r * EYE_OFFSET_X_K - eyeW / 2f, cy + eyeH * 0.1f),
                         size = Size(eyeW, eyeH * 0.6f))
                 }
@@ -642,7 +642,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         val w = r * EYE_CLOSED_W_K
         val h = r * EYE_CLOSED_H_K
         val cy = r * EYE_OFFSET_Y_K
-        val tint = Color(frameColors.primary)
+        val tint = Color(frameColors.secondary)
         if (closedL != null) {
             drawSvgPart(closedL, -r * EYE_OFFSET_X_K, cy, w, h, tint = tint)
         }
@@ -679,13 +679,13 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         if (lips != null) {
 
             drawSvgPart(lips, 0f, cy, r * MOUTH_CLIP_W_K, r * MOUTH_CLIP_H_K,
-                tint = Color(frameColors.primary))
+                tint = Color(frameColors.secondary))
         }
         if (fangs != null) {
             drawSvgPart(fangs, 0f, cy + r * 0.1f, r * MOUTH_CFANG_W_K, r * MOUTH_CFANG_H_K,
-                tint = Color(frameColors.primary))
-            drawSvgPart(fangs, 0f, cy, r * MOUTH_CFANG_W_K, r * MOUTH_CFANG_H_K,
                 tint = Color(frameColors.secondary))
+            drawSvgPart(fangs, 0f, cy, r * MOUTH_CFANG_W_K, r * MOUTH_CFANG_H_K,
+                tint = Color(frameColors.primary))
         }
     }
 
@@ -705,10 +705,10 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         val teethW = w * (MOUTH_TEETH_W_K / MOUTH_OPEN_W_K)
         val teethH = h * (MOUTH_TEETH_H_K / MOUTH_OPEN_H_K)
         if (lips != null) {
-            drawSvgPart(lips, 0f, cy, w, h, tint = Color(frameColors.primary))
+            drawSvgPart(lips, 0f, cy, w, h, tint = Color(frameColors.secondary))
         }
         if (teeth != null) {
-            drawSvgPart(teeth, 0f, cy, teethW, teethH, tint = Color(frameColors.secondary))
+            drawSvgPart(teeth, 0f, cy, teethW, teethH, tint = Color(frameColors.primary))
         }
     }
 

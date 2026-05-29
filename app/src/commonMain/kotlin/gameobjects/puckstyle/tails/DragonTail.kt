@@ -84,8 +84,8 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun render(scope: DrawScope) {
         val r = renderer.radius
         val colors = responsiveGroup
-        val bodyColor = Color(colors.secondary)
-        val spikesTint = ColorFilter.tint(Color(colors.primary))
+        val bodyColor = Color(colors.primary)
+        val spikesTint = ColorFilter.tint(Color(colors.secondary))
 
         val spacing = r * SEGMENT_SPACING_K
         val headX = renderer.x
