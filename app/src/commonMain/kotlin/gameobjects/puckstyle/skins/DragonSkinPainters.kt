@@ -20,6 +20,7 @@ import pock_kotlin.app.generated.resources.Dragon_Mouth_Closed_1
 import pock_kotlin.app.generated.resources.Dragon_Mouth_Closed_2
 import pock_kotlin.app.generated.resources.Dragon_Mouth_Open_1
 import pock_kotlin.app.generated.resources.Dragon_Mouth_Open_2
+import pock_kotlin.app.generated.resources.Dragon_Tail_1
 import pock_kotlin.app.generated.resources.Dragon_Wing_L
 import pock_kotlin.app.generated.resources.Dragon_Wing_R
 import pock_kotlin.app.generated.resources.Res
@@ -44,6 +45,7 @@ object DragonSkinPainters {
     var hornMidTop: Painter? = null
     var hornMidMid: Painter? = null
     var hornMidBot: Painter? = null
+    var tailSpikes: Painter? = null
 
     @Composable
     fun load() {
@@ -66,5 +68,6 @@ object DragonSkinPainters {
         hornMidTop  = painterResource(Res.drawable.Dragon_Horn_Mid_Top)
         hornMidMid  = painterResource(Res.drawable.Dragon_Horn_Mid_Mid)
         hornMidBot  = painterResource(Res.drawable.Dragon_Horn_Mid_Bot)
+        tailSpikes  = painterResource(Res.drawable.Dragon_Tail_1)
     }
 }
