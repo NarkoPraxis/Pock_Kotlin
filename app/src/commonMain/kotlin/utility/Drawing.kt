@@ -97,10 +97,12 @@ object Drawing {
     }
 
     fun DrawScope.drawTouchHighlights(highPlayer: Player, lowPlayer: Player) {
-        // Alert pulse: if the OTHER side has 2+ fingers, this side flashes with
-        // theme.main.primary at the same sweet-spot pulse used by charge fills.
-        val highFlash = Logic.lowSideHasMultiTouch
-        val lowFlash  = Logic.highSideHasMultiTouch
+        // Alert pulse triggers when EITHER:
+        //   • the OTHER side has 2+ fingers (one finger should move here), OR
+        //   • this side's player has dragged across the midline (bring it back).
+        // Same theme.main.primary + sweet-spot pulse used by charge fills.
+        val highFlash = Logic.lowSideHasMultiTouch || Logic.highPlayerCrossedCenter
+        val lowFlash  = Logic.highSideHasMultiTouch || Logic.lowPlayerCrossedCenter
         val pulseAlpha = (0.7f + 0.3f * sin(chargeFillFrame * 0.35f)).coerceIn(0f, 1f)
 
         if (highPlayer.isTouching) {

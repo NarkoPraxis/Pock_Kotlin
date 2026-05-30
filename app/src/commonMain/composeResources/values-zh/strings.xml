@@ -98,4 +98,7 @@
     <string name="cbc_showing">显示:</string>
     <string name="cbc_high_player">上方玩家</string>
     <string name="cbc_low_player">下方玩家</string>
+
+    <!-- In-game warnings -->
+    <string name="stay_on_your_side">留在你那一边</string>
 </resources>

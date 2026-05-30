@@ -98,4 +98,7 @@
     <string name="cbc_showing">Mostrando:</string>
     <string name="cbc_high_player">Jugador Alto</string>
     <string name="cbc_low_player">Jugador Bajo</string>
+
+    <!-- In-game warnings -->
+    <string name="stay_on_your_side">Quédate en tu lado</string>
 </resources>

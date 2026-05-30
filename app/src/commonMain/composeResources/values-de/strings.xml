@@ -98,4 +98,7 @@
     <string name="cbc_showing">Zeige:</string>
     <string name="cbc_high_player">Oberer Spieler</string>
     <string name="cbc_low_player">Unterer Spieler</string>
+
+    <!-- In-game warnings -->
+    <string name="stay_on_your_side">Bleib auf deiner Seite</string>
 </resources>

@@ -63,6 +63,13 @@ object Logic {
     var highSideHasMultiTouch: Boolean = false
     var lowSideHasMultiTouch: Boolean = false
 
+    // True while a player's owned pointer is currently on the OTHER side of the
+    // centerline (drag-across-center). Used to flash that player's HOME side as a
+    // "bring your finger back" warning. Pure visual signal — does not change
+    // existing drag-across-line behavior.
+    var highPlayerCrossedCenter: Boolean = false
+    var lowPlayerCrossedCenter: Boolean = false
+
     var highStartX = 0f
     var lowStartX = 0f
 

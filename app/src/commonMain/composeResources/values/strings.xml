@@ -111,4 +111,7 @@
     <string name="tip_charging">Hold your shot to charge power. Release when purple to gain a shield!</string>
     <string name="tip_shields">A purple puck is shielded and wins every collision!</string>
     <string name="tip_overcharge">If hit while charging you will lose control, don\'t be reckless!</string>
+
+    <!-- In-game warnings -->
+    <string name="stay_on_your_side">Stay On Your Side</string>
 </resources>

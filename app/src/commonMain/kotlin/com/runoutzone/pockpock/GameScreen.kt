@@ -75,6 +75,12 @@ fun GameScreen(
                             Logic.highSideHasMultiTouch = highSideFingers >= 2
                             Logic.lowSideHasMultiTouch = lowSideFingers >= 2
 
+                            // Drag-across-center: each owned pointer's current Y
+                            // is checked against the midline. Crossing flashes the
+                            // crossing player's HOME side as a "bring it back" cue.
+                            Logic.highPlayerCrossedCenter = highRawId != null && highLastY >= mid
+                            Logic.lowPlayerCrossedCenter  = lowRawId  != null && lowLastY  <  mid
+
                             event.changes.forEach { change ->
                                 val rawId = change.id.value
                                 val x = change.position.x
@@ -128,5 +134,6 @@ fun GameScreen(
         }
 
         TipOverlay(gameLoopTick)
+        WrongSideWarning(gameLoopTick)
     }
 }

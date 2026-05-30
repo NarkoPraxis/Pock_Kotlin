@@ -98,4 +98,7 @@
     <string name="cbc_showing">表示:</string>
     <string name="cbc_high_player">上のプレイヤー</string>
     <string name="cbc_low_player">下のプレイヤー</string>
+
+    <!-- In-game warnings -->
+    <string name="stay_on_your_side">自分のサイドにいて</string>
 </resources>
