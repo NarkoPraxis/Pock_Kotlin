@@ -3,7 +3,7 @@ package gameobjects.puckstyle
 import androidx.compose.ui.graphics.toArgb
 import utility.PaintBucket
 
-data class ColorGroup(val primary: Int, val secondary: Int)
+data class ColorGroup(val primary: Int, val secondary: Int, val pale: Int)
 
 data class ColorTheme(
     val main: ColorGroup,
@@ -13,15 +13,39 @@ data class ColorTheme(
 ) {
     companion object {
         val Warm get() = ColorTheme(
-            main = ColorGroup(PaintBucket.highBallFill.toArgb(), PaintBucket.highBallStroke.toArgb()),
-            shield = ColorGroup(PaintBucket.highShieldPrimary.toArgb(), PaintBucket.highShieldSecondary.toArgb()),
-            inert = ColorGroup(PaintBucket.inertPrimaryColor.toArgb(), PaintBucket.inertSecondaryColor.toArgb()),
+            main = ColorGroup(
+                PaintBucket.highBallFill.toArgb(),
+                PaintBucket.highBallStroke.toArgb(),
+                PaintBucket.highPlayerPale.toArgb()
+            ),
+            shield = ColorGroup(
+                PaintBucket.highShieldPrimary.toArgb(),
+                PaintBucket.highShieldSecondary.toArgb(),
+                PaintBucket.highShieldPale.toArgb()
+            ),
+            inert = ColorGroup(
+                PaintBucket.inertPrimaryColor.toArgb(),
+                PaintBucket.inertSecondaryColor.toArgb(),
+                PaintBucket.inertPale.toArgb()
+            ),
             isWarm = true
         )
         val Cold get() = ColorTheme(
-            main = ColorGroup(PaintBucket.lowBallFill.toArgb(), PaintBucket.lowBallStroke.toArgb()),
-            shield = ColorGroup(PaintBucket.lowShieldPrimary.toArgb(), PaintBucket.lowShieldSecondary.toArgb()),
-            inert = ColorGroup(PaintBucket.inertPrimaryColor.toArgb(), PaintBucket.inertSecondaryColor.toArgb()),
+            main = ColorGroup(
+                PaintBucket.lowBallFill.toArgb(),
+                PaintBucket.lowBallStroke.toArgb(),
+                PaintBucket.lowPlayerPale.toArgb()
+            ),
+            shield = ColorGroup(
+                PaintBucket.lowShieldPrimary.toArgb(),
+                PaintBucket.lowShieldSecondary.toArgb(),
+                PaintBucket.lowShieldPale.toArgb()
+            ),
+            inert = ColorGroup(
+                PaintBucket.inertPrimaryColor.toArgb(),
+                PaintBucket.inertSecondaryColor.toArgb(),
+                PaintBucket.inertPale.toArgb()
+            ),
             isWarm = false
         )
 

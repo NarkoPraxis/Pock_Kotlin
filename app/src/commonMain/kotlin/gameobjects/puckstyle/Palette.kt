@@ -69,6 +69,11 @@ object Palette {
     const val HIGHLIGHT_SATURATION = 0.66f
     const val THEME_VALUE = 0.96f
 
+    /** Saturation for the "pale" tier — desaturated version of secondary hue. */
+    const val PALE_SATURATION = 0.10f
+    /** Brightness for the "pale" tier — slightly higher than THEME_VALUE for a washed look. */
+    const val PALE_VALUE = 0.99f
+
     fun colorToHSV(color: Int, hsv: FloatArray) {
         val r = red(color)   / 255f
         val g = green(color) / 255f
@@ -98,6 +103,7 @@ object Palette {
 
     fun hsvThemed(hue: Float): Int = hsv(hue, THEME_SATURATION, THEME_VALUE)
     fun hsvHighlight(hue: Float): Int = hsv(hue, HIGHLIGHT_SATURATION, THEME_VALUE)
+    fun hsvPale(hue: Float): Int = hsv(hue, PALE_SATURATION, PALE_VALUE)
 
     fun DrawScope.drawGlowRings(
         cx: Float, cy: Float,

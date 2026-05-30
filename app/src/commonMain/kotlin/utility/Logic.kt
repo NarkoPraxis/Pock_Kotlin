@@ -56,8 +56,17 @@ object Logic {
     private var highInDanger = false
     private var lowInDanger  = false
 
+    // Per-frame pressed-pointer counts per screen half. Updated by GameScreen each
+    // pointer event; consumed by Drawing.drawTouchHighlights to flash the OTHER
+    // side's highlight when one side has multiple fingers down. Read-only for
+    // game logic — does not affect input routing, fling, or charge behavior.
+    var highSideHasMultiTouch: Boolean = false
+    var lowSideHasMultiTouch: Boolean = false
+
     var highStartX = 0f
     var lowStartX = 0f
+
+    var collisionBonus = 0f
 
     enum class Result {
         High,
@@ -96,6 +105,8 @@ object Logic {
 
         highBallPopup.open()
         lowBallPopup.open()
+
+        collisionBonus = 10 + 10f * Settings.balanceRatio
 
         isInitialized = true
     }
@@ -417,21 +428,21 @@ object Logic {
             if (highPlayer.reappearing && lowPlayer.reappearing) {
                 Sounds.playTeleportFinish(highPlayer.px)
                 Sounds.playTeleportFinish(lowPlayer.px)
-                highPlayer.launch(Force(-direction, 10f + Settings.sweetSpotMax))
-                lowPlayer.launch(Force(direction, 10f + Settings.sweetSpotMax))
+                highPlayer.launch(Force(-direction, collisionBonus + Settings.sweetSpotMax))
+                lowPlayer.launch(Force(direction, collisionBonus + Settings.sweetSpotMax))
                 applyHitStun(highPlayer, highPlayer.puck.impactPower)
                 applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
             } else if (highPlayer.reappearing) {
                 Sounds.playTeleportFinish(highPlayer.px)
-                lowPlayer.launch(Force(direction, 10f + Settings.sweetSpotMax))
+                lowPlayer.launch(Force(direction, collisionBonus + Settings.sweetSpotMax))
                 applyHitStun(lowPlayer, lowPlayer.puck.impactPower)
             } else if (lowPlayer.reappearing) {
                 Sounds.playTeleportFinish(lowPlayer.px)
-                highPlayer.launch(Force(-direction, 10f + Settings.sweetSpotMax))
+                highPlayer.launch(Force(-direction, collisionBonus + Settings.sweetSpotMax))
                 applyHitStun(highPlayer, highPlayer.puck.impactPower)
             } else if (highPlayer.shielded && !lowPlayer.shielded) {
                 Sounds.playChargeCollision(collisionPoint.x)
-                val bonusPower = if (lowPlayer.isCharging) 20f else 10f
+                val bonusPower = if (lowPlayer.isCharging) 2f * collisionBonus else collisionBonus
                 lowPlayer.launch(Force(direction, bonusPower + highPlayer.power))
                 highPlayer.launch(Force(-direction, Settings.minLaunchPower))
                 lowPlayer.inertLocked = true
@@ -440,7 +451,7 @@ object Logic {
                 lowPlayer.puck.renderer.skin.onHit()
             } else if (lowPlayer.shielded && !highPlayer.shielded) {
                 Sounds.playChargeCollision(collisionPoint.x)
-                val bonusPower = if (highPlayer.isCharging) 20f else 10f
+                val bonusPower = if (highPlayer.isCharging) 2f * collisionBonus else collisionBonus
                 highPlayer.launch(Force(-direction, bonusPower + lowPlayer.power))
                 lowPlayer.launch(Force(direction, Settings.minLaunchPower))
                 highPlayer.inertLocked = true
@@ -449,14 +460,14 @@ object Logic {
                 highPlayer.puck.renderer.skin.onHit()
             } else if (lowPlayer.shielded && highPlayer.shielded) {
                 Sounds.playDoubleChargeCollision(collisionPoint.x)
-                highPlayer.launch(Force(-direction, 10f + lowPower))
-                lowPlayer.launch(Force(direction, 10f + highPower))
+                highPlayer.launch(Force(-direction, collisionBonus + lowPower))
+                lowPlayer.launch(Force(direction, collisionBonus + highPower))
                 highPlayer.puck.renderer.skin.onShieldedCollision(intersection)
                 lowPlayer.puck.renderer.skin.onShieldedCollision(intersection)
             } else if (highPlayer.isCharging && lowPlayer.isCharging) {
                 Sounds.playDoubleChargeCollision(collisionPoint.x)
-                highPlayer.launch(Force(-direction, 10f + lowPower))
-                lowPlayer.launch(Force(direction, 10f + highPower))
+                highPlayer.launch(Force(-direction, collisionBonus + lowPower))
+                lowPlayer.launch(Force(direction, collisionBonus + highPower))
                 highPlayer.inertLocked = true
                 lowPlayer.inertLocked = true
                 highPlayer.clearCharge()
@@ -467,7 +478,7 @@ object Logic {
                 lowPlayer.puck.renderer.skin.onHit()
             } else if (highPlayer.isCharging) {
                 Sounds.playChargeCollision(collisionPoint.x)
-                highPlayer.launch(Force(-direction, 10f + lowPower))
+                highPlayer.launch(Force(-direction, collisionBonus + lowPower))
                 lowPlayer.launch(Force(direction, if (highPower < Settings.minLaunchPower) Settings.minLaunchPower else highPower))
                 highPlayer.inertLocked = true
                 highPlayer.clearCharge()
@@ -476,7 +487,7 @@ object Logic {
                 lowPlayer.puck.renderer.skin.onCollisionWin(intersection, lowPlayer.movementSpeed)
             } else if (lowPlayer.isCharging) {
                 Sounds.playChargeCollision(collisionPoint.x)
-                lowPlayer.launch(Force(direction, 10f + highPower))
+                lowPlayer.launch(Force(direction, collisionBonus + highPower))
                 highPlayer.launch(Force(-direction, if (lowPower < Settings.minLaunchPower) Settings.minLaunchPower else lowPower))
                 lowPlayer.inertLocked = true
                 lowPlayer.clearCharge()

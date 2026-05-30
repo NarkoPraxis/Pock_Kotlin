@@ -46,10 +46,18 @@ object PaintBucket {
     var lowShieldPrimary: Color = Color(0xFFc09df5)
     var lowShieldSecondary: Color = Color(0xFF9356ee)
 
+    /** Pale tier — desaturated version of secondary hue. Driven by Storage hue settings. */
+    var highPlayerPale: Color = Color.hsv(0f, 0.10f, 0.99f)
+    var lowPlayerPale: Color = Color.hsv(220f, 0.10f, 0.99f)
+    var highShieldPale: Color = Color.hsv(264f, 0.10f, 0.99f)
+    var lowShieldPale: Color = Color.hsv(264f, 0.10f, 0.99f)
+
     /** Inert/neutral puck primary (light grey). */
     var inertPrimary: Color = Color(0xFFD9D9D9)
     /** Inert/neutral puck secondary (mid grey). */
     var inertSecondary: Color = Color(0xFF999999)
+    /** Inert/neutral pale (very light grey — no hue). */
+    var inertPale: Color = Color(0xFFEFEFEF)
 
     /** Dark-mode menu/arena background. */
     var menuBackgroundDark: Color = Color(0xFF131221)
@@ -131,8 +139,13 @@ object PaintBucket {
 
     var bonusColor: Color = Color(0xFFFFFF00)
 
-    var highPlayerHighlightColor: Color = Color(0x32FF6B6B)
-    var lowPlayerHighlightColor: Color = Color(0x326B6BFF)
+    /** Legacy alias — touch-zone highlight is the player's main pale color. */
+    var highPlayerHighlightColor: Color
+        get() = highPlayerPale
+        set(v) { highPlayerPale = v }
+    var lowPlayerHighlightColor: Color
+        get() = lowPlayerPale
+        set(v) { lowPlayerPale = v }
 
     /** Score-flash overlay color — set at runtime by Logic when a goal is scored. */
     var scoreFlashColor: Color = Color(0x00FFFFFF)
@@ -203,12 +216,16 @@ object PaintBucket {
         val lowShieldHue = Storage.lowShieldColorHue
         highPlayerSecondary = Color.hsv(highHue, 0.661f, 0.961f)
         highPlayerPrimary = Color.hsv(highHue, 0.359f, 0.961f)
+        highPlayerPale = Color.hsv(highHue, 0.10f, 0.99f)
         lowPlayerSecondary = Color.hsv(lowHue, 0.661f, 0.961f)
         lowPlayerPrimary = Color.hsv(lowHue, 0.359f, 0.961f)
+        lowPlayerPale = Color.hsv(lowHue, 0.10f, 0.99f)
         highShieldSecondary = Color.hsv(highShieldHue, 0.661f, 0.961f)
         highShieldPrimary = Color.hsv(highShieldHue, 0.359f, 0.961f)
+        highShieldPale = Color.hsv(highShieldHue, 0.10f, 0.99f)
         lowShieldSecondary = Color.hsv(lowShieldHue, 0.661f, 0.961f)
         lowShieldPrimary = Color.hsv(lowShieldHue, 0.359f, 0.961f)
+        lowShieldPale = Color.hsv(lowShieldHue, 0.10f, 0.99f)
     }
 
     /**

@@ -97,16 +97,26 @@ object Drawing {
     }
 
     fun DrawScope.drawTouchHighlights(highPlayer: Player, lowPlayer: Player) {
+        // Alert pulse: if the OTHER side has 2+ fingers, this side flashes with
+        // theme.main.primary at the same sweet-spot pulse used by charge fills.
+        val highFlash = Logic.lowSideHasMultiTouch
+        val lowFlash  = Logic.highSideHasMultiTouch
+        val pulseAlpha = (0.7f + 0.3f * sin(chargeFillFrame * 0.35f)).coerceIn(0f, 1f)
+
         if (highPlayer.isTouching) {
+            val color = if (highFlash) PaintBucket.highBallFill.copy(alpha = pulseAlpha)
+                        else PaintBucket.highPlayerHighlightColor
             drawRect(
-                color = PaintBucket.highPlayerHighlightColor,
+                color = color,
                 topLeft = Offset(0f, 0f),
                 size = Size(Settings.screenWidth, Settings.middleY)
             )
         }
         if (lowPlayer.isTouching) {
+            val color = if (lowFlash) PaintBucket.lowBallFill.copy(alpha = pulseAlpha)
+                        else PaintBucket.lowPlayerHighlightColor
             drawRect(
-                color = PaintBucket.lowPlayerHighlightColor,
+                color = color,
                 topLeft = Offset(0f, Settings.middleY),
                 size = Size(Settings.screenWidth, Settings.screenHeight - Settings.middleY)
             )

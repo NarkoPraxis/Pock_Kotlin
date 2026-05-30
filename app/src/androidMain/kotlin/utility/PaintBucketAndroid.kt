@@ -183,8 +183,8 @@ fun PaintBucket.initializeColors(resources: Resources) {
         )
     )
 
-    highPlayerHighlightColor = Color(highBallFill.red, highBallFill.green, highBallFill.blue, 50f / 255f)
-    lowPlayerHighlightColor  = Color(lowBallFill.red,  lowBallFill.green,  lowBallFill.blue,  50f / 255f)
+    // Pale (touch-zone highlight) colors are derived from player hues via HSV in
+    // PaintBucket.applyPlayerHues(); no alpha-on-white computation here.
 }
 
 /**
@@ -324,14 +324,12 @@ fun PaintBucket.buildPaints(resources: Resources) {
     }
 
     p.highPlayerHighlightPaint = Paint().apply {
-        color = highBallFill.toArgb()
-        alpha = 50
+        color = highPlayerHighlightColor.toArgb()
         style = Paint.Style.FILL
     }
 
     p.lowPlayerHighlightPaint = Paint().apply {
-        color = lowBallFill.toArgb()
-        alpha = 50
+        color = lowPlayerHighlightColor.toArgb()
         style = Paint.Style.FILL
     }
 

@@ -13,6 +13,7 @@ import gameobjects.Settings
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.rememberTextMeasurer
 import utility.Drawing
+import utility.Logic
 import utility.drawGameFrame
 import utility.onGamePointerDown
 import utility.onGamePointerMove
@@ -50,7 +51,8 @@ fun GameScreen(
                             // Verify live assignments against the currently-pressed set.
                             // This auto-releases any player whose pointer was cancelled by
                             // the OS without a normal up event (e.g. iOS touchesCancelled).
-                            val active = event.changes.filter { it.pressed }.map { it.id.value }.toSet()
+                            val pressed = event.changes.filter { it.pressed }
+                            val active = pressed.map { it.id.value }.toSet()
                             if (highRawId != null && highRawId !in active) {
                                 onGamePointerUp(highLastX, highLastY, 0)
                                 highRawId = null
@@ -59,6 +61,19 @@ fun GameScreen(
                                 onGamePointerUp(lowLastX, lowLastY, 1)
                                 lowRawId = null
                             }
+
+                            // Pure visual signal: count every pressed pointer per screen
+                            // half (ignoring player slot assignment, drag-across-line, etc.)
+                            // so Drawing can flash the opposite side when one side has 2+
+                            // fingers down. Does not affect input routing.
+                            val mid = Settings.middleY
+                            var highSideFingers = 0
+                            var lowSideFingers = 0
+                            for (c in pressed) {
+                                if (c.position.y < mid) highSideFingers++ else lowSideFingers++
+                            }
+                            Logic.highSideHasMultiTouch = highSideFingers >= 2
+                            Logic.lowSideHasMultiTouch = lowSideFingers >= 2
 
                             event.changes.forEach { change ->
                                 val rawId = change.id.value
