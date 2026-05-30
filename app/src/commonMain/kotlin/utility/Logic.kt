@@ -131,6 +131,10 @@ object Logic {
         if (remainingMs == 0L) {
             timerExpired = true
             timerHidden = true
+            if (Settings.gameState == GameState.Play &&
+                (highPlayer.score - lowPlayer.score).absoluteValue > 1) {
+                Settings.gameState = GameState.Scored
+            }
         }
     }
 
