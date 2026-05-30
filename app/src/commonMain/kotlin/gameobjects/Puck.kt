@@ -97,10 +97,11 @@ class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circ
         _scratchForce.setFrom(movement)
         _scratchForce.addForce(launch)
         val nextDirection = _scratchForce.stepInto(_stepResult, maxSpeed)
+        val frictionAmount = if (renderer.shielded) Settings.friction * 0.5f else Settings.friction
         if (!bonusMovement) {
-            movement.applyFriction()
+            movement.applyFriction(frictionAmount)
         }
-        launch.applyFriction()
+        launch.applyFriction(frictionAmount)
         return nextDirection
     }
 

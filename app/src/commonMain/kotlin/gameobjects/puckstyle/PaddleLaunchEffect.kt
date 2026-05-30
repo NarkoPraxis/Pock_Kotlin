@@ -67,10 +67,13 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
         if (_currentCharge < Settings.chargeStart) {
             _currentCharge = Settings.chargeStart
         } else {
-            _currentCharge = (_currentCharge + Settings.chargeIncreaseRate)
+            _currentCharge = (_currentCharge + Settings.chargeIncreaseRate * 2.5f)
                 .coerceAtMost(Settings.sweetSpotMax.toFloat())
         }
-        if (_phase == ChargePhase.Idle) _phase = ChargePhase.Building
+        if (_phase == ChargePhase.Idle) {
+            renderer.shielded = false
+            _phase = ChargePhase.Building
+        }
     }
 
     override fun clearCharge() {

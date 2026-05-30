@@ -410,7 +410,7 @@ class Player(
         }
 
         pendingLaunchDir = direction
-        pendingLaunchPower = power
+        pendingLaunchPower = power + power * Settings.balanceRatio
         puck.shrinkTicker.reset()
         effect.registerStrikeCallback { applyPendingLaunch() }
         effect.onRelease(puck.x, puck.y, puck.radius, shielded)

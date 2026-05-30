@@ -44,6 +44,7 @@ object Settings {
     var prepareTeleportTickerTime = 100
     var teleportTickerTime = 10
     var screenRatio = 0f
+    var balanceRatio = 0f
     var screenHeightRatio = 0f
     var ballRadius = 0f
     var middleX = 0f
@@ -121,6 +122,7 @@ object Settings {
         middleX = screenWidth / 2f
         middleY = screenHeight / 2f
         screenRatio = (screenWidth / 20).coerceIn(0f, 54f)
+        balanceRatio = ((screenWidth / 20f - 54f) / 54f).coerceAtLeast(0f)
         screenHeightRatio = (screenHeight / 40).coerceIn(0f, 54f)
 
         val ballSizeMod = when (utility.Storage.ballSize) {
