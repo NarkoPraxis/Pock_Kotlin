@@ -10,6 +10,8 @@ class SkinCarousel : ComponentCarousel() {
 
     override val animateBounce: Boolean = false
 
+    override fun isComponentUnlocked(type: BallType): Boolean = utility.Storage.isSkinUnlocked(type)
+
     override fun buildRendererForType(type: BallType, renderer: PuckRenderer): PuckRenderer {
         val skin = BallStyleFactory.buildSkin(type, renderer)
         val tail = InvisibleTail(renderer)

@@ -150,10 +150,11 @@ fun BallUnlockScreen(onBack: () -> Unit) {
             modifier = Modifier.weight(1f)
         ) {
             itemsIndexed(displayTypes) { index, type ->
-                val isUnlocked = BallStyleFactory.isUnlocked(type, unlockProgress)
-                val threshold = BallStyleFactory.unlockThreshold(type)
-                val statusText = if (isUnlocked) ""
-                    else if (threshold != null) stringResource(Res.string.reach_percent, threshold) else ""
+                // Deprecated screen (no longer reachable). Kept compiling only.
+                val isUnlocked = utility.Storage.isSkinUnlocked(type) &&
+                    utility.Storage.isTailUnlocked(type) &&
+                    utility.Storage.isPaddleUnlocked(type)
+                val statusText = ""
 
                 Box(
                     modifier = Modifier

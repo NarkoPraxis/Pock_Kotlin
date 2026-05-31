@@ -56,29 +56,11 @@ actual fun PlatformMenuExtras() {
     val context = LocalContext.current
     val activity = context as? Activity ?: return
 
-    var rewardedAd by remember { mutableStateOf<RewardedAd?>(null) }
-    val unlockProgress = Storage.unlockProgress
     var languageFlag by remember { mutableStateOf(getCurrentLanguageFlag()) }
-
-    LaunchedEffect(Unit) {
-        if (Storage.unlockProgress < 100 && Storage.canWatchAdNow()) {
-            loadRewardedAd(activity) { ad ->
-                rewardedAd = ad
-            }
-        }
-    }
-
     val isDark = LocalDarkMode.current
 
-    val strComeBackTomorrow = stringResource(Res.string.come_back_tomorrow)
-    val strWatchAdToUnlock = stringResource(Res.string.watch_ad_to_unlock)
     val strShareThanks = stringResource(Res.string.share_thanks)
     val strShareAlreadyClaimed = stringResource(Res.string.share_already_claimed)
-
-    val watchedToday = Storage.adsWatchedToday()
-    val minsUntil = Storage.minutesUntilNextAd()
-    val timeStr = if (minsUntil >= 60) "${minsUntil / 60}h ${minsUntil % 60}m" else "${minsUntil}m"
-    val strNextAdIn = stringResource(Res.string.next_ad_in, timeStr)
 
     val menuButtonColors = ButtonDefaults.buttonColors(
         containerColor = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuButtonLight,
@@ -87,48 +69,11 @@ actual fun PlatformMenuExtras() {
         disabledContentColor = if (isDark) Color(0xFF888899) else Color(0xFF8877AA)
     )
 
+    // Ad-watching has moved into the Custom Ball Creator / Color Picker (tap a locked option).
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (unlockProgress < 100) {
-            val adButtonText = when {
-                watchedToday >= 5 -> strComeBackTomorrow
-                minsUntil > 0 -> strNextAdIn
-                else -> strWatchAdToUnlock
-            }
-            val adEnabled = watchedToday < 5 && minsUntil == 0L && rewardedAd != null
-
-            Button(
-                onClick = {
-                    val ad = rewardedAd ?: return@Button
-                    ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                        override fun onAdShowedFullScreenContent() {
-                            Settings.adIsPlaying = true
-                            Sounds.muteForAd()
-                        }
-                        override fun onAdDismissedFullScreenContent() {
-                            Settings.adIsPlaying = false
-                            Sounds.unmuteForAd()
-                            rewardedAd = null
-                            if (Storage.canWatchAdNow()) {
-                                loadRewardedAd(activity) { newAd -> rewardedAd = newAd }
-                            }
-                        }
-                    }
-                    ad.show(activity, OnUserEarnedRewardListener { _ ->
-                        Storage.recordAdWatched()
-                        Settings.unlockProgress = Storage.unlockProgress
-                    })
-                },
-                enabled = adEnabled,
-                modifier = Modifier.width(200.dp),
-                colors = menuButtonColors
-            ) {
-                Text(adButtonText)
-            }
-        }
-
         Button(
             onClick = {
                 ShareHelper.shareAppPromo(activity) {

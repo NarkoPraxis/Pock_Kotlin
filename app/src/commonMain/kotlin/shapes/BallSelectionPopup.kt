@@ -54,44 +54,26 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
     fun open() {
         isOpen = true
 
-        val customSlots = (0 until 5).mapNotNull { i ->
-            if (Storage.loadCustomBall(i) != null) Slot(BallType.Random, i) else null
+        // Only show custom slots that are both unlocked and have a saved ball. No full ball-type
+        // list and no locked entries — ads are accessed only in the Custom Ball Creator.
+        slots = (0 until Storage.SLOT_COUNT).mapNotNull { i ->
+            if (Storage.isSlotUnlocked(i) && Storage.loadCustomBall(i) != null) Slot(BallType.Random, i) else null
         }
-        val normalSlots = BallType.entries.map { Slot(it) }
-        slots = customSlots + normalSlots
 
         rendererList.clear()
         for (slot in slots) {
-            val renderer = if (slot.customStorageIndex != null) {
-                val config = Storage.loadCustomBall(slot.customStorageIndex)!!
-                BallStyleFactory.buildCustomRenderer(config, ColorTheme.getTheme(isHigh))
-            } else {
-                BallStyleFactory.buildRenderer(slot.type, ColorTheme.getTheme(isHigh))
-            }
-            rendererList.add(renderer)
+            val config = Storage.loadCustomBall(slot.customStorageIndex!!)!!
+            rendererList.add(BallStyleFactory.buildCustomRenderer(config, ColorTheme.getTheme(isHigh)))
         }
 
-        val customCount = customSlots.size
         val currentCustomIdx = if (isHigh) Settings.highCustomBallIndex else Settings.lowCustomBallIndex
-        val currentType = if (isHigh) Settings.highBallType else Settings.lowBallType
-
-        val initialIndex = if (currentCustomIdx != null) {
-            customSlots.indexOfFirst { it.customStorageIndex == currentCustomIdx }.takeIf { it >= 0 } ?: 0
-        } else {
-            customCount + currentType.ordinal
-        }.coerceIn(0, (slots.size - 1).coerceAtLeast(0))
+        val initialIndex = (currentCustomIdx
+            ?.let { idx -> slots.indexOfFirst { it.customStorageIndex == idx }.takeIf { it >= 0 } }
+            ?: 0)
+            .coerceIn(0, (slots.size - 1).coerceAtLeast(0))
 
         scrollToIndex(initialIndex)
         rendererList.getOrNull(snapIndex)?.tail?.clear()
-
-        if (currentType == BallType.Random && currentCustomIdx == null) {
-            utility.Logic.applyBallStyles()
-            val storedRoll = if (isHigh) Settings.highRandomRoll else Settings.lowRandomRoll
-            val randomIdx = customCount + BallType.Random.ordinal
-            if (randomIdx < rendererList.size) {
-                rendererList[randomIdx] = BallStyleFactory.buildRenderer(BallType.Random, ColorTheme.getTheme(isHigh), storedRoll)
-            }
-        }
     }
 
     fun close() {
@@ -99,41 +81,20 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
         cancelDrag()
     }
 
-    private fun isUnlocked(type: BallType): Boolean = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
-
     private fun trySelect(slot: Slot): Boolean {
-        if (slot.customStorageIndex == null && !isUnlocked(slot.type)) return false
+        val idx = slot.customStorageIndex ?: return false
         if (isHigh) {
-            Settings.highBallType = slot.type
-            Settings.highCustomBallIndex = slot.customStorageIndex
-            if (slot.customStorageIndex != null) {
-                Storage.saveHighCustomBallIndex(slot.customStorageIndex)
-                Storage.saveHighBallType(BallType.Random)
-            } else {
-                Settings.highCustomBallIndex = null
-                Storage.saveHighBallType(slot.type)
-            }
+            Settings.highBallType = BallType.Random
+            Settings.highCustomBallIndex = idx
+            Storage.saveHighCustomBallIndex(idx)
+            Storage.saveHighBallType(BallType.Random)
         } else {
-            Settings.lowBallType = slot.type
-            Settings.lowCustomBallIndex = slot.customStorageIndex
-            if (slot.customStorageIndex != null) {
-                Storage.saveLowCustomBallIndex(slot.customStorageIndex)
-                Storage.saveLowBallType(BallType.Random)
-            } else {
-                Settings.lowCustomBallIndex = null
-                Storage.saveLowBallType(slot.type)
-            }
+            Settings.lowBallType = BallType.Random
+            Settings.lowCustomBallIndex = idx
+            Storage.saveLowCustomBallIndex(idx)
+            Storage.saveLowBallType(BallType.Random)
         }
         utility.Logic.applyBallStyles()
-
-        if (slot.type == BallType.Random && slot.customStorageIndex == null) {
-            val storedRoll = if (isHigh) Settings.highRandomRoll else Settings.lowRandomRoll
-            val customCount = slots.count { it.customStorageIndex != null }
-            val randomIdx = customCount + BallType.Random.ordinal
-            if (randomIdx < rendererList.size) {
-                rendererList[randomIdx] = BallStyleFactory.buildRenderer(BallType.Random, ColorTheme.getTheme(isHigh), storedRoll)
-            }
-        }
         return true
     }
 
@@ -236,7 +197,6 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
             val previewRenderer = rendererList.getOrNull(i) ?: continue
             val slotCenterX = cx - scrollX + i * slotW
             if (slotCenterX < cx - halfW - slotW || slotCenterX > cx + halfW + slotW) continue
-            val slot = slots[i]
             val puckY = puckYs[i]
 
             canvas.save()
@@ -254,9 +214,6 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
 
             with(previewRenderer) { draw() }
 
-            val showLock = slot.customStorageIndex == null && !isUnlocked(slot.type)
-            if (showLock) drawLock(slotCenterX, puckY, pr)
-
             canvas.restore()
         }
 
@@ -272,30 +229,5 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
         const val ACTION_CANCEL      = 3
         const val ACTION_POINTER_DOWN = 5
         const val ACTION_POINTER_UP  = 6
-    }
-
-    private fun DrawScope.drawLock(lx: Float, ly: Float, radius: Float) {
-        val lockColor = if (isHigh) utility.PaintBucket.highShieldPrimary else utility.PaintBucket.lowShieldPrimary
-        val strokeWidth = Settings.screenRatio * 0.2f
-        val bodyW = radius * 0.8f
-        val bodyH = radius * 0.7f
-
-        val bodyPaint = Paint().apply { color = lockColor; style = PaintingStyle.Fill }
-        drawContext.canvas.drawRoundRect(
-            lx - bodyW / 2f, ly - bodyH / 4f, lx + bodyW / 2f, ly + bodyH * 0.75f,
-            Settings.screenRatio * 0.12f, Settings.screenRatio * 0.12f,
-            bodyPaint
-        )
-
-        val shackleR = bodyW / 2.6f
-        drawArc(
-            color = lockColor,
-            startAngle = 180f,
-            sweepAngle = 180f,
-            useCenter = false,
-            topLeft = Offset(lx - shackleR, ly - bodyH * 0.85f),
-            size = Size(shackleR * 2f, bodyH * 0.75f),
-            style = Stroke(strokeWidth)
-        )
     }
 }

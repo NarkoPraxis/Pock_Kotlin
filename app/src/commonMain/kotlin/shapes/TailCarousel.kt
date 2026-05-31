@@ -8,6 +8,8 @@ import gameobjects.puckstyle.paddles.ClassicLaunch
 
 class TailCarousel : ComponentCarousel() {
 
+    override fun isComponentUnlocked(type: BallType): Boolean = utility.Storage.isTailUnlocked(type)
+
     override fun buildRendererForType(type: BallType, renderer: PuckRenderer): PuckRenderer {
         val skin = InvisibleSkin(renderer)
         val tail = BallStyleFactory.buildTail(type, renderer)

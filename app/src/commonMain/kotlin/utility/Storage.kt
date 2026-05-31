@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import enums.BallType
 import enums.ChargeMeterStyle
+import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.CustomBallConfig
 
 data class CcpPreset(
@@ -45,52 +46,73 @@ object Storage {
     private const val L = "large"
     private const val F = "fastest"
 
-    private const val MAX_ADS_PER_DAY = 5
-    private const val HOURLY_COOLDOWN_MS = 60 * 60 * 1000L
+    private const val MAX_ADS_PER_HOUR = 3
+    private const val HOUR_MS = 60 * 60 * 1000L
+    private const val recentAdTimestampsKey = "recent_ad_ts"
 
-    fun initialize(context: Any?) = PlatformStorage.initialize(context)
+    /** Number of custom ball slots (2 free + 8 unlocked at 30%/40%…100%). */
+    const val SLOT_COUNT = 10
+
+    private const val unlockedSkinsKey   = "unlocked_skins"
+    private const val unlockedTailsKey   = "unlocked_tails"
+    private const val unlockedPaddlesKey = "unlocked_paddles"
+    private const val unlockedColorsKey  = "unlocked_colors"
+    private const val defaultsSeededKey  = "default_slots_seeded"
+
+    /** Preset color carousel indices unlocked for free: Red (0), Blue (5), Purple/shield (6). */
+    private val FREE_COLOR_INDICES = setOf(0, 5, 6)
+    private const val CUSTOM_COLOR_INDEX = 9
+
+    fun initialize(context: Any?) {
+        PlatformStorage.initialize(context)
+        ensureDefaultSlots()
+    }
 
     // --- Unlock progress (0–100) ---
 
     val unlockProgress: Int get() {
         dataVersion // subscribe
-        return 100 // don't fix, manual, intentional override.
-       // return PlatformStorage.getInt(AD, unlockProgressKey, 0)
+//        return 100 // don't fix, manual, intentional override.
+        return PlatformStorage.getInt(AD, unlockProgressKey, 0)
+    }
+
+    /** Timestamps of ads watched within the last rolling hour (cap [MAX_ADS_PER_HOUR]). */
+    private fun recentAdTimestamps(): List<Long> {
+        val now = PlatformStorage.currentTimeMs()
+        return PlatformStorage.getString(AD, recentAdTimestampsKey, "")
+            .split(",")
+            .mapNotNull { it.toLongOrNull() }
+            .filter { now - it < HOUR_MS }
     }
 
     fun canWatchAdNow(): Boolean {
         dataVersion; timeVersion
         if (unlockProgress >= 100) return false
-        val today = PlatformStorage.currentTimeMs() / 86_400_000L
-        val lastDay = PlatformStorage.getLong(AD, lastAdDayKey, -1L)
-        val watchedToday = if (lastDay == today) PlatformStorage.getInt(AD, adsWatchedTodayKey, 0) else 0
-        if (watchedToday >= MAX_ADS_PER_DAY) return false
-        val lastTimestamp = PlatformStorage.getLong(AD, lastAdTimestampKey, 0L)
-        return PlatformStorage.currentTimeMs() - lastTimestamp >= HOURLY_COOLDOWN_MS
+        return recentAdTimestamps().size < MAX_ADS_PER_HOUR
     }
 
-    fun adsWatchedToday(): Int {
+    fun adsWatchedThisHour(): Int {
         dataVersion; timeVersion
-        val today = PlatformStorage.currentTimeMs() / 86_400_000L
-        val lastDay = PlatformStorage.getLong(AD, lastAdDayKey, -1L)
-        return if (lastDay == today) PlatformStorage.getInt(AD, adsWatchedTodayKey, 0) else 0
+        return recentAdTimestamps().size
     }
 
+    /** Back-compat alias for the deprecated BallUnlock screens. */
+    fun adsWatchedToday(): Int = adsWatchedThisHour()
+
+    /** Minutes until the next ad becomes available (0 if available now). */
     fun minutesUntilNextAd(): Long {
         dataVersion; timeVersion
-        val lastTimestamp = PlatformStorage.getLong(AD, lastAdTimestampKey, 0L)
-        val msLeft = lastTimestamp + HOURLY_COOLDOWN_MS - PlatformStorage.currentTimeMs()
+        val ts = recentAdTimestamps().sorted()
+        if (ts.size < MAX_ADS_PER_HOUR) return 0
+        val msLeft = ts.first() + HOUR_MS - PlatformStorage.currentTimeMs()
         return if (msLeft > 0) (msLeft / 60_000L) + 1 else 0
     }
 
     fun recordAdWatched() {
-        val today = PlatformStorage.currentTimeMs() / 86_400_000L
-        val lastDay = PlatformStorage.getLong(AD, lastAdDayKey, -1L)
-        val watchedToday = if (lastDay == today) PlatformStorage.getInt(AD, adsWatchedTodayKey, 0) else 0
+        val now = PlatformStorage.currentTimeMs()
+        val updated = (recentAdTimestamps() + now).takeLast(MAX_ADS_PER_HOUR)
+        PlatformStorage.saveString(AD, recentAdTimestampsKey, updated.joinToString(","))
         PlatformStorage.saveInt(AD, unlockProgressKey, (unlockProgress + 2).coerceAtMost(100))
-        PlatformStorage.saveLong(AD, lastAdTimestampKey, PlatformStorage.currentTimeMs())
-        PlatformStorage.saveInt(AD, adsWatchedTodayKey, watchedToday + 1)
-        PlatformStorage.saveLong(AD, lastAdDayKey, today)
         notifyDataChanged()
     }
 
@@ -175,7 +197,75 @@ object Storage {
         notifyDataChanged()
     }
 
-    fun countCustomBalls(): Int = (0 until 5).count { loadCustomBall(it) != null }
+    fun countCustomBalls(): Int = (0 until SLOT_COUNT).count { loadCustomBall(it) != null }
+
+    /**
+     * Seeds slots 0 and 1 with a composed Classic and PokPok ball on first run.
+     * Guarded by a flag so deleting all custom balls won't silently re-add them.
+     */
+    fun ensureDefaultSlots() {
+        if (PlatformStorage.getBoolean(AD, defaultsSeededKey, false)) return
+        if (countCustomBalls() == 0) {
+            saveCustomBall(0, CustomBallConfig(BallType.Classic, BallType.Classic, BallType.Classic, 0, 1, 2))
+            saveCustomBall(1, CustomBallConfig(BallType.PokPok,  BallType.PokPok,  BallType.PokPok,  0, 1, 2))
+        }
+        PlatformStorage.saveBoolean(AD, defaultsSeededKey, true)
+    }
+
+    // --- Custom ball slot gating (0–1 free; 2–9 unlock at 30%/40%…100%) ---
+
+    fun isSlotUnlocked(index: Int): Boolean =
+        index < 2 || unlockProgress >= slotRequiredPercent(index)
+
+    fun slotRequiredPercent(index: Int): Int = if (index < 2) 0 else 30 + (index - 2) * 10
+
+    // --- Per-component unlock state (skins / tails / paddles) ---
+
+    fun isSkinUnlocked(type: BallType): Boolean   = isComponentUnlocked(type, unlockedSkinsKey)
+    fun isTailUnlocked(type: BallType): Boolean   = isComponentUnlocked(type, unlockedTailsKey)
+    fun isPaddleUnlocked(type: BallType): Boolean = isComponentUnlocked(type, unlockedPaddlesKey)
+
+    fun unlockSkin(type: BallType)   = addToCsvSet(unlockedSkinsKey, type.name)
+    fun unlockTail(type: BallType)   = addToCsvSet(unlockedTailsKey, type.name)
+    fun unlockPaddle(type: BallType) = addToCsvSet(unlockedPaddlesKey, type.name)
+
+    private fun isComponentUnlocked(type: BallType, key: String): Boolean {
+        dataVersion // subscribe
+        if (unlockProgress >= 100) return true
+        return when (BallStyleFactory.tierOf(type)) {
+            BallStyleFactory.Tier.Free    -> true
+            BallStyleFactory.Tier.Premium -> false
+            BallStyleFactory.Tier.Ad      -> readCsvSet(key).contains(type.name)
+        }
+    }
+
+    // --- Per-preset color unlock state ---
+
+    fun isColorUnlocked(presetIndex: Int): Boolean {
+        dataVersion // subscribe
+        if (presetIndex == CUSTOM_COLOR_INDEX) return unlockProgress >= 100
+        if (presetIndex in FREE_COLOR_INDICES) return true
+        if (unlockProgress >= 100) return true
+        return readCsvSet(unlockedColorsKey).contains(presetIndex.toString())
+    }
+
+    fun unlockColor(presetIndex: Int) = addToCsvSet(unlockedColorsKey, presetIndex.toString())
+
+    private fun readCsvSet(key: String): Set<String> {
+        dataVersion // subscribe
+        return PlatformStorage.getString(AD, key, "")
+            .split(",")
+            .filter { it.isNotEmpty() }
+            .toSet()
+    }
+
+    private fun addToCsvSet(key: String, value: String) {
+        val set = readCsvSet(key).toMutableSet()
+        if (set.add(value)) {
+            PlatformStorage.saveString(AD, key, set.joinToString(","))
+            notifyDataChanged()
+        }
+    }
 
     // --- Score position offsets ---
 

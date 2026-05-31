@@ -137,6 +137,23 @@ object BallStyleFactory {
         return renderer
     }
 
+    /** Tail-only preview renderer (invisible skin + Classic paddle), for composable carousels. */
+    fun buildTailOnlyRenderer(tailType: BallType, theme: ColorTheme): PuckRenderer {
+        val renderer = PuckRenderer(theme)
+        renderer.attach(InvisibleSkin(renderer), buildTail(tailType, renderer), ClassicLaunch(renderer))
+        return renderer
+    }
+
+    /** Paddle-only preview renderer (invisible skin/tail), primed + frozen for static preview. */
+    fun buildPaddleOnlyRenderer(paddleType: BallType, theme: ColorTheme): PuckRenderer {
+        val renderer = PuckRenderer(theme)
+        renderer.attach(InvisibleSkin(renderer), InvisibleTail(renderer), buildPaddle(paddleType, renderer))
+        renderer.effect.increaseCharge()
+        renderer.effect.frozen = true
+        renderer.effect.cbcCarouselMode = true
+        return renderer
+    }
+
     fun buildRenderer(type: BallType, theme: ColorTheme, existingRoll: RandomRoll? = null): PuckRenderer {
         val renderer = PuckRenderer(theme)
         val style = if (type == BallType.Random && existingRoll != null)
@@ -149,24 +166,20 @@ object BallStyleFactory {
 
     fun displayName(type: BallType): String = type.name
 
-    /** Returns the unlock threshold percentage, or null if always free. */
-    fun unlockThreshold(type: BallType): Int? = when (type) {
-        BallType.Classic, BallType.PokPok, BallType.Dragon, BallType.Axolotl, BallType.Cat -> null
-        BallType.Neon    -> 10
-        BallType.Ghost   -> 20
-        BallType.Fire    -> 30
-        BallType.Ice     -> 40
-        BallType.Galaxy  -> 50
-        BallType.Spinner -> 60
-        BallType.Metal   -> 70
-        BallType.Pixel   -> 80
-        BallType.Rainbow -> 90
-        BallType.Prism, BallType.Plasma, BallType.Random -> 100
-    }
+    // ── Unlock tiers ────────────────────────────────────────────────────────
+    // Free: always unlocked.  Ad: each component individually unlockable via a
+    // rewarded ad.  Premium: unlocked only when unlockProgress reaches 100%.
+    enum class Tier { Free, Ad, Premium }
 
-    fun isUnlocked(type: BallType, unlockProgress: Int): Boolean {
-        val threshold = unlockThreshold(type) ?: return true
-        return unlockProgress >= threshold
+    val FREE_TYPES    = setOf(BallType.Classic, BallType.PokPok)
+    // No skin/tail/paddle is gated behind 100% — every non-free component is individually
+    // ad-unlockable. (The only 100%-completion gate left is the custom "any color" in the CCP.)
+    val PREMIUM_TYPES = emptySet<BallType>()
+
+    fun tierOf(type: BallType): Tier = when (type) {
+        in FREE_TYPES    -> Tier.Free
+        in PREMIUM_TYPES -> Tier.Premium
+        else             -> Tier.Ad
     }
 
     fun all(): List<BallType> = BallType.entries

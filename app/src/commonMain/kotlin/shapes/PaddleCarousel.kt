@@ -10,6 +10,8 @@ class PaddleCarousel : ComponentCarousel() {
 
     override val animateBounce: Boolean = false
 
+    override fun isComponentUnlocked(type: BallType): Boolean = utility.Storage.isPaddleUnlocked(type)
+
     override fun buildRendererForType(type: BallType, renderer: PuckRenderer): PuckRenderer {
         val skin = InvisibleSkin(renderer)
         val tail = InvisibleTail(renderer)

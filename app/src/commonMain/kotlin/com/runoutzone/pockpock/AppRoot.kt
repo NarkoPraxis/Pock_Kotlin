@@ -41,7 +41,7 @@ import utility.edgeSwipeBack
 /** Provides the current dark-mode flag to any composable in the tree. */
 val LocalDarkMode = compositionLocalOf { false }
 
-private enum class Screen { MainMenu, Game, Settings, BallUnlock, ScoreCalibration, CustomBallCreator, CustomColorPicker }
+private enum class Screen { MainMenu, Game, Settings, ScoreCalibration, CustomBallCreator, CustomColorPicker }
 
 @Composable
 fun AppRoot() {
@@ -114,10 +114,6 @@ fun AppRoot() {
                             Settings.isDemoMode = false
                             navController.navigate(Screen.Settings.name)
                         },
-                        onBallsTapped = {
-                            Settings.isDemoMode = false
-                            navController.navigate(Screen.BallUnlock.name)
-                        },
                         onCustomBallTapped = {
                             Settings.isDemoMode = false
                             navController.navigate(Screen.CustomBallCreator.name)
@@ -143,11 +139,6 @@ fun AppRoot() {
                 composable(Screen.ScoreCalibration.name) {
                     Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStack() }) {
                         ScoreCalibrationScreen(onBack = { navController.popBackStack() })
-                    }
-                }
-                composable(Screen.BallUnlock.name) {
-                    Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStack() }) {
-                        BallUnlockScreen(onBack = { navController.popBackStack() })
                     }
                 }
                 composable(Screen.CustomBallCreator.name) {

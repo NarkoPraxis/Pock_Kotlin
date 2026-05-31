@@ -8,6 +8,7 @@ import androidx.preference.PreferenceManager
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.RequestConfiguration
 import gameobjects.Settings
+import utility.AdActivityProvider
 import utility.PurchaseManager
 import utility.Sounds
 import utility.Storage
@@ -46,6 +47,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        if (AdActivityProvider.activity === this) AdActivityProvider.activity = null
         PreferenceManager.getDefaultSharedPreferences(this)
             .unregisterOnSharedPreferenceChangeListener(darkModeListener)
         Sounds.pauseAll()
@@ -53,6 +55,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        AdActivityProvider.activity = this
         PreferenceManager.getDefaultSharedPreferences(this)
             .registerOnSharedPreferenceChangeListener(darkModeListener)
         if (Storage.darkMode != appliedDarkMode) {

@@ -100,7 +100,12 @@ fun MenuDemoCanvas() {
 
                     // Set ball types before initialize() so applyBallStyles() uses them
                     val unlocked = BallType.entries
-                        .filter { it != BallType.Random && BallStyleFactory.isUnlocked(it, Settings.unlockProgress) }
+                        .filter {
+                            it != BallType.Random &&
+                            utility.Storage.isSkinUnlocked(it) &&
+                            utility.Storage.isTailUnlocked(it) &&
+                            utility.Storage.isPaddleUnlocked(it)
+                        }
                         .shuffled()
                     Settings.highBallType = unlocked.getOrElse(0) { BallType.Classic }
                     Settings.lowBallType  = unlocked.getOrElse(1) { BallType.Classic }

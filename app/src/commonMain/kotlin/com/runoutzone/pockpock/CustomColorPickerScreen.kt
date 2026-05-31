@@ -36,8 +36,11 @@ import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import kotlinx.coroutines.delay
+import com.runoutzone.pockpock.components.AdLimitPopup
+import com.runoutzone.pockpock.components.MeterLockedPopup
 import shapes.ColorCarousel
 import shapes.ScrollSnapCarousel
+import utility.AdUnlock
 import utility.CcpPreset
 import utility.PaintBucket
 import utility.Storage
@@ -123,6 +126,21 @@ fun CustomColorPickerScreen(onBack: () -> Unit, onNavigateToCbc: () -> Unit) {
     var longPressIdx      by remember { mutableIntStateOf(-1) }
     var longPressStart    by remember { mutableIntStateOf(-1) }
     var longPressProgress by remember { mutableFloatStateOf(0f) }
+
+    // "Complete the meter" popup (custom color tapped below 100%) and ad-limit popup.
+    var meterPopupVisible by remember { mutableStateOf(false) }
+    var adLimitPopupVisible by remember { mutableStateOf(false) }
+
+    // Locked color TAPPED (not merely scrolled to): custom → meter popup; ad-color → ad / limit popup.
+    val handleLockedColor: (Int) -> Unit = { index ->
+        if (index == ColorCarousel.CUSTOM_IDX) {
+            meterPopupVisible = true
+        } else if (Storage.canWatchAdNow()) {
+            AdUnlock.watchAdToUnlock(grant = { Storage.unlockColor(index) }) { /* Storage notifies → recompose */ }
+        } else {
+            adLimitPopupVisible = true
+        }
+    }
 
     // ── Layout helpers ────────────────────────────────────────────────────────
     fun carouselH() = if (Settings.screenRatio > 0f) Settings.screenRatio * 5f else 80f
@@ -409,7 +427,10 @@ fun CustomColorPickerScreen(onBack: () -> Unit, onNavigateToCbc: () -> Unit) {
                                                     val carId = carouselIdAtY(y)
                                                     if (carId >= 0) {
                                                         val car = carousel(carId)
-                                                        if (car.isCustomSelected && !car.isCustomSliderActive) {
+                                                        val idx = car.snapIndex
+                                                        if (!car.isUnlocked(idx)) {
+                                                            handleLockedColor(idx)
+                                                        } else if (car.isCustomSelected && !car.isCustomSliderActive) {
                                                             car.tryActivateCustomSlider()
                                                             updatePreviewState(carId)
                                                         }
@@ -530,6 +551,13 @@ fun CustomColorPickerScreen(onBack: () -> Unit, onNavigateToCbc: () -> Unit) {
             Button(onClick = onNavigateToCbc, colors = overlayBtnColors) {
                 Text(text = "STYLE", fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
+        }
+
+        if (meterPopupVisible) {
+            MeterLockedPopup(currentPercent = Storage.unlockProgress) { meterPopupVisible = false }
+        }
+        if (adLimitPopupVisible) {
+            AdLimitPopup(Storage.minutesUntilNextAd()) { adLimitPopupVisible = false }
         }
     }
 }

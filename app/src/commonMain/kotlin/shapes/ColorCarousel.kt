@@ -52,6 +52,7 @@ class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
     var hasCustomSelection: Boolean = false
         private set
 
+
     val h: Float get() = Settings.screenRatio * 5f
     val w: Float get() = Settings.screenWidth
 
@@ -59,13 +60,13 @@ class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
         if (isUpsideDown) 2f * Settings.middleX - screenX else screenX
 
     override fun onSnappedTo(index: Int) {
+        // Scrolling onto a color only browses it; locked colors are handled on an explicit tap
+        // (see CustomColorPickerScreen) so merely scrolling never triggers an ad or popup.
         if (index == CUSTOM_IDX) {
-            isCustomSliderActive = true
+            isCustomSliderActive = isUnlocked(index)
         } else {
             isCustomSliderActive = false
-            if (isUnlocked(index)) {
-                currentHue = PRESETS[index]?.hue ?: currentHue
-            }
+            if (isUnlocked(index)) currentHue = PRESETS[index]?.hue ?: currentHue
         }
     }
 
@@ -79,14 +80,12 @@ class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
     }
 
     fun tryActivateCustomSlider() {
-        if (isCustomSelected) isCustomSliderActive = true
+        if (isCustomSelected && isUnlocked(CUSTOM_IDX)) isCustomSliderActive = true
     }
 
-    fun isUnlocked(index: Int): Boolean = when {
-        index == CUSTOM_IDX -> Settings.unlockProgress >= CUSTOM_UNLOCK_PCT
-        index in 0..8       -> Settings.unlockProgress >= (PRESETS[index]?.unlockPct ?: 0)
-        else                -> false
-    }
+    // Red (0), Blue (5), Purple/shield (6) free; the other presets are individually ad-unlockable;
+    // the custom slider (index 9) is gated behind 100% completion. Resolved in Storage.
+    fun isUnlocked(index: Int): Boolean = utility.Storage.isColorUnlocked(index)
 
     fun initializeToHue(hue: Float) {
         currentHue = hue

@@ -65,7 +65,16 @@ abstract class ComponentCarousel : ScrollSnapCarousel() {
 
     abstract fun buildRendererForType(type: BallType, renderer: PuckRenderer): PuckRenderer
 
-    fun isUnlocked(type: BallType): Boolean = BallStyleFactory.isUnlocked(type, Settings.unlockProgress)
+    /** Per-component unlock check; each subclass consults its own Storage set. */
+    abstract fun isComponentUnlocked(type: BallType): Boolean
+
+    /** Fired when the carousel settles on a locked type: ad-tier → unlock flow, premium → popup. */
+    var onLockedComponentTapped: ((type: BallType) -> Unit)? = null
+
+    override fun onSnappedTo(index: Int) {
+        val type = availableTypes.getOrNull(index) ?: return
+        if (!isComponentUnlocked(type)) onLockedComponentTapped?.invoke(type)
+    }
 
     fun DrawScope.drawTo(centerY: Float, frame: Int) {
         if (Settings.screenRatio == 0f) return
@@ -170,7 +179,7 @@ abstract class ComponentCarousel : ScrollSnapCarousel() {
 
             with(renderer) { draw() }
 
-            if (!isUnlocked(type)) drawLock(slotCenterX, puckY, pr)
+            if (!isComponentUnlocked(type)) drawLock(slotCenterX, puckY, pr)
 
             canvas.restore()
         }

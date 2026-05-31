@@ -25,7 +25,6 @@ fun MainMenuScreen(
     onPlayTapped: () -> Unit,
     onSinglePlayerTapped: () -> Unit,
     onSettingsTapped: () -> Unit,
-    onBallsTapped: () -> Unit,
     onCustomBallTapped: () -> Unit,
     onCustomColorTapped: () -> Unit,
 ) {
@@ -70,7 +69,6 @@ fun MainMenuScreen(
             MenuButton(text = stringResource(Res.string.play), onClick = onPlayTapped)
             MenuButton(text = stringResource(Res.string.play_solo), onClick = onSinglePlayerTapped)
             MenuButton(text = stringResource(Res.string.settings), onClick = onSettingsTapped)
-            MenuButton(text = stringResource(Res.string.ball_types), onClick = onBallsTapped)
             MenuButton(text = stringResource(Res.string.custom_ball), onClick = onCustomBallTapped)
             MenuButton(text = stringResource(Res.string.custom_color), onClick = onCustomColorTapped)
             PlatformMenuExtras()
