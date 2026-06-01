@@ -72,8 +72,8 @@ object Storage {
 
     val unlockProgress: Int get() {
         dataVersion // subscribe
-//        return 100 // don't fix, manual, intentional override.
-        return PlatformStorage.getInt(AD, unlockProgressKey, 0)
+        return 100 // don't fix, manual, intentional override.
+        //return PlatformStorage.getInt(AD, unlockProgressKey, 0)
     }
 
     /** Timestamps of ads watched within the last rolling hour (cap [MAX_ADS_PER_HOUR]). */

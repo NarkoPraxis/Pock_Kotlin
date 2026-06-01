@@ -3,6 +3,7 @@ package com.runoutzone.pockpock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -12,8 +13,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -28,8 +31,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.runoutzone.pockpock.components.AdLimitPopup
 import com.runoutzone.pockpock.components.OptionLockState
 import com.runoutzone.pockpock.components.StyleOptionButton
@@ -49,6 +54,7 @@ import utility.edgeSwipeBack
 import kotlin.math.PI
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 private const val ID_SKIN = 0
@@ -60,6 +66,11 @@ private const val STATE_SHIELD = 1
 private const val STATE_INERT = 2
 
 private val COMPONENT_TYPES: List<BallType> = BallType.entries.filter { it != BallType.Random }
+
+// Some animal styles reuse another style's paddle (Dragon -> FireLaunch, Cat -> RainbowLaunch).
+// The paddle carousel shows each distinct paddle once so it isn't listed/unlocked twice.
+private val PADDLE_ALIAS_TYPES = setOf(BallType.Dragon, BallType.Cat)
+private val PADDLE_TYPES: List<BallType> = COMPONENT_TYPES.filter { it !in PADDLE_ALIAS_TYPES }
 
 private fun buildPartRenderer(component: Int, type: BallType, theme: ColorTheme): PuckRenderer {
     val r = when (component) {
@@ -101,6 +112,11 @@ fun CustomBallCreatorScreen(onBack: () -> Unit, onNavigateToCcp: () -> Unit) {
     var ranks by remember { mutableStateOf(Triple(0, 1, 2)) }
     var previewTheme by remember { mutableStateOf(ColorTheme.Cold) }
     var previewState by remember { mutableIntStateOf(STATE_NORMAL) }
+
+    // Carousel reorder-by-drag state. Visual order top->bottom mirrors z-rank (front = top).
+    var draggingComp by remember { mutableIntStateOf(-1) }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    var rowHeightPx by remember { mutableFloatStateOf(0f) }
 
     var meterPopupVisible by remember { mutableStateOf(false) }
     var adLimitPopupVisible by remember { mutableStateOf(false) }
@@ -166,16 +182,18 @@ fun CustomBallCreatorScreen(onBack: () -> Unit, onNavigateToCcp: () -> Unit) {
 
     fun rankOf(id: Int) = when (id) { ID_SKIN -> ranks.first; ID_TAIL -> ranks.second; else -> ranks.third }
 
-    fun bringToFront(id: Int) {
-        val others = (0..2).filter { it != id }.sortedBy { rankOf(it) }
-        val newRanks = IntArray(3)
-        newRanks[id] = 2
-        newRanks[others[0]] = 0
-        newRanks[others[1]] = 1
-        ranks = Triple(newRanks[0], newRanks[1], newRanks[2])
-        rebuildPreview()
-        trySave()
+    // Display order, top -> bottom (front piece on top = highest z-rank).
+    fun displayOrder(): List<Int> = (0..2).sortedByDescending { rankOf(it) }
+
+    // Swap the z-ranks of two components (an adjacent move during a reorder drag).
+    fun swapRanks(a: Int, b: Int) {
+        val arr = intArrayOf(ranks.first, ranks.second, ranks.third)
+        val tmp = arr[a]; arr[a] = arr[b]; arr[b] = tmp
+        ranks = Triple(arr[0], arr[1], arr[2])
     }
+
+    fun typeOf(id: Int) = when (id) { ID_SKIN -> skinType; ID_TAIL -> tailType; else -> paddleType }
+    fun labelOf(id: Int) = when (id) { ID_SKIN -> "SKIN"; ID_TAIL -> "TAIL"; else -> "PADDLE" }
 
     // Animation ticker
     LaunchedEffect(Unit) {
@@ -214,6 +232,7 @@ fun CustomBallCreatorScreen(onBack: () -> Unit, onNavigateToCcp: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor)
+            .statusBarsPadding()
             .onSizeChanged { rootW = it.width; rootH = it.height }
             .edgeSwipeBack(onBack)
     ) {
@@ -255,7 +274,74 @@ fun CustomBallCreatorScreen(onBack: () -> Unit, onNavigateToCcp: () -> Unit) {
                     }
                 }
 
-                // Toggles
+                // Slot grid (2 rows of 5)
+                SlotGrid(
+                    savedBalls = savedBalls,
+                    selectedSlot = selectedSlot,
+                    previewTheme = previewTheme,
+                    frame = frame,
+                    isDark = isDark,
+                    density = density,
+                    onSlotTap = { idx ->
+                        val existing = savedBalls.firstOrNull { it.first == idx }
+                        if (existing != null) { selectedSlot = idx; loadSlotIntoCarousels(existing.second) }
+                        else if (allUnlocked()) {
+                            Storage.saveCustomBall(idx, currentConfig())
+                            savedBalls = loadBalls()
+                            selectedSlot = idx
+                        }
+                    },
+                    onSlotDelete = { idx ->
+                        Storage.deleteCustomBall(idx)
+                        savedBalls = loadBalls()
+                        if (selectedSlot == idx) selectedSlot = savedBalls.firstOrNull()?.first ?: 0
+                    }
+                )
+
+                // Component carousels — drag a row vertically to reorder z-layers (top = front).
+                // A predominantly vertical drag reorders; horizontal drags scroll the styles.
+                for (id in displayOrder()) {
+                    key(id) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onSizeChanged { if (it.height > 0) rowHeightPx = it.height.toFloat() }
+                                .zIndex(if (id == draggingComp) 1f else 0f)
+                                .offset { IntOffset(0, if (id == draggingComp) dragOffsetY.roundToInt() else 0) }
+                                .pointerInput(id) {
+                                    detectDragGestures(
+                                        onDragStart = { draggingComp = id; dragOffsetY = 0f },
+                                        onDragEnd = { draggingComp = -1; dragOffsetY = 0f; trySave() },
+                                        onDragCancel = { draggingComp = -1; dragOffsetY = 0f }
+                                    ) { change, drag ->
+                                        change.consume()
+                                        dragOffsetY += drag.y
+                                        val rh = if (rowHeightPx > 0f) rowHeightPx else 1f
+                                        val ord = displayOrder()
+                                        val idx = ord.indexOf(id)
+                                        if (dragOffsetY > rh / 2f && idx < ord.lastIndex) {
+                                            swapRanks(id, ord[idx + 1]); dragOffsetY -= rh; rebuildPreview()
+                                        } else if (dragOffsetY < -rh / 2f && idx > 0) {
+                                            swapRanks(id, ord[idx - 1]); dragOffsetY += rh; rebuildPreview()
+                                        }
+                                    }
+                                }
+                        ) {
+                            ComponentCarouselRow(
+                                component = id,
+                                label = labelOf(id),
+                                selectedType = typeOf(id),
+                                theme = previewTheme,
+                                state = previewState,
+                                frame = frame,
+                                density = density,
+                                onTap = { onComponentTapped(id, it) }
+                            )
+                        }
+                    }
+                }
+
+                // Preview/state toggles + palette link — pinned to the bottom of the screen.
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -285,38 +371,6 @@ fun CustomBallCreatorScreen(onBack: () -> Unit, onNavigateToCcp: () -> Unit) {
                         Text("PALETTE", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-
-                // Slot grid (2 rows of 5)
-                SlotGrid(
-                    savedBalls = savedBalls,
-                    selectedSlot = selectedSlot,
-                    previewTheme = previewTheme,
-                    frame = frame,
-                    isDark = isDark,
-                    density = density,
-                    onSlotTap = { idx ->
-                        val existing = savedBalls.firstOrNull { it.first == idx }
-                        if (existing != null) { selectedSlot = idx; loadSlotIntoCarousels(existing.second) }
-                        else if (allUnlocked()) {
-                            Storage.saveCustomBall(idx, currentConfig())
-                            savedBalls = loadBalls()
-                            selectedSlot = idx
-                        }
-                    },
-                    onSlotDelete = { idx ->
-                        Storage.deleteCustomBall(idx)
-                        savedBalls = loadBalls()
-                        if (selectedSlot == idx) selectedSlot = savedBalls.firstOrNull()?.first ?: 0
-                    }
-                )
-
-                // Component carousels
-                ComponentCarouselRow(ID_SKIN, "SKIN", skinType, rankOf(ID_SKIN), previewTheme, previewState, frame, density,
-                    onTap = { onComponentTapped(ID_SKIN, it) }, onBringToFront = { bringToFront(ID_SKIN) })
-                ComponentCarouselRow(ID_TAIL, "TAIL", tailType, rankOf(ID_TAIL), previewTheme, previewState, frame, density,
-                    onTap = { onComponentTapped(ID_TAIL, it) }, onBringToFront = { bringToFront(ID_TAIL) })
-                ComponentCarouselRow(ID_PADDLE, "PADDLE", paddleType, rankOf(ID_PADDLE), previewTheme, previewState, frame, density,
-                    onTap = { onComponentTapped(ID_PADDLE, it) }, onBringToFront = { bringToFront(ID_PADDLE) })
             }
         }
 
@@ -383,13 +437,14 @@ private fun SlotCell(
 ) {
     val shape = RoundedCornerShape(10.dp)
     val bg = if (isDark) Color(0xFF1A2A3E) else Color(0xFFE8E8F0)
-    val border = if (selected) Color(0xFF52B6F2) else Color(0xFFF25252)
+    // Selected slot is outlined in the current preview color; unselected slots have no border.
+    val selectedBorder = Color(theme.main.primary)
     Box(
         modifier = Modifier
             .size(sizeDp)
             .clip(shape)
             .background(bg)
-            .then(if (unlocked) Modifier.border(if (selected) 3.dp else 1.5.dp, border, shape) else Modifier)
+            .then(if (unlocked && selected) Modifier.border(3.dp, selectedBorder, shape) else Modifier)
             .pointerInput(unlocked, config) {
                 if (unlocked) detectTapGestures(onTap = { onTap() }, onLongPress = { if (config != null) onLongPress() })
             },
@@ -424,34 +479,23 @@ private fun ComponentCarouselRow(
     component: Int,
     label: String,
     selectedType: BallType,
-    layerRank: Int,
     theme: ColorTheme,
     state: Int,
     frame: Int,
     density: androidx.compose.ui.unit.Density,
     onTap: (BallType) -> Unit,
-    onBringToFront: () -> Unit,
 ) {
     val itemDp = with(density) { (Settings.screenRatio * 3.6f).toDp() }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = if (LocalDarkMode.current) PaintBucket.white else Color(0xFF333333),
                 fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Box(modifier = Modifier.weight(1f))
-            // Layer order: tap to bring this component to the front
-            Text(
-                text = if (layerRank == 2) "front" else "▲ front",
-                color = Color(0xFF52B6F2),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.pointerInput(Unit) { detectTapGestures { onBringToFront() } }
-            )
         }
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            for (type in COMPONENT_TYPES) {
+            for (type in (if (component == ID_PADDLE) PADDLE_TYPES else COMPONENT_TYPES)) {
                 val unlocked = isComponentUnlocked(component, type)
                 val lockState = when {
                     type == selectedType -> OptionLockState.UnlockedSelected
@@ -480,7 +524,10 @@ private fun ComponentCarouselRow(
                         renderer.baseFillColor = theme.main.primary
                         renderer.effectEnabled = component == ID_PADDLE
                         if (component == ID_PADDLE) {
-                            renderer.effect.cbcOrbitAngleDeg = (frame * 1.2f) % 360f
+                            // Static, centered paddle in the carousel button (no orbit, no charge animation).
+                            renderer.effect.cbcOrbitAngleDeg = Float.NaN
+                            renderer.effect.cbcCarouselMode = true
+                            renderer.effect.frozen = true
                         }
                         with(renderer) { draw() }
                     }

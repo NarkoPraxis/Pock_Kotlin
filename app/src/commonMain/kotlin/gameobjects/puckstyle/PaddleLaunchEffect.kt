@@ -161,6 +161,9 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
             }
         } else if (_phase != ChargePhase.Idle) {
             drawChargingPaddle(scope)
+        } else if (cbcCarouselMode) {
+            // CBC carousel: draw a static, centered paddle even while idle so the button isn't empty.
+            drawChargingPaddle(scope)
         } else if (phase == ChargePhase.Idle) {
             drawIdlePaddle(scope)
         }

@@ -220,6 +220,7 @@ Sounds are spatialized via `SoundSpatializer` (shared): a 6-zone pitch grid (`ra
   ```
 - **KMP expect/actual**: When adding a new platform capability, declare `expect` in `commonMain`, `actual` in both `androidMain` and `iosMain`. iOS actuals may be stubs initially — mark them clearly.
 - **`PaintBucket` Android extensions**: Android-specific `Paint` objects are extension properties defined in `PaintBucketAndroid.kt` (`androidMain`), not in the `PaintBucket` object itself. New Android paints go there; new cross-platform colors go in the `PaintBucket` object.
+- **Popups/dialogs must theme for dark & light mode**: any `AlertDialog`/popup (e.g. `components/AdLimitPopup`, `components/MeterLockedPopup`) must read `LocalDarkMode.current` and set `containerColor` + `titleContentColor`/`textContentColor` (and explicit `color` on `Text`/button labels) so text stays readable in both modes. Pattern: `bg = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight`, `fg = if (isDark) PaintBucket.white else Color(0xFF222222)`. Never hardcode a single `containerColor` (e.g. `menuButtonDark`) — that's the bug that made popups dark-on-dark in light mode. New popups should follow this from the start.
 
 ---
 

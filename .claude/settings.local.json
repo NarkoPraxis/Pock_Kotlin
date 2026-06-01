@@ -18,7 +18,9 @@
       "Bash(Get-ChildItem \"C:\\\\Users\\\\zwery\\\\OneDrive\\\\Documents\\\\Android Studio\\\\Pock_Kotlin\\\\app\\\\src\\\\main\\\\java\" -Recurse -Filter \"*.kt\")",
       "Bash(Select-Object FullName)",
       "Bash(./gradlew :app:compileKotlinIosSimulatorArm64 :app:compileDebugKotlin)",
-      "Bash(./gradlew :app:assembleDebug)"
+      "Bash(./gradlew :app:assembleDebug)",
+      "Bash(git show *)",
+      "Read(//tmp/**)"
     ]
   }
 }
