@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Person-in-circle glyph — extracted from Plans/UIOverhaul/Screens/Main.svg ("Play a Friend" button).
+     Original art centered at (931.72, 1732.26) r=51.8; re-origined via group translate to a
+     103.6 x 103.6 viewport. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="103.6dp"
+    android:height="103.6dp"
+    android:viewportWidth="103.6"
+    android:viewportHeight="103.6">
+
+    <group
+        android:translateX="-879.92"
+        android:translateY="-1680.46">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M931.72,1680.46c-28.61,0,-51.8,23.19,-51.8,51.8s23.19,51.8,51.8,51.8,51.8,-23.19,51.8,-51.8,-23.19,-51.8,-51.8,-51.8ZM931.72,1766.4c-13.45,0,-24.35,-1.55,-24.35,-14.99,0,-9.36,5.29,-17.49,13.04,-21.56,-4.01,-3.28,-6.56,-8.26,-6.56,-13.84,0,-9.87,8,-17.87,17.87,-17.87s17.87,8,17.87,17.87c0,5.58,-2.56,10.56,-6.56,13.84,7.75,4.07,13.04,12.2,13.04,21.56,0,13.45,-10.9,14.99,-24.35,14.99Z" />
+    </group>
+</vector>

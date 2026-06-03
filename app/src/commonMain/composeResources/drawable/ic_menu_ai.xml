@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Computer/monitor-in-circle glyph — extracted from Plans/UIOverhaul/Screens/Main.svg ("Play AI" button).
+     Original art centered at (1024.51, 1732.26) r=51.8; re-origined via group translate to a
+     103.6 x 103.6 viewport. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="103.6dp"
+    android:height="103.6dp"
+    android:viewportWidth="103.6"
+    android:viewportHeight="103.6">
+
+    <group
+        android:translateX="-972.71"
+        android:translateY="-1680.46">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M1024.51,1680.46c-28.61,0,-51.8,23.19,-51.8,51.8s23.19,51.8,51.8,51.8,51.8,-23.19,51.8,-51.8,-23.19,-51.8,-51.8,-51.8ZM1059.83,1751.15c0,5.71,-4.63,10.34,-10.34,10.34h-4.38v3.11l-40.16,-0.1v-3.01h-5.4c-5.72,0,-10.35,-4.63,-10.35,-10.35v-29.47c0,-6.55,5.31,-11.86,11.86,-11.86h20.12c0,-7.11,3.54,-10.24,6.71,-11.62,-0.08,-0.35,-0.12,-0.72,-0.12,-1.09,0,-2.78,2.26,-5.04,5.04,-5.04s5.04,2.26,5.04,5.04,-2.26,5.04,-5.04,5.04c-1.27,0,-2.43,-0.47,-3.32,-1.25,-0.95,1.93,-1.73,4.78,-1.73,8.93h20.21c6.55,0,11.86,5.31,11.86,11.86v29.48Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M1044.6,1718.72h-40.18c-2.73,0,-4.96,2.22,-4.96,4.96v25.23c0,2.03,1.65,3.67,3.67,3.67h42.76c2.02,0,3.67,-1.64,3.67,-3.67v-25.24c0,-2.73,-2.23,-4.96,-4.96,-4.96Z" />
+    </group>
+</vector>

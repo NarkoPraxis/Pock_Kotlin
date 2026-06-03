@@ -11,6 +11,8 @@
     <!-- Main menu -->
     <string name="play">PLAY</string>
     <string name="play_solo">PLAY SOLO</string>
+    <string name="play_a_friend">Play a Friend</string>
+    <string name="play_ai">Play AI</string>
     <string name="settings">SETTINGS</string>
     <string name="ball_types">BALL TYPES</string>
     <string name="share">Share</string>

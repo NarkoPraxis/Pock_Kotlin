@@ -68,6 +68,20 @@ object PaintBucket {
     /** Light-mode menu button fill. */
     var menuButtonLight: Color = Color(0xFFe2d1fa)
 
+    // ── Menu-chrome brand accents (fixed; never themed, never hue-shifted) ──
+    // These mirror the *default* player primary/secondary literals but live as
+    // immutable vals so applyPlayerHues() and the dark-mode toggle never touch
+    // them. Used by the redesigned MainMenuScreen (Main.svg) chrome.
+
+    /** Main-menu button fill / left icon pill (brand blue). */
+    val menuAccentBlue: Color = Color(0xFF52B6F2)
+    /** Softer brand blue (highlights / accents). */
+    val menuAccentBlueSoft: Color = Color(0xFF9DD3F5)
+    /** Main-menu progress/customize pill (brand red). */
+    val menuAccentRed: Color = Color(0xFFF25252)
+    /** Softer brand red (highlights / accents). */
+    val menuAccentRedSoft: Color = Color(0xFFF59DA0)
+
     // ── UI accent colors ───────────────────────────────────────────────────────
 
     /** Error/danger red — reset button, muted-on indicator. */

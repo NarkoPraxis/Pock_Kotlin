@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings gear — converted from Plans/UIOverhaul/Icons/Icon_Settings.svg (viewBox 85.36 x 84.38).
+     Authored white; recolor at the call site via ColorFilter.tint if needed. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="85.36dp"
+    android:height="84.38dp"
+    android:viewportWidth="85.36"
+    android:viewportHeight="84.38">
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M78.21,35.81l7.15,-7.08c-4.81,-7.99,-4.38,-7.28,-9.19,-15.27l-9.97,2.4c-4.47,-2.47,-7.05,-3.9,-11.51,-6.38l-2.82,-9.48h-18.38l-2.82,9.48c-4.47,2.47,-7.05,3.9,-11.51,6.38l-9.97,-2.4c-4.81,7.99,-4.38,7.28,-9.19,15.27l7.15,7.08v12.75l-7.15,7.08c4.81,7.99,4.38,7.28,9.19,15.27l9.97,-2.4c4.47,2.47,7.05,3.9,11.51,6.38l2.82,9.48h18.38l2.82,-9.48c4.47,-2.47,7.05,-3.9,11.51,-6.38l9.97,2.4c4.81,-7.99,4.38,-7.28,9.19,-15.27l-7.15,-7.08v-12.75ZM42.68,64.13c-12.63,0,-22.87,-9.82,-22.87,-21.94s10.24,-21.94,22.87,-21.94,22.87,9.82,22.87,21.94,-10.24,21.94,-22.87,21.94Z" />
+</vector>

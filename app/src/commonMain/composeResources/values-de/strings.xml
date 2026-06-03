@@ -11,6 +11,8 @@
     <!-- Main menu -->
     <string name="play">Spielen</string>
     <string name="play_solo">Alleine spielen</string>
+    <string name="play_a_friend">Gegen Freund</string>
+    <string name="play_ai">Gegen KI</string>
     <string name="settings">Einstellungen</string>
     <string name="ball_types">Bälle</string>
     <string name="share">Teilen</string>

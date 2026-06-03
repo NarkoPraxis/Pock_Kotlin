@@ -43,6 +43,7 @@ import com.google.android.gms.ads.OnUserEarnedRewardListener
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import gameobjects.Settings
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
 import utility.PaintBucket
@@ -52,53 +53,43 @@ import utility.Sounds
 import utility.Storage
 
 @Composable
-actual fun PlatformMenuExtras() {
+actual fun PlatformShareButton(modifier: Modifier) {
     val context = LocalContext.current
     val activity = context as? Activity ?: return
-
-    var languageFlag by remember { mutableStateOf(getCurrentLanguageFlag()) }
-    val isDark = LocalDarkMode.current
 
     val strShareThanks = stringResource(Res.string.share_thanks)
     val strShareAlreadyClaimed = stringResource(Res.string.share_already_claimed)
 
-    val menuButtonColors = ButtonDefaults.buttonColors(
-        containerColor = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuButtonLight,
-        contentColor = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark,
-        disabledContainerColor = if (isDark) PaintBucket.segmentInactiveDark else Color(0xFFE8E0FF),
-        disabledContentColor = if (isDark) Color(0xFF888899) else Color(0xFF8877AA)
-    )
-
-    // Ad-watching has moved into the Custom Ball Creator / Color Picker (tap a locked option).
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Button(
-            onClick = {
-                ShareHelper.shareAppPromo(activity) {
-                    if (Storage.shareRewardClaimed) {
-                        Toast.makeText(activity, strShareAlreadyClaimed, Toast.LENGTH_SHORT).show()
-                    } else {
-                        Storage.markShareRewardClaimed()
-                        Storage.addBonusProgress(10)
-                        Settings.unlockProgress = Storage.unlockProgress
-                        Toast.makeText(activity, strShareThanks, Toast.LENGTH_SHORT).show()
-                    }
+    com.runoutzone.pockpock.menu.MenuIconButton(
+        painter = painterResource(Res.drawable.ic_menu_share),
+        contentDescription = stringResource(Res.string.share),
+        modifier = modifier,
+        onClick = {
+            ShareHelper.shareAppPromo(activity) {
+                if (Storage.shareRewardClaimed) {
+                    Toast.makeText(activity, strShareAlreadyClaimed, Toast.LENGTH_SHORT).show()
+                } else {
+                    Storage.markShareRewardClaimed()
+                    Storage.addBonusProgress(10)
+                    Settings.unlockProgress = Storage.unlockProgress
+                    Toast.makeText(activity, strShareThanks, Toast.LENGTH_SHORT).show()
                 }
-            },
-            modifier = Modifier.width(200.dp),
-            colors = menuButtonColors
-        ) {
-            Text(stringResource(Res.string.share))
+            }
         }
+    )
+}
 
-        TextButton(onClick = {
-            showLanguagePicker(activity) { languageFlag = getCurrentLanguageFlag() }
-        }) {
-            Text(languageFlag, fontSize = 24.sp)
-        }
-    }
+@Composable
+actual fun PlatformLanguageButton(modifier: Modifier) {
+    val context = LocalContext.current
+    val activity = context as? Activity ?: return
+
+    com.runoutzone.pockpock.menu.MenuIconButton(
+        painter = painterResource(Res.drawable.ic_menu_localization),
+        contentDescription = stringResource(Res.string.language),
+        modifier = modifier,
+        onClick = { showLanguagePicker(activity) {} }
+    )
 }
 
 @Composable
@@ -266,18 +257,6 @@ private fun loadRewardedAd(activity: Activity, onLoaded: (RewardedAd?) -> Unit) 
 private fun canLoadAdNow(): Boolean {
     if (Storage.adsWatchedToday() >= 5) return false
     return Storage.minutesUntilNextAd() == 0L
-}
-
-private fun getCurrentLanguageFlag(): String {
-    val locale = AppCompatDelegate.getApplicationLocales()[0]
-    return when (locale?.language) {
-        "de" -> "🇩🇪"
-        "es" -> "🇪🇸"
-        "fr" -> "🇫🇷"
-        "ja" -> "🇯🇵"
-        "zh" -> "🇨🇳"
-        else -> if (java.util.Locale.getDefault().country == "US") "🇺🇸" else "🇬🇧"
-    }
 }
 
 private fun showLanguagePicker(activity: Activity, onSelected: () -> Unit) {

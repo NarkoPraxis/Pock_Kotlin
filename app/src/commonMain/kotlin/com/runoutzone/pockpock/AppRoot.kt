@@ -118,10 +118,6 @@ fun AppRoot() {
                             Settings.isDemoMode = false
                             navController.navigate(Screen.CustomBallCreator.name)
                         },
-                        onCustomColorTapped = {
-                            Settings.isDemoMode = false
-                            navController.navigate(Screen.CustomColorPicker.name)
-                        },
                     )
                 }
                 composable(Screen.Game.name) {
