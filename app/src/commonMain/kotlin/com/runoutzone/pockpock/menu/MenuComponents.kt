@@ -84,6 +84,7 @@ fun SlantedMenuButton(
     color: Color = PaintBucket.menuAccentBlue,
     contentColor: Color = PaintBucket.white,
     fontSize: androidx.compose.ui.unit.TextUnit = 30.sp,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
     onClick: () -> Unit,
     trailingIcons: @Composable RowScope.() -> Unit,
 ) {
@@ -102,6 +103,7 @@ fun SlantedMenuButton(
                 text = text,
                 color = contentColor,
                 fontSize = fontSize,
+                fontFamily = fontFamily,
                 fontWeight = FontWeight.Light,
                 fontStyle = FontStyle.Italic,
             )

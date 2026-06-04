@@ -31,6 +31,7 @@ import com.runoutzone.pockpock.menu.EdgePill
 import com.runoutzone.pockpock.menu.MenuIconButton
 import com.runoutzone.pockpock.menu.PillSide
 import com.runoutzone.pockpock.menu.SlantedMenuButton
+import com.runoutzone.pockpock.menu.poppinsFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
@@ -56,6 +57,7 @@ fun MainMenuScreen(
     onCustomBallTapped: () -> Unit,
 ) {
     val unlockProgress = Storage.unlockProgress
+    val poppins = poppinsFamily()
 
     // Preload a rewarded ad only while there is still progress to earn (used by the CBC the
     // customize pill leads to). No-op once everything is unlocked.
@@ -99,6 +101,7 @@ fun MainMenuScreen(
                 text = stringResource(Res.string.play_a_friend),
                 modifier = Modifier.width(screenW * 0.88f),
                 height = buttonHeight,
+                fontFamily = poppins,
                 onClick = onPlayTapped,
             ) {
                 MenuGlyph(Res.drawable.ic_menu_player, buttonGlyph)
@@ -109,6 +112,7 @@ fun MainMenuScreen(
                 text = stringResource(Res.string.play_ai),
                 modifier = Modifier.width(screenW * 0.74f),
                 height = buttonHeight,
+                fontFamily = poppins,
                 onClick = onSinglePlayerTapped,
             ) {
                 MenuGlyph(Res.drawable.ic_menu_player, buttonGlyph)
@@ -160,6 +164,7 @@ fun MainMenuScreen(
                     text = "$unlockProgress%",
                     color = PaintBucket.white,
                     fontSize = (pillHeight.value * 0.32f).sp,
+                    fontFamily = poppins,
                     fontWeight = FontWeight.Light,
                     fontStyle = FontStyle.Italic
                 )

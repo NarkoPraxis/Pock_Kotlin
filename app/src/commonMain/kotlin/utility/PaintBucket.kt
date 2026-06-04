@@ -81,6 +81,8 @@ object PaintBucket {
     val menuAccentRed: Color = Color(0xFFF25252)
     /** Softer brand red (highlights / accents). */
     val menuAccentRedSoft: Color = Color(0xFFF59DA0)
+    /** Dashed indicator stroke (hashed score-placement ring + drag connector) — pale lavender. */
+    val menuHashStroke: Color = Color(0xFFE2E2FF)
 
     // ── UI accent colors ───────────────────────────────────────────────────────
 
