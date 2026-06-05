@@ -8,7 +8,6 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.TailRenderer
 import utility.PaintBucket
-import kotlin.random.Random
 
 class IceTail(override val renderer: PuckRenderer) : TailRenderer {
 
@@ -80,28 +79,55 @@ class IceTail(override val renderer: PuckRenderer) : TailRenderer {
         }
     }
 
-    /** Frozen "screenshot of motion": melt-puddles + ice crystals strewn along the swoosh. */
+    /**
+     * Frozen screenshot of [render]'s live deque. Ice is a continuous two-layer trail (puddle +
+     * ice crystal), not a particle spray, so each shard is posed one aging-step further along the
+     * swoosh — the newest at the ball head — carrying the exact ice/puddle state [render] would have
+     * aged it to. Drawn oldest→newest so the fresh ice crystal at the ball lands on top, matching the
+     * live loop's overlap order. No jitter or randomness: the same recurrence as [render], frozen.
+     */
     private fun renderStatic(scope: DrawScope) {
         val primaryColor = responsivePrimary
-        val count = maxCount.coerceIn(20, 90)
-        val last = (count - 1).coerceAtLeast(1)
-        val jitter = renderer.radius * 0.5f
+        val maxPuddleSize = renderer.radius * 1.5f
         val iceCutoff = renderer.radius * 0.05f
+
+        // A shard lives until its life reaches 0, so the trail holds this many shards at steady state.
+        val count = (1f / lifeDecrement).toInt().coerceAtLeast(2)
+        val last = count - 1
+
+        val cx = FloatArray(count); val cy = FloatArray(count)
+        val puddleSizes = FloatArray(count); val puddleAlphas = IntArray(count)
+        val iceSizes = FloatArray(count)
+
+        // Walk the same aging math as render(), newest (i=0, at the ball) → oldest (i=last, tail tip).
+        var iceSize = renderer.radius * 1.2f
+        var puddleSize = renderer.radius * 0.3f
+        var life = 1f
+        var alive = 0
         for (i in 0 until count) {
-            val ratio = i.toFloat() / last
-            val base = staticSwooshPoint(ratio)
-            val rnd = Random(i + 1)
-            val cx = base.x + (rnd.nextFloat() - 0.5f) * jitter
-            val cy = base.y + (rnd.nextFloat() - 0.5f) * jitter
-            val life = 1f - ratio
+            life -= lifeDecrement
+            iceSize *= 0.95f
+            if (life > 0.6f) puddleSize *= 1.2f else puddleSize *= 0.99f
+            puddleSize = puddleSize.coerceIn(0f, maxPuddleSize)
+            if (life <= 0f) break
 
-            val puddleAlpha = (120f * life * (0.4f + 0.6f * ratio)).toInt().coerceIn(0, 180)
-            val puddleSize = renderer.radius * (0.4f + 0.9f * ratio)
-            scope.drawCircle(Color(Palette.withAlpha(primaryColor, puddleAlpha)), puddleSize, Offset(cx, cy))
+            val pos = staticSwooshPoint(i.toFloat() / last)
+            cx[i] = pos.x; cy[i] = pos.y
+            puddleSizes[i] = puddleSize
+            puddleAlphas[i] = (90f * life * (1f - life)).toInt().coerceIn(0, 180)
+            iceSizes[i] = iceSize
+            alive++
+        }
 
-            val iceSize = renderer.radius * 1.1f * life
-            if (iceSize > iceCutoff) {
-                scope.drawCircle(PaintBucket.white, iceSize, Offset(cx, cy))
+        // Draw oldest→newest so the ball's fresh ice crystal renders on top, matching render().
+        for (i in alive - 1 downTo 0) {
+            scope.drawCircle(
+                color = Color(Palette.withAlpha(primaryColor, puddleAlphas[i])),
+                radius = puddleSizes[i],
+                center = Offset(cx[i], cy[i])
+            )
+            if (iceSizes[i] > iceCutoff) {
+                scope.drawCircle(PaintBucket.white, iceSizes[i], Offset(cx[i], cy[i]))
             }
         }
     }

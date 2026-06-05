@@ -174,7 +174,7 @@ class ChickenTail(override val renderer: PuckRenderer) : TailRenderer {
             val ratio = (s + 0.5f) / steps
             val base = staticSwooshPoint(ratio)
             val ahead = staticSwooshPoint((ratio + 0.02f).coerceAtMost(1f))
-            val ang = atan2(ahead.y - base.y, ahead.x - base.x)
+            val ang = atan2(base.y - ahead.y, ahead.x - base.x)
             val fx = base.x + -sin(ang) * r * 0.4f * side
             val fy = base.y + cos(ang) * r * 0.4f * side
             side = -side
