@@ -34,6 +34,7 @@ class FireTail(override val renderer: PuckRenderer) : TailRenderer {
     private val twoPi = (PI * 2).toFloat()
 
     override fun render(scope: DrawScope) {
+        if (renderer.staticUiMode) { renderStatic(scope); return }
         val spawn = if (renderer.launched) 5 else 3
         val halfRadius = renderer.radius * 0.5f
         repeat(spawn) {
@@ -77,6 +78,29 @@ class FireTail(override val renderer: PuckRenderer) : TailRenderer {
                 center = Offset(s.x, s.y)
             )
             i++
+        }
+    }
+
+    /** Frozen "screenshot of motion": embers strewn along the swoosh, hot at the ball, fading to the tip. */
+    private fun renderStatic(scope: DrawScope) {
+        val colors = responsiveGroup
+        val count = maxCount.coerceIn(18, 70)
+        val last = (count - 1).coerceAtLeast(1)
+        val jitter = renderer.radius * 0.6f
+        for (i in 0 until count) {
+            val ratio = i.toFloat() / last
+            val base = staticSwooshPoint(ratio)
+            val rnd = Random(i + 1)
+            val jx = (rnd.nextFloat() - 0.5f) * jitter
+            val jy = (rnd.nextFloat() - 0.5f) * jitter
+            val life = 1f - ratio
+            val c = Palette.lerpColor(colors.secondary, colors.primary, ratio)
+            val size = PARTICLE_BASE_SIZE * life + baseParticleSize
+            scope.drawCircle(
+                color = Color(Palette.withAlpha(c, (255f * life).toInt())),
+                radius = size,
+                center = Offset(base.x + jx, base.y + jy)
+            )
         }
     }
 

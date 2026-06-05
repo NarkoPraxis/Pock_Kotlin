@@ -21,12 +21,19 @@ class MetalTail(override val renderer: PuckRenderer) : TailRenderer {
         val useSimpleColor = renderer.isInert || renderer.shielded
         val simpleColor = if (useSimpleColor) colors.primary else 0
 
-        for (i in points.size - 1 downTo 1) {
-            points[i].x = points[i - 1].x
-            points[i].y = points[i - 1].y
+        if (renderer.staticUiMode) {
+            for (i in points.indices) {
+                val p = staticSwooshPoint(i.toFloat() / lastIndex)
+                points[i].x = p.x; points[i].y = p.y
+            }
+        } else {
+            for (i in points.size - 1 downTo 1) {
+                points[i].x = points[i - 1].x
+                points[i].y = points[i - 1].y
+            }
+            points[0].x = renderer.x
+            points[0].y = renderer.y
         }
-        points[0].x = renderer.x
-        points[0].y = renderer.y
 
         for (i in points.indices) {
             val ratio = i.toFloat() / lastIndex

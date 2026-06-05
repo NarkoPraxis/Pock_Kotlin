@@ -503,6 +503,12 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
             else -> rotDeg
         }
         val tint = ColorFilter.tint(Color(frameColors.secondary))
+        // Draw at the painter's constant intrinsic size; scale to the on-screen box via the canvas.
+        // Keeps the shared VectorPainter's cached layer from being re-rasterized at carousel vs.
+        // in-game sizes (see drawSvgPart). Without this, horns "scale" with the carousel.
+        val iSize = painter.intrinsicSize
+        val refW = if (iSize.width.isFinite() && iSize.width > 0f) iSize.width else w
+        val refH = if (iSize.height.isFinite() && iSize.height > 0f) iSize.height else h
 
         if (shadowSign != 0f) {
             val margin = r * 0.25f
@@ -513,8 +519,9 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
                 translate(cx - w / 2f, cy - h / 2f)
                 val pivot = Offset(w / 2f, anchorY - (cy - h / 2f))
                 if (rot != 0f) rotate(rot, pivot = pivot)
+                scale(w / refW, h / refH, pivot = Offset.Zero)
             }) {
-                with(painter) { draw(Size(w, h), colorFilter = tint) }
+                with(painter) { draw(Size(refW, refH), colorFilter = tint) }
             }
             // Lit side grows when the eye looks toward this horn; dark side shrinks
             val growFactor = ((shadowSign * irisOffX + 1f) / 2f).coerceIn(0f, 1f)
@@ -537,8 +544,9 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
                 translate(cx - w / 2f, cy - h / 2f)
                 val pivot = Offset(w / 2f, anchorY - (cy - h / 2f))
                 if (rot != 0f) rotate(rot, pivot = pivot)
+                scale(w / refW, h / refH, pivot = Offset.Zero)
             }) {
-                with(painter) { draw(Size(w, h), colorFilter = tint) }
+                with(painter) { draw(Size(refW, refH), colorFilter = tint) }
             }
         }
     }
@@ -724,13 +732,22 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         tint: Color? = null
     ) {
         val filter = tint?.let { ColorFilter.tint(it) }
+        // Draw the painter at its constant intrinsic size and scale that to fill the w×h box.
+        // The in-game ball and the ball-selection carousel share ONE VectorPainter instance per part;
+        // drawing the same painter at two different sizes within a single frame thrashes its cached
+        // layer, so the live ball renders as a white box with a punched-out circle and "scales" with
+        // the carousel. Keeping the draw-size constant decouples the cached render from on-screen size.
+        val iSize = painter.intrinsicSize
+        val refW = if (iSize.width.isFinite() && iSize.width > 0f) iSize.width else w
+        val refH = if (iSize.height.isFinite() && iSize.height > 0f) iSize.height else h
         withTransform({
             translate(cx - w / 2f, cy - h / 2f)
             val pivot = Offset(w / 2f, h / 2f)
             if (angleDeg != 0f) rotate(angleDeg, pivot = pivot)
             if (scaleX != 1f || scaleY != 1f) scale(scaleX, scaleY, pivot = pivot)
+            scale(w / refW, h / refH, pivot = Offset.Zero)
         }) {
-            with(painter) { draw(Size(w, h), colorFilter = filter) }
+            with(painter) { draw(Size(refW, refH), colorFilter = filter) }
         }
     }
 

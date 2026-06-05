@@ -63,13 +63,21 @@ class PixelTail(override val renderer: PuckRenderer) : TailRenderer {
         }
         val blocks = blocks!!
 
-        shiftCounter = (shiftCounter + 1) % 3
-        if (shiftCounter == 0) {
-            for (i in blocks.size - 1 downTo 1) {
-                blocks[i].x = blocks[i-1].x; blocks[i].y = blocks[i-1].y
+        if (renderer.staticUiMode) {
+            val last = (blocks.size - 1).coerceAtLeast(1)
+            for (i in blocks.indices) {
+                val p = staticSwooshPoint(i.toFloat() / last)
+                blocks[i].x = p.x; blocks[i].y = p.y
             }
+        } else {
+            shiftCounter = (shiftCounter + 1) % 3
+            if (shiftCounter == 0) {
+                for (i in blocks.size - 1 downTo 1) {
+                    blocks[i].x = blocks[i-1].x; blocks[i].y = blocks[i-1].y
+                }
+            }
+            blocks[0].x = renderer.x; blocks[0].y = renderer.y
         }
-        blocks[0].x = renderer.x; blocks[0].y = renderer.y
 
         if (justHit) {
             rings.clear()

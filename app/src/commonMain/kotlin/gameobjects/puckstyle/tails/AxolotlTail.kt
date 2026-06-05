@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.Settings
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
+import gameobjects.puckstyle.StaticTailPath
 import gameobjects.puckstyle.TailRenderer
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -147,6 +148,10 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
             lastHeadY = headY
         }
 
+        if (renderer.staticUiMode) {
+            // Static screenshot: pose the spine along the shared swoosh; no wag, fins frozen.
+            StaticTailPath.poseSpineAlong(spineX, spineY, segAngle, SEGMENT_COUNT, spacing, headX, headY, r)
+        } else {
         val moveDx = headX - lastHeadX
         val moveDy = headY - lastHeadY
         val instantSpeed = hypot(moveDx, moveDy) / r.coerceAtLeast(0.001f)
@@ -214,6 +219,7 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
             prevAngle = finalAngle
             prevX = spineX[i]
             prevY = spineY[i]
+        }
         }
 
         // --- Step 2: compute per-segment half-widths for both splines -------

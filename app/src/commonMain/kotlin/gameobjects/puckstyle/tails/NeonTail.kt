@@ -37,8 +37,12 @@ class NeonTail(override val renderer: PuckRenderer) : TailRenderer {
         val lastIndex = (rings.size - 1).coerceAtLeast(1)
 
         for (i in rings.size - 1 downTo 0) {
-            if (i - 1 >= 0) { rings[i].x = rings[i - 1].x; rings[i].y = rings[i - 1].y }
-            else             { rings[i].x = renderer.x;     rings[i].y = renderer.y     }
+            if (renderer.staticUiMode) {
+                val p = staticSwooshPoint(i.toFloat() / lastIndex)
+                rings[i].x = p.x; rings[i].y = p.y
+            }
+            else if (i - 1 >= 0) { rings[i].x = rings[i - 1].x; rings[i].y = rings[i - 1].y }
+            else                 { rings[i].x = renderer.x;     rings[i].y = renderer.y     }
 
             val ratio = i.toFloat() / lastIndex
             scope.drawCircle(

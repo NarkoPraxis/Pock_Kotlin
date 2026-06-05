@@ -13,6 +13,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
+import gameobjects.puckstyle.StaticTailPath
 import gameobjects.puckstyle.TailRenderer
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -162,6 +163,11 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
             lastHeadY = headY
         }
 
+        if (renderer.staticUiMode) {
+            // Static screenshot: pose the main spine along the shared swoosh; no flick.
+            // Strands clone from this posed spine and snap (see computeStrandSpine) so they're static too.
+            StaticTailPath.poseSpineAlong(spineX, spineY, segAngle, SEGMENT_COUNT, spacing, headX, headY, r)
+        } else {
         val moveDx = headX - lastHeadX
         val moveDy = headY - lastHeadY
         val instantSpeed = hypot(moveDx, moveDy) / r.coerceAtLeast(0.001f)
@@ -229,6 +235,7 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
             prevAngle = finalAngle
             prevX = spineX[i]
             prevY = spineY[i]
+        }
         }
 
         val fadeMultiplier = Settings.tailLengthMultiplier.coerceIn(0.1f, 2f)
@@ -332,7 +339,8 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
             .coerceIn(1, segmentCount.coerceAtMost(SEGMENT_COUNT))
         val tipBend = strandTipBendRadians[strandIndex]
         val chaseRate = strandTipChaseRates[strandIndex]
-        val firstFrame = !strandInitialized[strandIndex]
+        // Static UI snaps strands to their target each frame (no whip lag) so the pose is frozen.
+        val firstFrame = !strandInitialized[strandIndex] || renderer.staticUiMode
 
         for (i in 0 until cloneCount) {
             strandX[i] = spineX[i]

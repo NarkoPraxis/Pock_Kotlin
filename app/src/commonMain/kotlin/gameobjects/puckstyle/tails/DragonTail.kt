@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.Settings
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
+import gameobjects.puckstyle.StaticTailPath
 import gameobjects.puckstyle.TailRenderer
 import gameobjects.puckstyle.skins.DragonSkinPainters
 import kotlin.math.PI
@@ -145,6 +146,10 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             lastHeadY = headY
         }
 
+        if (renderer.staticUiMode) {
+            // Static screenshot: pose the whole spine along the shared swoosh; no wag.
+            StaticTailPath.poseSpineAlong(spineX, spineY, segAngle, SEGMENT_COUNT, spacing, headX, headY, r)
+        } else {
         val moveDx = headX - lastHeadX
         val moveDy = headY - lastHeadY
         val instantSpeed = hypot(moveDx, moveDy) / r.coerceAtLeast(0.001f)
@@ -224,6 +229,13 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             prevX = spineX[i]
             prevY = spineY[i]
         }
+        }
+
+        // Rigid-section heading from the (now-final) spine — used by the spike shadow pass below.
+        // Recomputed here (outside the integrate/pose branch) so both live and static modes have it.
+        val rigidAngle = segAngle[LAST_FLEXIBLE_IDX]
+        val cosRigid = cos(rigidAngle)
+        val sinRigid = sin(rigidAngle)
 
         val widthMultiplier = Settings.tailLengthMultiplier.coerceAtMost(1.5f)
         val tipIdx = SEGMENT_COUNT - 1
@@ -298,6 +310,13 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             // the wide→narrow world vector.
             val spikeAngleDeg = atan2(-axisDx, axisDy) * (180f / PI.toFloat())
 
+            // Draw the spikes painter at its constant intrinsic size and scale to the spike box via
+            // the canvas (see DragonSkin.drawSvgPart). The carousel and in-game tails share one
+            // VectorPainter; drawing it at two sizes per frame makes the spikes scale with the carousel.
+            val spikeISize = spikePainter.intrinsicSize
+            val spikeRefW = if (spikeISize.width.isFinite() && spikeISize.width > 0f) spikeISize.width else spikeSvgW
+            val spikeRefH = if (spikeISize.height.isFinite() && spikeISize.height > 0f) spikeISize.height else spikeSvgH
+
             canvas.saveLayer(shadowBounds, Paint())
             with(scope) {
                 withTransform({
@@ -305,8 +324,9 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
                     val pivot = Offset(spikeSvgW / 2f, spikeSvgH / 2f)
                     if (spikeAngleDeg != 0f) rotate(spikeAngleDeg, pivot = pivot)
                     scale(1f, -1f, pivot = pivot)
+                    scale(spikeSvgW / spikeRefW, spikeSvgH / spikeRefH, pivot = Offset.Zero)
                 }) {
-                    with(spikePainter) { draw(Size(spikeSvgW, spikeSvgH), colorFilter = spikesTint) }
+                    with(spikePainter) { draw(Size(spikeRefW, spikeRefH), colorFilter = spikesTint) }
                 }
             }
 

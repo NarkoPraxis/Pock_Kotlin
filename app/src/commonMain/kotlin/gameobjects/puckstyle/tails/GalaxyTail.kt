@@ -39,6 +39,7 @@ class GalaxyTail(override val renderer: PuckRenderer) : TailRenderer {
     }
 
     override fun render(scope: DrawScope) {
+        if (renderer.staticUiMode) { renderStatic(scope); return }
         val spawn = if (renderer.launched) 4 else 2
         repeat(spawn) {
             val angle = Random.nextFloat() * TAU
@@ -89,6 +90,35 @@ class GalaxyTail(override val renderer: PuckRenderer) : TailRenderer {
             starPath.close()
             scope.drawPath(starPath, Color(color))
             i++
+        }
+    }
+
+    /** Frozen "screenshot of motion": a trail of twinkling stars strewn along the swoosh. */
+    private fun renderStatic(scope: DrawScope) {
+        val primaryColor = responsivePrimary
+        val count = cap.coerceIn(24, 80)
+        val last = (count - 1).coerceAtLeast(1)
+        val jitter = renderer.radius * 1.2f
+        for (i in 0 until count) {
+            val ratio = i.toFloat() / last
+            val base = staticSwooshPoint(ratio)
+            val rnd = Random(i + 1)
+            val sx = base.x + (rnd.nextFloat() - 0.5f) * jitter
+            val sy = base.y + (rnd.nextFloat() - 0.5f) * jitter
+            val life = 1f - ratio
+            val twinkle = 0.7f + 0.3f * rnd.nextFloat()
+            val outerR = outerRBase * life * twinkle
+            val innerR = outerR * 0.38f
+            val alpha = (255f * life).toInt()
+            starPath.reset()
+            for (k in 0 until 8) {
+                val r = if (k % 2 == 0) outerR else innerR
+                val px = sx + cos(STAR_ANGLES[k]) * r
+                val py = sy + sin(STAR_ANGLES[k]) * r
+                if (k == 0) starPath.moveTo(px, py) else starPath.lineTo(px, py)
+            }
+            starPath.close()
+            scope.drawPath(starPath, Color(Palette.withAlpha(primaryColor, alpha)))
         }
     }
 

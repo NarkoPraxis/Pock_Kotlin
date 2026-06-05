@@ -30,11 +30,19 @@ class SpinnerTail(override val renderer: PuckRenderer) : TailRenderer {
         if (history == null || history!!.size != tailLen) history = MutableList(tailLen) { Pos(renderer.x, renderer.y) }
         val history = history!!
 
-        tailRotation += 10f
-
-        for (i in history.size - 1 downTo 0) {
-            if (i - 1 >= 0) { history[i].x = history[i - 1].x; history[i].y = history[i - 1].y }
-            else             { history[i].x = renderer.x;       history[i].y = renderer.y       }
+        if (renderer.staticUiMode) {
+            // Static screenshot: freeze the rotation and pose the blades along the swoosh.
+            val last = (history.size - 1).coerceAtLeast(1)
+            for (i in history.indices) {
+                val p = staticSwooshPoint(i.toFloat() / last)
+                history[i].x = p.x; history[i].y = p.y
+            }
+        } else {
+            tailRotation += 10f
+            for (i in history.size - 1 downTo 0) {
+                if (i - 1 >= 0) { history[i].x = history[i - 1].x; history[i].y = history[i - 1].y }
+                else             { history[i].x = renderer.x;       history[i].y = renderer.y       }
+            }
         }
 
         val lineLen   = renderer.radius * 1.3f

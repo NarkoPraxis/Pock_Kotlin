@@ -430,12 +430,18 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         if (painter == null) return
         val anchorY = cy + h * 0.5f
         val filter = ColorFilter.tint(tint)
+        // Constant intrinsic draw-size, scaled to the box via the canvas (see drawSvgPart) so the
+        // shared painter's cached layer isn't thrashed between carousel and in-game sizes.
+        val iSize = painter.intrinsicSize
+        val refW = if (iSize.width.isFinite() && iSize.width > 0f) iSize.width else w
+        val refH = if (iSize.height.isFinite() && iSize.height > 0f) iSize.height else h
         withTransform({
             translate(cx - w / 2f, cy - h / 2f)
             val pivot = Offset(w / 2f, anchorY - (cy - h / 2f))
             if (rotDeg != 0f) rotate(rotDeg, pivot = pivot)
+            scale(w / refW, h / refH, pivot = Offset.Zero)
         }) {
-            with(painter) { draw(Size(w, h), colorFilter = filter) }
+            with(painter) { draw(Size(refW, refH), colorFilter = filter) }
         }
     }
 
@@ -514,13 +520,27 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         withTransform({ rotate(angle, pivot = Offset(groupCx, groupCy + maxH * 0.3f)) }) {
             val filter = ColorFilter.tint(tint)
             if (outer != null) {
-                withTransform({ translate(outerCx - outerW / 2f, outerCy - outerH / 2f) }) {
-                    with(outer) { draw(Size(outerW, outerH), colorFilter = filter) }
+                // Constant intrinsic draw-size, scaled to the box (see drawSvgPart) to keep the
+                // shared painter's cached layer from scaling with the carousel.
+                val oSize = outer.intrinsicSize
+                val orefW = if (oSize.width.isFinite() && oSize.width > 0f) oSize.width else outerW
+                val orefH = if (oSize.height.isFinite() && oSize.height > 0f) oSize.height else outerH
+                withTransform({
+                    translate(outerCx - outerW / 2f, outerCy - outerH / 2f)
+                    scale(outerW / orefW, outerH / orefH, pivot = Offset.Zero)
+                }) {
+                    with(outer) { draw(Size(orefW, orefH), colorFilter = filter) }
                 }
             }
             if (inner != null) {
-                withTransform({ translate(innerCx - innerW / 2f, innerCy - innerH / 2f) }) {
-                    with(inner) { draw(Size(innerW, innerH), colorFilter = filter) }
+                val inSize = inner.intrinsicSize
+                val irefW = if (inSize.width.isFinite() && inSize.width > 0f) inSize.width else innerW
+                val irefH = if (inSize.height.isFinite() && inSize.height > 0f) inSize.height else innerH
+                withTransform({
+                    translate(innerCx - innerW / 2f, innerCy - innerH / 2f)
+                    scale(innerW / irefW, innerH / irefH, pivot = Offset.Zero)
+                }) {
+                    with(inner) { draw(Size(irefW, irefH), colorFilter = filter) }
                 }
             }
         }
@@ -555,12 +575,18 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         val fBounds = Rect(cx - w, cy - h, cx + w, cy + h)
         drawContext.canvas.saveLayer(fBounds, Paint())
+        // Constant intrinsic draw-size, scaled to the box (see drawSvgPart) so the shared painter's
+        // cached layer doesn't scale with the carousel.
+        val iSize = painter.intrinsicSize
+        val refW = if (iSize.width.isFinite() && iSize.width > 0f) iSize.width else w
+        val refH = if (iSize.height.isFinite() && iSize.height > 0f) iSize.height else h
         withTransform({
             translate(cx - w / 2f, cy - h / 2f)
             val pivot = Offset(w / 2f, h)
             if (furTopAngle != 0f) rotate(furTopAngle, pivot = pivot)
+            scale(w / refW, h / refH, pivot = Offset.Zero)
         }) {
-            with(painter) { draw(Size(w, h), colorFilter = ColorFilter.tint(Color(frameColors.secondary))) }
+            with(painter) { draw(Size(refW, refH), colorFilter = ColorFilter.tint(Color(frameColors.secondary))) }
         }
 
         val litPath = Path().apply {
@@ -744,13 +770,22 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         tint: Color? = null
     ) {
         val filter = tint?.let { ColorFilter.tint(it) }
+        // Draw the painter at its constant intrinsic size and scale that to fill the w×h box.
+        // The in-game ball and the ball-selection carousel share ONE VectorPainter instance per part;
+        // drawing the same painter at two different sizes within a single frame thrashes its cached
+        // layer, so the live ball renders as a white box with a punched-out circle and "scales" with
+        // the carousel. Keeping the draw-size constant decouples the cached render from on-screen size.
+        val iSize = painter.intrinsicSize
+        val refW = if (iSize.width.isFinite() && iSize.width > 0f) iSize.width else w
+        val refH = if (iSize.height.isFinite() && iSize.height > 0f) iSize.height else h
         withTransform({
             translate(cx - w / 2f, cy - h / 2f)
             val pivot = Offset(w / 2f, h / 2f)
             if (angleDeg != 0f) rotate(angleDeg, pivot = pivot)
             if (scaleX != 1f || scaleY != 1f) scale(scaleX, scaleY, pivot = pivot)
+            scale(w / refW, h / refH, pivot = Offset.Zero)
         }) {
-            with(painter) { draw(Size(w, h), colorFilter = filter) }
+            with(painter) { draw(Size(refW, refH), colorFilter = filter) }
         }
     }
 

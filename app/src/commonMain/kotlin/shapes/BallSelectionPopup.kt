@@ -1,13 +1,9 @@
 package shapes
 
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import enums.BallType
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
@@ -18,8 +14,7 @@ import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.RandomRoll
 import utility.Storage
 import kotlin.math.abs
-import kotlin.math.roundToInt
-import kotlin.math.sin
+import kotlin.math.tanh
 
 class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
 
@@ -34,11 +29,29 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
     override val itemCount: Int get() = slots.size
 
     val w: Float get() = Settings.screenWidth
-    val h: Float get() = Settings.screenRatio * 5f
+    val h: Float get() = Settings.screenRatio * 6f
     override val cx: Float get() = Settings.middleX
-    val cy: Float get() = if (isHigh) Settings.topGoalBottom + h / 2f else Settings.bottomGoalTop - h / 2f
+
+    // Place the carousel so the SELECTED ball's contact shadow lands just above the goal zone (from
+    // each player's perspective — the high carousel is mirrored). This pulls the balls in toward
+    // mid-screen compared to sitting them right on the goal edge.
+    val cy: Float get() {
+        val rSel = Settings.ballRadius * maxScale
+        val shadowReach = rSel * (SHADOW_DROP_K + SHADOW_H_K / 2f)
+        val gap = Settings.screenRatio * 0.5f
+        return if (isHigh) Settings.topGoalBottom + gap + shadowReach
+               else Settings.bottomGoalTop - gap - shadowReach
+    }
 
     override val slotW: Float get() = Settings.screenRatio * 4f
+
+    // Static-display tuning. The centered (selected) ball is largest; neighbors shrink and squish
+    // together. Spacing is dynamic (see drawTo's tanh spread): the gap around a ball grows as it
+    // approaches centre and closes back up as it leaves, so balls part to frame the selected one.
+    private val minScale = 0.6f       // scale of fully-off-centre balls
+    private val maxScale = 1.5f       // selected ball grows 50% larger
+    private val spreadBase = 0.62f    // baseline gap between far-apart (squished) balls, slot units
+    private val spreadBulge = 0.95f   // extra gap carved out around the centre ball, slot units
 
     override fun toLogicalX(screenX: Float): Float = if (isHigh) 2f * Settings.middleX - screenX else screenX
 
@@ -63,7 +76,11 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
         rendererList.clear()
         for (slot in slots) {
             val config = Storage.loadCustomBall(slot.customStorageIndex!!)!!
-            rendererList.add(BallStyleFactory.buildCustomRenderer(config, ColorTheme.getTheme(isHigh)))
+            val renderer = BallStyleFactory.buildCustomRenderer(config, ColorTheme.getTheme(isHigh))
+            // Display these as frozen "screenshots": static swoosh tail + overhead static paddle.
+            renderer.staticUiMode = true
+            renderer.effect.frozen = true
+            rendererList.add(renderer)
         }
 
         val currentCustomIdx = if (isHigh) Settings.highCustomBallIndex else Settings.lowCustomBallIndex
@@ -113,115 +130,78 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
     fun DrawScope.drawTo() {
         if (!isOpen) return
 
-        val bgArgb = if (Storage.darkMode) Palette.argb(230, 10, 10, 20) else Palette.WHITE
-        val halfW = w / 2f
-        val halfH = h / 2f
         val theme = if (isHigh) ColorTheme.Warm else ColorTheme.Cold
         val pr = Settings.ballRadius
-        val centerIndex = scrollX / slotW
-        val puckYs = FloatArray(slots.size)
-        val outerClipMargin = Settings.screenRatio * 0.2f
-        val innerClipMargin = Settings.screenRatio * 0.15f
+        // Fixed contact-shadow baseline. Every ball's shadow sits on this one line, so scaling a
+        // ball only grows it UPWARD from a fixed footprint — the shadow's y never moves, reading as
+        // "the asset grew" rather than "the asset slid." Anchored to the selected (max-scale) ball
+        // so its pose is identical to before.
+        val shadowBaselineY = cy + (pr * maxScale) * SHADOW_DROP_K
+        val cullX = w / 2f + slotW
 
         val canvas = drawContext.canvas
 
         canvas.save()
         if (isHigh) {
+            // High player's whole carousel is mirrored 180°, so the local-space swoosh and overhead
+            // paddle orient correctly (paddle toward mid-screen, swoosh toward the goal) for both ends.
             canvas.translate(cx, cy)
             canvas.scale(-1f, -1f)
             canvas.translate(-cx, -cy)
         }
 
-        drawRect(
-            color = Color(bgArgb),
-            topLeft = Offset(cx - halfW, cy - halfH),
-            size = Size(w, h)
-        )
-        drawRect(
-            color = Color(theme.main.primary),
-            topLeft = Offset(cx - halfW, cy - halfH),
-            size = Size(w, h),
-            style = Stroke(Settings.screenRatio * 0.25f)
-        )
-
-        canvas.save()
-        canvas.clipRect(Rect(
-            cx - halfW + outerClipMargin,
-            cy - halfH + outerClipMargin,
-            cx + halfW - outerClipMargin,
-            cy + halfH - outerClipMargin
-        ))
-
+        // No panel, border, chip, or selection highlight: balls float over the goal zone. Selection
+        // is conveyed by size + spacing — the centered ball is largest, neighbors shrink and spread.
         for (i in slots.indices) {
             val previewRenderer = rendererList.getOrNull(i) ?: continue
-            val slotCenterX = cx - scrollX + i * slotW
-            if (slotCenterX < cx - halfW - slotW || slotCenterX > cx + halfW + slotW) continue
 
-            val dist = abs(i - centerIndex)
-            val isCenter = dist < 0.5f
+            val rel = i - scrollX / slotW
+            // Dynamic spread: a baseline gap everywhere plus an extra bulge near centre (tanh tapers
+            // the bulge to ~0 away from centre). As a ball scrolls toward centre and scales up, the
+            // gap around it opens; as it leaves and shrinks, neighbors squish back together.
+            val drawX = cx + slotW * (spreadBase * rel + spreadBulge * tanh(rel))
+            if (drawX < cx - cullX || drawX > cx + cullX) continue
 
-            val chipColor = if (isCenter) Color(Palette.withAlpha(theme.main.primary, 90))
-                           else Color(Palette.withAlpha(Palette.WHITE, 60))
-            val rx = Settings.screenRatio * if (isCenter) 0.3f else 0.25f
-            val chipHalfW = slotW * if (isCenter) 0.45f else 0.42f
-            val chipTopOff = Settings.screenRatio * if (isCenter) 1.25f else 1.35f
-            val chipHeight = h - chipTopOff * 2f
+            val dist = abs(rel).coerceAtMost(1f)
+            val scale = maxScale - (maxScale - minScale) * dist
+            val radius = pr * scale
 
-            val chipPaint = Paint().apply { color = chipColor; style = PaintingStyle.Fill }
-            canvas.drawRoundRect(
-                slotCenterX - chipHalfW, cy - halfH + chipTopOff,
-                slotCenterX + chipHalfW, cy - halfH + chipTopOff + chipHeight,
-                rx, rx, chipPaint
+            // Soft inert-primary contact shadow, proportioned from Ball Select.svg (~2.1r wide,
+            // ~0.58r tall). It stays pinned to the fixed baseline; the ball centre floats above it
+            // by radius*DROP so a growing ball rises off a stationary shadow. Tunables: SHADOW_*.
+            val shadowW = radius * SHADOW_W_K
+            val shadowH = radius * SHADOW_H_K
+            val shadowCy = shadowBaselineY
+            val ballCy = shadowBaselineY - radius * SHADOW_DROP_K
+            drawOval(
+                color = Color(Palette.withAlpha(theme.inert.primary, SHADOW_ALPHA)),
+                topLeft = Offset(drawX - shadowW / 2f, shadowCy - shadowH / 2f),
+                size = Size(shadowW, shadowH)
             )
 
-            previewRenderer.frame++
-            previewRenderer.effectEnabled = false
-            previewRenderer.radius = pr
-            previewRenderer.strokeWidth = Settings.strokeWidth
-            val amplitude = if (isCenter) Settings.screenRatio * 0.9f else Settings.screenRatio * 0.45f
-            val phase = i * 0.7f
-            puckYs[i] = cy + amplitude * sin(2 * kotlin.math.PI.toFloat() * previewRenderer.frame / 80f + phase)
-        }
-
-        canvas.restore()
-
-        canvas.save()
-        canvas.clipRect(Rect(
-            cx - halfW + outerClipMargin,
-            cy - halfH + outerClipMargin,
-            cx + halfW - outerClipMargin,
-            cy + halfH - outerClipMargin
-        ))
-
-        for (i in slots.indices) {
-            val previewRenderer = rendererList.getOrNull(i) ?: continue
-            val slotCenterX = cx - scrollX + i * slotW
-            if (slotCenterX < cx - halfW - slotW || slotCenterX > cx + halfW + slotW) continue
-            val puckY = puckYs[i]
-
-            canvas.save()
-            canvas.clipRect(Rect(
-                slotCenterX - slotW / 2f,
-                cy - halfH + innerClipMargin,
-                slotCenterX + slotW / 2f,
-                cy + halfH - innerClipMargin
-            ))
-
-            previewRenderer.x = slotCenterX
-            previewRenderer.y = puckY
+            // Static screenshot of the ball composition (tail swoosh + body + overhead paddle).
+            // Frame is NOT advanced, so skins stay static too.
+            previewRenderer.effectEnabled = true
+            previewRenderer.radius = radius
+            previewRenderer.strokeWidth = Settings.strokeWidth * scale
+            previewRenderer.x = drawX
+            previewRenderer.y = ballCy
             previewRenderer.fillColor = theme.main.primary
             previewRenderer.strokeColor = theme.main.secondary
 
             with(previewRenderer) { draw() }
-
-            canvas.restore()
         }
 
-        canvas.restore()
         canvas.restore()
     }
 
     companion object {
+        // Contact-shadow tuning (radius multiples + alpha 0–255), from Ball Select.svg.
+        private const val SHADOW_W_K     = 2.12f
+        private const val SHADOW_H_K     = 0.58f
+        private const val SHADOW_DROP_K  = 3.5f
+        private const val SHADOW_ALPHA   = 130
+
         const val ACTION_MASK        = 0xff
         const val ACTION_DOWN        = 0
         const val ACTION_UP          = 1

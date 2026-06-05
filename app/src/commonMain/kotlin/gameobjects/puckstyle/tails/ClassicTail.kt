@@ -23,8 +23,12 @@ class ClassicTail(override val renderer: PuckRenderer) : TailRenderer {
 
         fun ratio(i: Int) = (i.toFloat() / (points.size - 1))
 
+        val lastIndex = (points.size - 1).coerceAtLeast(1)
         for (i in points.size - 1 downTo 0) {
-            if (i - 1 >= 0) {
+            if (renderer.staticUiMode) {
+                val p = staticSwooshPoint(i.toFloat() / lastIndex)
+                points[i] = DrawablePoint(p.x, p.y, renderer.strokeColor)
+            } else if (i - 1 >= 0) {
                 points[i] = points[i - 1]
             } else {
                 points[i] = DrawablePoint(renderer.x, renderer.y, renderer.strokeColor)

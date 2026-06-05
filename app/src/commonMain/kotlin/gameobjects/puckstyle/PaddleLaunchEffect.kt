@@ -161,8 +161,8 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
             }
         } else if (_phase != ChargePhase.Idle) {
             drawChargingPaddle(scope)
-        } else if (cbcCarouselMode) {
-            // CBC carousel: draw a static, centered paddle even while idle so the button isn't empty.
+        } else if (cbcCarouselMode || renderer.staticUiMode) {
+            // CBC carousel / ball-selection: draw a static paddle even while idle so it isn't empty.
             drawChargingPaddle(scope)
         } else if (phase == ChargePhase.Idle) {
             drawIdlePaddle(scope)
@@ -273,6 +273,14 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
         } else if (cbcCarouselMode) {
             paddleDistance = 0f
             paddleX = renderer.x; paddleY = renderer.y
+        } else if (renderer.staticUiMode) {
+            // Static UI screenshot: paddle parked just above the ball, tilted slightly off vertical,
+            // at zero charge. Drawn in local coords so the high carousel's 180° mirror orients it.
+            val rad = STATIC_PADDLE_TILT_DEG * PI.toFloat() / 180f
+            aimX = sin(rad); aimY = cos(rad)
+            paddleDistance = renderer.radius * STATIC_PADDLE_DIST_K
+            paddleX = renderer.x - aimX * paddleDistance
+            paddleY = renderer.y - aimY * paddleDistance
         }
     }
 
@@ -362,8 +370,20 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
     protected open fun onReleaseSpawn(x: Float, y: Float, radius: Float, sweet: Boolean, fatigued: Boolean) {}
     protected open fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {}
 
-    protected open fun paddleHalfLength(): Float = Settings.screenRatio
-    protected open fun paddleThickness(): Float = Settings.strokeWidth * 1.4f
+    /**
+     * In the static ball-selection carousel the whole composition is shown at varying sizes
+     * (`renderer.radius` differs from the live `Settings.ballRadius`). Paddle *distance* already
+     * scales with `renderer.radius`, but paddle *geometry* historically used screen-absolute
+     * constants, so paddles drifted away from the ball and distorted as the ball scaled (e.g. the
+     * ice shard appeared to detach, the metal stick kept its length while thickening). Scaling the
+     * base geometry by this ratio makes the paddle grow uniformly with the ball. It is exactly 1f
+     * during gameplay (radius == ballRadius), so live play is unaffected.
+     */
+    protected val paddleUiScale: Float
+        get() = if (renderer.staticUiMode) renderer.radius / Settings.ballRadius else 1f
+
+    protected open fun paddleHalfLength(): Float = Settings.screenRatio * paddleUiScale
+    protected open fun paddleThickness(): Float = Settings.strokeWidth * 1.4f * paddleUiScale
 
     protected fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
@@ -380,5 +400,9 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
     companion object {
         const val RELEASE_DURATION = 5
         private val helperScope = CanvasDrawScope()
+
+        // Static UI (ball-selection) paddle pose.
+        private const val STATIC_PADDLE_TILT_DEG = 15f
+        private const val STATIC_PADDLE_DIST_K = 2.2f
     }
 }

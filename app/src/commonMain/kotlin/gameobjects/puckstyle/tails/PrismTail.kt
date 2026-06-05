@@ -53,18 +53,27 @@ class PrismTail(override val renderer: PuckRenderer) : TailRenderer {
         val history = history!!
 
         val osc = kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f
-        for (i in history.size - 1 downTo 1) {
-            history[i].x = history[i - 1].x
-            history[i].y = history[i - 1].y
-            history[i].angle = history[i - 1].angle
-            history[i].radius = history[i - 1].radius
-            history[i].osc = history[i - 1].osc
-        }
-        history[0].apply {
-            x = renderer.x; y = renderer.y
-            angle = renderer.frame * 0.8f
-            radius = renderer.radius
-            this.osc = osc
+        if (renderer.staticUiMode) {
+            // Static screenshot: pose facets along the swoosh; spin each by index for a frozen spiral.
+            val last = (history.size - 1).coerceAtLeast(1)
+            for (i in history.indices) {
+                val p = staticSwooshPoint(i.toFloat() / last)
+                history[i].apply { x = p.x; y = p.y; angle = i * 12f; radius = renderer.radius; this.osc = 0f }
+            }
+        } else {
+            for (i in history.size - 1 downTo 1) {
+                history[i].x = history[i - 1].x
+                history[i].y = history[i - 1].y
+                history[i].angle = history[i - 1].angle
+                history[i].radius = history[i - 1].radius
+                history[i].osc = history[i - 1].osc
+            }
+            history[0].apply {
+                x = renderer.x; y = renderer.y
+                angle = renderer.frame * 0.8f
+                radius = renderer.radius
+                this.osc = osc
+            }
         }
 
         val chargeRange = Settings.sweetSpotMax.toFloat() - Settings.chargeStart

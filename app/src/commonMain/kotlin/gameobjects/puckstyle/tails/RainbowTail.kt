@@ -47,7 +47,11 @@ class RainbowTail(override val renderer: PuckRenderer) : TailRenderer {
         val frameHue = renderer.frame * 4f + hueOffset
 
         for (i in rainbowLen - 1 downTo 0) {
-            if (i - 1 >= 0) pts[i] = pts[i - 1]
+            if (renderer.staticUiMode) {
+                val p = staticSwooshPoint(i.toFloat() / sizeMinusOneF)
+                pts[i] = DrawablePoint(p.x, p.y, renderer.strokeColor)
+            }
+            else if (i - 1 >= 0) pts[i] = pts[i - 1]
             else pts[i] = DrawablePoint(renderer.x, renderer.y, renderer.strokeColor)
             val ratio = i.toFloat() / sizeMinusOneF
             val cycleHue = frameHue - i * 15f

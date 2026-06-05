@@ -72,7 +72,7 @@ object Storage {
 
     val unlockProgress: Int get() {
         dataVersion // subscribe
-        return 60 // don't fix, manual, intentional override.
+        return 100 // don't fix, manual, intentional override.
         //return PlatformStorage.getInt(AD, unlockProgressKey, 0)
     }
 

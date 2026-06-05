@@ -1,5 +1,6 @@
 package gameobjects.puckstyle
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -29,6 +30,14 @@ interface TailRenderer {
 
     fun render(scope: DrawScope)
     fun clear()
+
+    /**
+     * Absolute screen position for a trailing tail point when [PuckRenderer.staticUiMode] is set,
+     * expressed as [ratio] along the swoosh (0 = ball head, 1 = tail tip). List tails call this to
+     * pose their points along the shared [StaticTailPath] instead of trailing live motion.
+     */
+    fun staticSwooshPoint(ratio: Float): Offset =
+        StaticTailPath.worldByFraction(ratio, renderer.radius, renderer.x, renderer.y)
 
     fun fillTo(x: Float, y: Float) {}
     fun onPhaseChanged(phase: ChargePhase) {}

@@ -70,6 +70,14 @@ class PuckRenderer(var theme: ColorTheme) {
 
     var preview: Boolean = false
 
+    /**
+     * When true, the whole composition draws as a static "screenshot" for UI display
+     * (the ball-selection carousel): the tail poses along [StaticTailPath] instead of trailing
+     * live motion, and the paddle parks statically overhead at zero charge. Always false for
+     * in-game renderers, so live gameplay is unaffected.
+     */
+    var staticUiMode: Boolean = false
+
     var shielded: Boolean = false
     var launched: Boolean = false
     var baseFillColor: Int = Palette.WHITE

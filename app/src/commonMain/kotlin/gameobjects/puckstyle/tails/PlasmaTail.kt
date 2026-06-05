@@ -37,9 +37,17 @@ class PlasmaTail(override val renderer: PuckRenderer) : TailRenderer {
         if (points == null || points!!.size != plasmaLen) points = MutableList(plasmaLen) { Pos(renderer.x, renderer.y) }
         val points = points!!
 
-        for (i in points.size - 1 downTo 0) {
-            if (i - 1 >= 0) { points[i].x = points[i - 1].x; points[i].y = points[i - 1].y }
-            else { points[i].x = renderer.x; points[i].y = renderer.y }
+        if (renderer.staticUiMode) {
+            val last = (points.size - 1).coerceAtLeast(1)
+            for (i in points.indices) {
+                val p = staticSwooshPoint(i.toFloat() / last)
+                points[i].x = p.x; points[i].y = p.y
+            }
+        } else {
+            for (i in points.size - 1 downTo 0) {
+                if (i - 1 >= 0) { points[i].x = points[i - 1].x; points[i].y = points[i - 1].y }
+                else { points[i].x = renderer.x; points[i].y = renderer.y }
+            }
         }
 
         ensureCache()
@@ -72,8 +80,10 @@ class PlasmaTail(override val renderer: PuckRenderer) : TailRenderer {
             val b = points[i + 1]
             val ratio = i.toFloat() * nInv
             val boltAlpha = (200f * (1f - ratio)).toInt()
-            val midX = (a.x + b.x) * 0.5f + (Random.nextFloat() - 0.5f) * screenRatioJitter
-            val midY = (a.y + b.y) * 0.5f + (Random.nextFloat() - 0.5f) * screenRatioJitter
+            // Static UI freezes the bolt jitter (seeded per segment) so the screenshot doesn't flicker.
+            val rnd = if (renderer.staticUiMode) Random(i + 1) else Random
+            val midX = (a.x + b.x) * 0.5f + (rnd.nextFloat() - 0.5f) * screenRatioJitter
+            val midY = (a.y + b.y) * 0.5f + (rnd.nextFloat() - 0.5f) * screenRatioJitter
             val boltColor = Color(Palette.withAlpha(white, boltAlpha))
             scope.drawLine(boltColor, Offset(a.x, a.y), Offset(midX, midY), boltStrokeWidth, StrokeCap.Round)
             scope.drawLine(boltColor, Offset(midX, midY), Offset(b.x, b.y), boltStrokeWidth, StrokeCap.Round)
