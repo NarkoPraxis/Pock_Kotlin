@@ -66,6 +66,11 @@
     <string name="charge_meter_fullscreen">全屏</string>
     <string name="charge_meter_none">无</string>
     <string name="dark_mode">深色模式</string>
+    <string name="charge_arrows">显示蓄力箭头</string>
+    <string name="charge_meter">蓄力条</string>
+    <string name="player_one_short">P1</string>
+    <string name="player_two_short">P2</string>
+    <string name="set_score_position">设置计分位置</string>
     <string name="reset_defaults">恢复默认设置</string>
     <string name="score_position">分数位置</string>
     <string name="score_calibration_hint">← 拖动调整位置 →</string>

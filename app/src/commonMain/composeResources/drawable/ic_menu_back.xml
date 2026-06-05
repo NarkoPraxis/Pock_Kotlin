@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="104dp"
+    android:height="84dp"
+    android:viewportWidth="104"
+    android:viewportHeight="84">
+    <!-- Double "«" chevron, re-origined from the Settings.svg back button (paths translated to origin). -->
+    <group android:translateX="-55" android:translateY="-2225">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M158.13,2305.78c-2,2-4.63,3.01-7.26,3.01s-5.25-1-7.26-3.01l-32.74-32.74c-1.92-1.92-3.01-4.53-3.01-7.26s1.08-5.33,3-7.26l32.74-32.74c4.01-4.01,10.5-4.01,14.51,0,4.01,4.01,4.01,10.5,0,14.51l-25.48,25.48,25.48,25.48c4.01,4.01,4.01,10.5,0,14.51Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M105.49,2305.78c-2,2-4.63,3.01-7.26,3.01s-5.25-1-7.26-3.01l-32.74-32.74c-1.92-1.92-3.01-4.53-3.01-7.26s1.08-5.33,3-7.26l32.74-32.74c4.01-4.01,10.5-4.01,14.51,0,4.01,4.01,4.01,10.5,0,14.51l-25.48,25.48,25.48,25.48c4.01,4.01,4.01,10.5,0,14.51Z" />
+    </group>
+</vector>

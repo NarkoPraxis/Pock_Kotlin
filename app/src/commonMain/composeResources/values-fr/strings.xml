@@ -66,6 +66,11 @@
     <string name="charge_meter_fullscreen">Plein écran</string>
     <string name="charge_meter_none">Aucune</string>
     <string name="dark_mode">Mode sombre</string>
+    <string name="charge_arrows">Afficher les flèches de charge</string>
+    <string name="charge_meter">Jauge de charge</string>
+    <string name="player_one_short">P1</string>
+    <string name="player_two_short">P2</string>
+    <string name="set_score_position">Définir la position du score</string>
     <string name="reset_defaults">Rétablir les valeurs par défaut</string>
     <string name="score_position">Position du score</string>
     <string name="score_calibration_hint">← glisser pour positionner →</string>

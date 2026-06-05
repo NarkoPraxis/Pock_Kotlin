@@ -1,19 +1,63 @@
 package com.runoutzone.pockpock
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.runoutzone.pockpock.menu.EdgePill
+import com.runoutzone.pockpock.menu.MenuIconButton
+import com.runoutzone.pockpock.menu.PillSide
+import com.runoutzone.pockpock.menu.poppinsFamily
 import enums.ChargeMeterStyle
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
 import utility.PaintBucket
@@ -21,18 +65,36 @@ import utility.PlatformStorage
 import utility.Sounds
 import utility.Storage
 
+/**
+ * Settings, translated from Plans/UIOverhaul/Screens/{Gameplay,Graphics,Sound}.svg.
+ *
+ * One screen with three tabs (Gameplay / Graphics / Sound) selected from a persistent bottom bar:
+ * a red back button (flush left) and a brand-blue tab tray (flush right) whose selected icon sits
+ * on a white pill. The screen themes to the dark-mode toggle (white text on a dark background; the
+ * red/blue chrome keeps its white-on-color text). Toggling dark mode triggers an Activity recreate
+ * on Android (MainActivity recreates on the "darkmode" pref change), so the selected tab is held in
+ * [rememberSaveable] to survive it.
+ *
+ * Radio/toggle circles render like the Classic ball skin: inert = neutral grey; selected/on = the
+ * low player's default Classic blue (fixed, not hue-responsive).
+ */
+
+private enum class SettingsTab { Gameplay, Graphics, Sound }
+
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onDarkModeChanged: (Boolean) -> Unit = {},
     onScoreCalibrationTapped: () -> Unit = {}
 ) {
+    val poppins = poppinsFamily()
     val isDark = LocalDarkMode.current
-    val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
-    val textPrimary = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
-    val textSecondary = if (isDark) PaintBucket.textSecondaryDark else PaintBucket.textSecondaryLight
-    val labelColor = if (isDark) PaintBucket.textMutedDark else PaintBucket.textMutedLight
-    val dividerColor = if (isDark) PaintBucket.dividerDark else PaintBucket.dividerLight
+
+    val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.white
+
+    // Survives the dark-mode Activity recreate (see MainActivity.darkModeListener).
+    var tabOrdinal by rememberSaveable { mutableStateOf(SettingsTab.Gameplay.ordinal) }
+    val tab = SettingsTab.entries[tabOrdinal]
 
     var ballSize by remember { mutableStateOf(Storage.ballSize) }
     var chargeSpeed by remember { mutableStateOf(Storage.chargeSpeed) }
@@ -50,7 +112,6 @@ fun SettingsScreen(
     var lowArrow by remember { mutableStateOf(Storage.lowPlayerArrow) }
     var highChargeMeter by remember { mutableStateOf(Storage.highPlayerChargeMeterStyle) }
     var lowChargeMeter by remember { mutableStateOf(Storage.lowPlayerChargeMeterStyle) }
-    var darkMode by remember { mutableStateOf(Storage.darkMode) }
 
     fun resetToDefaults() {
         PlatformStorage.saveString("settings", "ball_sizes", "default")
@@ -69,7 +130,6 @@ fun SettingsScreen(
         PlatformStorage.saveBoolean("settings", "low_player_arrow", true)
         Storage.saveHighPlayerChargeMeterStyle(ChargeMeterStyle.SideBar)
         Storage.saveLowPlayerChargeMeterStyle(ChargeMeterStyle.SideBar)
-        PlatformStorage.saveBoolean("settings", "darkmode", false)
         Sounds.applyBackgroundVolume()
         ballSize = "default"
         chargeSpeed = 0.7f
@@ -87,359 +147,564 @@ fun SettingsScreen(
         lowArrow = true
         highChargeMeter = ChargeMeterStyle.SideBar
         lowChargeMeter = ChargeMeterStyle.SideBar
-        darkMode = false
-        onDarkModeChanged(false)
+        // darkmode left untouched here so a reset doesn't recreate the Activity.
     }
 
-    // Pre-resolve all strings in composable scope
+    // Pre-resolve strings in composable scope.
     val strBack = stringResource(Res.string.back)
-    val strSettingsTitle = stringResource(Res.string.settings_title)
-    val strGameplay = stringResource(Res.string.gameplay)
-    val strBallSizeLabel = stringResource(Res.string.ball_size_label)
-    val strBallSizeSmall = stringResource(Res.string.ball_size_small)
-    val strBallSizeDefault = stringResource(Res.string.ball_size_default)
-    val strBallSizeLarge = stringResource(Res.string.ball_size_large)
-    val strChargeSpeedLabel = stringResource(Res.string.charge_speed_label)
-    val strSpeedSlow = stringResource(Res.string.speed_slow)
-    val strSpeedNormal = stringResource(Res.string.speed_normal)
-    val strSpeedFast = stringResource(Res.string.speed_fast)
-    val strSpeedFastest = stringResource(Res.string.speed_fastest)
-    val strGameSpeedLabel = stringResource(Res.string.game_speed_label)
-    val strPointsToWinLabel = stringResource(Res.string.points_to_win_label)
-    val strTimeLimitLabel = stringResource(Res.string.time_limit_label)
-    val strMinuteShort = stringResource(Res.string.minute_short)
-    val strSound = stringResource(Res.string.sound)
-    val strSoundMaster = stringResource(Res.string.sound_master)
-    val strSoundBackground = stringResource(Res.string.sound_background)
-    val strSoundFx = stringResource(Res.string.sound_fx)
+    val strBallSize = stringResource(Res.string.ball_size_label)
+    val strSmall = stringResource(Res.string.ball_size_small)
+    val strDefault = stringResource(Res.string.ball_size_default)
+    val strLarge = stringResource(Res.string.ball_size_large)
+    val strChargeSpeed = stringResource(Res.string.charge_speed_label)
+    val strSlow = stringResource(Res.string.speed_slow)
+    val strFast = stringResource(Res.string.speed_fast)
+    val strGameSpeed = stringResource(Res.string.game_speed_label)
+    val strPointsToWin = stringResource(Res.string.points_to_win_label)
+    val strTimeLimit = stringResource(Res.string.time_limit_label)
+    val strMaster = stringResource(Res.string.sound_master)
+    val strBackground = stringResource(Res.string.sound_background)
+    val strFx = stringResource(Res.string.sound_fx)
     val strMute = stringResource(Res.string.mute)
     val strMuted = stringResource(Res.string.muted)
-    val strVisual = stringResource(Res.string.visual)
-    val strTailLengthLabel = stringResource(Res.string.tail_length_label)
-    val strTailNone = stringResource(Res.string.tail_none)
-    val strTailShort = stringResource(Res.string.tail_short)
-    val strTailDefault = stringResource(Res.string.tail_default)
-    val strTailLong = stringResource(Res.string.tail_long)
-    val strHighPlayerArrow = stringResource(Res.string.high_player_arrow)
-    val strLowPlayerArrow = stringResource(Res.string.low_player_arrow)
-    val strHighChargeMeter = stringResource(Res.string.high_player_charge_meter)
-    val strLowChargeMeter = stringResource(Res.string.low_player_charge_meter)
+    val strChargeArrows = stringResource(Res.string.charge_arrows)
+    val strChargeMeter = stringResource(Res.string.charge_meter)
+    val strP1 = stringResource(Res.string.player_one_short)
+    val strP2 = stringResource(Res.string.player_two_short)
     val strSideBar = stringResource(Res.string.charge_meter_sidebar)
     val strFullScreen = stringResource(Res.string.charge_meter_fullscreen)
     val strMeterNone = stringResource(Res.string.charge_meter_none)
+    val strTailLength = stringResource(Res.string.tail_length_label)
+    val strTailShort = stringResource(Res.string.tail_short)
+    val strTailDefault = stringResource(Res.string.tail_default)
+    val strTailLong = stringResource(Res.string.tail_long)
     val strDarkMode = stringResource(Res.string.dark_mode)
-    val strScorePosition = stringResource(Res.string.score_position)
+    val strSetScorePosition = stringResource(Res.string.set_score_position)
     val strResetDefaults = stringResource(Res.string.reset_defaults)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(bgColor)
-            .statusBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize().background(bgColor)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) {
-                Text(strBack, color = textPrimary, fontSize = 16.sp)
-            }
-            Spacer(Modifier.weight(1f))
-            Text(strSettingsTitle, color = textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-        }
+        val screenW = maxWidth
+        val screenH = maxHeight
+        val pillHeight = (screenH * 0.08f).coerceIn(58.dp, 92.dp)
+        val bottomPad = screenH * 0.03f
+        val circleD = (screenW * 0.14f).coerceIn(42.dp, 66.dp)
+        val contentBottomInset = pillHeight + bottomPad + 24.dp
 
-        HorizontalDivider(color = dividerColor)
-        SettingsSectionLabel(strGameplay, textSecondary)
-
-        SettingsSectionLabel(strBallSizeLabel, textSecondary)
-        SegmentedSelector(
-            options = listOf("small" to strBallSizeSmall, "default" to strBallSizeDefault, "large" to strBallSizeLarge),
-            selected = ballSize,
-            onSelect = { ballSize = it; PlatformStorage.saveString("settings", "ball_sizes", it) }
-        )
-
-        SettingsSectionLabel(strChargeSpeedLabel, textSecondary)
-        SegmentedSelector(
-            options = listOf(0.3f to strSpeedSlow, 0.7f to strSpeedNormal, 1.2f to strSpeedFast, 2f to strSpeedFastest),
-            selected = chargeSpeed,
-            onSelect = {
-                chargeSpeed = it
-                val key = when (it) { 0.3f -> "small"; 1.2f -> "large"; 2f -> "fastest"; else -> "default" }
-                PlatformStorage.saveString("settings", "charge_speed", key)
-            }
-        )
-
-        SettingsSectionLabel(strGameSpeedLabel, textSecondary)
-        SegmentedSelector(
-            options = listOf(24 to strSpeedSlow, 16 to strSpeedNormal, 8 to strSpeedFast),
-            selected = gameSpeed,
-            onSelect = {
-                gameSpeed = it
-                val key = when (it) { 24 -> "small"; 8 -> "large"; else -> "default" }
-                PlatformStorage.saveString("settings", "game_speed", key)
-            }
-        )
-
-        SettingsSectionLabel(
-            if (pointsToWin == 0) "$strPointsToWinLabel: ∞" else "$strPointsToWinLabel: $pointsToWin",
-            textSecondary
-        )
-        Slider(
-            value = pointsToWin.toFloat(),
-            onValueChange = {
-                pointsToWin = it.toInt()
-                Storage.savePointsToWin(pointsToWin)
-            },
-            valueRange = 0f..20f,
-            steps = 19,
-            colors = SliderDefaults.colors(
-                thumbColor = PaintBucket.segmentActive,
-                activeTrackColor = PaintBucket.segmentActive,
-                inactiveTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight
-            )
-        )
-
-        SettingsSectionLabel(
-            if (timeLimit == 0) "$strTimeLimitLabel: ∞" else "$strTimeLimitLabel: $timeLimit $strMinuteShort",
-            textSecondary
-        )
-        Slider(
-            value = timeLimit.toFloat(),
-            onValueChange = {
-                timeLimit = it.toInt()
-                Storage.saveTimeLimit(timeLimit)
-            },
-            valueRange = 0f..20f,
-            steps = 19,
-            colors = SliderDefaults.colors(
-                thumbColor = PaintBucket.segmentActive,
-                activeTrackColor = PaintBucket.segmentActive,
-                inactiveTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight
-            )
-        )
-
-        HorizontalDivider(color = dividerColor)
-        SettingsSectionLabel(strSound, textSecondary)
-
-        VolumeSliderRow(strSoundMaster, masterVol, masterMuted, labelColor, textPrimary,
-            muteLabel = strMute, mutedLabel = strMuted,
-            onMute = {
-                val next = !masterMuted
-                masterMuted = next
-                Storage.saveSoundMasterMuted(next)
-                Sounds.applyBackgroundVolume()
-            }) {
-            masterVol = it
-            Storage.saveSoundMasterVolume(it)
-            Sounds.applyBackgroundVolume()
-        }
-        VolumeSliderRow(strSoundBackground, bgVol, bgMuted, labelColor, textPrimary,
-            muteLabel = strMute, mutedLabel = strMuted,
-            onMute = {
-                val next = !bgMuted
-                bgMuted = next
-                Storage.saveSoundBackgroundMuted(next)
-                Sounds.applyBackgroundVolume()
-            }) {
-            bgVol = it
-            Storage.saveSoundBackgroundVolume(it)
-            Sounds.applyBackgroundVolume()
-        }
-        VolumeSliderRow(strSoundFx, sfxVol, sfxMuted, labelColor, textPrimary,
-            muteLabel = strMute, mutedLabel = strMuted,
-            onMute = {
-                val next = !sfxMuted
-                sfxMuted = next
-                Storage.saveSoundSfxMuted(next)
-                Sounds.applyBackgroundVolume()
-            }) {
-            sfxVol = it
-            Storage.saveSoundSfxVolume(it)
-            Sounds.applyBackgroundVolume()
-        }
-
-        HorizontalDivider(color = dividerColor)
-        SettingsSectionLabel(strVisual, textSecondary)
-        NavigationRow(strScorePosition, onScoreCalibrationTapped)
-
-        SettingsSectionLabel(strTailLengthLabel, textSecondary)
-        SegmentedSelector(
-            options = listOf(0 to strTailNone, 10 to strTailShort, 20 to strTailDefault, 40 to strTailLong),
-            selected = tailLength,
-            onSelect = {
-                tailLength = it
-                val key = when (it) { 0 -> "none"; 10 -> "small"; 40 -> "large"; else -> "default" }
-                PlatformStorage.saveString("settings", "tail_length", key)
-            }
-        )
-
-        ToggleRow(strHighPlayerArrow, highArrow, labelColor) {
-            highArrow = it; PlatformStorage.saveBoolean("settings", "high_player_arrow", it)
-        }
-        ToggleRow(strLowPlayerArrow, lowArrow, labelColor) {
-            lowArrow = it; PlatformStorage.saveBoolean("settings", "low_player_arrow", it)
-        }
-        SettingsSectionLabel(strHighChargeMeter, textSecondary)
-        SegmentedSelector(
-            options = listOf(
-                ChargeMeterStyle.SideBar    to strSideBar,
-                ChargeMeterStyle.FullScreen to strFullScreen,
-                ChargeMeterStyle.None       to strMeterNone
-            ),
-            selected = highChargeMeter,
-            onSelect = { highChargeMeter = it; Storage.saveHighPlayerChargeMeterStyle(it) }
-        )
-        SettingsSectionLabel(strLowChargeMeter, textSecondary)
-        SegmentedSelector(
-            options = listOf(
-                ChargeMeterStyle.SideBar    to strSideBar,
-                ChargeMeterStyle.FullScreen to strFullScreen,
-                ChargeMeterStyle.None       to strMeterNone
-            ),
-            selected = lowChargeMeter,
-            onSelect = { lowChargeMeter = it; Storage.saveLowPlayerChargeMeterStyle(it) }
-        )
-        ToggleRow(strDarkMode, darkMode, textSecondary) {
-            darkMode = it
-            PlatformStorage.saveBoolean("settings", "darkmode", it)
-            onDarkModeChanged(it)
-        }
-
-        HorizontalDivider(color = dividerColor)
-        TextButton(
-            onClick = { resetToDefaults() },
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, top = 20.dp)
+                .padding(bottom = contentBottomInset),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Text(strResetDefaults, color = PaintBucket.dangerRed, fontSize = 16.sp)
+            when (tab) {
+                SettingsTab.Gameplay -> {
+                    CircleRadioRow(
+                        strBallSize,
+                        listOf("small" to strSmall, "default" to strDefault, "large" to strLarge),
+                        ballSize, circleD, poppins
+                    ) { ballSize = it; PlatformStorage.saveString("settings", "ball_sizes", it) }
+
+                    CircleRadioRow(
+                        strChargeSpeed,
+                        listOf(0.3f to strSlow, 0.7f to strDefault, 1.2f to strFast),
+                        chargeSpeed, circleD, poppins
+                    ) {
+                        chargeSpeed = it
+                        val key = when (it) { 0.3f -> "small"; 1.2f -> "large"; else -> "default" }
+                        PlatformStorage.saveString("settings", "charge_speed", key)
+                    }
+
+                    CircleRadioRow(
+                        strGameSpeed,
+                        listOf(24 to strSlow, 16 to strDefault, 8 to strFast),
+                        gameSpeed, circleD, poppins
+                    ) {
+                        gameSpeed = it
+                        val key = when (it) { 24 -> "small"; 8 -> "large"; else -> "default" }
+                        PlatformStorage.saveString("settings", "game_speed", key)
+                    }
+
+                    NumberDropdownRow(strPointsToWin, pointsToWin, poppins) {
+                        pointsToWin = it; Storage.savePointsToWin(it)
+                    }
+                    NumberDropdownRow(strTimeLimit, timeLimit, poppins) {
+                        timeLimit = it; Storage.saveTimeLimit(it)
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+                    TextButton(onClick = { resetToDefaults() }, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            strResetDefaults,
+                            color = PaintBucket.dangerRed,
+                            fontFamily = poppins,
+                            fontWeight = FontWeight.Light,
+                            fontStyle = FontStyle.Italic,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+
+                SettingsTab.Graphics -> {
+                    ChargeArrowsBlock(
+                        strChargeArrows, strP1, lowArrow, strP2, highArrow, circleD, poppins,
+                        onP1 = { lowArrow = it; PlatformStorage.saveBoolean("settings", "low_player_arrow", it) },
+                        onP2 = { highArrow = it; PlatformStorage.saveBoolean("settings", "high_player_arrow", it) }
+                    )
+
+                    ChargeMeterBlock(
+                        strChargeMeter,
+                        listOf(
+                            ChargeMeterStyle.SideBar to strSideBar,
+                            ChargeMeterStyle.FullScreen to strFullScreen,
+                            ChargeMeterStyle.None to strMeterNone
+                        ),
+                        strP1, lowChargeMeter, strP2, highChargeMeter, circleD, poppins,
+                        onP1 = { lowChargeMeter = it; Storage.saveLowPlayerChargeMeterStyle(it) },
+                        onP2 = { highChargeMeter = it; Storage.saveHighPlayerChargeMeterStyle(it) }
+                    )
+
+                    CircleRadioRow(
+                        strTailLength,
+                        listOf(10 to strTailShort, 20 to strTailDefault, 40 to strTailLong),
+                        tailLength, circleD, poppins
+                    ) {
+                        tailLength = it
+                        val key = when (it) { 10 -> "small"; 40 -> "large"; else -> "default" }
+                        PlatformStorage.saveString("settings", "tail_length", key)
+                    }
+
+                    DarkModeRow(strDarkMode, isDark, circleD, poppins) { next ->
+                        PlatformStorage.saveBoolean("settings", "darkmode", next)
+                        onDarkModeChanged(next)
+                    }
+
+                    ScorePositionBanner(strSetScorePosition, poppins, onScoreCalibrationTapped)
+                }
+
+                SettingsTab.Sound -> {
+                    SoundSliderRow(strMaster, masterVol, masterMuted, strMute, strMuted,
+                        onMute = {
+                            masterMuted = !masterMuted
+                            Storage.saveSoundMasterMuted(masterMuted)
+                            Sounds.applyBackgroundVolume()
+                        }) {
+                        masterVol = it; Storage.saveSoundMasterVolume(it); Sounds.applyBackgroundVolume()
+                    }
+                    SoundSliderRow(strBackground, bgVol, bgMuted, strMute, strMuted,
+                        onMute = {
+                            bgMuted = !bgMuted
+                            Storage.saveSoundBackgroundMuted(bgMuted)
+                            Sounds.applyBackgroundVolume()
+                        }) {
+                        bgVol = it; Storage.saveSoundBackgroundVolume(it); Sounds.applyBackgroundVolume()
+                    }
+                    SoundSliderRow(strFx, sfxVol, sfxMuted, strMute, strMuted,
+                        onMute = {
+                            sfxMuted = !sfxMuted
+                            Storage.saveSoundSfxMuted(sfxMuted)
+                            Sounds.applyBackgroundVolume()
+                        }) {
+                        sfxVol = it; Storage.saveSoundSfxVolume(it); Sounds.applyBackgroundVolume()
+                    }
+                }
+            }
         }
 
-        Spacer(Modifier.height(32.dp))
+        // ── Opaque themed strip behind the bottom bar so scrolled content can't peek below it. ──
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(contentBottomInset)
+                .background(bgColor)
+        )
+
+        // ── Back button (flush left) ──
+        EdgePill(
+            side = PillSide.Start,
+            color = PaintBucket.menuAccentRed,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = bottomPad)
+                .height(pillHeight)
+        ) {
+            MenuIconButton(
+                painter = painterResource(Res.drawable.ic_menu_back),
+                contentDescription = strBack,
+                size = pillHeight * 0.36f,
+                onClick = onBack
+            )
+        }
+
+        // ── Tab tray (flush right) ──
+        val tabIconSize = pillHeight * 0.42f
+        EdgePill(
+            side = PillSide.End,
+            color = PaintBucket.menuAccentBlue,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = bottomPad)
+                .height(pillHeight)
+        ) {
+            TabIcon(painterResource(Res.drawable.ic_menu_graphics), stringResource(Res.string.visual),
+                tab == SettingsTab.Graphics, tabIconSize) { tabOrdinal = SettingsTab.Graphics.ordinal }
+            TabIcon(painterResource(Res.drawable.ic_menu_audio), stringResource(Res.string.sound),
+                tab == SettingsTab.Sound, tabIconSize) { tabOrdinal = SettingsTab.Sound.ordinal }
+            TabIcon(painterResource(Res.drawable.ic_menu_gameplay), stringResource(Res.string.gameplay),
+                tab == SettingsTab.Gameplay, tabIconSize) { tabOrdinal = SettingsTab.Gameplay.ordinal }
+        }
     }
 }
 
+// ── Building blocks ──────────────────────────────────────────────────────────
+
 @Composable
-private fun SettingsSectionLabel(text: String, color: Color) {
-    Text(text = text, color = color, fontSize = 13.sp)
+private fun titleColor() = if (LocalDarkMode.current) PaintBucket.white else PaintBucket.black
+
+@Composable
+private fun labelColor() = if (LocalDarkMode.current) Color(0xFFCCCCCC) else Color(0xFF222222)
+
+@Composable
+private fun SectionTitle(text: String, poppins: FontFamily, modifier: Modifier = Modifier, center: Boolean = false) {
+    Text(
+        text, color = titleColor(), fontFamily = poppins, fontWeight = FontWeight.Bold, fontSize = 24.sp,
+        textAlign = if (center) TextAlign.Center else null,
+        modifier = if (center) modifier.fillMaxWidth() else modifier
+    )
 }
 
 @Composable
-private fun <T> SegmentedSelector(
+private fun ItalicLabel(text: String, poppins: FontFamily) {
+    Text(
+        text, color = labelColor(), fontFamily = poppins,
+        fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic, fontSize = 15.sp
+    )
+}
+
+/** A Classic-skin disc: a filled circle with an outline. Inert = grey, selected/on = low Classic blue. */
+@Composable
+private fun ClassicCircle(selected: Boolean, diameter: Dp, modifier: Modifier = Modifier) {
+    val fill = if (selected) PaintBucket.menuAccentBlueSoft else PaintBucket.inertPrimary
+    val outline = if (selected) PaintBucket.menuAccentBlue else PaintBucket.inertSecondary
+    Canvas(modifier = modifier.size(diameter)) {
+        val r = size.minDimension / 2f
+        val sw = r * 0.16f
+        drawCircle(color = fill, radius = r - sw / 2f, center = center)
+        drawCircle(color = outline, radius = r - sw / 2f, center = center, style = Stroke(width = sw))
+    }
+}
+
+/** Centered title + a row of labelled radio circles (exactly one selected). */
+@Composable
+private fun <T> CircleRadioRow(
+    title: String,
     options: List<Pair<T, String>>,
     selected: T,
+    circleD: Dp,
+    poppins: FontFamily,
     onSelect: (T) -> Unit
 ) {
-    val isDark = LocalDarkMode.current
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        options.forEach { (value, label) ->
-            val isSelected = value == selected
-            Button(
-                onClick = { onSelect(value) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) PaintBucket.segmentActive
-                                     else if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight,
-                    contentColor = if (isSelected || isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
-                ),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(label, fontSize = 12.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun VolumeSliderRow(
-    label: String,
-    value: Int,
-    muted: Boolean,
-    labelColor: Color,
-    valueColor: Color,
-    muteLabel: String = "Mute",
-    mutedLabel: String = "Muted",
-    onMute: () -> Unit,
-    onValueChange: (Int) -> Unit
-) {
-    val isDark = LocalDarkMode.current
     Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(label, color = labelColor, fontSize = 14.sp)
-            TextButton(onClick = onMute) {
-                Text(
-                    if (muted) mutedLabel else muteLabel,
-                    color = if (muted) PaintBucket.dangerRed else PaintBucket.muteInactive,
-                    fontSize = 12.sp
-                )
+        SectionTitle(title, poppins, center = true)
+        Spacer(Modifier.height(12.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            options.forEach { (value, label) ->
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    ItalicLabel(label, poppins)
+                    Spacer(Modifier.height(8.dp))
+                    ClassicCircle(value == selected, circleD, Modifier.clickable { onSelect(value) })
+                }
             }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Slider(
-                value = value.toFloat(),
-                onValueChange = { onValueChange(it.toInt()) },
-                valueRange = 0f..100f,
-                modifier = Modifier
-                    .weight(1f)
-                    .alpha(if (muted) 0.4f else 1f),
-                enabled = !muted,
-                colors = SliderDefaults.colors(
-                    thumbColor = PaintBucket.segmentActive,
-                    activeTrackColor = PaintBucket.segmentActive,
-                    inactiveTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight,
-                    disabledThumbColor = PaintBucket.segmentActive,
-                    disabledActiveTrackColor = PaintBucket.segmentActive,
-                    disabledInactiveTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight
-                )
-            )
-            Spacer(Modifier.width(8.dp))
-            Text("$value%", color = valueColor, fontSize = 12.sp, modifier = Modifier.width(40.dp))
         }
     }
 }
 
+/** Display Charge Arrows: two centered single-circle on/off toggles (P1 / P2). */
 @Composable
-private fun NavigationRow(label: String, onClick: () -> Unit) {
-    val isDark = LocalDarkMode.current
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight,
-            contentColor = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
-        )
-    ) {
+private fun ChargeArrowsBlock(
+    title: String,
+    p1Label: String, p1On: Boolean,
+    p2Label: String, p2On: Boolean,
+    circleD: Dp, poppins: FontFamily,
+    onP1: (Boolean) -> Unit,
+    onP2: (Boolean) -> Unit
+) {
+    Column {
+        SectionTitle(title, poppins, center = true)
+        Spacer(Modifier.height(12.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(64.dp, Alignment.CenterHorizontally)
         ) {
-            Text(label, fontSize = 14.sp)
-            Text("›", fontSize = 18.sp)
+            ToggleColumn(p1Label, p1On, circleD, poppins) { onP1(!p1On) }
+            ToggleColumn(p2Label, p2On, circleD, poppins) { onP2(!p2On) }
         }
     }
 }
 
 @Composable
-private fun ToggleRow(label: String, checked: Boolean, labelColor: Color, onCheckedChange: (Boolean) -> Unit) {
-    val isDark = LocalDarkMode.current
+private fun ToggleColumn(label: String, on: Boolean, circleD: Dp, poppins: FontFamily, onToggle: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        ItalicLabel(label, poppins)
+        Spacer(Modifier.height(8.dp))
+        ClassicCircle(on, circleD, Modifier.clickable { onToggle() })
+    }
+}
+
+/** Charge Meter: a per-player 3-way style selector (Side Bar / Full Screen / None). */
+@Composable
+private fun <T> ChargeMeterBlock(
+    title: String,
+    options: List<Pair<T, String>>,
+    p1Label: String, p1Selected: T,
+    p2Label: String, p2Selected: T,
+    circleD: Dp, poppins: FontFamily,
+    onP1: (T) -> Unit,
+    onP2: (T) -> Unit
+) {
+    val tagWidth = 46.dp
+    Column {
+        SectionTitle(title, poppins, center = true)
+        Spacer(Modifier.height(10.dp))
+        // Column headers (style labels), aligned over the circle columns.
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Spacer(Modifier.width(tagWidth))
+            options.forEach { (_, label) ->
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { ItalicLabel(label, poppins) }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        ChargeMeterPlayerRow(p1Label, options, p1Selected, tagWidth, circleD, poppins, onP1)
+        Spacer(Modifier.height(12.dp))
+        ChargeMeterPlayerRow(p2Label, options, p2Selected, tagWidth, circleD, poppins, onP2)
+    }
+}
+
+@Composable
+private fun <T> ChargeMeterPlayerRow(
+    playerLabel: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    tagWidth: Dp,
+    circleD: Dp,
+    poppins: FontFamily,
+    onSelect: (T) -> Unit
+) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            playerLabel, color = labelColor(), fontFamily = poppins,
+            fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic, fontSize = 17.sp,
+            modifier = Modifier.width(tagWidth)
+        )
+        options.forEach { (value, _) ->
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                ClassicCircle(value == selected, circleD, Modifier.clickable { onSelect(value) })
+            }
+        }
+    }
+}
+
+/** Dark Mode: title with a single on/off circle on the right. */
+@Composable
+private fun DarkModeRow(title: String, on: Boolean, circleD: Dp, poppins: FontFamily, onToggle: (Boolean) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = labelColor, fontSize = 14.sp)
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedTrackColor = PaintBucket.segmentActive,
-                checkedThumbColor = PaintBucket.white,
-                uncheckedTrackColor = if (isDark) PaintBucket.segmentInactiveDark else PaintBucket.menuButtonLight,
-                uncheckedThumbColor = if (isDark) PaintBucket.white else PaintBucket.menuBackgroundDark
+        SectionTitle(title, poppins)
+        ClassicCircle(on, circleD, Modifier.clickable { onToggle(!on) })
+    }
+}
+
+/** A pale-lavender pill that opens a dropdown of 1..20 + ∞. 0 represents ∞ (unlimited). */
+@Composable
+private fun NumberDropdownRow(
+    title: String,
+    value: Int,
+    poppins: FontFamily,
+    onValue: (Int) -> Unit
+) {
+    val isDark = LocalDarkMode.current
+    val pillBg = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuHashStroke
+    val txt = if (isDark) PaintBucket.white else PaintBucket.black
+    var expanded by remember { mutableStateOf(false) }
+    val options = (1..20).toList() + 0  // 0 == ∞, shown last
+
+    fun render(v: Int) = if (v == 0) "∞" else v.toString()
+
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            title, color = txt, fontFamily = poppins, fontWeight = FontWeight.Bold,
+            fontSize = 24.sp, modifier = Modifier.weight(1f)
+        )
+        Box {
+            Box(
+                modifier = Modifier
+                    .width(118.dp)
+                    .height(62.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(pillBg)
+                    .clickable { expanded = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(render(value), color = txt, fontFamily = poppins, fontWeight = FontWeight.Bold, fontSize = 32.sp)
+            }
+            // DropdownMenu colors its container from surfaceContainer (not surface), so override
+            // both — otherwise the menu keeps the default pale surface and the white text vanishes.
+            MaterialTheme(
+                colorScheme = MaterialTheme.colorScheme.copy(
+                    surface = pillBg,
+                    surfaceContainer = pillBg,
+                    onSurface = txt
+                )
+            ) {
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    // ~7 rows (48dp each + 16dp menu padding) then scroll.
+                    modifier = Modifier.width(118.dp).heightIn(max = 352.dp)
+                ) {
+                    options.forEach { opt ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    render(opt), color = txt, fontFamily = poppins,
+                                    fontWeight = FontWeight.Bold, fontSize = 20.sp,
+                                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
+                                )
+                            },
+                            onClick = { onValue(opt); expanded = false }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A bold-titled volume slider (pale track, blue thumb) with a speaker mute icon (blue / red-slashed). */
+@Composable
+private fun SoundSliderRow(
+    title: String,
+    value: Int,
+    muted: Boolean,
+    muteLabel: String,
+    mutedLabel: String,
+    onMute: () -> Unit,
+    onValue: (Int) -> Unit
+) {
+    val poppins = poppinsFamily()
+    val isDark = LocalDarkMode.current
+    val inactiveTrack = if (isDark) PaintBucket.menuButtonDark else PaintBucket.menuHashStroke
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SectionTitle(title, poppins)
+            Box(
+                modifier = Modifier.size(46.dp).clickable { onMute() },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(
+                        if (muted) Res.drawable.ic_menu_audio_muted else Res.drawable.ic_menu_audio
+                    ),
+                    contentDescription = if (muted) mutedLabel else muteLabel,
+                    modifier = Modifier.size(30.dp),
+                    colorFilter = ColorFilter.tint(
+                        if (muted) PaintBucket.menuAccentRed else PaintBucket.menuAccentBlue
+                    )
+                )
+            }
+        }
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onValue(it.toInt()) },
+            valueRange = 0f..100f,
+            enabled = !muted,
+            modifier = Modifier.fillMaxWidth().alpha(if (muted) 0.4f else 1f),
+            colors = SliderDefaults.colors(
+                thumbColor = PaintBucket.menuAccentBlue,
+                activeTrackColor = PaintBucket.menuAccentBlue,
+                inactiveTrackColor = inactiveTrack,
+                disabledThumbColor = PaintBucket.menuAccentBlue,
+                disabledActiveTrackColor = PaintBucket.menuAccentBlue,
+                disabledInactiveTrackColor = inactiveTrack
             )
+        )
+    }
+}
+
+/**
+ * A symmetric parallelogram (both side edges share the same left-leaning diagonal), matching the
+ * SVG banner. Top edge is shifted right of the bottom edge by [slantFraction] × height.
+ */
+private fun parallelogramShape(slantFraction: Float = 0.34f): Shape = object : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val slant = size.height * slantFraction
+        val path = Path().apply {
+            moveTo(slant, 0f)                        // top-left
+            lineTo(size.width, 0f)                   // top-right
+            lineTo(size.width - slant, size.height)  // bottom-right
+            lineTo(0f, size.height)                  // bottom-left
+            close()
+        }
+        return Outline.Generic(path)
+    }
+}
+
+/** Centered blue parallelogram button (matching the SVG) → score-position calibration screen. */
+@Composable
+private fun ScorePositionBanner(text: String, poppins: FontFamily, onClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.82f)
+                .height(64.dp)
+                .clip(parallelogramShape())
+                .background(PaintBucket.menuAccentBlue)
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text, color = PaintBucket.white, fontFamily = poppins, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        }
+    }
+}
+
+/** One tab in the bottom tray: selected = blue icon on a white pill; unselected = white icon. */
+@Composable
+private fun RowScope.TabIcon(
+    painter: Painter,
+    contentDescription: String,
+    selected: Boolean,
+    iconSize: Dp,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 6.dp)
+            .size(iconSize + 20.dp)
+            .clip(RoundedCornerShape(50))
+            .background(if (selected) PaintBucket.white else Color.Transparent)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painter,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(iconSize),
+            colorFilter = ColorFilter.tint(if (selected) PaintBucket.menuAccentBlue else PaintBucket.white)
         )
     }
 }

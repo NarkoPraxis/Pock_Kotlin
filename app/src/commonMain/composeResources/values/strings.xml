@@ -66,6 +66,11 @@
     <string name="charge_meter_fullscreen">Full Screen</string>
     <string name="charge_meter_none">None</string>
     <string name="dark_mode">Dark Mode</string>
+    <string name="charge_arrows">Display Charge Arrows</string>
+    <string name="charge_meter">Charge Meter</string>
+    <string name="player_one_short">P1</string>
+    <string name="player_two_short">P2</string>
+    <string name="set_score_position">Set Score Position</string>
     <string name="reset_defaults">Reset to Defaults</string>
     <string name="reset_colors">Reset Colors to Default</string>
     <string name="player_colors">Player Colors</string>

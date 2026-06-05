@@ -66,6 +66,11 @@
     <string name="charge_meter_fullscreen">Pantalla completa</string>
     <string name="charge_meter_none">Ninguna</string>
     <string name="dark_mode">Modo oscuro</string>
+    <string name="charge_arrows">Mostrar flechas de carga</string>
+    <string name="charge_meter">Medidor de carga</string>
+    <string name="player_one_short">P1</string>
+    <string name="player_two_short">P2</string>
+    <string name="set_score_position">Definir posición del marcador</string>
     <string name="reset_defaults">Restaurar valores predeterminados</string>
     <string name="score_position">Posición del marcador</string>
     <string name="score_calibration_hint">← arrastra para posicionar →</string>

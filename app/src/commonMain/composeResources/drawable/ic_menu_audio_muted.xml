@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="98.26dp"
+    android:height="84.4dp"
+    android:viewportWidth="98.26"
+    android:viewportHeight="84.4">
+    <!-- Speaker cone (from Icon_Audio) with a slash across it = muted. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12.93,23.65H4.07c-2.25,0-4.07,1.82-4.07,4.07v28.96c0,2.25,1.82,4.07,4.07,4.07h8.85c.88,0,1.73.28,2.44.81l29.52,22.02c2.69,2,6.51.09,6.51-3.26V4.08c0-3.35-3.82-5.27-6.51-3.26L15.36,22.84c-.7.52-1.56.81-2.44.81Z" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M92,7 L8,77" />
+</vector>
