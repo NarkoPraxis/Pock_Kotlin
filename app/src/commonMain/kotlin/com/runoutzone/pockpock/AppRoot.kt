@@ -41,7 +41,7 @@ import utility.edgeSwipeBack
 /** Provides the current dark-mode flag to any composable in the tree. */
 val LocalDarkMode = compositionLocalOf { false }
 
-private enum class Screen { MainMenu, Game, Settings, ScoreCalibration, CustomBallCreator, CustomColorPicker }
+private enum class Screen { MainMenu, Game, Settings, ScoreCalibration, BallDesigner, BallDesignerColor, CustomBallCreator, CustomColorPicker }
 
 @Composable
 fun AppRoot() {
@@ -116,7 +116,7 @@ fun AppRoot() {
                         },
                         onCustomBallTapped = {
                             Settings.isDemoMode = false
-                            navController.navigate(Screen.CustomBallCreator.name)
+                            navController.navigate(Screen.BallDesigner.name)
                         },
                     )
                 }
@@ -136,6 +136,26 @@ fun AppRoot() {
                     Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStack() }) {
                         ScoreCalibrationScreen(onBack = { navController.popBackStack() })
                     }
+                }
+                composable(Screen.BallDesigner.name) {
+                    BallDesignerScreen(
+                        onBack = { navController.popBackStack() },
+                        onNavigateToColor = {
+                            navController.navigate(Screen.BallDesignerColor.name) {
+                                popUpTo(Screen.MainMenu.name) { inclusive = false }
+                            }
+                        }
+                    )
+                }
+                composable(Screen.BallDesignerColor.name) {
+                    BallDesignerColorScreen(
+                        onBack = { navController.popBackStack() },
+                        onNavigateToStyle = {
+                            navController.navigate(Screen.BallDesigner.name) {
+                                popUpTo(Screen.MainMenu.name) { inclusive = false }
+                            }
+                        }
+                    )
                 }
                 composable(Screen.CustomBallCreator.name) {
                     CustomBallCreatorScreen(
