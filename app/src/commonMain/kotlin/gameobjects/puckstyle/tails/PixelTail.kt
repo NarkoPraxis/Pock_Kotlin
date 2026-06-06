@@ -16,8 +16,9 @@ class PixelTail(override val renderer: PuckRenderer) : TailRenderer {
     private class Block(var x: Float = 0f, var y: Float = 0f)
     private class Ring(val x: Float, val y: Float, var size: Float, var alpha: Int, val isFront: Boolean, val growRate: Float, val color: Int)
 
-    // Tail length is constant — computed once at init from the immutable multiplier
-    private val len = (15 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+    // Live tail length — computed once at init from the immutable multiplier. Static UI collapses
+    // to the shared list-tail density (see [staticPointCount]).
+    private val baseLen = (15 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
 
     private var blocks: MutableList<Block>? = null
     private val rings = mutableListOf<Ring>()
@@ -28,18 +29,22 @@ class PixelTail(override val renderer: PuckRenderer) : TailRenderer {
     private var shiftCounter = 0
     private var rippleIndex  = -1   // collision ripple; -1 = idle
 
-    // Cached radius-derived values — recomputed only when radius changes
+    // Cached radius-derived values — recomputed when the radius or the active length changes
     private var cachedRadius   = -1f
-    private var cachedSizes    = FloatArray(len)   // computeSize per index
-    private var cachedAlphas   = IntArray(len)     // computeAlpha per index
+    private var cachedSizes    = FloatArray(0)    // computeSize per index
+    private var cachedAlphas   = IntArray(0)      // computeAlpha per index
     private var cachedStrokeW  = 0f               // radius * 0.3f
     private var cachedGrowRate = 0f               // radius * 0.09f
 
-    private fun ensureCache() {
-        if (cachedRadius == renderer.radius) return
+    private fun ensureCache(len: Int) {
+        if (cachedRadius == renderer.radius && cachedSizes.size == len) return
         cachedRadius   = renderer.radius
         cachedStrokeW  = renderer.radius * 0.3f
         cachedGrowRate = renderer.radius * 0.09f
+        if (cachedSizes.size != len) {
+            cachedSizes  = FloatArray(len)
+            cachedAlphas = IntArray(len)
+        }
         for (i in 0 until len) {
             cachedSizes[i]  = renderer.radius * (0.95f + 0.85f * exp(-i.toFloat() * 0.3f))
             cachedAlphas[i] = computeAlpha(i, len)
@@ -47,7 +52,8 @@ class PixelTail(override val renderer: PuckRenderer) : TailRenderer {
     }
 
     override fun render(scope: DrawScope) {
-        ensureCache()
+        val len = if (renderer.staticUiMode) staticPointCount else baseLen
+        ensureCache(len)
 
         val justHit      = renderer.launched && !wasLaunched
         val justShielded = renderer.shielded && !wasShielded

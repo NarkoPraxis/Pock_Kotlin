@@ -10,11 +10,23 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.withSaveLayer
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.unit.LayoutDirection
+import gameobjects.Settings
 
 interface TailRenderer {
     val renderer: PuckRenderer
 
     val zIndex: Int get() = -1
+
+    /**
+     * Shared point count for list/historical static tails. In [PuckRenderer.staticUiMode] every
+     * list-structured tail (Classic, Neon, Metal, Pixel, Prism, Plasma, Rainbow, Spinner, Ice) poses
+     * this many points along the [StaticTailPath] swoosh — the one sanctioned deviation from the live
+     * "screenshot." The live ball has room for longer trails (30–40+ points), but the static UI ball is
+     * space-constrained, so they all collapse to ClassicTail's density to avoid squished, overlapping
+     * indices. ClassicTail's live length is the chosen reference (`20 * tailLengthMultiplier`).
+     */
+    val staticPointCount: Int
+        get() = 20
 
     val theme: ColorTheme
         get() = renderer.theme

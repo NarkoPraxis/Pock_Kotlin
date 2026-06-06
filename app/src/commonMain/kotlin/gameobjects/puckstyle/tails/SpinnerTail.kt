@@ -27,7 +27,9 @@ class SpinnerTail(override val renderer: PuckRenderer) : TailRenderer {
     private val degToRad  = piF / 180f
 
     override fun render(scope: DrawScope) {
-        if (history == null || history!!.size != tailLen) history = MutableList(tailLen) { Pos(renderer.x, renderer.y) }
+        // Static UI collapses to the shared list-tail density; live keeps its longer trail.
+        val len = if (renderer.staticUiMode) staticPointCount else tailLen
+        if (history == null || history!!.size != len) history = MutableList(len) { Pos(renderer.x, renderer.y) }
         val history = history!!
 
         if (renderer.staticUiMode) {

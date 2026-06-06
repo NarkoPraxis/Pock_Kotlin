@@ -14,7 +14,9 @@ class MetalTail(override val renderer: PuckRenderer) : TailRenderer {
     private val metalLen = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
 
     override fun render(scope: DrawScope) {
-        if (points == null || points!!.size != metalLen) points = MutableList(metalLen) { DrawablePoint(renderer.x, renderer.y) }
+        // Static UI collapses to the shared list-tail density; live keeps its longer trail.
+        val len = if (renderer.staticUiMode) staticPointCount else metalLen
+        if (points == null || points!!.size != len) points = MutableList(len) { DrawablePoint(renderer.x, renderer.y) }
         val points = points!!
         val colors = responsiveGroup
         val lastIndex = (points.size - 1).coerceAtLeast(1)

@@ -33,7 +33,9 @@ class PlasmaTail(override val renderer: PuckRenderer) : TailRenderer {
         get() = 1
 
     override fun render(scope: DrawScope) {
-        val plasmaLen = (18 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        // Static UI collapses to the shared list-tail density; live keeps its own trail length.
+        val plasmaLen = if (renderer.staticUiMode) staticPointCount
+                        else (18 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (points == null || points!!.size != plasmaLen) points = MutableList(plasmaLen) { Pos(renderer.x, renderer.y) }
         val points = points!!
 

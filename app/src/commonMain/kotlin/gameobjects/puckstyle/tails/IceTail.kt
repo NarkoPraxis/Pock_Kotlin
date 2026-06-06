@@ -81,53 +81,55 @@ class IceTail(override val renderer: PuckRenderer) : TailRenderer {
 
     /**
      * Frozen screenshot of [render]'s live deque. Ice is a continuous two-layer trail (puddle +
-     * ice crystal), not a particle spray, so each shard is posed one aging-step further along the
-     * swoosh — the newest at the ball head — carrying the exact ice/puddle state [render] would have
-     * aged it to. Drawn oldest→newest so the fresh ice crystal at the ball lands on top, matching the
-     * live loop's overlap order. No jitter or randomness: the same recurrence as [render], frozen.
+     * ice crystal), not a particle spray, so each shard carries the exact ice/puddle state [render]
+     * would have aged it to. The full melt is simulated over the shard's real lifespan, but only
+     * [staticPointCount] samples are drawn — evenly spread along the swoosh at ClassicTail's density,
+     * so the ice still melts completely by the tail tip without crowding the space-constrained UI ball.
+     * Drawn oldest→newest so the fresh ice crystal at the ball lands on top, matching the live loop.
+     * No jitter or randomness: the same recurrence as [render], subsampled.
      */
     private fun renderStatic(scope: DrawScope) {
         val primaryColor = responsivePrimary
         val maxPuddleSize = renderer.radius * 1.5f
         val iceCutoff = renderer.radius * 0.05f
 
-        // A shard lives until its life reaches 0, so the trail holds this many shards at steady state.
-        val count = (1f / lifeDecrement).toInt().coerceAtLeast(2)
-        val last = count - 1
+        // A shard lives until its life reaches 0 — simulate that whole lifespan so the melt completes.
+        val lifespan = (1f / lifeDecrement).toInt().coerceAtLeast(2)
+        val puddleSizes = FloatArray(lifespan); val puddleAlphas = IntArray(lifespan)
+        val iceSizes = FloatArray(lifespan)
 
-        val cx = FloatArray(count); val cy = FloatArray(count)
-        val puddleSizes = FloatArray(count); val puddleAlphas = IntArray(count)
-        val iceSizes = FloatArray(count)
-
-        // Walk the same aging math as render(), newest (i=0, at the ball) → oldest (i=last, tail tip).
+        // Walk the same aging math as render(), newest (i=0, at the ball) → oldest (tail tip).
         var iceSize = renderer.radius * 1.2f
         var puddleSize = renderer.radius * 0.3f
         var life = 1f
         var alive = 0
-        for (i in 0 until count) {
+        for (i in 0 until lifespan) {
             life -= lifeDecrement
             iceSize *= 0.95f
             if (life > 0.6f) puddleSize *= 1.2f else puddleSize *= 0.99f
             puddleSize = puddleSize.coerceIn(0f, maxPuddleSize)
             if (life <= 0f) break
-
-            val pos = staticSwooshPoint(i.toFloat() / last)
-            cx[i] = pos.x; cy[i] = pos.y
             puddleSizes[i] = puddleSize
             puddleAlphas[i] = (90f * life * (1f - life)).toInt().coerceIn(0, 180)
             iceSizes[i] = iceSize
             alive++
         }
 
-        // Draw oldest→newest so the ball's fresh ice crystal renders on top, matching render().
-        for (i in alive - 1 downTo 0) {
+        // Subsample to ClassicTail's density: staticPointCount points evenly along the swoosh, each
+        // pulling its aged state from the matching fraction of the lifespan. Oldest→newest for overlap.
+        val last = (staticPointCount - 1).coerceAtLeast(1)
+        val srcLast = (alive - 1).coerceAtLeast(1)
+        for (k in last downTo 0) {
+            val ratio = k.toFloat() / last
+            val src = (ratio * srcLast).toInt().coerceIn(0, alive - 1)
+            val pos = staticSwooshPoint(ratio)
             scope.drawCircle(
-                color = Color(Palette.withAlpha(primaryColor, puddleAlphas[i])),
-                radius = puddleSizes[i],
-                center = Offset(cx[i], cy[i])
+                color = Color(Palette.withAlpha(primaryColor, puddleAlphas[src])),
+                radius = puddleSizes[src],
+                center = pos
             )
-            if (iceSizes[i] > iceCutoff) {
-                scope.drawCircle(PaintBucket.white, iceSizes[i], Offset(cx[i], cy[i]))
+            if (iceSizes[src] > iceCutoff) {
+                scope.drawCircle(PaintBucket.white, iceSizes[src], pos)
             }
         }
     }

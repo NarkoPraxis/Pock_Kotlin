@@ -29,7 +29,8 @@ class NeonTail(override val renderer: PuckRenderer) : TailRenderer {
     }
 
     override fun render(scope: DrawScope) {
-        val len = tailLen
+        // Static UI collapses to the shared list-tail density; live keeps its longer trail.
+        val len = if (renderer.staticUiMode) staticPointCount else tailLen
         if (rings == null || rings!!.size != len) rings = MutableList(len) { Ring(renderer.x, renderer.y) }
         val rings = rings!!
         val color = responsivePrimary

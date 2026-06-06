@@ -41,7 +41,9 @@ class PrismTail(override val renderer: PuckRenderer) : TailRenderer {
     private val sinA = FloatArray(7)
 
     override fun render(scope: DrawScope) {
-        val historySize = (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
+        // Static UI collapses to the shared list-tail density; live keeps its longer trail.
+        val historySize = if (renderer.staticUiMode) staticPointCount
+                          else (40 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
         if (history == null || history!!.size != historySize) {
             history = MutableList(historySize) { Frame().apply {
                 x = renderer.x; y = renderer.y
