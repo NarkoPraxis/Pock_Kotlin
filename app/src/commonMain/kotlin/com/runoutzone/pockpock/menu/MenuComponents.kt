@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -83,7 +84,7 @@ fun SlantedMenuButton(
     height: androidx.compose.ui.unit.Dp = 84.dp,
     color: Color = PaintBucket.menuAccentBlue,
     contentColor: Color = PaintBucket.white,
-    fontSize: androidx.compose.ui.unit.TextUnit = 30.sp,
+    fontSize: androidx.compose.ui.unit.TextUnit = 38.sp,
     fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
     onClick: () -> Unit,
     trailingIcons: @Composable RowScope.() -> Unit,
@@ -95,19 +96,32 @@ fun SlantedMenuButton(
             .clip(shape)
             .background(color)
             .clickable(onClick = onClick)
-            .padding(start = height * 0.55f, end = 24.dp),
+            // Equal *visual* start/end inset. The right edge is vertical, so 28.dp there reads as 28.
+            // The left edge is slanted, so at the label's vertical center the filled background has
+            // already receded inward by slant/2 (= height * slantFraction / 2). Add that back so the
+            // gap from the slanted edge to the label matches the gap on the right.
+            .padding(start = 30.dp + height * (0.375f / 2f), end = 28.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // The button wraps its content so each label gets symmetric left/right padding inside the
+        // rectangle. Buttons are right-anchored at the call site, so the trailing glyphs still line
+        // up across every button regardless of label length.
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 text = text,
+                textAlign = TextAlign.End,
                 color = contentColor,
                 fontSize = fontSize,
                 fontFamily = fontFamily,
-                fontWeight = FontWeight.Light,
+                fontWeight = FontWeight.Bold,
                 fontStyle = FontStyle.Italic,
+                maxLines = 1,
+                softWrap = false,
             )
-            Box(modifier = Modifier.size(16.dp))
+            // Gap between the label and the trailing glyph(s).
+            Box(modifier = Modifier.size(28.dp))
             trailingIcons()
         }
     }
@@ -152,7 +166,7 @@ fun MenuIconButton(
     contentDescription: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: androidx.compose.ui.unit.Dp = 40.dp,
+    size: androidx.compose.ui.unit.Dp = 32.dp,
     tint: Color = PaintBucket.white,
 ) {
     val interaction = remember { MutableInteractionSource() }

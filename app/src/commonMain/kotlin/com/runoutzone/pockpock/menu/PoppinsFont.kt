@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontWeight
 import org.jetbrains.compose.resources.Font
 import pock_kotlin.app.generated.resources.Res
 import pock_kotlin.app.generated.resources.poppins_bold
+import pock_kotlin.app.generated.resources.poppins_bold_italic
 import pock_kotlin.app.generated.resources.poppins_italic
 import pock_kotlin.app.generated.resources.poppins_light
 import pock_kotlin.app.generated.resources.poppins_light_italic
@@ -33,4 +34,5 @@ fun poppinsFamily(): FontFamily = FontFamily(
     Font(Res.font.poppins_medium, FontWeight.Medium, FontStyle.Normal),
     Font(Res.font.poppins_semibold, FontWeight.SemiBold, FontStyle.Normal),
     Font(Res.font.poppins_bold, FontWeight.Bold, FontStyle.Normal),
+    Font(Res.font.poppins_bold_italic, FontWeight.Bold, FontStyle.Italic),
 )
