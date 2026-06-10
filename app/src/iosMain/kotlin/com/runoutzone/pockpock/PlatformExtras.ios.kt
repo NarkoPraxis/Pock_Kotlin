@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.runoutzone.pockpock.menu.MenuIconButton
@@ -33,7 +34,7 @@ import utility.Sounds
 import utility.Storage
 
 @Composable
-actual fun PlatformShareButton(modifier: Modifier) {
+actual fun PlatformShareButton(modifier: Modifier, iconSize: Dp) {
     var toast by remember { mutableStateOf<String?>(null) }
     val strShareThanks = stringResource(Res.string.share_thanks)
     val strShareAlreadyClaimed = stringResource(Res.string.share_already_claimed)
@@ -42,6 +43,7 @@ actual fun PlatformShareButton(modifier: Modifier) {
         painter = painterResource(Res.drawable.ic_menu_share),
         contentDescription = stringResource(Res.string.share),
         modifier = modifier,
+        size = iconSize,
         onClick = {
             IosShareHelper.shareAppPromo { completed ->
                 if (!completed) return@shareAppPromo
@@ -67,13 +69,14 @@ actual fun PlatformShareButton(modifier: Modifier) {
 }
 
 @Composable
-actual fun PlatformLanguageButton(modifier: Modifier) {
+actual fun PlatformLanguageButton(modifier: Modifier, iconSize: Dp) {
     var showPicker by remember { mutableStateOf(false) }
 
     MenuIconButton(
         painter = painterResource(Res.drawable.ic_menu_localization),
         contentDescription = stringResource(Res.string.language),
         modifier = modifier,
+        size = iconSize,
         onClick = { showPicker = true }
     )
 

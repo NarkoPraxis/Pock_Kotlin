@@ -100,13 +100,16 @@ fun MainMenuScreen(
 
         val buttonHeight = (screenH * 0.082f).coerceIn(64.dp, 104.dp)
         val buttonSpacing = screenH * 0.022f
-        // Static glyph size — never scaled by button height, so the icons don't shrink.
-        val glyphSize = 53.dp
+        // Every piece of chrome below is a fraction of buttonHeight so the menu keeps the SVG's
+        // proportions at any screen size. The fractions are calibrated so a tablet-sized 104dp button
+        // reproduces the previously hand-tuned values exactly (e.g. 0.51×104 ≈ 53), while a smaller
+        // phone-sized button scales them down faithfully instead of leaving them fixed and oversized.
+        val glyphSize = buttonHeight * 0.51f
 
-        // Bottom nav chrome: static icon size (never shrinks) with extra blue padding around it.
-        // Pills match the play-button height; icons are ~20% larger than before.
-        val navIcon = 46.dp
-        val navBox = 58.dp
+        // Bottom nav chrome. Pills match the play-button height; the icons and their inset scale too.
+        val navIcon = buttonHeight * 0.442f
+        val navBox = buttonHeight * 0.558f
+        val pillContentPad = buttonHeight * 0.173f
         val pillHeight = buttonHeight
 
         // ── Logo (top-center, framed by goal-height padding) ──
@@ -168,6 +171,7 @@ fun MainMenuScreen(
             EdgePill(
                 side = PillSide.Start,
                 color = PaintBucket.menuAccentBlue,
+                contentPadding = pillContentPad,
                 modifier = Modifier.height(pillHeight)
             ) {
                 MenuIconButton(
@@ -177,17 +181,18 @@ fun MainMenuScreen(
                     modifier = Modifier.size(navBox),
                     onClick = onSettingsTapped
                 )
-                PlatformShareButton(Modifier.size(navBox))
-                PlatformLanguageButton(Modifier.size(navBox))
+                PlatformShareButton(Modifier.size(navBox), navIcon)
+                PlatformLanguageButton(Modifier.size(navBox), navIcon)
             }
 
             if (unlockProgress < 100) {
                 // Red pill expands to fill the space between it and the blue tray. The customize
                 // icon keeps its static size; the thermometer takes the remaining width.
-                Spacer(Modifier.width(20.dp))
+                Spacer(Modifier.width(buttonHeight * 0.192f))
                 EdgePill(
                     side = PillSide.End,
                     color = PaintBucket.menuAccentRed,
+                    contentPadding = pillContentPad,
                     modifier = Modifier
                         .weight(1f)
                         .height(pillHeight)
@@ -199,7 +204,7 @@ fun MainMenuScreen(
                         modifier = Modifier.size(navIcon),
                         colorFilter = ColorFilter.tint(PaintBucket.white)
                     )
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(buttonHeight * 0.135f))
                     UnlockThermometer(
                         progress = unlockProgress,
                         fontFamily = poppins,
@@ -216,6 +221,7 @@ fun MainMenuScreen(
                 EdgePill(
                     side = PillSide.End,
                     color = PaintBucket.menuAccentRed,
+                    contentPadding = pillContentPad,
                     modifier = Modifier
                         .height(pillHeight)
                         .clickable(onClick = onCustomBallTapped)

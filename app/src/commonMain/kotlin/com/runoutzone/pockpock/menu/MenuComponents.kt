@@ -84,7 +84,10 @@ fun SlantedMenuButton(
     height: androidx.compose.ui.unit.Dp = 84.dp,
     color: Color = PaintBucket.menuAccentBlue,
     contentColor: Color = PaintBucket.white,
-    fontSize: androidx.compose.ui.unit.TextUnit = 38.sp,
+    // Label scales with the button so it keeps the SVG's ~0.36×height proportion on every screen
+    // (72px label over a 204px button ⇒ 0.353). A fixed sp would read correct on a tablet-sized
+    // button but oversized on a phone-sized one.
+    fontSize: androidx.compose.ui.unit.TextUnit = (height.value * 0.365f).sp,
     fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
     onClick: () -> Unit,
     trailingIcons: @Composable RowScope.() -> Unit,
@@ -96,11 +99,13 @@ fun SlantedMenuButton(
             .clip(shape)
             .background(color)
             .clickable(onClick = onClick)
-            // Equal *visual* start/end inset. The right edge is vertical, so 28.dp there reads as 28.
-            // The left edge is slanted, so at the label's vertical center the filled background has
-            // already receded inward by slant/2 (= height * slantFraction / 2). Add that back so the
-            // gap from the slanted edge to the label matches the gap on the right.
-            .padding(start = 30.dp + height * (0.375f / 2f), end = 28.dp),
+            // Equal *visual* start/end inset, both proportional to the button height so they scale
+            // with the screen (0.269×height ≈ 28dp on a 104dp tablet button). The right edge is
+            // vertical, so the end inset reads directly. The left edge is slanted, so at the label's
+            // vertical center the filled background has already receded inward by slant/2
+            // (= height * slantFraction / 2). Add that back so the gap from the slanted edge to the
+            // label matches the gap on the right.
+            .padding(start = height * 0.288f + height * (0.375f / 2f), end = height * 0.269f),
         contentAlignment = Alignment.CenterStart
     ) {
         // The button wraps its content so each label gets symmetric left/right padding inside the
@@ -120,8 +125,8 @@ fun SlantedMenuButton(
                 maxLines = 1,
                 softWrap = false,
             )
-            // Gap between the label and the trailing glyph(s).
-            Box(modifier = Modifier.size(28.dp))
+            // Gap between the label and the trailing glyph(s), scaled with the button height.
+            Box(modifier = Modifier.size(height * 0.269f))
             trailingIcons()
         }
     }
@@ -137,6 +142,9 @@ fun EdgePill(
     side: PillSide,
     modifier: Modifier = Modifier,
     color: Color = PaintBucket.menuAccentBlue,
+    // Inner horizontal inset for the icon row. Callers pass a height-proportional value so it scales
+    // with the screen instead of staying a fixed 18dp that looks oversized on a phone-sized pill.
+    contentPadding: androidx.compose.ui.unit.Dp = 18.dp,
     content: @Composable RowScope.() -> Unit,
 ) {
     val cap = CornerSize(50)
@@ -152,7 +160,7 @@ fun EdgePill(
         contentAlignment = Alignment.Center
     ) {
         Row(
-            modifier = Modifier.fillMaxHeight().padding(horizontal = 18.dp),
+            modifier = Modifier.fillMaxHeight().padding(horizontal = contentPadding),
             verticalAlignment = Alignment.CenterVertically,
             content = content
         )

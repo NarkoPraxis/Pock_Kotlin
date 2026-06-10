@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.os.LocaleListCompat
@@ -53,7 +54,7 @@ import utility.Sounds
 import utility.Storage
 
 @Composable
-actual fun PlatformShareButton(modifier: Modifier) {
+actual fun PlatformShareButton(modifier: Modifier, iconSize: Dp) {
     val context = LocalContext.current
     val activity = context as? Activity ?: return
 
@@ -64,6 +65,7 @@ actual fun PlatformShareButton(modifier: Modifier) {
         painter = painterResource(Res.drawable.ic_menu_share),
         contentDescription = stringResource(Res.string.share),
         modifier = modifier,
+        size = iconSize,
         onClick = {
             ShareHelper.shareAppPromo(activity) {
                 if (Storage.shareRewardClaimed) {
@@ -80,7 +82,7 @@ actual fun PlatformShareButton(modifier: Modifier) {
 }
 
 @Composable
-actual fun PlatformLanguageButton(modifier: Modifier) {
+actual fun PlatformLanguageButton(modifier: Modifier, iconSize: Dp) {
     val context = LocalContext.current
     val activity = context as? Activity ?: return
 
@@ -88,6 +90,7 @@ actual fun PlatformLanguageButton(modifier: Modifier) {
         painter = painterResource(Res.drawable.ic_menu_localization),
         contentDescription = stringResource(Res.string.language),
         modifier = modifier,
+        size = iconSize,
         onClick = { showLanguagePicker(activity) {} }
     )
 }

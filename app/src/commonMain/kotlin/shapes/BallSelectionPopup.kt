@@ -29,7 +29,6 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
     override val itemCount: Int get() = slots.size
 
     val w: Float get() = Settings.screenWidth
-    val h: Float get() = Settings.screenRatio * 6f
     override val cx: Float get() = Settings.middleX
 
     // Place the carousel so the SELECTED ball's contact shadow lands just above the goal zone (from
@@ -115,8 +114,17 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
         return true
     }
 
-    fun hitTest(x: Float, y: Float): Boolean =
-        x > cx - w / 2f && x < cx + w / 2f && y > cy - h / 2f && y < cy + h / 2f
+    // One full-width drag rectangle covering the whole carousel zone, so the strip can be grabbed
+    // anywhere — not just on the ball skins. The edge nearest mid-screen sits just above the body of
+    // the (largest) selected ball; the opposite edge runs all the way to the screen edge. The high
+    // carousel lives at the top of the screen, so its near-mid edge is the BOTTOM of the ball and it
+    // extends up to y=0; the low carousel is the mirror.
+    fun hitTest(x: Float, y: Float): Boolean {
+        if (x <= cx - w / 2f || x >= cx + w / 2f) return false
+        val selReach = Settings.ballRadius * maxScale + Settings.screenRatio * 0.75f
+        return if (isHigh) y >= 0f && y < cy + selReach
+               else        y > cy - selReach && y <= Settings.screenHeight
+    }
 
     fun handleTouchEvent(action: Int, x: Float, y: Float): Boolean {
         if (!isOpen) return false
