@@ -94,7 +94,7 @@
     <string name="ball_type_cat">Gato</string>
 
     <!-- In-game tips -->
-    <string name="ball_select_ready">Listo</string>
+    <string name="ball_select_ready">¿Listo?</string>
     <string name="tip_title">Mantén Aquí Cuando Estés Listo</string>
     <string name="tip_controls">Toca la pantalla y arrastra el dedo hacia atrás para lanzar tu pock hacia adelante.</string>
     <string name="tip_scoring">Golpea a tu oponente en una de las zonas de gol moradas para anotar puntos y ganar.</string>

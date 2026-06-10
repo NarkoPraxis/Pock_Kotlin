@@ -402,7 +402,7 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
         private val helperScope = CanvasDrawScope()
 
         // Static UI (ball-selection) paddle pose.
-        private const val STATIC_PADDLE_TILT_DEG = 15f
-        private const val STATIC_PADDLE_DIST_K = 2.2f
+        const val STATIC_PADDLE_TILT_DEG = 15f
+        const val STATIC_PADDLE_DIST_K = 2.2f
     }
 }

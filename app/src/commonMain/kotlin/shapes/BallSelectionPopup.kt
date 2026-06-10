@@ -9,6 +9,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.CustomBallConfig
+import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.RandomRoll
@@ -42,6 +43,17 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
         val gap = Settings.screenRatio * 0.5f
         return if (isHigh) Settings.topGoalBottom + gap + shadowReach
                else Settings.bottomGoalTop - gap - shadowReach
+    }
+
+    // Screen-space Y of the selected (centered, max-scale) ball's static paddle. The paddle is parked
+    // toward mid-screen from the ball, so this sits between the ball centre (cy) and mid-screen. Used
+    // to anchor the "Ready?" prompt. Mirrored automatically: for the high carousel the paddle points
+    // down (toward mid), for the low carousel it points up.
+    val selectedPaddleY: Float get() {
+        val radius = Settings.ballRadius * maxScale
+        val tiltRad = PaddleLaunchEffect.STATIC_PADDLE_TILT_DEG * (PI.toFloat() / 180f)
+        val offset = cos(tiltRad) * radius * PaddleLaunchEffect.STATIC_PADDLE_DIST_K
+        return if (isHigh) cy + offset else cy - offset
     }
 
     override val slotW: Float get() = Settings.screenRatio * 4f

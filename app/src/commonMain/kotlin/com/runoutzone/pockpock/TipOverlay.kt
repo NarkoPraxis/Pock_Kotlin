@@ -70,17 +70,19 @@ fun TipOverlay(gameLoopTick: State<Int>) {
         // ready-up hold). It reappears the instant they lift — note we gate on TouchState.Down, NOT
         // isTouching: a released hold becomes TouchState.Ready (which still counts as "touching"),
         // and browsing the carousel never sets Down at all.
-        if (highOpen && Logic.highPlayer.touch != TouchState.Down) {
+        // In single-player the high player is the AI: it never presses "Ready?" and the bottom player
+        // can't reach across, so suppress the high pill entirely.
+        if (highOpen && !Settings.isSinglePlayer && Logic.highPlayer.touch != TouchState.Down) {
             ReadyPill(
                 screenRatio = sr,
-                centerYPx = (highPopupBottom + middle) / 2f,
+                centerYPx = (middle + Logic.highBallPopup.selectedPaddleY) / 2f,
                 rotated = true
             )
         }
         if (lowOpen && Logic.lowPlayer.touch != TouchState.Down) {
             ReadyPill(
                 screenRatio = sr,
-                centerYPx = (middle + lowPopupTop) / 2f,
+                centerYPx = (middle + Logic.lowBallPopup.selectedPaddleY) / 2f,
                 rotated = false
             )
         }

@@ -112,7 +112,7 @@
     <string name="swipe_again_to_exit">Swipe edge again to exit</string>
 
     <!-- In-game tips -->
-    <string name="ball_select_ready">Ready</string>
+    <string name="ball_select_ready">Ready?</string>
     <string name="tip_title">Hold Here When Ready</string>
     <string name="tip_controls">Touch the screen and pull back your finger to slingshot your pock forwards.</string>
     <string name="tip_scoring">Hit your opponent into the either purple goal zones and score points to win.</string>
