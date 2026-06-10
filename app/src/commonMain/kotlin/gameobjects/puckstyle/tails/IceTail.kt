@@ -25,6 +25,7 @@ class IceTail(override val renderer: PuckRenderer) : TailRenderer {
     // Cached constants derived from Settings values that never change after init.
     private val maxCount = (maxShards * Settings.tailLengthMultiplier).toInt()
     private val lifeDecrement = 0.012f / Settings.tailLengthMultiplier
+    private val staticlifeDecrement = lifeDecrement / 2f
 
     override fun render(scope: DrawScope) {
         if (renderer.staticUiMode) { renderStatic(scope); return }
@@ -105,7 +106,7 @@ class IceTail(override val renderer: PuckRenderer) : TailRenderer {
         var alive = 0
         for (i in 0 until lifespan) {
             life -= lifeDecrement
-            iceSize *= 0.95f
+            iceSize *= 0.97f
             if (life > 0.6f) puddleSize *= 1.2f else puddleSize *= 0.99f
             puddleSize = puddleSize.coerceIn(0f, maxPuddleSize)
             if (life <= 0f) break
