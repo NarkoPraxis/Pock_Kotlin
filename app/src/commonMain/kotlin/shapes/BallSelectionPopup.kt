@@ -13,7 +13,9 @@ import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.RandomRoll
 import utility.Storage
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.tanh
 
 class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
@@ -171,7 +173,11 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
             if (drawX < cx - cullX || drawX > cx + cullX) continue
 
             val dist = abs(rel).coerceAtMost(1f)
-            val scale = maxScale - (maxScale - minScale) * dist
+            // Raised-cosine bell: instead of lerping size linearly with distance (a sharp tent),
+            // shape it as a cosine dome so the ball eases into max at centre and eases back out to
+            // min at the edges. bell = 1 at dist 0, 0 at dist 1, with zero slope at both ends.
+            val bell = 0.5f * (1f + cos((PI * dist).toFloat()))
+            val scale = minScale + (maxScale - minScale) * bell
             val radius = pr * scale
 
             // Soft inert-primary contact shadow, proportioned from Ball Select.svg (~2.1r wide,
