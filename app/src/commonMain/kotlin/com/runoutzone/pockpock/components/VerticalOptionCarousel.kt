@@ -44,6 +44,9 @@ fun VerticalOptionCarousel(
     modifier: Modifier = Modifier,
     onTap: (Int) -> Unit,
     onSnap: (Int) -> Unit = {},
+    // Fires (live) with the index currently nearest the vertical centre as the strip scrolls, so a
+    // caller can show a label for the browsed item even before it snaps/selects.
+    onCenterChanged: (Int) -> Unit = {},
     drawItem: DrawScope.(
         index: Int, centerX: Float, centerY: Float, radius: Float,
         isCenter: Boolean, isPressed: Boolean, cellWidth: Float, cellHeight: Float
@@ -93,6 +96,7 @@ fun VerticalOptionCarousel(
                         if (spacing <= 1f) return@detectTapGestures
                         val idx = indexAt(offset.y)
                         scope.launch { scroll.animateTo((idx * spacing).coerceIn(0f, maxScroll())) }
+                        onCenterChanged(idx)
                         onTap(idx)
                     }
                 )
@@ -112,7 +116,9 @@ fun VerticalOptionCarousel(
                 ) { change, dragAmount ->
                     change.consume()
                     scope.launch {
-                        scroll.snapTo((scroll.value - dragAmount).coerceIn(0f, maxScroll()))
+                        val v = (scroll.value - dragAmount).coerceIn(0f, maxScroll())
+                        scroll.snapTo(v)
+                        if (spacing > 1f) onCenterChanged((v / spacing).roundToInt().coerceIn(0, itemCount - 1))
                     }
                 }
             }

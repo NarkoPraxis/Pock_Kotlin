@@ -110,6 +110,28 @@
     <string name="ball_type_axolotl">Axolotl</string>
     <string name="ball_type_cat">Cat</string>
 
+    <!-- Ball designer style labels -->
+    <string name="style_type_ball">Ball</string>
+    <string name="style_type_tail">Tail</string>
+    <string name="style_type_paddle">Paddle</string>
+    <string name="style_ad_to_own">Watch Ad To Own</string>
+    <string name="style_name_classic">Classic</string>
+    <string name="style_name_neon">Neon</string>
+    <string name="style_name_ghost">Ghost</string>
+    <string name="style_name_fire">Fire</string>
+    <string name="style_name_ice">Ice</string>
+    <string name="style_name_galaxy">Galaxy</string>
+    <string name="style_name_spinner">Spinner</string>
+    <string name="style_name_metal">Metal</string>
+    <string name="style_name_pixel">Pixel</string>
+    <string name="style_name_rainbow">Rainbow</string>
+    <string name="style_name_prism">Prism</string>
+    <string name="style_name_plasma">Plasma</string>
+    <string name="style_name_random">Random</string>
+    <string name="style_paddle_egg">Egg</string>
+    <string name="style_paddle_bubble">Bubble</string>
+    <string name="style_paddle_star">Star</string>
+
     <!-- Navigation -->
     <string name="swipe_again_to_exit">Swipe edge again to exit</string>
 

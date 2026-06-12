@@ -95,6 +95,28 @@
     <string name="ball_type_axolotl">ウーパールーパー</string>
     <string name="ball_type_cat">ネコ</string>
 
+    <!-- Ball designer style labels -->
+    <string name="style_type_ball">ボール</string>
+    <string name="style_type_tail">テイル</string>
+    <string name="style_type_paddle">パドル</string>
+    <string name="style_ad_to_own">広告を見て入手</string>
+    <string name="style_name_classic">クラシック</string>
+    <string name="style_name_neon">ネオン</string>
+    <string name="style_name_ghost">ゴースト</string>
+    <string name="style_name_fire">ファイア</string>
+    <string name="style_name_ice">アイス</string>
+    <string name="style_name_galaxy">ギャラクシー</string>
+    <string name="style_name_spinner">スピナー</string>
+    <string name="style_name_metal">メタル</string>
+    <string name="style_name_pixel">ピクセル</string>
+    <string name="style_name_rainbow">レインボー</string>
+    <string name="style_name_prism">プリズム</string>
+    <string name="style_name_plasma">プラズマ</string>
+    <string name="style_name_random">ランダム</string>
+    <string name="style_paddle_egg">たまご</string>
+    <string name="style_paddle_bubble">バブル</string>
+    <string name="style_paddle_star">スター</string>
+
     <!-- In-game tips -->
     <string name="ball_select_ready">準備はいい？</string>
     <string name="tip_title">準備できたらここを押してください</string>

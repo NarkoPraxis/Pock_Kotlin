@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -59,6 +60,7 @@ import gameobjects.puckstyle.CustomBallConfig
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
 import utility.AdUnlock
 import utility.PaintBucket
@@ -103,6 +105,52 @@ private fun bdUnlock(component: Int, type: BallType) = when (component) {
     else -> Storage.unlockPaddle(type)
 }
 
+// Left-control prefix: "Ball" for the skin row, "Tail"/"Paddle" for the others.
+@Composable
+private fun bdTypeLabel(component: Int): String = when (component) {
+    BD_SKIN -> stringResource(Res.string.style_type_ball)
+    BD_TAIL -> stringResource(Res.string.style_type_tail)
+    else -> stringResource(Res.string.style_type_paddle)
+}
+
+// Display name of a skin/tail style (reuses the existing ball-type strings where they exist).
+@Composable
+private fun bdSkinTailName(type: BallType): String = when (type) {
+    BallType.Classic -> stringResource(Res.string.style_name_classic)
+    BallType.PokPok -> stringResource(Res.string.ball_type_pokpok)
+    BallType.Neon -> stringResource(Res.string.style_name_neon)
+    BallType.Ghost -> stringResource(Res.string.style_name_ghost)
+    BallType.Fire -> stringResource(Res.string.style_name_fire)
+    BallType.Ice -> stringResource(Res.string.style_name_ice)
+    BallType.Galaxy -> stringResource(Res.string.style_name_galaxy)
+    BallType.Spinner -> stringResource(Res.string.style_name_spinner)
+    BallType.Metal -> stringResource(Res.string.style_name_metal)
+    BallType.Pixel -> stringResource(Res.string.style_name_pixel)
+    BallType.Rainbow -> stringResource(Res.string.style_name_rainbow)
+    BallType.Prism -> stringResource(Res.string.style_name_prism)
+    BallType.Plasma -> stringResource(Res.string.style_name_plasma)
+    BallType.Dragon -> stringResource(Res.string.ball_type_dragon)
+    BallType.Axolotl -> stringResource(Res.string.ball_type_axolotl)
+    BallType.Cat -> stringResource(Res.string.ball_type_cat)
+    BallType.Random -> stringResource(Res.string.style_name_random)
+}
+
+// Display name of a component's style. Paddles whose visual differs from the parent ball name
+// get a design-based name (PokPok's egg paddle = "Egg", Galaxy = "Star", Axolotl = "Bubble").
+@Composable
+private fun bdStyleName(component: Int, type: BallType): String =
+    if (component == BD_PADDLE) when (type) {
+        BallType.PokPok -> stringResource(Res.string.style_paddle_egg)
+        BallType.Galaxy -> stringResource(Res.string.style_paddle_star)
+        BallType.Axolotl -> stringResource(Res.string.style_paddle_bubble)
+        else -> bdSkinTailName(type)
+    } else bdSkinTailName(type)
+
+// Left-control caption, e.g. "Ball | Metal", "Tail | Rainbow", "Paddle | Egg".
+@Composable
+private fun bdControlLabel(component: Int, type: BallType): String =
+    "${bdTypeLabel(component)} | ${bdStyleName(component, type)}"
+
 // Soft contact-shadow (inert tint), proportioned from customization.svg's shadow ellipses
 // (rx≈0.85r, ry≈0.23r, sitting at the part's bottom edge ≈ +1r below centre).
 internal fun DrawScope.bdDrawShadow(cx: Float, cy: Float, r: Float) {
@@ -119,7 +167,9 @@ private fun DrawScope.bdDrawPart(
     renderer: PuckRenderer, theme: ColorTheme, component: Int,
     cx: Float, cy: Float, r: Float, drawShadow: Boolean = true
 ) {
-    if (drawShadow) bdDrawShadow(cx, cy, r)
+    // Tails get no contact shadow — it reads as accidental floating beneath a trail. The composed
+    // ball/slot previews still draw their own shadow (they call bdDrawShadow directly).
+    if (drawShadow && component != BD_TAIL) bdDrawShadow(cx, cy, r)
     renderer.x = cx
     renderer.y = cy
     renderer.radius = r
@@ -136,7 +186,14 @@ private fun DrawScope.bdDrawPart(
 internal const val BD_ADLOCK_ASPECT = 106.46f / 89.37f   // ic_menu_adlock
 internal const val BD_LOCK_ASPECT = 95.17f / 81.84f       // ic_menu_lock
 
-private fun darken(c: Color, f: Float) = Color(c.red * f, c.green * f, c.blue * f, c.alpha)
+// The exact tone PokPok's skin produces by overlaying its black shadow mask (alpha 0.244, see
+// PokPokSkin.SHADOW_ALPHA) over an opaque colour: c · (1 − alpha). Over the ad-button face
+// (menuAccentBlue == #52B6F2, the same blue PokPok's body uses) this yields PokPok's body-vs-shadow
+// tone, used for the button's shadow lip.
+private const val BD_SHADOW_ALPHA = 0.244f
+private fun bdShadowOver(c: Color) = Color(
+    c.red * (1f - BD_SHADOW_ALPHA), c.green * (1f - BD_SHADOW_ALPHA), c.blue * (1f - BD_SHADOW_ALPHA), c.alpha
+)
 
 /**
  * AdLock glyph signalling "this design uses a cosmetic that must be unlocked, so it can't be saved."
@@ -153,13 +210,15 @@ private fun DrawScope.bdDrawAdLockGlyph(painter: Painter, tint: Color, cx: Float
 
 /**
  * Draws a locked cosmetic option as a raised, square, tappable "ad button": a [faceColor] face
- * (the previewed player's primary) with a darker extruded lower lip + soft drop shadow so it reads
- * as clickable, the cosmetic ([drawCosmetic]) clipped onto the face, and [icon] (the combined
- * lock/ad glyph, or a plain lock for meter-gated items) drawn large on top. When [pressed] the
- * extrusion and shadow collapse so the button visibly depresses. No dimming/mask is used — the
- * cosmetic stays fully visible around the icon.
+ * sitting on a single darker-blue shadow lip ([bdShadowOver] of the face — PokPok's body-vs-shadow
+ * tone, an exact rounded duplicate of the face) so it reads as clickable, the cosmetic
+ * ([drawCosmetic]) clipped onto the face, and [icon] (the lock/ad glyph) drawn small in the
+ * top-right corner so the cosmetic design stays visible. When [pressed] the whole face (cosmetic +
+ * icon) slides straight down onto its lip so the button visibly depresses — the shadow doesn't
+ * vanish, the button covers it. No dimming/mask is used.
  *
- * The square is centred on ([cx],[cy]) and sized to the item's clip cell ([cellWidth]×[cellHeight]).
+ * The square is centred on ([cx],[cy]) and sized to the item's clip cell ([cellWidth]×[cellHeight]),
+ * reserving room below for the lip so the carousel's hard cell-clip can't shave its rounded bottom.
  */
 internal fun DrawScope.bdDrawLockedOption(
     cx: Float, cy: Float,
@@ -170,44 +229,48 @@ internal fun DrawScope.bdDrawLockedOption(
     iconAspectHW: Float,
     drawCosmetic: DrawScope.() -> Unit,
 ) {
-    val side = min(cellWidth, cellHeight) * 0.9f
+    val depthK = 0.09f
+    // Width has no lip; height must fit the face PLUS the lip (= side·(1 + depthK)) within the cell,
+    // otherwise the carousel's per-cell clipRect shaves the lip's rounded bottom into a sharp edge.
+    val side = min(cellWidth * 0.9f, cellHeight * 0.9f / (1f + depthK))
     val half = side / 2f
     val left = cx - half
-    val top = cy - half
     val corner = side * 0.16f
-    val depthRest = side * 0.09f
-    val depth = if (pressed) depthRest * 0.2f else depthRest
+    val depth = side * depthK
+    // Centre the whole assembly (face + lip) on cy so the lip has room below within the cell.
+    val top = cy - (side + depth) / 2f
+    // Pressing slides the face straight down by `depth` so it lands exactly on the lip, covering it.
+    val faceOff = if (pressed) depth else 0f
 
-    // Soft drop shadow beneath the button (shrinks + fades when pressed).
-    val shAlpha = if (pressed) 0.10f else 0.20f
-    val shOff = if (pressed) depth + side * 0.01f else depthRest + side * 0.05f
+    // Single shadow lip — fixed `depth` below the resting face, an exact rounded duplicate of the
+    // face in PokPok's body-vs-shadow blue.
     drawRoundRect(
-        color = Color.Black.copy(alpha = shAlpha),
-        topLeft = Offset(left, top + shOff),
-        size = Size(side, side),
-        cornerRadius = CornerRadius(corner)
-    )
-    // Extruded lower lip (darker), sits `depth` below the face to give the raised 3D edge.
-    drawRoundRect(
-        color = darken(faceColor, 0.6f),
+        color = bdShadowOver(faceColor),
         topLeft = Offset(left, top + depth),
         size = Size(side, side),
         cornerRadius = CornerRadius(corner)
     )
-    // Button face.
+    // Button face — slides down onto the lip when pressed.
     drawRoundRect(
         color = faceColor,
-        topLeft = Offset(left, top),
+        topLeft = Offset(left, top + faceOff),
         size = Size(side, side),
         cornerRadius = CornerRadius(corner)
     )
-    // Cosmetic, clipped onto the face so it can't spill past the button edges.
-    clipRect(left, top, left + side, top + side) { drawCosmetic() }
-    // Lock/ad glyph on top — large, with padding on all sides.
-    val iconW = side * 0.58f
-    val iconH = iconW * iconAspectHW
-    translate(cx - iconW / 2f, cy - iconH / 2f) {
-        with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(Color.White)) }
+    // Cosmetic, clipped onto the face so it can't spill past the button edges; rides the face down.
+    // The caller draws it centred on cy, but the face centre sits depth/2 above cy (assembly is
+    // centred, lip hangs below), so nudge it up by depth/2 to centre it within the face.
+    clipRect(left, top + faceOff, left + side, top + faceOff + side) {
+        translate(0f, faceOff - depth / 2f) { drawCosmetic() }
+    }
+    // Lock/ad glyph — small (matching the type-selector lock height) and tucked into the top-right
+    // corner with padding, so it reads as "locked" without covering the cosmetic. Always the menu
+    // accent red for consistency across light/dark. Rides the face down on press.
+    val iconH = 24.dp.toPx()
+    val iconW = iconH / iconAspectHW
+    val iconPad = side * 0.1f
+    translate(left + side - iconPad - iconW, top + faceOff + iconPad) {
+        with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(PaintBucket.menuAccentRed)) }
     }
 }
 
@@ -286,7 +349,6 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
     }
 
     fun typeOf(id: Int) = when (id) { BD_SKIN -> skinType; BD_TAIL -> tailType; else -> paddleType }
-    fun labelOf(id: Int) = when (id) { BD_SKIN -> "Skin"; BD_TAIL -> "Tail"; else -> "Paddle" }
 
     fun selectComponent(component: Int, type: BallType) {
         when (component) {
@@ -382,7 +444,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                         // Bottom-right, inset so the whole glyph stays inside the box.
                         if (previewLocked) {
                             val h = 36.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 12.dp.toPx()
-                            bdDrawAdLockGlyph(previewLockPainter, fgColor, size.width - pad - w / 2f, size.height - pad - h / 2f, h)
+                            bdDrawAdLockGlyph(previewLockPainter, PaintBucket.menuAccentRed, size.width - pad - w / 2f, size.height - pad - h / 2f, h)
                         }
                     }
                 }
@@ -432,7 +494,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                                 .pointerInput(id) { detectTapGestures(onTap = { activeComp = id }) }
                                         ) {
                                             TypeSelectorBox(
-                                                component = id, type = typeOf(id), label = labelOf(id),
+                                                component = id, type = typeOf(id), label = bdControlLabel(id, typeOf(id)),
                                                 active = id == activeComp, theme = theme,
                                                 controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
                                                 locked = !bdIsUnlocked(id, typeOf(id))
@@ -445,15 +507,24 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                             // Right: vertical option carousel for the active type (no outline).
                             val list = bdTypesFor(activeComp)
                             val selIdx = list.indexOf(typeOf(activeComp)).coerceAtLeast(0)
+                            // The item under the carousel's centre drives the status label. It resets to
+                            // the equipped selection whenever the active component or that selection changes.
+                            var browsedIndex by remember(activeComp, selIdx) { mutableIntStateOf(selIdx) }
+                            val browsedType = list[browsedIndex.coerceIn(0, list.lastIndex)]
+                            val carouselLabel =
+                                if (bdIsUnlocked(activeComp, browsedType)) bdStyleName(activeComp, browsedType)
+                                else stringResource(Res.string.style_ad_to_own)
                             val rendererCache = remember(activeComp, isDark) {
                                 list.associateWith { bdBuildPartRenderer(activeComp, it, theme) }
                             }
+                            var carouselWidthPx by remember { mutableIntStateOf(0) }
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .weight(0.42f)
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(controlBg)
+                                    .onSizeChanged { carouselWidthPx = it.width }
                             ) {
                                 VerticalOptionCarousel(
                                     itemCount = list.size,
@@ -462,7 +533,8 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                     onTap = { i -> onComponentTapped(activeComp, list[i]) },
                                     // Browsing onto any item (locked or not) updates the previews so
                                     // its design is visible; locked picks just won't save (trySave guard).
-                                    onSnap = { i -> selectComponent(activeComp, list[i]) }
+                                    onSnap = { i -> selectComponent(activeComp, list[i]) },
+                                    onCenterChanged = { browsedIndex = it }
                                 ) { index, cx, cy, r, _, isPressed, cellW, cellH ->
                                     val type = list[index]
                                     val renderer = rendererCache[type] ?: return@VerticalOptionCarousel
@@ -470,12 +542,43 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                         bdDrawPart(renderer, theme, activeComp, cx, cy, r)
                                     } else {
                                         // All skins/tails/paddles are ad-unlockable → the AdLock glyph.
+                                        // Button face is always the menu accent blue (not the custom
+                                        // colour), so it stays consistent across light/dark + any palette.
                                         bdDrawLockedOption(
-                                            cx, cy, cellW, cellH, Color(theme.main.primary), isPressed,
+                                            cx, cy, cellW, cellH, PaintBucket.menuAccentBlue, isPressed,
                                             carouselLockPainter, BD_ADLOCK_ASPECT
                                         ) { bdDrawPart(renderer, theme, activeComp, cx, cy, r, drawShadow = false) }
                                     }
                                 }
+
+                                // Status label for the browsed style — "Watch Ad To Own" when locked, else
+                                // its name. Left-aligned (like the type controls) with an opaque rounded chip
+                                // so the text stays readable as designs/ad-buttons scroll behind it. Colors
+                                // are unified across dark/light: carousel bg fill + whole-control bg border.
+                                val labelShape = RoundedCornerShape(8.dp)
+                                androidx.compose.material3.Text(
+                                    text = carouselLabel,
+                                    color = fgColor,
+                                    fontFamily = poppins,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Light,
+                                    fontStyle = FontStyle.Italic,
+                                    // Word-wrap to up to 3 lines so long labels ("Watch Ad To Own")
+                                    // flex down instead of overflowing the carousel width.
+                                    maxLines = 3,
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(6.dp)
+                                        .then(
+                                            if (carouselWidthPx > 0)
+                                                Modifier.widthIn(max = with(density) { carouselWidthPx.toDp() } - 12.dp)
+                                            else Modifier
+                                        )
+                                        .clip(labelShape)
+                                        .background(controlBg)
+                                        .border(2.dp, wrapperBg, labelShape)
+                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
                             }
                         }
 
@@ -581,7 +684,7 @@ private fun TypeSelectorBox(
             if (locked) {
                 // Right inset matches the 10.dp gap between the two columns (the Row's spacedBy).
                 val h = 24.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 10.dp.toPx()
-                bdDrawAdLockGlyph(lockPainter, fg, size.width - pad - w / 2f, size.height / 2f, h)
+                bdDrawAdLockGlyph(lockPainter, PaintBucket.menuAccentRed, size.width - pad - w / 2f, size.height / 2f, h)
             }
         }
         androidx.compose.material3.Text(
@@ -648,7 +751,7 @@ private fun DesignerSlotCell(
         // Current design uses a locked piece → it won't save into this (selected) slot.
         // Centred over the ball.
         if (showAdLock) Canvas(modifier = Modifier.fillMaxSize()) {
-            bdDrawAdLockGlyph(lockPainter, fg, size.width / 2f, size.height / 2f, size.minDimension * 0.4f)
+            bdDrawAdLockGlyph(lockPainter, PaintBucket.menuAccentRed, size.width / 2f, size.height / 2f, size.minDimension * 0.4f)
         }
     }
 }

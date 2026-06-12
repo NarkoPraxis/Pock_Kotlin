@@ -95,6 +95,28 @@
     <string name="ball_type_axolotl">Axolotl</string>
     <string name="ball_type_cat">Chat</string>
 
+    <!-- Ball designer style labels -->
+    <string name="style_type_ball">Balle</string>
+    <string name="style_type_tail">Traînée</string>
+    <string name="style_type_paddle">Raquette</string>
+    <string name="style_ad_to_own">Regarder une pub pour obtenir</string>
+    <string name="style_name_classic">Classique</string>
+    <string name="style_name_neon">Néon</string>
+    <string name="style_name_ghost">Fantôme</string>
+    <string name="style_name_fire">Feu</string>
+    <string name="style_name_ice">Glace</string>
+    <string name="style_name_galaxy">Galaxie</string>
+    <string name="style_name_spinner">Toupie</string>
+    <string name="style_name_metal">Métal</string>
+    <string name="style_name_pixel">Pixel</string>
+    <string name="style_name_rainbow">Arc-en-ciel</string>
+    <string name="style_name_prism">Prisme</string>
+    <string name="style_name_plasma">Plasma</string>
+    <string name="style_name_random">Aléatoire</string>
+    <string name="style_paddle_egg">Œuf</string>
+    <string name="style_paddle_bubble">Bulle</string>
+    <string name="style_paddle_star">Étoile</string>
+
     <!-- In-game tips -->
     <string name="ball_select_ready">Prêt ?</string>
     <string name="tip_title">Maintiens ici quand tu es prêt</string>

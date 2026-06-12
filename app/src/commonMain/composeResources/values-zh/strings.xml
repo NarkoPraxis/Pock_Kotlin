@@ -95,6 +95,28 @@
     <string name="ball_type_axolotl">蝾螈</string>
     <string name="ball_type_cat">猫</string>
 
+    <!-- Ball designer style labels -->
+    <string name="style_type_ball">球</string>
+    <string name="style_type_tail">尾巴</string>
+    <string name="style_type_paddle">球拍</string>
+    <string name="style_ad_to_own">观看广告解锁</string>
+    <string name="style_name_classic">经典</string>
+    <string name="style_name_neon">霓虹</string>
+    <string name="style_name_ghost">幽灵</string>
+    <string name="style_name_fire">火焰</string>
+    <string name="style_name_ice">冰</string>
+    <string name="style_name_galaxy">星系</string>
+    <string name="style_name_spinner">旋转</string>
+    <string name="style_name_metal">金属</string>
+    <string name="style_name_pixel">像素</string>
+    <string name="style_name_rainbow">彩虹</string>
+    <string name="style_name_prism">棱镜</string>
+    <string name="style_name_plasma">等离子</string>
+    <string name="style_name_random">随机</string>
+    <string name="style_paddle_egg">蛋</string>
+    <string name="style_paddle_bubble">泡泡</string>
+    <string name="style_paddle_star">星星</string>
+
     <!-- In-game tips -->
     <string name="ball_select_ready">准备好了吗？</string>
     <string name="tip_title">准备好后按住此处</string>
