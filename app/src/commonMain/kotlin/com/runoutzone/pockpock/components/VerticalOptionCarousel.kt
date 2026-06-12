@@ -33,7 +33,9 @@ import kotlin.math.roundToInt
  *
  * [drawItem] paints one item in absolute screen space. `isCenter` is true for the item currently
  * closest to the vertical centre (use it for any extra emphasis); `scale` already folds in the
- * grow/shrink so callers can size their content directly from `radius`.
+ * grow/shrink so callers can size their content directly from `radius`. `isPressed` is true while
+ * that item is held down (for a pressed/button affordance); `cellWidth`/`cellHeight` give the item's
+ * available clip cell so callers can size a square button to it.
  */
 @Composable
 fun VerticalOptionCarousel(
@@ -42,7 +44,10 @@ fun VerticalOptionCarousel(
     modifier: Modifier = Modifier,
     onTap: (Int) -> Unit,
     onSnap: (Int) -> Unit = {},
-    drawItem: DrawScope.(index: Int, centerX: Float, centerY: Float, radius: Float, isCenter: Boolean) -> Unit,
+    drawItem: DrawScope.(
+        index: Int, centerX: Float, centerY: Float, radius: Float,
+        isCenter: Boolean, isPressed: Boolean, cellWidth: Float, cellHeight: Float
+    ) -> Unit,
 ) {
     if (itemCount <= 0) { Box(modifier) ; return }
 
@@ -50,6 +55,7 @@ fun VerticalOptionCarousel(
     var heightPx by remember { mutableIntStateOf(0) }
     var widthPx by remember { mutableIntStateOf(0) }
     var dragging by remember { mutableStateOf(false) }
+    var pressedIndex by remember { mutableIntStateOf(-1) }
 
     // ~3.2 items visible; spacing drives both layout and the snap grid.
     val spacing = if (heightPx > 0) heightPx / 3.2f else 1f
@@ -70,15 +76,26 @@ fun VerticalOptionCarousel(
             .clipToBounds()
             .onSizeChanged { heightPx = it.height; widthPx = it.width }
             .pointerInput(itemCount, spacing) {
-                detectTapGestures(onTap = { offset ->
-                    if (spacing <= 1f) return@detectTapGestures
+                fun indexAt(y: Float): Int {
                     val contentCenterY = size.height / 2f
-                    // index whose centre is nearest the tap.
-                    val idx = ((offset.y - contentCenterY + scroll.value) / spacing)
+                    return ((y - contentCenterY + scroll.value) / spacing)
                         .roundToInt().coerceIn(0, itemCount - 1)
-                    scope.launch { scroll.animateTo((idx * spacing).coerceIn(0f, maxScroll())) }
-                    onTap(idx)
-                })
+                }
+                detectTapGestures(
+                    onPress = { offset ->
+                        if (spacing <= 1f) return@detectTapGestures
+                        // Held-down affordance: light up the pressed item until release/cancel.
+                        pressedIndex = indexAt(offset.y)
+                        tryAwaitRelease()
+                        pressedIndex = -1
+                    },
+                    onTap = { offset ->
+                        if (spacing <= 1f) return@detectTapGestures
+                        val idx = indexAt(offset.y)
+                        scope.launch { scroll.animateTo((idx * spacing).coerceIn(0f, maxScroll())) }
+                        onTap(idx)
+                    }
+                )
             }
             .pointerInput(itemCount, spacing) {
                 detectVerticalDragGestures(
@@ -119,8 +136,10 @@ fun VerticalOptionCarousel(
                 val scale = 1f - 0.15f * dist
                 // Clip each option to its own cell (with padding) so wide parts — e.g. the rainbow
                 // paddle's trail — can't bleed into the neighbouring option.
+                val cellHeight = spacing - 2f * cellPad
                 clipRect(0f, itemCy - spacing / 2f + cellPad, size.width, itemCy + spacing / 2f - cellPad) {
-                    drawItem(i, contentCenterX, itemCy, baseRadius * scale, i == centerIdx)
+                    drawItem(i, contentCenterX, itemCy, baseRadius * scale, i == centerIdx,
+                        i == pressedIndex, size.width, cellHeight)
                 }
             }
         }

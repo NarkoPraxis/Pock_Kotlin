@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -43,6 +42,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.runoutzone.pockpock.components.AdLimitPopup
 import com.runoutzone.pockpock.components.MeterLockedPopup
 import com.runoutzone.pockpock.components.VerticalOptionCarousel
@@ -80,6 +80,7 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
     val density = LocalDensity.current
     val poppins = poppinsFamily()
     val lockPainter = painterResource(Res.drawable.ic_menu_lock)
+    val adLockPainter = painterResource(Res.drawable.ic_menu_adlock)
 
     val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
     val fgColor = if (isDark) PaintBucket.white else Color(0xFF222222)
@@ -305,30 +306,42 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                                 customSliderActive = false; presetSlotHues[i]?.hue?.let { setTargetHue(it) }
                                             }
                                         }
-                                    ) { index, cx, cy, r, isCenter ->
+                                    ) { index, cx, cy, r, isCenter, isPressed, cellW, cellH ->
                                         val unlocked = Storage.isColorUnlocked(index)
-                                        bdDrawShadow(cx, cy, r)
+                                        val isCustom = index == ColorCarousel.CUSTOM_IDX
                                         val strokeW = if (isCenter) r * 0.30f else r * 0.16f
-                                        if (index == ColorCarousel.CUSTOM_IDX) {
-                                            val hue = currentTargetHue()
-                                            drawCircle(Color.hsv(hue, 0.359f, 0.961f), radius = r, center = Offset(cx, cy))
-                                            drawCircle(Color.hsv(hue, 0.661f, 0.961f), radius = r, center = Offset(cx, cy), style = Stroke(strokeW))
-                                            val arcR = r * 0.6f
-                                            drawArc(Color.White, 300f, 300f, false,
-                                                topLeft = Offset(cx - arcR, cy - arcR), size = Size(arcR * 2f, arcR * 2f),
-                                                style = Stroke(r * 0.18f, cap = StrokeCap.Round))
-                                        } else {
-                                            val hue = presetSlotHues[index]?.hue ?: return@VerticalOptionCarousel
-                                            val a = if (unlocked) 1f else 0.35f
-                                            drawCircle(Color.hsv(hue, 0.359f, 0.961f).copy(alpha = a), radius = r, center = Offset(cx, cy))
-                                            drawCircle(Color.hsv(hue, 0.661f, 0.961f).copy(alpha = a), radius = r, center = Offset(cx, cy), style = Stroke(strokeW))
-                                        }
-                                        if (!unlocked) {
-                                            drawCircle(Color.Black.copy(alpha = 0.42f), radius = r * 1.05f, center = Offset(cx, cy))
-                                            val ls = r * 0.95f
-                                            translate(cx - ls / 2f, cy - (ls * 1.16f) / 2f) {
-                                                with(lockPainter) { draw(Size(ls, ls * 1.16f), colorFilter = ColorFilter.tint(Color.White)) }
+                                        val drawSwatch: DrawScope.() -> Unit = {
+                                            if (isCustom) {
+                                                val hue = currentTargetHue()
+                                                drawCircle(Color.hsv(hue, 0.359f, 0.961f), radius = r, center = Offset(cx, cy))
+                                                drawCircle(Color.hsv(hue, 0.661f, 0.961f), radius = r, center = Offset(cx, cy), style = Stroke(strokeW))
+                                                val arcR = r * 0.6f
+                                                drawArc(Color.White, 300f, 300f, false,
+                                                    topLeft = Offset(cx - arcR, cy - arcR), size = Size(arcR * 2f, arcR * 2f),
+                                                    style = Stroke(r * 0.18f, cap = StrokeCap.Round))
+                                            } else {
+                                                val hue = presetSlotHues[index]?.hue
+                                                if (hue != null) {
+                                                    drawCircle(Color.hsv(hue, 0.359f, 0.961f), radius = r, center = Offset(cx, cy))
+                                                    drawCircle(Color.hsv(hue, 0.661f, 0.961f), radius = r, center = Offset(cx, cy), style = Stroke(strokeW))
+                                                }
                                             }
+                                        }
+                                        if (unlocked) {
+                                            bdDrawShadow(cx, cy, r)
+                                            drawSwatch()
+                                        } else {
+                                            // Presets are ad-unlockable (AdLock glyph); the custom "any
+                                            // color" unlocks only at 100% meter, so it keeps a plain lock.
+                                            val faceColor = Color(
+                                                if (activePlayerHigh) ColorTheme.Warm.main.primary
+                                                else ColorTheme.Cold.main.primary
+                                            )
+                                            bdDrawLockedOption(
+                                                cx, cy, cellW, cellH, faceColor, isPressed,
+                                                if (isCustom) lockPainter else adLockPainter,
+                                                if (isCustom) BD_LOCK_ASPECT else BD_ADLOCK_ASPECT
+                                            ) { drawSwatch() }
                                         }
                                     }
                                 }

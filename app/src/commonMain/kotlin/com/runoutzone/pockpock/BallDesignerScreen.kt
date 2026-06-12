@@ -27,12 +27,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -112,8 +115,11 @@ internal fun DrawScope.bdDrawShadow(cx: Float, cy: Float, r: Float) {
     )
 }
 
-private fun DrawScope.bdDrawPart(renderer: PuckRenderer, theme: ColorTheme, component: Int, cx: Float, cy: Float, r: Float) {
-    bdDrawShadow(cx, cy, r)
+private fun DrawScope.bdDrawPart(
+    renderer: PuckRenderer, theme: ColorTheme, component: Int,
+    cx: Float, cy: Float, r: Float, drawShadow: Boolean = true
+) {
+    if (drawShadow) bdDrawShadow(cx, cy, r)
     renderer.x = cx
     renderer.y = cy
     renderer.radius = r
@@ -126,6 +132,85 @@ private fun DrawScope.bdDrawPart(renderer: PuckRenderer, theme: ColorTheme, comp
     with(renderer) { draw() }
 }
 
+// Icon art aspect ratios (height / width) so they aren't stretched when drawn into a square.
+internal const val BD_ADLOCK_ASPECT = 106.46f / 89.37f   // ic_menu_adlock
+internal const val BD_LOCK_ASPECT = 95.17f / 81.84f       // ic_menu_lock
+
+private fun darken(c: Color, f: Float) = Color(c.red * f, c.green * f, c.blue * f, c.alpha)
+
+/**
+ * AdLock glyph signalling "this design uses a cosmetic that must be unlocked, so it can't be saved."
+ * Drawn the exact same way the carousel ad-buttons draw their glyph (`painter.draw`) — the `Image`
+ * composable path was cropping the vector, this one shows it whole. [h] is the glyph height; it is
+ * centred on ([cx],[cy]).
+ */
+private fun DrawScope.bdDrawAdLockGlyph(painter: Painter, tint: Color, cx: Float, cy: Float, h: Float) {
+    val w = h * (89.37f / 106.46f)
+    translate(cx - w / 2f, cy - h / 2f) {
+        with(painter) { draw(Size(w, h), colorFilter = ColorFilter.tint(tint)) }
+    }
+}
+
+/**
+ * Draws a locked cosmetic option as a raised, square, tappable "ad button": a [faceColor] face
+ * (the previewed player's primary) with a darker extruded lower lip + soft drop shadow so it reads
+ * as clickable, the cosmetic ([drawCosmetic]) clipped onto the face, and [icon] (the combined
+ * lock/ad glyph, or a plain lock for meter-gated items) drawn large on top. When [pressed] the
+ * extrusion and shadow collapse so the button visibly depresses. No dimming/mask is used — the
+ * cosmetic stays fully visible around the icon.
+ *
+ * The square is centred on ([cx],[cy]) and sized to the item's clip cell ([cellWidth]×[cellHeight]).
+ */
+internal fun DrawScope.bdDrawLockedOption(
+    cx: Float, cy: Float,
+    cellWidth: Float, cellHeight: Float,
+    faceColor: Color,
+    pressed: Boolean,
+    icon: Painter,
+    iconAspectHW: Float,
+    drawCosmetic: DrawScope.() -> Unit,
+) {
+    val side = min(cellWidth, cellHeight) * 0.9f
+    val half = side / 2f
+    val left = cx - half
+    val top = cy - half
+    val corner = side * 0.16f
+    val depthRest = side * 0.09f
+    val depth = if (pressed) depthRest * 0.2f else depthRest
+
+    // Soft drop shadow beneath the button (shrinks + fades when pressed).
+    val shAlpha = if (pressed) 0.10f else 0.20f
+    val shOff = if (pressed) depth + side * 0.01f else depthRest + side * 0.05f
+    drawRoundRect(
+        color = Color.Black.copy(alpha = shAlpha),
+        topLeft = Offset(left, top + shOff),
+        size = Size(side, side),
+        cornerRadius = CornerRadius(corner)
+    )
+    // Extruded lower lip (darker), sits `depth` below the face to give the raised 3D edge.
+    drawRoundRect(
+        color = darken(faceColor, 0.6f),
+        topLeft = Offset(left, top + depth),
+        size = Size(side, side),
+        cornerRadius = CornerRadius(corner)
+    )
+    // Button face.
+    drawRoundRect(
+        color = faceColor,
+        topLeft = Offset(left, top),
+        size = Size(side, side),
+        cornerRadius = CornerRadius(corner)
+    )
+    // Cosmetic, clipped onto the face so it can't spill past the button edges.
+    clipRect(left, top, left + side, top + side) { drawCosmetic() }
+    // Lock/ad glyph on top — large, with padding on all sides.
+    val iconW = side * 0.58f
+    val iconH = iconW * iconAspectHW
+    translate(cx - iconW / 2f, cy - iconH / 2f) {
+        with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(Color.White)) }
+    }
+}
+
 /**
  * "The Ball Designer" — style screen (replaces the deprecated CustomBallCreatorScreen).
  * Translated from Plans/UIOverhaul/Screens/customization.svg. Cosmetic re-presentation only.
@@ -135,7 +220,12 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
     val isDark = LocalDarkMode.current
     val density = LocalDensity.current
     val poppins = poppinsFamily()
-    val lockPainter = painterResource(Res.drawable.ic_menu_lock)
+    // A VectorPainter holds one internal size at a time, so each distinct draw-size needs its own
+    // instance — otherwise the carousel (large) and a badge (small) sharing one painter fight over
+    // its size and the badge renders clipped. carouselLockPainter → the carousel ad-buttons,
+    // previewLockPainter → the preview badge; the control boxes and slots make their own below.
+    val carouselLockPainter = painterResource(Res.drawable.ic_menu_adlock)
+    val previewLockPainter = painterResource(Res.drawable.ic_menu_adlock)
 
     val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
     val fgColor = if (isDark) PaintBucket.white else Color(0xFF222222)
@@ -209,7 +299,11 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
     }
 
     fun onComponentTapped(component: Int, type: BallType) {
-        if (bdIsUnlocked(component, type)) { selectComponent(component, type); return }
+        // Always update the live previews so the locked design is visible. trySave() (inside
+        // selectComponent) silently refuses to persist while any selected piece is locked, so a
+        // locked pick is shown but never saved.
+        selectComponent(component, type)
+        if (bdIsUnlocked(component, type)) return
         if (Storage.canWatchAdNow()) {
             AdUnlock.watchAdToUnlock(grant = { bdUnlock(component, type) }) { success ->
                 if (success) selectComponent(component, type)
@@ -269,6 +363,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                 }
 
                 // Preview — static composed ball at play size, with contact shadow.
+                val previewLocked = !allUnlocked()
                 Box(modifier = Modifier.fillMaxWidth().weight(0.9f).clipToBounds()) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val pr = previewRenderer ?: return@Canvas
@@ -283,6 +378,12 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                         pr.strokeColor = theme.main.secondary
                         pr.baseFillColor = theme.main.primary
                         with(pr) { draw() }
+                        // Design uses a locked piece → mark the preview as unavailable (won't save).
+                        // Bottom-right, inset so the whole glyph stays inside the box.
+                        if (previewLocked) {
+                            val h = 36.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 12.dp.toPx()
+                            bdDrawAdLockGlyph(previewLockPainter, fgColor, size.width - pad - w / 2f, size.height - pad - h / 2f, h)
+                        }
                     }
                 }
                 Box(Modifier.height(8.dp))
@@ -333,7 +434,8 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                             TypeSelectorBox(
                                                 component = id, type = typeOf(id), label = labelOf(id),
                                                 active = id == activeComp, theme = theme,
-                                                controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins
+                                                controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
+                                                locked = !bdIsUnlocked(id, typeOf(id))
                                             )
                                         }
                                     }
@@ -358,20 +460,20 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                     selectedIndex = selIdx,
                                     modifier = Modifier.fillMaxSize(),
                                     onTap = { i -> onComponentTapped(activeComp, list[i]) },
-                                    onSnap = { i ->
-                                        val t = list[i]
-                                        if (bdIsUnlocked(activeComp, t)) selectComponent(activeComp, t)
-                                    }
-                                ) { index, cx, cy, r, _ ->
+                                    // Browsing onto any item (locked or not) updates the previews so
+                                    // its design is visible; locked picks just won't save (trySave guard).
+                                    onSnap = { i -> selectComponent(activeComp, list[i]) }
+                                ) { index, cx, cy, r, _, isPressed, cellW, cellH ->
                                     val type = list[index]
                                     val renderer = rendererCache[type] ?: return@VerticalOptionCarousel
-                                    bdDrawPart(renderer, theme, activeComp, cx, cy, r)
-                                    if (!bdIsUnlocked(activeComp, type)) {
-                                        drawCircle(Color.Black.copy(alpha = 0.42f), radius = r * 1.05f, center = Offset(cx, cy))
-                                        val ls = r * 0.95f
-                                        translate(cx - ls / 2f, cy - (ls * 1.16f) / 2f) {
-                                            with(lockPainter) { draw(Size(ls, ls * 1.16f), colorFilter = ColorFilter.tint(Color.White)) }
-                                        }
+                                    if (bdIsUnlocked(activeComp, type)) {
+                                        bdDrawPart(renderer, theme, activeComp, cx, cy, r)
+                                    } else {
+                                        // All skins/tails/paddles are ad-unlockable → the AdLock glyph.
+                                        bdDrawLockedOption(
+                                            cx, cy, cellW, cellH, Color(theme.main.primary), isPressed,
+                                            carouselLockPainter, BD_ADLOCK_ASPECT
+                                        ) { bdDrawPart(renderer, theme, activeComp, cx, cy, r, drawShadow = false) }
                                     }
                                 }
                             }
@@ -398,6 +500,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                         unlocked = Storage.isSlotUnlocked(idx),
                                         selected = idx == selectedSlot,
                                         theme = theme, isDark = isDark, accent = accentBlue, fg = fgColor, sizeDp = slotDp,
+                                        showAdLock = idx == selectedSlot && !allUnlocked(),
                                         onTap = {
                                             val existing = savedBalls.firstOrNull { it.first == idx }
                                             if (existing != null) { selectedSlot = idx; loadSlotIntoColumn(existing.second) }
@@ -458,9 +561,12 @@ private fun TypeSelectorBox(
     accent: Color,
     fg: Color,
     poppins: androidx.compose.ui.text.font.FontFamily,
+    locked: Boolean,
 ) {
     val shape = RoundedCornerShape(14.dp)
     val renderer = remember(component, type, theme) { bdBuildPartRenderer(component, type, theme) }
+    // Own painter instance (see note at carouselLockPainter) so the carousel can't resize it.
+    val lockPainter = painterResource(Res.drawable.ic_menu_adlock)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -470,6 +576,13 @@ private fun TypeSelectorBox(
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             bdDrawPart(renderer, theme, component, size.width / 2f, size.height / 2f + Settings.ballRadius * 0.2f, Settings.ballRadius)
+            // This piece needs an ad → mark it; the design shows but won't be used until unlocked.
+            // Right-centred (inset) so the whole glyph stays inside the box, beside the ball.
+            if (locked) {
+                // Right inset matches the 10.dp gap between the two columns (the Row's spacedBy).
+                val h = 24.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 10.dp.toPx()
+                bdDrawAdLockGlyph(lockPainter, fg, size.width - pad - w / 2f, size.height / 2f, h)
+            }
         }
         androidx.compose.material3.Text(
             text = label, color = fg, fontFamily = poppins, fontSize = 13.sp,
@@ -490,11 +603,14 @@ private fun DesignerSlotCell(
     accent: Color,
     fg: Color,
     sizeDp: androidx.compose.ui.unit.Dp,
+    showAdLock: Boolean,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
 ) {
     val shape = RoundedCornerShape(12.dp)
     val bg = if (isDark) Color(0xFF1A2A3E) else Color(0xFFEDEDF4)
+    // Own painter instance (see note at carouselLockPainter) so the carousel can't resize it.
+    val lockPainter = painterResource(Res.drawable.ic_menu_adlock)
     Box(
         modifier = Modifier
             .size(sizeDp)
@@ -528,6 +644,11 @@ private fun DesignerSlotCell(
                 }
             }
             else -> androidx.compose.material3.Text("+", color = fg.copy(alpha = 0.5f), fontSize = 22.sp)
+        }
+        // Current design uses a locked piece → it won't save into this (selected) slot.
+        // Centred over the ball.
+        if (showAdLock) Canvas(modifier = Modifier.fillMaxSize()) {
+            bdDrawAdLockGlyph(lockPainter, fg, size.width / 2f, size.height / 2f, size.minDimension * 0.4f)
         }
     }
 }
