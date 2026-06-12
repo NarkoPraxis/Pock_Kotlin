@@ -132,15 +132,18 @@ object BallStyleFactory {
         val renderer = PuckRenderer(theme)
         val skin = buildSkin(skinType, renderer)
         val tail = InvisibleTail(renderer)
-        val paddle = buildPaddle(skinType, renderer)
+        // Skin-only previews must draw ONLY the skin. Don't build the skin's real paddle:
+        // Galaxy/Spinner paddles are `alwaysVisible`, so PuckRenderer.draw() would render them
+        // even with effectEnabled = false, leaking paddle art into the skin carousel.
+        val paddle = InvisiblePaddle(renderer)
         renderer.attach(skin, tail, paddle)
         return renderer
     }
 
-    /** Tail-only preview renderer (invisible skin + Classic paddle), for composable carousels. */
+    /** Tail-only preview renderer (invisible skin + invisible paddle), for composable carousels. */
     fun buildTailOnlyRenderer(tailType: BallType, theme: ColorTheme): PuckRenderer {
         val renderer = PuckRenderer(theme)
-        renderer.attach(InvisibleSkin(renderer), buildTail(tailType, renderer), ClassicLaunch(renderer))
+        renderer.attach(InvisibleSkin(renderer), buildTail(tailType, renderer), InvisiblePaddle(renderer))
         return renderer
     }
 
