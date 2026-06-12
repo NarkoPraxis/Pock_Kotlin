@@ -68,10 +68,12 @@
     <string name="dark_mode">Dunkelmodus</string>
     <string name="charge_arrows">Ladepfeile anzeigen</string>
     <string name="charge_meter">Ladeanzeige</string>
-    <string name="player_one_short">P1</string>
-    <string name="player_two_short">P2</string>
+    <string name="player_top_short">Oben</string>
+    <string name="player_bottom_short">Unten</string>
+    <string name="toggle_on">Ein</string>
+    <string name="toggle_off">Aus</string>
     <string name="set_score_position">Punkteposition festlegen</string>
-    <string name="reset_defaults">Standardwerte wiederherstellen</string>
+    <string name="reset_defaults">Alles zurücksetzen</string>
     <string name="score_position">Punkteposition</string>
     <string name="score_calibration_hint">← zum Positionieren ziehen →</string>
     <string name="score_calibration_save">Positionen speichern</string>

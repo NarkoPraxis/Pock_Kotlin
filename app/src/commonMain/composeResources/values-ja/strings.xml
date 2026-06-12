@@ -68,10 +68,12 @@
     <string name="dark_mode">ダークモード</string>
     <string name="charge_arrows">チャージ矢印を表示</string>
     <string name="charge_meter">チャージメーター</string>
-    <string name="player_one_short">P1</string>
-    <string name="player_two_short">P2</string>
+    <string name="player_top_short">上</string>
+    <string name="player_bottom_short">下</string>
+    <string name="toggle_on">オン</string>
+    <string name="toggle_off">オフ</string>
     <string name="set_score_position">スコア位置を設定</string>
-    <string name="reset_defaults">デフォルトに戻す</string>
+    <string name="reset_defaults">すべてリセット</string>
     <string name="score_position">スコア位置</string>
     <string name="score_calibration_hint">← ドラッグして位置調整 →</string>
     <string name="score_calibration_save">位置を保存</string>

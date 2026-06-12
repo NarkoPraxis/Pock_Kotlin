@@ -28,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -169,11 +168,12 @@ fun SettingsScreen(
     val strMuted = stringResource(Res.string.muted)
     val strChargeArrows = stringResource(Res.string.charge_arrows)
     val strChargeMeter = stringResource(Res.string.charge_meter)
-    val strP1 = stringResource(Res.string.player_one_short)
-    val strP2 = stringResource(Res.string.player_two_short)
+    val strTop = stringResource(Res.string.player_top_short)
+    val strBottom = stringResource(Res.string.player_bottom_short)
+    val strOn = stringResource(Res.string.toggle_on)
+    val strOff = stringResource(Res.string.toggle_off)
     val strSideBar = stringResource(Res.string.charge_meter_sidebar)
     val strFullScreen = stringResource(Res.string.charge_meter_fullscreen)
-    val strMeterNone = stringResource(Res.string.charge_meter_none)
     val strTailLength = stringResource(Res.string.tail_length_label)
     val strTailShort = stringResource(Res.string.tail_short)
     val strTailDefault = stringResource(Res.string.tail_default)
@@ -190,7 +190,8 @@ fun SettingsScreen(
         val pillHeight = (screenH * 0.08f).coerceIn(58.dp, 92.dp)
         val bottomPad = screenH * 0.03f
         val circleD = (screenW * 0.14f).coerceIn(42.dp, 66.dp)
-        val contentBottomInset = pillHeight + bottomPad + 24.dp
+        // Reserve just the button band plus a thin border above it (was a tall 24dp gap).
+        val contentBottomInset = pillHeight + bottomPad + 8.dp
 
         Column(
             modifier = Modifier
@@ -236,22 +237,14 @@ fun SettingsScreen(
                         timeLimit = it; Storage.saveTimeLimit(it)
                     }
 
-                    Spacer(Modifier.height(4.dp))
-                    TextButton(onClick = { resetToDefaults() }, modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            strResetDefaults,
-                            color = PaintBucket.dangerRed,
-                            fontFamily = poppins,
-                            fontWeight = FontWeight.Light,
-                            fontStyle = FontStyle.Italic,
-                            fontSize = 16.sp
-                        )
-                    }
+                    SlantedBanner(
+                        strResetDefaults, PaintBucket.dangerRed, poppins, fontSize = 20.sp
+                    ) { resetToDefaults() }
                 }
 
                 SettingsTab.Graphics -> {
                     ChargeArrowsBlock(
-                        strChargeArrows, strP1, lowArrow, strP2, highArrow, circleD, poppins,
+                        strChargeArrows, strBottom, lowArrow, strTop, highArrow, circleD, poppins,
                         onP1 = { lowArrow = it; PlatformStorage.saveBoolean("settings", "low_player_arrow", it) },
                         onP2 = { highArrow = it; PlatformStorage.saveBoolean("settings", "high_player_arrow", it) }
                     )
@@ -260,10 +253,9 @@ fun SettingsScreen(
                         strChargeMeter,
                         listOf(
                             ChargeMeterStyle.SideBar to strSideBar,
-                            ChargeMeterStyle.FullScreen to strFullScreen,
-                            ChargeMeterStyle.None to strMeterNone
+                            ChargeMeterStyle.FullScreen to strFullScreen
                         ),
-                        strP1, lowChargeMeter, strP2, highChargeMeter, circleD, poppins,
+                        strBottom, lowChargeMeter, strTop, highChargeMeter, circleD, poppins,
                         onP1 = { lowChargeMeter = it; Storage.saveLowPlayerChargeMeterStyle(it) },
                         onP2 = { highChargeMeter = it; Storage.saveHighPlayerChargeMeterStyle(it) }
                     )
@@ -278,7 +270,7 @@ fun SettingsScreen(
                         PlatformStorage.saveString("settings", "tail_length", key)
                     }
 
-                    DarkModeRow(strDarkMode, isDark, circleD, poppins) { next ->
+                    DarkModeRow(strDarkMode, isDark, strOn, strOff, circleD, poppins) { next ->
                         PlatformStorage.saveBoolean("settings", "darkmode", next)
                         onDarkModeChanged(next)
                     }
@@ -459,7 +451,11 @@ private fun ToggleColumn(label: String, on: Boolean, circleD: Dp, poppins: FontF
     }
 }
 
-/** Charge Meter: a per-player 3-way style selector (Side Bar / Full Screen / None). */
+/**
+ * Charge Meter: a per-player style selector (Side Bar / Full Screen). Laid out as an equal-weight
+ * 3-column grid — the player label (Bottom / Top) is the first column — so the option circles line
+ * up with the 3-option rows above and below it (e.g. the Tail Length row's Default / Long columns).
+ */
 @Composable
 private fun <T> ChargeMeterBlock(
     title: String,
@@ -470,21 +466,20 @@ private fun <T> ChargeMeterBlock(
     onP1: (T) -> Unit,
     onP2: (T) -> Unit
 ) {
-    val tagWidth = 46.dp
     Column {
         SectionTitle(title, poppins, center = true)
         Spacer(Modifier.height(10.dp))
-        // Column headers (style labels), aligned over the circle columns.
+        // Column headers (style labels) over the option columns; the first column (player label) has none.
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Spacer(Modifier.width(tagWidth))
+            Box(Modifier.weight(1f))
             options.forEach { (_, label) ->
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { ItalicLabel(label, poppins) }
             }
         }
         Spacer(Modifier.height(8.dp))
-        ChargeMeterPlayerRow(p1Label, options, p1Selected, tagWidth, circleD, poppins, onP1)
+        ChargeMeterPlayerRow(p1Label, options, p1Selected, circleD, poppins, onP1)
         Spacer(Modifier.height(12.dp))
-        ChargeMeterPlayerRow(p2Label, options, p2Selected, tagWidth, circleD, poppins, onP2)
+        ChargeMeterPlayerRow(p2Label, options, p2Selected, circleD, poppins, onP2)
     }
 }
 
@@ -493,17 +488,17 @@ private fun <T> ChargeMeterPlayerRow(
     playerLabel: String,
     options: List<Pair<T, String>>,
     selected: T,
-    tagWidth: Dp,
     circleD: Dp,
     poppins: FontFamily,
     onSelect: (T) -> Unit
 ) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            playerLabel, color = labelColor(), fontFamily = poppins,
-            fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic, fontSize = 17.sp,
-            modifier = Modifier.width(tagWidth)
-        )
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            Text(
+                playerLabel, color = labelColor(), fontFamily = poppins,
+                fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic, fontSize = 17.sp
+            )
+        }
         options.forEach { (value, _) ->
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 ClassicCircle(value == selected, circleD, Modifier.clickable { onSelect(value) })
@@ -512,16 +507,31 @@ private fun <T> ChargeMeterPlayerRow(
     }
 }
 
-/** Dark Mode: title with a single on/off circle on the right. */
+/**
+ * Dark Mode: centered title with two mutually-exclusive On/Off radio circles, laid out like the
+ * Charge Arrows block. Tapping the already-selected option is a no-op so it doesn't needlessly
+ * trigger the dark-mode Activity recreate.
+ */
 @Composable
-private fun DarkModeRow(title: String, on: Boolean, circleD: Dp, poppins: FontFamily, onToggle: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        SectionTitle(title, poppins)
-        ClassicCircle(on, circleD, Modifier.clickable { onToggle(!on) })
+private fun DarkModeRow(
+    title: String,
+    on: Boolean,
+    onLabel: String,
+    offLabel: String,
+    circleD: Dp,
+    poppins: FontFamily,
+    onToggle: (Boolean) -> Unit
+) {
+    Column {
+        SectionTitle(title, poppins, center = true)
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(64.dp, Alignment.CenterHorizontally)
+        ) {
+            ToggleColumn(onLabel, on, circleD, poppins) { if (!on) onToggle(true) }
+            ToggleColumn(offLabel, !on, circleD, poppins) { if (on) onToggle(false) }
+        }
     }
 }
 
@@ -664,23 +674,38 @@ private fun parallelogramShape(slantFraction: Float = 0.34f): Shape = object : S
     }
 }
 
-/** Centered blue parallelogram button (matching the SVG) → score-position calibration screen. */
+/** Centered slanted parallelogram button (matching the SVG banner), white bold label. */
 @Composable
-private fun ScorePositionBanner(text: String, poppins: FontFamily, onClick: () -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+private fun SlantedBanner(
+    text: String,
+    color: Color,
+    poppins: FontFamily,
+    modifier: Modifier = Modifier,
+    fontSize: androidx.compose.ui.unit.TextUnit = 22.sp,
+    onClick: () -> Unit
+) {
+    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.82f)
                 .height(64.dp)
                 .clip(parallelogramShape())
-                .background(PaintBucket.menuAccentBlue)
+                .background(color)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            Text(text, color = PaintBucket.white, fontFamily = poppins, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+            Text(
+                text, color = PaintBucket.white, fontFamily = poppins, fontWeight = FontWeight.Bold,
+                fontSize = fontSize, maxLines = 1, softWrap = false
+            )
         }
     }
 }
+
+/** Centered blue parallelogram button (matching the SVG) → score-position calibration screen. */
+@Composable
+private fun ScorePositionBanner(text: String, poppins: FontFamily, onClick: () -> Unit) =
+    SlantedBanner(text, PaintBucket.menuAccentBlue, poppins, onClick = onClick)
 
 /** One tab in the bottom tray: selected = blue icon on a white pill; unselected = white icon. */
 @Composable

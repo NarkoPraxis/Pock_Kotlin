@@ -210,6 +210,7 @@ Sounds are spatialized via `SoundSpatializer` (shared): a 6-zone pitch grid (`ra
 - **`Ticker`**: The game's timing primitive. Ascending tickers count up and expose `ratio` (0–1) and `finished`. Use ascending for progress animations, descending for countdowns.
 - **Touch routing**: Single-touch goes to whichever player's half the touch is in. Multi-touch: pointer 0 and pointer 1 are mapped to high/low based on `highTouchedFirst`.
 - **Player symmetry**: `highPlayer` and `lowPlayer` are always both initialized. Actions on one almost always have a parallel action on the other.
+- **User-facing text says "Top"/"Bottom", code says high/low**: Internally everything keeps the `high`/`low` naming (the high player is mirrored at the top of the screen, the low player is at the bottom). But any **user-facing** string must refer to them as "Top player" / "Bottom player" (or just "Top" / "Bottom" for short) — **high = Top, low = Bottom**. Never surface "P1"/"P2" or "High"/"Low" in UI text or string resources.
 - **Tail length is fixed**: Never vary tail length based on charge or shield state. Always use `baseCount * Settings.tailLengthMultiplier`.
 - **Compose DrawScope transforms — use direct coordinates for rotation**: `withTransform { rotate(...) }` does not reliably rotate paths around the translated origin. For any `Path` that needs rotation, compute final screen coordinates using trig and draw in absolute screen space. Pattern:
   ```kotlin
