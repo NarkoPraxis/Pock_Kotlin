@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -29,7 +31,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -63,16 +64,18 @@ import utility.PaintBucket
 import utility.PlatformStorage
 import utility.Sounds
 import utility.Storage
+import kotlinx.coroutines.launch
 
 /**
  * Settings, translated from Plans/UIOverhaul/Screens/{Gameplay,Graphics,Sound}.svg.
  *
- * One screen with three tabs (Gameplay / Graphics / Sound) selected from a persistent bottom bar:
- * a red back button (flush left) and a brand-blue tab tray (flush right) whose selected icon sits
- * on a white pill. The screen themes to the dark-mode toggle (white text on a dark background; the
- * red/blue chrome keeps its white-on-color text). Toggling dark mode triggers an Activity recreate
- * on Android (MainActivity recreates on the "darkmode" pref change), so the selected tab is held in
- * [rememberSaveable] to survive it.
+ * One screen with three tabs (Graphics / Sound / Gameplay) hosted in a [HorizontalPager] so they
+ * can be swiped between (non-looping) as well as tapped in the bottom bar: a red back button (flush
+ * left) and a brand-blue tab tray (flush right) whose selected icon sits on a white pill. The screen
+ * themes to the dark-mode toggle (white text on a dark background; the red/blue chrome keeps its
+ * white-on-color text). Toggling dark mode triggers an Activity recreate on Android (MainActivity
+ * recreates on the "darkmode" pref change); the pager's [rememberPagerState] persists the selected
+ * tab to survive it.
  *
  * Radio/toggle circles render like the Classic ball skin: inert = neutral grey; selected/on = the
  * low player's default Classic blue (fixed, not hue-responsive).
@@ -91,9 +94,21 @@ fun SettingsScreen(
 
     val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.white
 
-    // Survives the dark-mode Activity recreate (see MainActivity.darkModeListener).
-    var tabOrdinal by rememberSaveable { mutableStateOf(SettingsTab.Gameplay.ordinal) }
-    val tab = SettingsTab.entries[tabOrdinal]
+    // Page order matches the bottom tab tray (Graphics | Sound | Gameplay) so swiping lines up
+    // with the icon positions. A HorizontalPager gives smooth drag-following transitions and is
+    // non-looping by default (swiping past either end does nothing).
+    val pageOrder = remember { listOf(SettingsTab.Graphics, SettingsTab.Sound, SettingsTab.Gameplay) }
+    // rememberPagerState persists currentPage via its built-in saver, so the selected tab survives
+    // the dark-mode Activity recreate (see MainActivity.darkModeListener).
+    val pagerState = rememberPagerState(
+        initialPage = pageOrder.indexOf(SettingsTab.Gameplay),
+        pageCount = { pageOrder.size }
+    )
+    val scope = rememberCoroutineScope()
+    val tab = pageOrder[pagerState.currentPage]
+    fun goToTab(target: SettingsTab) {
+        scope.launch { pagerState.animateScrollToPage(pageOrder.indexOf(target)) }
+    }
 
     var ballSize by remember { mutableStateOf(Storage.ballSize) }
     var chargeSpeed by remember { mutableStateOf(Storage.chargeSpeed) }
@@ -192,17 +207,26 @@ fun SettingsScreen(
         val circleD = (screenW * 0.14f).coerceIn(42.dp, 66.dp)
         // Reserve just the button band plus a thin border above it (was a tall 24dp gap).
         val contentBottomInset = pillHeight + bottomPad + 8.dp
+        // Extra scroll runway so a tab's last control can be parked around mid-screen instead of
+        // being pinned to the bottom bar. Sound's controls are short enough to never need it.
+        val scrollRunway = screenH * 0.5f
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, end = 24.dp, top = 20.dp)
-                .padding(bottom = contentBottomInset),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            when (tab) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val pageTab = pageOrder[page]
+            val extraBottom = if (pageTab == SettingsTab.Sound) 0.dp else scrollRunway
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 24.dp, end = 24.dp, top = 20.dp)
+                    .padding(bottom = contentBottomInset + extraBottom),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+            when (pageTab) {
                 SettingsTab.Gameplay -> {
                     CircleRadioRow(
                         strBallSize,
@@ -244,9 +268,9 @@ fun SettingsScreen(
 
                 SettingsTab.Graphics -> {
                     ChargeArrowsBlock(
-                        strChargeArrows, strBottom, lowArrow, strTop, highArrow, circleD, poppins,
-                        onP1 = { lowArrow = it; PlatformStorage.saveBoolean("settings", "low_player_arrow", it) },
-                        onP2 = { highArrow = it; PlatformStorage.saveBoolean("settings", "high_player_arrow", it) }
+                        strChargeArrows, strTop, highArrow, strBottom, lowArrow, circleD, poppins,
+                        onP1 = { highArrow = it; PlatformStorage.saveBoolean("settings", "high_player_arrow", it) },
+                        onP2 = { lowArrow = it; PlatformStorage.saveBoolean("settings", "low_player_arrow", it) }
                     )
 
                     ChargeMeterBlock(
@@ -255,9 +279,9 @@ fun SettingsScreen(
                             ChargeMeterStyle.SideBar to strSideBar,
                             ChargeMeterStyle.FullScreen to strFullScreen
                         ),
-                        strBottom, lowChargeMeter, strTop, highChargeMeter, circleD, poppins,
-                        onP1 = { lowChargeMeter = it; Storage.saveLowPlayerChargeMeterStyle(it) },
-                        onP2 = { highChargeMeter = it; Storage.saveHighPlayerChargeMeterStyle(it) }
+                        strTop, highChargeMeter, strBottom, lowChargeMeter, circleD, poppins,
+                        onP1 = { highChargeMeter = it; Storage.saveHighPlayerChargeMeterStyle(it) },
+                        onP2 = { lowChargeMeter = it; Storage.saveLowPlayerChargeMeterStyle(it) }
                     )
 
                     CircleRadioRow(
@@ -305,6 +329,7 @@ fun SettingsScreen(
                     }
                 }
             }
+            }
         }
 
         // ── Opaque themed strip behind the bottom bar so scrolled content can't peek below it. ──
@@ -344,11 +369,11 @@ fun SettingsScreen(
                 .height(pillHeight)
         ) {
             TabIcon(painterResource(Res.drawable.ic_menu_graphics), stringResource(Res.string.visual),
-                tab == SettingsTab.Graphics, tabIconSize) { tabOrdinal = SettingsTab.Graphics.ordinal }
+                tab == SettingsTab.Graphics, tabIconSize) { goToTab(SettingsTab.Graphics) }
             TabIcon(painterResource(Res.drawable.ic_menu_audio), stringResource(Res.string.sound),
-                tab == SettingsTab.Sound, tabIconSize) { tabOrdinal = SettingsTab.Sound.ordinal }
+                tab == SettingsTab.Sound, tabIconSize) { goToTab(SettingsTab.Sound) }
             TabIcon(painterResource(Res.drawable.ic_menu_gameplay), stringResource(Res.string.gameplay),
-                tab == SettingsTab.Gameplay, tabIconSize) { tabOrdinal = SettingsTab.Gameplay.ordinal }
+                tab == SettingsTab.Gameplay, tabIconSize) { goToTab(SettingsTab.Gameplay) }
         }
     }
 }

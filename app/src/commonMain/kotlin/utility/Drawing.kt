@@ -105,24 +105,22 @@ object Drawing {
         val lowFlash  = Logic.highSideHasMultiTouch || Logic.lowPlayerCrossedCenter
         val pulseAlpha = (0.7f + 0.3f * sin(chargeFillFrame * 0.35f)).coerceIn(0f, 1f)
 
-        if (highPlayer.isTouching) {
-            val color = if (highFlash) PaintBucket.highBallFill.copy(alpha = pulseAlpha)
-                        else PaintBucket.highPlayerHighlightColor
-            drawRect(
-                color = color,
-                topLeft = Offset(0f, 0f),
-                size = Size(Settings.screenWidth, Settings.middleY)
-            )
-        }
-        if (lowPlayer.isTouching) {
-            val color = if (lowFlash) PaintBucket.lowBallFill.copy(alpha = pulseAlpha)
-                        else PaintBucket.lowPlayerHighlightColor
-            drawRect(
-                color = color,
-                topLeft = Offset(0f, Settings.middleY),
-                size = Size(Settings.screenWidth, Settings.screenHeight - Settings.middleY)
-            )
-        }
+        var color = if (highFlash) PaintBucket.highBallFill.copy(alpha = pulseAlpha)
+                    else PaintBucket.highBallFill.copy(alpha = .2f)
+        drawRect(
+            color = color,
+            topLeft = Offset(0f, 0f),
+            size = Size(Settings.screenWidth, Settings.middleY)
+        )
+
+        color = if (lowFlash) PaintBucket.lowBallFill.copy(alpha = pulseAlpha)
+                    else PaintBucket.lowBallFill.copy(alpha = .2f)
+        drawRect(
+            color = color,
+            topLeft = Offset(0f, Settings.middleY),
+            size = Size(Settings.screenWidth, Settings.screenHeight - Settings.middleY)
+        )
+
     }
 
     // -------------------------------------------------------------------------
