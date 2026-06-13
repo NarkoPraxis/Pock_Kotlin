@@ -80,6 +80,13 @@ class PuckRenderer(var theme: ColorTheme) {
     var preview: Boolean = false
 
     /**
+     * When true, this renderer never plays charge/sweet-spot SFX. Set on the Ball Designer /
+     * Color Picker live-motion previews, which run the real charge cycle purely for show — they
+     * must stay silent. Always false for in-game renderers, so gameplay audio is unaffected.
+     */
+    var suppressSounds: Boolean = false
+
+    /**
      * When true, the whole composition draws as a static "screenshot" for UI display
      * (the ball-selection carousel): the tail poses along [StaticTailPath] instead of trailing
      * live motion, and the paddle parks statically overhead at zero charge. Always false for
@@ -131,6 +138,7 @@ class PuckRenderer(var theme: ColorTheme) {
     }
 
     fun playSweetSpotSound() {
+        if (suppressSounds) return
         if (isHigh) {
             Sounds.playHighPlayerSweetSpotSound(y)
         } else {

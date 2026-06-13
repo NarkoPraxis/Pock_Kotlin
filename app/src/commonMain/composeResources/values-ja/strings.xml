@@ -118,6 +118,18 @@
     <string name="style_paddle_star">スター</string>
     <string name="style_paddle_dynamite">ダイナマイト</string>
 
+    <!-- Color picker color names -->
+    <string name="color_name_red">レッド</string>
+    <string name="color_name_orange">オレンジ</string>
+    <string name="color_name_yellow">イエロー</string>
+    <string name="color_name_green">グリーン</string>
+    <string name="color_name_sky_blue">スカイブルー</string>
+    <string name="color_name_deep_purple">ディープパープル</string>
+    <string name="color_name_purple">パープル</string>
+    <string name="color_name_magenta">マゼンタ</string>
+    <string name="color_name_pink">ピンク</string>
+    <string name="color_name_custom">カスタム</string>
+
     <!-- In-game tips -->
     <string name="ball_select_ready">準備はいい？</string>
     <string name="tip_title">準備できたらここを押してください</string>

@@ -30,13 +30,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
@@ -347,12 +349,35 @@ internal fun DrawScope.bdDrawLockedOption(
         size = Size(side, side),
         cornerRadius = CornerRadius(corner)
     )
+    val sw = side * 0.09f
+    // Cosmetic, clipped onto the face so it can't spill past the button edges; rides the face down.
+    // The caller draws it centred on cy, but the face centre sits depth/2 above cy (assembly is
+    // centred, lip hangs below), so nudge it up by depth/2 to centre it within the face. Drawn
+    // BEFORE the face outline so the outline sits on top — the cosmetic is sandwiched between the
+    // face fill and the outline (the outline reads as a rim around the cosmetic, not behind it).
+    // The clip is a rounded rect inset to the outline's centreline (sw/2) with the matching reduced
+    // corner radius, so wide tails tuck under the rounded border instead of poking past it — the
+    // clip edge always lands beneath the outline stroke.
+    val clipInset = sw / 2f
+    val cosmeticClip = Path().apply {
+        addRoundRect(
+            RoundRect(
+                left = left + clipInset,
+                top = top + faceOff + clipInset,
+                right = left + side - clipInset,
+                bottom = top + faceOff + side - clipInset,
+                cornerRadius = CornerRadius((corner - clipInset).coerceAtLeast(0f))
+            )
+        )
+    }
+    clipPath(cosmeticClip) {
+        translate(0f, faceOff - depth / 2f) { drawCosmetic() }
+    }
     // Optional outline on the face (CCP color buttons: the face IS the unlock colour, so it gets a
     // primary fill + secondary stroke just like a ball). The stroke is inset by half its width and
     // its corner radius reduced to match, so the stroke's OUTER edge coincides exactly with the
     // face edge (no fill slivers peeking past the corners).
     faceStroke?.let { sc ->
-        val sw = side * 0.09f
         drawRoundRect(
             color = sc,
             topLeft = Offset(left + sw / 2f, top + faceOff + sw / 2f),
@@ -360,12 +385,6 @@ internal fun DrawScope.bdDrawLockedOption(
             cornerRadius = CornerRadius((corner - sw / 2f).coerceAtLeast(0f)),
             style = Stroke(sw)
         )
-    }
-    // Cosmetic, clipped onto the face so it can't spill past the button edges; rides the face down.
-    // The caller draws it centred on cy, but the face centre sits depth/2 above cy (assembly is
-    // centred, lip hangs below), so nudge it up by depth/2 to centre it within the face.
-    clipRect(left, top + faceOff, left + side, top + faceOff + side) {
-        translate(0f, faceOff - depth / 2f) { drawCosmetic() }
     }
     // Lock/ad glyph — always the menu accent red for consistency across light/dark, rides the face
     // down on press. Default: small, tucked top-right so it reads as "locked" without covering the
@@ -463,6 +482,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
         // trails its real path and the paddle runs its real charge cycle. Driven in the Canvas below.
         r.staticUiMode = false
         r.effect.frozen = false
+        r.suppressSounds = true   // cosmetic preview — never play the charge/sweet-spot SFX
         previewRenderer = r
     }
 

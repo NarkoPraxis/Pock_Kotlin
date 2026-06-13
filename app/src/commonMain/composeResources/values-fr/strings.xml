@@ -118,6 +118,18 @@
     <string name="style_paddle_star">Étoile</string>
     <string name="style_paddle_dynamite">Dynamite</string>
 
+    <!-- Color picker color names -->
+    <string name="color_name_red">Rouge</string>
+    <string name="color_name_orange">Orange</string>
+    <string name="color_name_yellow">Jaune</string>
+    <string name="color_name_green">Vert</string>
+    <string name="color_name_sky_blue">Bleu Ciel</string>
+    <string name="color_name_deep_purple">Violet Profond</string>
+    <string name="color_name_purple">Pourpre</string>
+    <string name="color_name_magenta">Magenta</string>
+    <string name="color_name_pink">Rose</string>
+    <string name="color_name_custom">Personnalisé</string>
+
     <!-- In-game tips -->
     <string name="ball_select_ready">Prêt ?</string>
     <string name="tip_title">Maintiens ici quand tu es prêt</string>

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -85,11 +86,22 @@ private const val ROW_SHIELD = 1
 // rainbow strobe (it has no single hue, so its face cycles like the Rainbow skin).
 private const val CCP_STROBE_SPEED = 4f
 
-// Display names for the colour carousel (parallels ColorCarousel.PRESETS). The status label shows
-// the browsed colour's name when unlocked, or "Watch Ad To Own" when locked — mirrors BallDesigner.
-private val CCP_COLOR_NAMES = arrayOf(
-    "Red", "Orange", "Yellow", "Green", "Sky Blue", "Blue", "Purple", "Magenta", "Pink", "Custom"
-)
+// Localized display name for a colour-carousel index (parallels ColorCarousel.PRESETS). The status
+// label shows the browsed colour's name when unlocked, or "Watch Ad To Own" when locked — mirrors
+// BallDesigner (see bdStyleName). Index 9 is the custom "any color" slot.
+@Composable
+private fun ccpColorName(index: Int): String = when (index) {
+    0 -> stringResource(Res.string.color_name_red)
+    1 -> stringResource(Res.string.color_name_orange)
+    2 -> stringResource(Res.string.color_name_yellow)
+    3 -> stringResource(Res.string.color_name_green)
+    4 -> stringResource(Res.string.color_name_sky_blue)
+    5 -> stringResource(Res.string.color_name_deep_purple)
+    6 -> stringResource(Res.string.color_name_purple)
+    7 -> stringResource(Res.string.color_name_magenta)
+    8 -> stringResource(Res.string.color_name_pink)
+    else -> stringResource(Res.string.color_name_custom)
+}
 
 /**
  * "The Ball Designer" — color screen (replaces the deprecated CustomColorPickerScreen).
@@ -229,6 +241,7 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
         val sHue = if (activePlayerHigh) highShieldHue else lowShieldHue
         val r = BallStyleFactory.buildCustomRenderer(previewConfig(), bdThemeFromHues(activePlayerHigh, nHue, sHue))
         r.isHigh = activePlayerHigh; r.staticUiMode = false; r.effect.frozen = false
+        r.suppressSounds = true   // cosmetic preview — never play the charge/sweet-spot SFX
         previewRenderer = r
     }
 
@@ -464,7 +477,7 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                     // ad-buttons scroll behind it. Colours unified across dark/light.
                                     val carouselLabel =
                                         if (Storage.isColorUnlocked(browsedColorIndex))
-                                            CCP_COLOR_NAMES[browsedColorIndex.coerceIn(0, CCP_COLOR_NAMES.lastIndex)]
+                                            ccpColorName(browsedColorIndex.coerceIn(0, 9))
                                         else stringResource(Res.string.style_ad_to_own)
                                     val labelShape = RoundedCornerShape(8.dp)
                                     Text(

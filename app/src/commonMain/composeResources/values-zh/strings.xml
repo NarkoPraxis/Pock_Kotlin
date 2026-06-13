@@ -118,6 +118,18 @@
     <string name="style_paddle_star">星星</string>
     <string name="style_paddle_dynamite">炸药</string>
 
+    <!-- Color picker color names -->
+    <string name="color_name_red">红色</string>
+    <string name="color_name_orange">橙色</string>
+    <string name="color_name_yellow">黄色</string>
+    <string name="color_name_green">绿色</string>
+    <string name="color_name_sky_blue">天蓝色</string>
+    <string name="color_name_deep_purple">深紫色</string>
+    <string name="color_name_purple">紫色</string>
+    <string name="color_name_magenta">品红色</string>
+    <string name="color_name_pink">粉色</string>
+    <string name="color_name_custom">自定义</string>
+
     <!-- In-game tips -->
     <string name="ball_select_ready">准备好了吗？</string>
     <string name="tip_title">准备好后按住此处</string>
