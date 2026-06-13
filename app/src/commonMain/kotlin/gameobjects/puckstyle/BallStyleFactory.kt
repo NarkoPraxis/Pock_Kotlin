@@ -121,6 +121,22 @@ object BallStyleFactory {
         return BallStyle(skin, tail, paddle)
     }
 
+    /**
+     * Composes a [CustomBallConfig] for the given component types, reading each component's own
+     * declared [zIndex] as its draw-order rank. The ranks are read live off freshly built
+     * components — never hardcoded — so a slot seeded from this renders in exactly the same layer
+     * order as the corresponding built-in ball. Used to pre-populate the free default slots.
+     */
+    fun naturalCustomConfig(skinType: BallType, tailType: BallType, paddleType: BallType): CustomBallConfig {
+        val probe = PuckRenderer(ColorTheme.Cold)
+        return CustomBallConfig(
+            skinType = skinType, tailType = tailType, paddleType = paddleType,
+            skinZRank   = buildSkin(skinType, probe).zIndex,
+            tailZRank   = buildTail(tailType, probe).zIndex,
+            paddleZRank = buildPaddle(paddleType, probe).zIndex
+        )
+    }
+
     fun buildCustomRenderer(config: CustomBallConfig, theme: ColorTheme): PuckRenderer {
         val renderer = PuckRenderer(theme)
         val style = buildCustomBall(config, renderer)

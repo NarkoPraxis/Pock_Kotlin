@@ -30,12 +30,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -76,6 +80,16 @@ import kotlin.math.roundToInt
 
 private const val ROW_NORMAL = 0
 private const val ROW_SHIELD = 1
+
+// Degrees of hue advanced per animation frame for the custom "any color" carousel button's
+// rainbow strobe (it has no single hue, so its face cycles like the Rainbow skin).
+private const val CCP_STROBE_SPEED = 4f
+
+// Display names for the colour carousel (parallels ColorCarousel.PRESETS). The status label shows
+// the browsed colour's name when unlocked, or "Watch Ad To Own" when locked — mirrors BallDesigner.
+private val CCP_COLOR_NAMES = arrayOf(
+    "Red", "Orange", "Yellow", "Green", "Sky Blue", "Blue", "Purple", "Magenta", "Pink", "Custom"
+)
 
 /**
  * "The Ball Designer" — color screen (replaces the deprecated CustomColorPickerScreen).
@@ -138,6 +152,19 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
         activeRow == ROW_SHIELD -> lowShieldHue
         else -> lowHue
     }
+
+    val presetSlotHues = ColorCarousel.PRESETS
+
+    // Which carousel index a hue corresponds to (CUSTOM_IDX if it isn't one of the presets), and
+    // whether that color is still locked. Used both to centre the carousel and to decide when the
+    // lock glyph shows on the left control + preview.
+    fun colorIndexForHue(hue: Float): Int {
+        for (i in 0 until ColorCarousel.CUSTOM_IDX) {
+            if (abs((presetSlotHues[i]?.hue ?: -999f) - hue) < 1f) return i
+        }
+        return ColorCarousel.CUSTOM_IDX
+    }
+    fun hueLocked(hue: Float): Boolean = !Storage.isColorUnlocked(colorIndexForHue(hue))
 
     fun applyHueToPaint(high: Boolean, shield: Boolean, hue: Float) {
         val pri = Color.hsv(hue, 0.359f, 0.961f)
@@ -206,7 +233,42 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
     }
 
     fun selectRow(row: Int) { activeRow = row; customSliderActive = false }
-    fun togglePlayer() { activePlayerHigh = !activePlayerHigh; customSliderActive = false; rebuildPreview() }
+
+    // The saved hue for a given player/row — the value persisted in the selected preset, or in
+    // Storage when no preset is selected. Locked previews (persist = false) never reach either, so
+    // this is always an already-unlocked color: the safe value to fall back to.
+    fun savedHueFor(high: Boolean, shield: Boolean): Float {
+        val p = if (selectedPreset in 0..4) presets[selectedPreset] else null
+        return if (p != null) when {
+            high && !shield -> p.highHue
+            high && shield -> p.highShieldHue
+            !high && !shield -> p.lowHue
+            else -> p.lowShieldHue
+        } else when {
+            high && !shield -> Storage.highPlayerColorHue
+            high && shield -> Storage.highShieldColorHue
+            !high && !shield -> Storage.lowPlayerColorHue
+            else -> Storage.lowShieldColorHue
+        }
+    }
+
+    fun togglePlayer() {
+        // The player we're leaving is about to be hidden. If either of its colors is a still-locked
+        // preview (shown but never saved), discard the preview and restore the saved value —
+        // otherwise the save slot would keep reading "locked" over a color the user can no longer
+        // see or unlock (its carousel/ad button isn't visible for the hidden player).
+        val leaving = activePlayerHigh
+        if (leaving) {
+            if (hueLocked(highHue)) highHue = savedHueFor(true, false)
+            if (hueLocked(highShieldHue)) highShieldHue = savedHueFor(true, true)
+        } else {
+            if (hueLocked(lowHue)) lowHue = savedHueFor(false, false)
+            if (hueLocked(lowShieldHue)) lowShieldHue = savedHueFor(false, true)
+        }
+        activePlayerHigh = !activePlayerHigh
+        customSliderActive = false
+        rebuildPreview()
+    }
 
     fun handleLockedColor(index: Int) {
         if (index == ColorCarousel.CUSTOM_IDX) meterPopupVisible = true
@@ -239,19 +301,6 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
             initDone = true
         }
     }
-
-    val presetSlotHues = ColorCarousel.PRESETS
-
-    // Which carousel index a hue corresponds to (CUSTOM_IDX if it isn't one of the presets), and
-    // whether that color is still locked. Used both to centre the carousel and to decide when the
-    // lock glyph shows on the left control + preview.
-    fun colorIndexForHue(hue: Float): Int {
-        for (i in 0 until ColorCarousel.CUSTOM_IDX) {
-            if (abs((presetSlotHues[i]?.hue ?: -999f) - hue) < 1f) return i
-        }
-        return ColorCarousel.CUSTOM_IDX
-    }
-    fun hueLocked(hue: Float): Boolean = !Storage.isColorUnlocked(colorIndexForHue(hue))
 
     Box(
         modifier = Modifier
@@ -327,30 +376,38 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                 val normalHue = if (activePlayerHigh) highHue else lowHue
                                 val shieldHue = if (activePlayerHigh) highShieldHue else lowShieldHue
                                 ColorTargetBox(
-                                    label = "Normal", hue = normalHue, locked = hueLocked(normalHue),
+                                    label = "Normal", hue = normalHue, locked = hueLocked(normalHue), high = activePlayerHigh,
                                     active = activeRow == ROW_NORMAL, controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { selectRow(ROW_NORMAL) }
                                 )
                                 ColorTargetBox(
-                                    label = "Shield", hue = shieldHue, locked = hueLocked(shieldHue),
+                                    label = "Shield", hue = shieldHue, locked = hueLocked(shieldHue), high = activePlayerHigh,
                                     active = activeRow == ROW_SHIELD, controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { selectRow(ROW_SHIELD) }
                                 )
                                 PlayerToggleBox(
-                                    high = activePlayerHigh, controlBg = controlBg, fg = fgColor, poppins = poppins,
+                                    high = activePlayerHigh,
+                                    theme = bdThemeFromHues(activePlayerHigh, normalHue, shieldHue),
+                                    poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { togglePlayer() }
                                 )
                             }
 
                             // Right: vertical color carousel (+ optional custom hue slider).
                             val selIdx = colorIndexForHue(currentTargetHue())
+                            // The colour under the carousel's centre drives the status label. It resets to
+                            // the equipped selection whenever that selection changes.
+                            var browsedColorIndex by remember(selIdx) { mutableIntStateOf(selIdx) }
+                            var carouselWidthPx by remember { mutableIntStateOf(0) }
                             Column(modifier = Modifier.fillMaxHeight().weight(0.42f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                                         .clip(RoundedCornerShape(16.dp)).background(controlBg)
+                                        .onSizeChanged { carouselWidthPx = it.width }
                                 ) {
                                     VerticalOptionCarousel(
                                         itemCount = 10, selectedIndex = selIdx, modifier = Modifier.fillMaxSize(),
+                                        onCenterChanged = { browsedColorIndex = it },
                                         onTap = { i ->
                                             if (i == ColorCarousel.CUSTOM_IDX) {
                                                 if (Storage.isColorUnlocked(i)) customSliderActive = true else handleLockedColor(i)
@@ -373,53 +430,64 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                             }
                                         }
                                     ) { index, cx, cy, r, isCenter, isPressed, cellW, cellH ->
+                                        // Every color is the same raised square button (no swatch ball). Reading
+                                        // `frame` here keeps the carousel redrawing so the custom button can strobe.
+                                        val strobeHue = (frame * CCP_STROBE_SPEED) % 360f
                                         val unlocked = Storage.isColorUnlocked(index)
                                         val isCustom = index == ColorCarousel.CUSTOM_IDX
-                                        val strokeW = if (isCenter) r * 0.30f else r * 0.16f
-                                        val drawSwatch: DrawScope.() -> Unit = {
-                                            if (isCustom) {
-                                                val hue = currentTargetHue()
-                                                drawCircle(Color.hsv(hue, 0.359f, 0.961f), radius = r, center = Offset(cx, cy))
-                                                drawCircle(Color.hsv(hue, 0.661f, 0.961f), radius = r, center = Offset(cx, cy), style = Stroke(strokeW))
-                                                val arcR = r * 0.6f
-                                                drawArc(Color.White, 300f, 300f, false,
-                                                    topLeft = Offset(cx - arcR, cy - arcR), size = Size(arcR * 2f, arcR * 2f),
-                                                    style = Stroke(r * 0.18f, cap = StrokeCap.Round))
-                                            } else {
-                                                val hue = presetSlotHues[index]?.hue
-                                                if (hue != null) {
-                                                    drawCircle(Color.hsv(hue, 0.359f, 0.961f), radius = r, center = Offset(cx, cy))
-                                                    drawCircle(Color.hsv(hue, 0.661f, 0.961f), radius = r, center = Offset(cx, cy), style = Stroke(strokeW))
-                                                }
-                                            }
-                                        }
+                                        // Custom has no fixed hue → its face cycles the rainbow (like the Rainbow
+                                        // skin); presets show the exact colour they unlock.
+                                        val hue = if (isCustom) strobeHue else (presetSlotHues[index]?.hue ?: 0f)
+                                        val faceColor = Color.hsv(hue, 0.359f, 0.961f)
+                                        val faceStroke = Color.hsv(hue, 0.661f, 0.961f)
                                         if (unlocked) {
-                                            // Colors carry no contact shadow (that's only for ballstyle parts).
-                                            drawSwatch()
-                                        } else if (isCustom) {
-                                            // The custom "any color" unlocks only at 100% meter and has no
-                                            // single hue, so it keeps its rainbow/hue-wheel face + plain lock.
-                                            val faceColor = Color(
-                                                if (activePlayerHigh) ColorTheme.Warm.main.primary
-                                                else ColorTheme.Cold.main.primary
-                                            )
+                                            // Unlocked → flat (always-pressed) rectangle, no lock glyph.
                                             bdDrawLockedOption(
-                                                cx, cy, cellW, cellH, faceColor, isPressed,
-                                                lockPainter, BD_LOCK_ASPECT
-                                            ) { drawSwatch() }
+                                                cx, cy, cellW, cellH, faceColor = faceColor, pressed = true,
+                                                icon = null, iconAspectHW = 0f, faceStroke = faceStroke
+                                            ) { }
                                         } else {
-                                            // Ad-unlockable preset: the button face IS the color it unlocks —
-                                            // primary fill + secondary outline like a ball, no swatch circle.
-                                            // Nothing to cover, so the lock sits large & centred.
-                                            val hue = presetSlotHues[index]?.hue ?: 0f
+                                            // Locked → raised ad-button. Custom unlocks only at 100% meter (plain
+                                            // lock); presets are individually ad-unlockable (ad-lock).
                                             bdDrawLockedOption(
-                                                cx, cy, cellW, cellH,
-                                                faceColor = Color.hsv(hue, 0.359f, 0.961f), pressed = isPressed,
-                                                icon = adLockPainter, iconAspectHW = BD_ADLOCK_ASPECT,
-                                                faceStroke = Color.hsv(hue, 0.661f, 0.961f), centerIcon = true
+                                                cx, cy, cellW, cellH, faceColor = faceColor, pressed = isPressed,
+                                                icon = if (isCustom) lockPainter else adLockPainter,
+                                                iconAspectHW = if (isCustom) BD_LOCK_ASPECT else BD_ADLOCK_ASPECT,
+                                                faceStroke = faceStroke, centerIcon = true
                                             ) { }
                                         }
                                     }
+
+                                    // Status label for the browsed colour — "Watch Ad To Own" when locked,
+                                    // else its name. Same chip/typography as BallDesignerScreen: left-aligned,
+                                    // word-wrapped to 3 lines, opaque rounded chip so it stays readable as the
+                                    // ad-buttons scroll behind it. Colours unified across dark/light.
+                                    val carouselLabel =
+                                        if (Storage.isColorUnlocked(browsedColorIndex))
+                                            CCP_COLOR_NAMES[browsedColorIndex.coerceIn(0, CCP_COLOR_NAMES.lastIndex)]
+                                        else stringResource(Res.string.style_ad_to_own)
+                                    val labelShape = RoundedCornerShape(8.dp)
+                                    Text(
+                                        text = carouselLabel,
+                                        color = fgColor,
+                                        fontFamily = poppins,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Light,
+                                        fontStyle = FontStyle.Italic,
+                                        maxLines = 3,
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .padding(6.dp)
+                                            .then(
+                                                if (carouselWidthPx > 0)
+                                                    Modifier.widthIn(max = with(density) { carouselWidthPx.toDp() } - 12.dp)
+                                                else Modifier
+                                            )
+                                            .clip(labelShape)
+                                            .background(controlBg)
+                                            .border(2.dp, wrapperBg, labelShape)
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
                                 }
                                 if (customSliderActive && Storage.isColorUnlocked(ColorCarousel.CUSTOM_IDX)) {
                                     HueSliderRow(
@@ -444,7 +512,8 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                             ) {
                                 for (i in 0..4) {
                                     CcpPresetSlot(
-                                        preset = presets[i], selected = i == selectedPreset, isDark = isDark,
+                                        index = i, preset = presets[i], selected = i == selectedPreset, isDark = isDark,
+                                        unlocked = Storage.isCcpSlotUnlocked(i),
                                         disabled = i == selectedPreset && saveDisabled,
                                         accent = accentBlue, fg = fgColor, sizeDp = slotDp,
                                         onTap = {
@@ -507,6 +576,7 @@ private fun ColorTargetBox(
     hue: Float,
     locked: Boolean,
     active: Boolean,
+    high: Boolean,
     controlBg: Color,
     accent: Color,
     fg: Color,
@@ -514,9 +584,16 @@ private fun ColorTargetBox(
     modifier: Modifier = Modifier,
     onTap: () -> Unit,
 ) {
+    val isDark = LocalDarkMode.current
     val shape = RoundedCornerShape(14.dp)
     // Own painter instance (see note at previewAdLockPainter) so it isn't resized by other draws.
     val lockPainter = painterResource(Res.drawable.ic_menu_adlock)
+    // The swatch is a real Classic skin posed in static UI mode (closer to 1:1 with gameplay than a
+    // bare circle). Built once; its theme/hue is set per-draw below. Theme drives the body colours.
+    val renderer = remember {
+        BallStyleFactory.buildSkinOnlyRenderer(BallType.Classic, ColorTheme.Cold)
+            .also { it.staticUiMode = true; it.effect.frozen = true }
+    }
     Box(
         modifier = modifier.clip(shape).background(controlBg)
             .then(if (active) Modifier.border(4.dp, accent, shape) else Modifier)
@@ -526,8 +603,16 @@ private fun ColorTargetBox(
             val r = Settings.ballRadius
             val cx = size.width / 2f
             val cy = size.height / 2f + r * 0.2f
-            drawCircle(Color.hsv(hue, 0.359f, 0.961f), radius = r, center = Offset(cx, cy))
-            drawCircle(Color.hsv(hue, 0.661f, 0.961f), radius = r, center = Offset(cx, cy), style = Stroke(r * 0.16f))
+            val theme = bdThemeFromHues(high, hue, hue)
+            bdDrawShadow(cx, cy, r, isDark)
+            renderer.theme = theme
+            renderer.x = cx; renderer.y = cy; renderer.radius = r
+            renderer.strokeWidth = Settings.strokeWidth
+            renderer.shielded = false; renderer.inertLocked = false
+            renderer.fillColor = theme.main.primary
+            renderer.strokeColor = theme.main.secondary
+            renderer.baseFillColor = theme.main.primary
+            with(renderer) { draw() }
             // Chosen color is locked → the same right-centred ad-lock glyph the BallDesigner uses.
             if (locked) {
                 val h = 24.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 10.dp.toPx()
@@ -539,25 +624,92 @@ private fun ColorTargetBox(
     }
 }
 
+// The fraction of the button's height taken by the shield "goal indicator" band (top edge for the
+// Top player, bottom edge for Bottom), and the press-depth fraction (matches bdDrawLockedOption).
+private const val TOGGLE_BAND_FRACTION = 0.2f
+private const val TOGGLE_DEPTH_K = 0.09f
+
 @Composable
 private fun PlayerToggleBox(
     high: Boolean,
-    controlBg: Color,
-    fg: Color,
+    theme: ColorTheme,
     poppins: androidx.compose.ui.text.font.FontFamily,
     modifier: Modifier = Modifier,
     onTap: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(14.dp)
+    var pressed by remember { mutableStateOf(false) }
+    var boxHeightPx by remember { mutableFloatStateOf(0f) }
     Box(
-        modifier = modifier.clip(shape).background(controlBg)
-            .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) },
+        modifier = modifier
+            .onSizeChanged { boxHeightPx = it.height.toFloat() }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = { pressed = true; tryAwaitRelease(); pressed = false },
+                    onTap = { onTap() }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
+        Canvas(modifier = Modifier.fillMaxSize()) { drawPlayerToggleButton(high, theme, pressed) }
+        // The face sits `depth` above the cell at rest and slides down onto its shadow lip when
+        // pressed; the label rides with it so it stays centred on the face in both states.
+        val depthPx = boxHeightPx / (1f + TOGGLE_DEPTH_K) * TOGGLE_DEPTH_K
+        val faceOffPx = if (pressed) depthPx else 0f
+        val labelOffset = (faceOffPx - depthPx / 2f).roundToInt()
         // high = Top, low = Bottom (user-facing wording).
         Text(text = if (high) stringResource(Res.string.ccp_top_colors) else stringResource(Res.string.ccp_bottom_colors),
-            color = fg, fontFamily = poppins, fontSize = 14.sp, fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic)
+            color = PaintBucket.white, fontFamily = poppins, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic,
+            modifier = Modifier.offset { IntOffset(0, labelOffset) })
     }
+}
+
+// Draws the Top/Bottom toggle as a raised carousel-style button: a theme.main.primary fill ringed by
+// a theme.main.secondary outline, sitting on a darker shadow lip. The top (Top player) or bottom
+// (Bottom player) [TOGGLE_BAND_FRACTION] of the button is overlaid with the shield colours
+// (theme.shield.primary fill + theme.shield.secondary outline) to mark which goal that player's
+// colors edit. When [pressed] the face slides straight down onto the lip (matches bdDrawLockedOption).
+private fun DrawScope.drawPlayerToggleButton(high: Boolean, theme: ColorTheme, pressed: Boolean) {
+    val w = size.width
+    val h = size.height
+    val faceH = h / (1f + TOGGLE_DEPTH_K)
+    val depth = faceH * TOGGLE_DEPTH_K
+    val corner = faceH * 0.18f
+    val strokeW = faceH * 0.09f
+    val bandH = faceH * TOGGLE_BAND_FRACTION
+    val faceOff = if (pressed) depth else 0f
+
+    val mainP = Color(theme.main.primary)
+    val mainS = Color(theme.main.secondary)
+    val shieldP = Color(theme.shield.primary)
+    val shieldS = Color(theme.shield.secondary)
+
+    // Band sits on the goal edge: top for Top player, bottom for Bottom player.
+    fun bandTop(faceTop: Float) = if (high) faceTop else faceTop + faceH - bandH
+    fun facePath(faceTop: Float): Path = Path().apply {
+        addRoundRect(RoundRect(Rect(Offset(0f, faceTop), Size(w, faceH)), CornerRadius(corner)))
+    }
+    // Inset stroke so its outer edge lands on the face edge (no fill slivers past the corners).
+    val sInset = strokeW / 2f
+    fun DrawScope.outline(faceTop: Float, color: Color) = drawRoundRect(
+        color, Offset(sInset, faceTop + sInset), Size(w - strokeW, faceH - strokeW),
+        CornerRadius((corner - sInset).coerceAtLeast(0f)), style = Stroke(strokeW)
+    )
+
+    // Shadow lip — a darker duplicate of the (two-tone) face, fixed `depth` below the resting face.
+    drawRoundRect(bdShadowOver(mainP), Offset(0f, depth), Size(w, faceH), CornerRadius(corner))
+    clipPath(facePath(depth)) {
+        drawRect(bdShadowOver(shieldP), Offset(0f, bandTop(depth)), Size(w, bandH))
+    }
+
+    // Face — main fill, shield band overlaid (clipped to the rounded face so the band keeps its
+    // rounded goal-edge corners), then the continuous outline that switches colour across the band.
+    drawRoundRect(mainP, Offset(0f, faceOff), Size(w, faceH), CornerRadius(corner))
+    clipPath(facePath(faceOff)) {
+        drawRect(shieldP, Offset(0f, bandTop(faceOff)), Size(w, bandH))
+    }
+    outline(faceOff, mainS)
+    val bt = bandTop(faceOff)
+    clipRect(0f, bt, w, bt + bandH) { outline(faceOff, shieldS) }
 }
 
 @Composable
@@ -587,9 +739,11 @@ private fun HueSliderRow(hue: Float, onHue: (Float) -> Unit, modifier: Modifier 
 
 @Composable
 private fun CcpPresetSlot(
+    index: Int,
     preset: CcpPreset?,
     selected: Boolean,
     isDark: Boolean,
+    unlocked: Boolean,
     disabled: Boolean,
     accent: Color,
     fg: Color,
@@ -603,11 +757,17 @@ private fun CcpPresetSlot(
     val lockPainter = painterResource(Res.drawable.ic_menu_adlock)
     Box(
         modifier = Modifier.size(sizeDp).clip(shape).background(bg)
-            .then(if (selected) Modifier.border(4.dp, accent, shape) else Modifier)
-            .pointerInput(preset) { detectTapGestures(onTap = { onTap() }, onLongPress = { if (preset != null) onLongPress() }) },
+            .then(if (unlocked && selected) Modifier.border(4.dp, accent, shape) else Modifier)
+            .pointerInput(unlocked, preset) {
+                // Locked slots can't be selected — they just show the % needed to unlock them
+                // (mirrors the Ball Designer's DesignerSlotCell).
+                if (unlocked) detectTapGestures(onTap = { onTap() }, onLongPress = { if (preset != null) onLongPress() })
+            },
         contentAlignment = Alignment.Center
     ) {
-        if (preset != null) {
+        if (!unlocked) {
+            Text("${Storage.ccpSlotRequiredPercent(index)}%", color = fg.copy(alpha = 0.6f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        } else if (preset != null) {
             // Four horizontal bands in the order an arena draws top→bottom, so the slot reads as a
             // miniature of real gameplay: High shield (1/6) · High color (1/3) · Low color (1/3) ·
             // Low shield (1/6). The whole formed square keeps rounded corners (clip below). When

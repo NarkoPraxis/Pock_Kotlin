@@ -24,14 +24,17 @@ class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
         const val CUSTOM_UNLOCK_PCT = 100
 
         data class Preset(val hue: Float, val unlockPct: Int)
+        // Hues for the three default/free colors (indices 0, 4, 6) must exactly match the game's
+        // default player/shield hues in Storage, or those defaults resolve to "custom" and read as
+        // locked. See Storage.FREE_COLOR_INDICES.
         val PRESETS: Array<Preset?> = arrayOf(
-            Preset(  0f,  0),   // Red
+            Preset(  0f,  0),   // Red — high player default (free)
             Preset( 30f,  5),   // Orange
             Preset( 60f, 15),   // Yellow
             Preset(120f, 25),   // Green
-            Preset(202.5f, 35), // Sky Blue (low player default)
+            Preset(202.5f, 35), // Sky Blue — low player default (free)
             Preset(240f,  0),   // Blue
-            Preset(270f, 45),   // Purple
+            Preset(264f, 45),   // Purple — shield default (free)
             Preset(300f, 55),   // Magenta
             Preset(330f, 65),   // Pink
             null,               // Custom
@@ -83,8 +86,9 @@ class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
         if (isCustomSelected && isUnlocked(CUSTOM_IDX)) isCustomSliderActive = true
     }
 
-    // Red (0), Blue (5), Purple/shield (6) free; the other presets are individually ad-unlockable;
-    // the custom slider (index 9) is gated behind 100% completion. Resolved in Storage.
+    // The three game-default colors are free: Red (0) = high player, Sky Blue (4) = low player,
+    // Purple (6) = shield. The other presets are individually ad-unlockable; the custom slider
+    // (index 9) is gated behind 100% completion. Resolved in Storage.
     fun isUnlocked(index: Int): Boolean = utility.Storage.isColorUnlocked(index)
 
     fun initializeToHue(hue: Float) {

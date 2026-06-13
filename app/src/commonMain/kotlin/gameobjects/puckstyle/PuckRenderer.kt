@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
 import utility.Sounds
+import utility.UiStrobeClock
 
 enum class ColorKey { Main, Shield, Inert }
 
@@ -61,6 +62,14 @@ class PuckRenderer(var theme: ColorTheme) {
         }
 
     var frame: Int = 0
+
+    /**
+     * Color-strobe clock, decoupled from [frame]. Rainbow/Prism skins & tails read this for their
+     * hue cycle so they keep strobing in static UI displays (the Ball Designer carousels, the
+     * ball-select popup) where [frame] is held frozen to keep geometry still. In live play
+     * [staticUiMode] is false, so this just returns [frame] — gameplay rendering is identical.
+     */
+    val strobe: Int get() = if (staticUiMode) UiStrobeClock.frame else frame
 
     var currentCharge: Float = 0f
 

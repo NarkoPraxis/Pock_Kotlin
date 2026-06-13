@@ -36,6 +36,7 @@ import utility.Logic
 import utility.PaintBucket
 import utility.Sounds
 import utility.Storage
+import utility.UiStrobeClock
 import utility.edgeSwipeBack
 
 /** Provides the current dark-mode flag to any composable in the tree. */
@@ -256,6 +257,9 @@ private fun IosGameHost(onBack: () -> Unit) {
                         else -> {}
                     }
                 }
+                // Keep the static rainbow/prism cosmetics strobing in the ball-select popup (their
+                // geometry is frozen there; only the hue cycles). No-op for any other style.
+                UiStrobeClock.advance()
                 tickState.intValue++
             }
         )

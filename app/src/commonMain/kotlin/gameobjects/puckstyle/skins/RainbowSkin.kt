@@ -18,8 +18,10 @@ class RainbowSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val shieldHue = Palette.colorHue(theme.shield.primary)
 
     override fun DrawScope.drawBody() {
-        val baseHue = renderer.frame * 4f + hueOffset
-        val osc = kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f
+        // Hue cycle + shield oscillation run off the strobe clock so the colors keep cycling even in
+        // a static UI preview (where the body never moves); in live play strobe == frame.
+        val baseHue = renderer.strobe * 4f + hueOffset
+        val osc = kotlin.math.sin(renderer.strobe * 0.04).toFloat() * 30f
 
         val fillColorInt = when {
             renderer.isInert -> hsv(baseHue, 0.10f, 0.90f)

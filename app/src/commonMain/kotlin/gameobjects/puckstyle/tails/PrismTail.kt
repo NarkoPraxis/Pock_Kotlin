@@ -54,13 +54,17 @@ class PrismTail(override val renderer: PuckRenderer) : TailRenderer {
         }
         val history = history!!
 
-        val osc = kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f
+        // Hue oscillation runs off the strobe clock so the colors keep cycling in a static UI
+        // preview while the facet geometry stays frozen; in live play strobe == frame.
+        val osc = kotlin.math.sin(renderer.strobe * 0.04).toFloat() * 30f
         if (renderer.staticUiMode) {
             // Static screenshot: pose facets along the swoosh; spin each by index for a frozen spiral.
+            // Positions/angles are frozen, but the current strobe osc is stamped on every entry so the
+            // whole frozen trail strobes its colors in unison.
             val last = (history.size - 1).coerceAtLeast(1)
             for (i in history.indices) {
                 val p = staticSwooshPoint(i.toFloat() / last)
-                history[i].apply { x = p.x; y = p.y; angle = i * 12f; radius = renderer.radius; this.osc = 0f }
+                history[i].apply { x = p.x; y = p.y; angle = i * 12f; radius = renderer.radius; this.osc = osc }
             }
         } else {
             for (i in history.size - 1 downTo 1) {

@@ -72,6 +72,7 @@ import pock_kotlin.app.generated.resources.*
 import utility.AdUnlock
 import utility.PaintBucket
 import utility.Storage
+import utility.UiStrobeClock
 import utility.edgeSwipeBack
 import kotlin.math.PI
 import kotlin.math.cos
@@ -262,12 +263,23 @@ internal const val BD_LOCK_ASPECT = 95.17f / 81.84f       // ic_menu_lock
 internal val BD_WRAPPER_LIGHT = Color(0xFFE3E2FE)
 internal val BD_WRAPPER_DARK = Color(0xFF1E1E2A)
 
+// The Ball Designer's carousel option buttons keep the default low-player blue regardless of any
+// color the player has chosen on the Color screen (the balls themselves still follow the picker).
+// The outline is the solid default primary; the face is that same primary at 20% alpha — the faded
+// arena-background tint (see Drawing.drawTouchHighlights, which fills each half with
+// lowBallFill.copy(alpha = .2f)) — so a ball whose body is the primary blue can't be swallowed by a
+// solid button face. 202.5° is the Storage default for the low player's normal hue; the
+// saturation/value pair matches applyHueToPaint / bdThemeFromHues.
+internal const val BD_DEFAULT_LOW_HUE = 202.5f
+internal val BD_BUTTON_OUTLINE = Color.hsv(BD_DEFAULT_LOW_HUE, 0.359f, 0.961f)
+internal val BD_BUTTON_FILL = BD_BUTTON_OUTLINE.copy(alpha = 0.2f)
+
 // The exact tone PokPok's skin produces by overlaying its black shadow mask (alpha 0.244, see
 // PokPokSkin.SHADOW_ALPHA) over an opaque colour: c · (1 − alpha). Over the ad-button face
 // (menuAccentBlue == #52B6F2, the same blue PokPok's body uses) this yields PokPok's body-vs-shadow
 // tone, used for the button's shadow lip.
 private const val BD_SHADOW_ALPHA = 0.244f
-private fun bdShadowOver(c: Color) = Color(
+internal fun bdShadowOver(c: Color) = Color(
     c.red * (1f - BD_SHADOW_ALPHA), c.green * (1f - BD_SHADOW_ALPHA), c.blue * (1f - BD_SHADOW_ALPHA), c.alpha
 )
 
@@ -301,7 +313,7 @@ internal fun DrawScope.bdDrawLockedOption(
     cellWidth: Float, cellHeight: Float,
     faceColor: Color,
     pressed: Boolean,
-    icon: Painter,
+    icon: Painter?,
     iconAspectHW: Float,
     faceStroke: Color? = null,
     centerIcon: Boolean = false,
@@ -358,19 +370,22 @@ internal fun DrawScope.bdDrawLockedOption(
     // Lock/ad glyph — always the menu accent red for consistency across light/dark, rides the face
     // down on press. Default: small, tucked top-right so it reads as "locked" without covering the
     // cosmetic. [centerIcon]: large and centred, for buttons that have no cosmetic to cover (e.g. the
-    // CCP color buttons, where the face itself is the colour).
-    if (centerIcon) {
-        val iconH = side * 0.5f
-        val iconW = iconH / iconAspectHW
-        translate(left + (side - iconW) / 2f, top + faceOff + (side - iconH) / 2f) {
-            with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(PaintBucket.menuAccentRed)) }
-        }
-    } else {
-        val iconH = 24.dp.toPx()
-        val iconW = iconH / iconAspectHW
-        val iconPad = side * 0.1f
-        translate(left + side - iconPad - iconW, top + faceOff + iconPad) {
-            with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(PaintBucket.menuAccentRed)) }
+    // CCP color buttons, where the face itself is the colour). [icon] null → no glyph at all (an
+    // already-unlocked button, drawn flat/pressed).
+    if (icon != null) {
+        if (centerIcon) {
+            val iconH = side * 0.5f
+            val iconW = iconH / iconAspectHW
+            translate(left + (side - iconW) / 2f, top + faceOff + (side - iconH) / 2f) {
+                with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(PaintBucket.menuAccentRed)) }
+            }
+        } else {
+            val iconH = 24.dp.toPx()
+            val iconW = iconH / iconAspectHW
+            val iconPad = side * 0.1f
+            translate(left + side - iconPad - iconW, top + faceOff + iconPad) {
+                with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(PaintBucket.menuAccentRed)) }
+            }
         }
     }
 }
@@ -500,8 +515,10 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
     }
 
     // Drives the preview ball's demo motion (~60fps). Purely cosmetic — no physics involved.
+    // Also advances the shared strobe clock so the static rainbow/prism option thumbnails keep
+    // cycling their colors (their geometry stays frozen; only the hue strobes).
     LaunchedEffect(Unit) {
-        while (true) { delay(16L); frame++ }
+        while (true) { delay(16L); frame++; UiStrobeClock.advance() }
     }
 
     LaunchedEffect(rootW, rootH) {
@@ -665,17 +682,19 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                 ) { index, cx, cy, r, _, isPressed, cellW, cellH ->
                                     val type = list[index]
                                     val renderer = rendererCache[type] ?: return@VerticalOptionCarousel
-                                    if (bdIsUnlocked(activeComp, type)) {
-                                        bdDrawPart(renderer, theme, activeComp, cx, cy, r, isDark)
-                                    } else {
-                                        // All skins/tails/paddles are ad-unlockable → the AdLock glyph.
-                                        // Button face is always the menu accent blue (not the custom
-                                        // colour), so it stays consistent across light/dark + any palette.
-                                        bdDrawLockedOption(
-                                            cx, cy, cellW, cellH, PaintBucket.menuAccentBlue, isPressed,
-                                            carouselLockPainter, BD_ADLOCK_ASPECT
-                                        ) { bdDrawPart(renderer, theme, activeComp, cx, cy, r, isDark, drawShadow = false) }
-                                    }
+                                    // Every option sits on a raised square button kept the fixed
+                                    // default-low blue (faded primary face + solid primary outline)
+                                    // regardless of the color picker, so a ball whose body is the primary
+                                    // blue isn't swallowed by its button. The ball itself still follows the
+                                    // picker (drawn with `theme`). Unlocked → no glyph; locked → AdLock.
+                                    val unlocked = bdIsUnlocked(activeComp, type)
+                                    bdDrawLockedOption(
+                                        cx, cy, cellW, cellH,
+                                        faceColor = BD_BUTTON_FILL, pressed = isPressed,
+                                        icon = if (unlocked) null else carouselLockPainter,
+                                        iconAspectHW = BD_ADLOCK_ASPECT,
+                                        faceStroke = BD_BUTTON_OUTLINE
+                                    ) { bdDrawPart(renderer, theme, activeComp, cx, cy, r, isDark, drawShadow = false) }
                                 }
 
                                 // Status label for the browsed style — "Watch Ad To Own" when locked, else
@@ -887,9 +906,11 @@ private fun DesignerSlotCell(
             }
             else -> androidx.compose.material3.Text("+", color = fg.copy(alpha = 0.5f), fontSize = 22.sp)
         }
-        // Current design uses a locked piece → it won't save into this (selected) slot.
-        // Centred over the ball.
+        // Current design uses a locked piece → it won't save into this (selected) slot. Fade the
+        // design toward the cell background so it reads as "won't update" (mirrors the CCP preset
+        // slot's desaturated disabled look), then stamp the ad-lock glyph centred over the ball.
         if (showAdLock) Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRect(bg.copy(alpha = 0.6f))
             bdDrawAdLockGlyph(lockPainter, PaintBucket.menuAccentRed, size.width / 2f, size.height / 2f, size.minDimension * 0.4f)
         }
     }

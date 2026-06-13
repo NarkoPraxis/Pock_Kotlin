@@ -42,9 +42,11 @@ class RainbowTail(override val renderer: PuckRenderer) : TailRenderer {
         // Compute per-frame constants once outside the loop.
         val isInert = renderer.isInert
         val isShielded = renderer.shielded
+        // Color clocks run off strobe (not frame) so the rainbow keeps cycling in a static UI
+        // preview while the swoosh positions stay frozen; in live play strobe == frame.
         // sin oscillation for shielded branch — same value for every particle in a frame.
-        val shieldOsc = if (isShielded) kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f else 0f
-        val frameHue = renderer.frame * 4f + hueOffset
+        val shieldOsc = if (isShielded) kotlin.math.sin(renderer.strobe * 0.04).toFloat() * 30f else 0f
+        val frameHue = renderer.strobe * 4f + hueOffset
 
         for (i in rainbowLen - 1 downTo 0) {
             if (renderer.staticUiMode) {

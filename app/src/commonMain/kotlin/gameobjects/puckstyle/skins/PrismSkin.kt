@@ -33,8 +33,11 @@ class PrismSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     override fun DrawScope.drawBody() {
         val sides = 6
-        val angleOffset = renderer.frame * 0.8f
-        val osc = kotlin.math.sin(renderer.frame * 0.04).toFloat() * 30f
+        // Geometry (facet rotation) tracks frame and is frozen in a static UI preview so the prism
+        // holds still; the hue oscillation tracks the strobe clock so the colors keep cycling there.
+        // In live play strobe == frame, so the two are identical and gameplay is unchanged.
+        val angleOffset = if (renderer.staticUiMode) 0f else renderer.frame * 0.8f
+        val osc = kotlin.math.sin(renderer.strobe * 0.04).toFloat() * 30f
         val edgeSw = renderer.strokeWidth
 
         val angleOffsetRad = angleOffset * (PI.toFloat() / 180f)
