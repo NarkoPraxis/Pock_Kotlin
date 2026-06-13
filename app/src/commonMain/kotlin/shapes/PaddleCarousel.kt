@@ -17,8 +17,9 @@ class PaddleCarousel : ComponentCarousel() {
         val tail = InvisibleTail(renderer)
         val paddle = BallStyleFactory.buildPaddle(type, renderer)
         renderer.attach(skin, tail, paddle)
-        // Prime to Building at chargeStart (paddle bar visible), then freeze so it never advances.
-        renderer.effect.increaseCharge()
+        // cbcCarouselMode draws the idle paddle, so no charge priming is needed. Priming with
+        // increaseCharge() would inject a non-zero fill (chargeStart == 0), making the frozen
+        // preview look partially charged — keep it at phase Idle / zero charge.
         renderer.effect.frozen = true
         renderer.effect.cbcCarouselMode = true
         return renderer

@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import com.runoutzone.pockpock.BD_WRAPPER_DARK
 import enums.BallType
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
@@ -160,6 +161,10 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
         // so its pose is identical to before.
         val shadowBaselineY = cy + (pr * maxScale) * SHADOW_DROP_K
         val cullX = w / 2f + slotW
+        // Contact-shadow tone: soft cold/warm-inert tint in light mode; the deep navy control-box
+        // tone (BD_WRAPPER_DARK) in dark mode so it reads as a shadow rather than a pale smudge.
+        val shadowColor = if (Storage.darkMode) BD_WRAPPER_DARK
+                          else Color(Palette.withAlpha(theme.inert.primary, SHADOW_ALPHA))
 
         val canvas = drawContext.canvas
 
@@ -200,7 +205,7 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
             val shadowCy = shadowBaselineY
             val ballCy = shadowBaselineY - radius * SHADOW_DROP_K
             drawOval(
-                color = Color(Palette.withAlpha(theme.inert.primary, SHADOW_ALPHA)),
+                color = shadowColor,
                 topLeft = Offset(drawX - shadowW / 2f, shadowCy - shadowH / 2f),
                 size = Size(shadowW, shadowH)
             )

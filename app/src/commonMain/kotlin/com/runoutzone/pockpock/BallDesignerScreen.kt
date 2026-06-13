@@ -33,11 +33,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
@@ -55,10 +59,13 @@ import com.runoutzone.pockpock.menu.poppinsFamily
 import enums.BallType
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
+import gameobjects.puckstyle.ChargePhase
+import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.CustomBallConfig
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
@@ -66,9 +73,12 @@ import utility.AdUnlock
 import utility.PaintBucket
 import utility.Storage
 import utility.edgeSwipeBack
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private const val BD_SKIN = 0
 private const val BD_TAIL = 1
@@ -143,6 +153,7 @@ private fun bdStyleName(component: Int, type: BallType): String =
         BallType.PokPok -> stringResource(Res.string.style_paddle_egg)
         BallType.Galaxy -> stringResource(Res.string.style_paddle_star)
         BallType.Axolotl -> stringResource(Res.string.style_paddle_bubble)
+        BallType.Metal -> stringResource(Res.string.style_paddle_dynamite)
         else -> bdSkinTailName(type)
     } else bdSkinTailName(type)
 
@@ -152,24 +163,84 @@ private fun bdControlLabel(component: Int, type: BallType): String =
     "${bdTypeLabel(component)} | ${bdStyleName(component, type)}"
 
 // Soft contact-shadow (inert tint), proportioned from customization.svg's shadow ellipses
-// (rx≈0.85r, ry≈0.23r, sitting at the part's bottom edge ≈ +1r below centre).
-internal fun DrawScope.bdDrawShadow(cx: Float, cy: Float, r: Float) {
+// (rx≈0.85r, ry≈0.23r, sitting at the part's bottom edge ≈ +1r below centre). Light mode keeps the
+// soft cold-inert tint; dark mode uses the deep navy control-box tone (BD_WRAPPER_DARK) so the oval
+// reads as a shadow against the dark backdrop instead of a pale smudge.
+internal fun DrawScope.bdDrawShadow(cx: Float, cy: Float, r: Float, isDark: Boolean) {
     val sw = r * 1.7f
     val sh = r * 0.47f
     drawOval(
-        color = Color(Palette.withAlpha(ColorTheme.Cold.inert.primary, 150)),
+        color = if (isDark) BD_WRAPPER_DARK else Color(Palette.withAlpha(ColorTheme.Cold.inert.primary, 150)),
         topLeft = Offset(cx - sw / 2f, (cy + r) - sh / 2f),
         size = Size(sw, sh)
     )
 }
 
+// Builds a ColorTheme straight from hue values WITHOUT touching PaintBucket, so a colour preview can
+// show any hue — including a still-locked one — without ever mutating the live gameplay palette. The
+// inert (dead) group is hue-independent, so it's read from the live theme (constant either way).
+internal fun bdThemeFromHues(isHigh: Boolean, normalHue: Float, shieldHue: Float): ColorTheme {
+    fun grp(hue: Float) = ColorGroup(
+        Color.hsv(hue, 0.359f, 0.961f).toArgb(),
+        Color.hsv(hue, 0.661f, 0.961f).toArgb(),
+        Color.hsv(hue, 0.10f, 0.99f).toArgb()
+    )
+    return ColorTheme(
+        main = grp(normalHue),
+        shield = grp(shieldHue),
+        inert = (if (isHigh) ColorTheme.Warm else ColorTheme.Cold).inert,
+        isWarm = isHigh
+    )
+}
+
+// Shared demo-motion preview used by both the Ball Designer (style) and the Color Picker: the ball
+// orbits a circle (so the tail trails its real path) and the paddle runs its real charge cycle.
+// Purely cosmetic — no physics. [step] advances one motion-step per draw so position and tail history
+// stay in lockstep (the caller bumps its own counter and passes it); [frame] keeps the canvas
+// redrawing each tick. [theme]/[shielded] drive the colours; pass an isolated theme (see
+// bdThemeFromHues) to preview without affecting gameplay. When [locked] it stamps the ad-lock glyph
+// bottom-right to mark the design/colour as un-saveable.
+internal fun DrawScope.bdDrawAnimatedPreview(
+    renderer: PuckRenderer, theme: ColorTheme, shielded: Boolean,
+    step: Float, frame: Int, locked: Boolean, lockPainter: Painter,
+) {
+    val r = Settings.ballRadius
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    val orbitR = r * 3.0f
+    val theta = 2f * PI.toFloat() * step / 100f
+    val grp = if (shielded) theme.shield else theme.main
+    renderer.theme = theme
+    renderer.x = cx + orbitR * cos(theta)
+    renderer.y = cy + orbitR * sin(theta)
+    renderer.radius = r
+    renderer.strokeWidth = Settings.strokeWidth
+    renderer.frame = frame
+    renderer.effectEnabled = true
+    renderer.shielded = shielded
+    renderer.fillColor = grp.primary
+    renderer.strokeColor = grp.secondary
+    renderer.baseFillColor = grp.primary
+    // Paddle: run the charge → sweet-spot → drain → inert cycle on a loop and orbit the ball.
+    renderer.effect.increaseCharge()
+    if (renderer.effect.phase == ChargePhase.Inert) renderer.effect.reset()
+    renderer.effect.cbcOrbitAngleDeg = (step * 1.2f) % 360f
+    // No contact shadow on the moving preview — that's only for static displays.
+    with(renderer) { draw() }
+    if (locked) {
+        val h = 36.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 12.dp.toPx()
+        bdDrawAdLockGlyph(lockPainter, PaintBucket.menuAccentRed,
+            size.width - pad - w / 2f, size.height - pad - h / 2f, h)
+    }
+}
+
 private fun DrawScope.bdDrawPart(
     renderer: PuckRenderer, theme: ColorTheme, component: Int,
-    cx: Float, cy: Float, r: Float, drawShadow: Boolean = true
+    cx: Float, cy: Float, r: Float, isDark: Boolean, drawShadow: Boolean = true
 ) {
     // Tails get no contact shadow — it reads as accidental floating beneath a trail. The composed
     // ball/slot previews still draw their own shadow (they call bdDrawShadow directly).
-    if (drawShadow && component != BD_TAIL) bdDrawShadow(cx, cy, r)
+    if (drawShadow && component != BD_TAIL) bdDrawShadow(cx, cy, r, isDark)
     renderer.x = cx
     renderer.y = cy
     renderer.radius = r
@@ -186,6 +257,11 @@ private fun DrawScope.bdDrawPart(
 internal const val BD_ADLOCK_ASPECT = 106.46f / 89.37f   // ic_menu_adlock
 internal const val BD_LOCK_ASPECT = 95.17f / 81.84f       // ic_menu_lock
 
+// The control-box (grey wrapper) background. Light is a soft lavender; dark is the deep navy that
+// also doubles as the locked-option shadow lip in dark mode (see bdDrawLockedOption).
+internal val BD_WRAPPER_LIGHT = Color(0xFFE3E2FE)
+internal val BD_WRAPPER_DARK = Color(0xFF1E1E2A)
+
 // The exact tone PokPok's skin produces by overlaying its black shadow mask (alpha 0.244, see
 // PokPokSkin.SHADOW_ALPHA) over an opaque colour: c · (1 − alpha). Over the ad-button face
 // (menuAccentBlue == #52B6F2, the same blue PokPok's body uses) this yields PokPok's body-vs-shadow
@@ -201,7 +277,7 @@ private fun bdShadowOver(c: Color) = Color(
  * composable path was cropping the vector, this one shows it whole. [h] is the glyph height; it is
  * centred on ([cx],[cy]).
  */
-private fun DrawScope.bdDrawAdLockGlyph(painter: Painter, tint: Color, cx: Float, cy: Float, h: Float) {
+internal fun DrawScope.bdDrawAdLockGlyph(painter: Painter, tint: Color, cx: Float, cy: Float, h: Float) {
     val w = h * (89.37f / 106.46f)
     translate(cx - w / 2f, cy - h / 2f) {
         with(painter) { draw(Size(w, h), colorFilter = ColorFilter.tint(tint)) }
@@ -227,6 +303,8 @@ internal fun DrawScope.bdDrawLockedOption(
     pressed: Boolean,
     icon: Painter,
     iconAspectHW: Float,
+    faceStroke: Color? = null,
+    centerIcon: Boolean = false,
     drawCosmetic: DrawScope.() -> Unit,
 ) {
     val depthK = 0.09f
@@ -243,7 +321,7 @@ internal fun DrawScope.bdDrawLockedOption(
     val faceOff = if (pressed) depth else 0f
 
     // Single shadow lip — fixed `depth` below the resting face, an exact rounded duplicate of the
-    // face in PokPok's body-vs-shadow blue.
+    // face in PokPok's body-vs-shadow blue. Identical in light and dark mode.
     drawRoundRect(
         color = bdShadowOver(faceColor),
         topLeft = Offset(left, top + depth),
@@ -257,20 +335,43 @@ internal fun DrawScope.bdDrawLockedOption(
         size = Size(side, side),
         cornerRadius = CornerRadius(corner)
     )
+    // Optional outline on the face (CCP color buttons: the face IS the unlock colour, so it gets a
+    // primary fill + secondary stroke just like a ball). The stroke is inset by half its width and
+    // its corner radius reduced to match, so the stroke's OUTER edge coincides exactly with the
+    // face edge (no fill slivers peeking past the corners).
+    faceStroke?.let { sc ->
+        val sw = side * 0.09f
+        drawRoundRect(
+            color = sc,
+            topLeft = Offset(left + sw / 2f, top + faceOff + sw / 2f),
+            size = Size(side - sw, side - sw),
+            cornerRadius = CornerRadius((corner - sw / 2f).coerceAtLeast(0f)),
+            style = Stroke(sw)
+        )
+    }
     // Cosmetic, clipped onto the face so it can't spill past the button edges; rides the face down.
     // The caller draws it centred on cy, but the face centre sits depth/2 above cy (assembly is
     // centred, lip hangs below), so nudge it up by depth/2 to centre it within the face.
     clipRect(left, top + faceOff, left + side, top + faceOff + side) {
         translate(0f, faceOff - depth / 2f) { drawCosmetic() }
     }
-    // Lock/ad glyph — small (matching the type-selector lock height) and tucked into the top-right
-    // corner with padding, so it reads as "locked" without covering the cosmetic. Always the menu
-    // accent red for consistency across light/dark. Rides the face down on press.
-    val iconH = 24.dp.toPx()
-    val iconW = iconH / iconAspectHW
-    val iconPad = side * 0.1f
-    translate(left + side - iconPad - iconW, top + faceOff + iconPad) {
-        with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(PaintBucket.menuAccentRed)) }
+    // Lock/ad glyph — always the menu accent red for consistency across light/dark, rides the face
+    // down on press. Default: small, tucked top-right so it reads as "locked" without covering the
+    // cosmetic. [centerIcon]: large and centred, for buttons that have no cosmetic to cover (e.g. the
+    // CCP color buttons, where the face itself is the colour).
+    if (centerIcon) {
+        val iconH = side * 0.5f
+        val iconW = iconH / iconAspectHW
+        translate(left + (side - iconW) / 2f, top + faceOff + (side - iconH) / 2f) {
+            with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(PaintBucket.menuAccentRed)) }
+        }
+    } else {
+        val iconH = 24.dp.toPx()
+        val iconW = iconH / iconAspectHW
+        val iconPad = side * 0.1f
+        translate(left + side - iconPad - iconW, top + faceOff + iconPad) {
+            with(icon) { draw(Size(iconW, iconH), colorFilter = ColorFilter.tint(PaintBucket.menuAccentRed)) }
+        }
     }
 }
 
@@ -293,13 +394,16 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
     val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
     val fgColor = if (isDark) PaintBucket.white else Color(0xFF222222)
     val theme = ColorTheme.Cold // CBC parts/preview: cold/low, normal color, upright.
-    val wrapperBg = if (isDark) Color(0xFF1E1E2A) else Color(theme.inert.primary)
+    val wrapperBg = if (isDark) BD_WRAPPER_DARK else BD_WRAPPER_LIGHT
     val controlBg = if (isDark) Color(0xFF2A3A4E) else PaintBucket.white
     val accentBlue = PaintBucket.menuAccentBlue
 
     var rootW by remember { mutableIntStateOf(0) }
     var rootH by remember { mutableIntStateOf(0) }
     var initDone by remember { mutableStateOf(false) }
+
+    // Demo-only animation clock for the composition preview (read inside the preview Canvas).
+    var frame by remember { mutableIntStateOf(0) }
 
     var skinType by remember { mutableStateOf(BallType.Classic) }
     var tailType by remember { mutableStateOf(BallType.Classic) }
@@ -314,6 +418,14 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
     var meterPopupVisible by remember { mutableStateOf(false) }
     var adLimitPopupVisible by remember { mutableStateOf(false) }
 
+    // Geometry for centering the action pills vertically between the unlock-progress bar and the
+    // preview's locked-cosmetic glyph. All values are in root coords.
+    var rootCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var progressBottomPx by remember { mutableFloatStateOf(0f) }
+    var previewTopPx by remember { mutableFloatStateOf(0f) }
+    var previewBottomPx by remember { mutableFloatStateOf(0f) }
+    var pillColHeightPx by remember { mutableIntStateOf(0) }
+
     fun loadBalls(): List<Pair<Int, CustomBallConfig>> =
         (0 until Storage.SLOT_COUNT).mapNotNull { i -> Storage.loadCustomBall(i)?.let { i to it } }
 
@@ -325,11 +437,17 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
         Storage.isSkinUnlocked(skinType) && Storage.isTailUnlocked(tailType) && Storage.isPaddleUnlocked(paddleType)
 
     var previewRenderer by remember { mutableStateOf<PuckRenderer?>(null) }
+    // Motion clock advanced exactly once per preview draw (not per wall-clock tick). Plain holder,
+    // not snapshot state, so mutating it in the draw phase can't trigger a redraw loop.
+    val previewStep = remember { floatArrayOf(0f) }
     fun rebuildPreview() {
+        previewRenderer?.tail?.clear()
         val r = BallStyleFactory.buildCustomRenderer(currentConfig(), theme)
         r.isHigh = false
-        r.staticUiMode = true
-        r.effect.frozen = true
+        // Live motion (not the static "screenshot" pose): the ball orbits a circle so the tail
+        // trails its real path and the paddle runs its real charge cycle. Driven in the Canvas below.
+        r.staticUiMode = false
+        r.effect.frozen = false
         previewRenderer = r
     }
 
@@ -381,6 +499,11 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
         ranks = Triple(arr[0], arr[1], arr[2])
     }
 
+    // Drives the preview ball's demo motion (~60fps). Purely cosmetic — no physics involved.
+    LaunchedEffect(Unit) {
+        while (true) { delay(16L); frame++ }
+    }
+
     LaunchedEffect(rootW, rootH) {
         if (!initDone && rootW > 0 && rootH > 0) {
             val ratio = max(1f, min(rootW.toFloat(), rootH.toFloat()) / 18f)
@@ -409,6 +532,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
             .background(bgColor)
             .statusBarsPadding()
             .onSizeChanged { rootW = it.width; rootH = it.height }
+            .onGloballyPositioned { rootCoords = it }
             .edgeSwipeBack(onBack)
     ) {
         if (initDone) {
@@ -420,32 +544,35 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                     UnlockProgressBar(
                         progress = Storage.unlockProgress,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(32.dp)
+                            .onGloballyPositioned { pc ->
+                                rootCoords?.let { progressBottomPx = it.localPositionOf(pc, Offset.Zero).y + pc.size.height }
+                            }
                     )
                     Box(Modifier.height(8.dp))
                 }
 
-                // Preview — static composed ball at play size, with contact shadow.
+                // Preview — composed ball at play size, animated with demo-only motion: the ball
+                // orbits a circle (real motion, so the tail trails live) and the paddle orbits +
+                // cycles charge as the old CBC did. None of this touches the physics simulation.
                 val previewLocked = !allUnlocked()
-                Box(modifier = Modifier.fillMaxWidth().weight(0.9f).clipToBounds()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(0.9f).clipToBounds()
+                        .onGloballyPositioned { pc ->
+                            rootCoords?.let {
+                                val y = it.localPositionOf(pc, Offset.Zero).y
+                                previewTopPx = y; previewBottomPx = y + pc.size.height
+                            }
+                        }
+                ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val pr = previewRenderer ?: return@Canvas
-                        val cx = size.width / 2f
-                        val r = Settings.ballRadius
-                        val cy = size.height / 2f - r * 0.3f
-                        bdDrawShadow(cx, cy, r)
-                        pr.x = cx; pr.y = cy; pr.radius = r
-                        pr.strokeWidth = Settings.strokeWidth
-                        pr.effectEnabled = true
-                        pr.fillColor = theme.main.primary
-                        pr.strokeColor = theme.main.secondary
-                        pr.baseFillColor = theme.main.primary
-                        with(pr) { draw() }
-                        // Design uses a locked piece → mark the preview as unavailable (won't save).
-                        // Bottom-right, inset so the whole glyph stays inside the box.
-                        if (previewLocked) {
-                            val h = 36.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 12.dp.toPx()
-                            bdDrawAdLockGlyph(previewLockPainter, PaintBucket.menuAccentRed, size.width - pad - w / 2f, size.height - pad - h / 2f, h)
-                        }
+                        // Advance one motion-step per draw so position and tail history stay in
+                        // lockstep — exactly one tail point per position step, like the live game.
+                        previewStep[0] += 1f
+                        bdDrawAnimatedPreview(
+                            pr, theme, shielded = false, step = previewStep[0], frame = frame,
+                            locked = previewLocked, lockPainter = previewLockPainter
+                        )
                     }
                 }
                 Box(Modifier.height(8.dp))
@@ -539,7 +666,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                     val type = list[index]
                                     val renderer = rendererCache[type] ?: return@VerticalOptionCarousel
                                     if (bdIsUnlocked(activeComp, type)) {
-                                        bdDrawPart(renderer, theme, activeComp, cx, cy, r)
+                                        bdDrawPart(renderer, theme, activeComp, cx, cy, r, isDark)
                                     } else {
                                         // All skins/tails/paddles are ad-unlockable → the AdLock glyph.
                                         // Button face is always the menu accent blue (not the custom
@@ -547,7 +674,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                         bdDrawLockedOption(
                                             cx, cy, cellW, cellH, PaintBucket.menuAccentBlue, isPressed,
                                             carouselLockPainter, BD_ADLOCK_ASPECT
-                                        ) { bdDrawPart(renderer, theme, activeComp, cx, cy, r, drawShadow = false) }
+                                        ) { bdDrawPart(renderer, theme, activeComp, cx, cy, r, isDark, drawShadow = false) }
                                     }
                                 }
 
@@ -625,25 +752,36 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                 }
             }
 
-            // Action pills — flush to the screen's right edge, above the wrapper (z-order).
+            // Action pills — flush to the screen's right edge, vertically centered between the
+            // unlock-progress bar (its bottom; or the preview top when the bar is hidden at 100%)
+            // and the preview's locked-cosmetic glyph (top edge ~48dp above the preview bottom).
+            val lockReservePx = with(density) { (12.dp + 36.dp).toPx() }
+            val topAnchorPx = if (Storage.unlockProgress < 100) progressBottomPx else previewTopPx
             Column(
-                modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 14.dp),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .onSizeChanged { pillColHeightPx = it.height }
+                    .offset {
+                        val lockTop = previewBottomPx - lockReservePx
+                        val center = (topAnchorPx + lockTop) / 2f
+                        IntOffset(0, (center - pillColHeightPx / 2f).roundToInt().coerceAtLeast(0))
+                    },
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 EdgePill(
                     side = PillSide.End, color = accentBlue,
-                    modifier = Modifier.height(42.dp).clickable(onClick = onNavigateToColor)
+                    modifier = Modifier.height(52.dp).clickable(onClick = onNavigateToColor)
                 ) {
                     Image(painterResource(Res.drawable.ic_menu_customize), null,
-                        Modifier.size(22.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
+                        Modifier.size(28.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
                 }
                 EdgePill(
                     side = PillSide.End, color = PaintBucket.menuAccentRed,
-                    modifier = Modifier.height(42.dp).clickable(onClick = onBack)
+                    modifier = Modifier.height(52.dp).clickable(onClick = onBack)
                 ) {
                     Image(painterResource(Res.drawable.ic_menu_check), null,
-                        Modifier.size(22.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
+                        Modifier.size(28.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
                 }
             }
         }
@@ -666,6 +804,7 @@ private fun TypeSelectorBox(
     poppins: androidx.compose.ui.text.font.FontFamily,
     locked: Boolean,
 ) {
+    val isDark = LocalDarkMode.current
     val shape = RoundedCornerShape(14.dp)
     val renderer = remember(component, type, theme) { bdBuildPartRenderer(component, type, theme) }
     // Own painter instance (see note at carouselLockPainter) so the carousel can't resize it.
@@ -678,7 +817,7 @@ private fun TypeSelectorBox(
             .then(if (active) Modifier.border(4.dp, accent, shape) else Modifier)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            bdDrawPart(renderer, theme, component, size.width / 2f, size.height / 2f + Settings.ballRadius * 0.2f, Settings.ballRadius)
+            bdDrawPart(renderer, theme, component, size.width / 2f, size.height / 2f + Settings.ballRadius * 0.2f, Settings.ballRadius, isDark)
             // This piece needs an ad → mark it; the design shows but won't be used until unlocked.
             // Right-centred (inset) so the whole glyph stays inside the box, beside the ball.
             if (locked) {
@@ -736,7 +875,7 @@ private fun DesignerSlotCell(
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val cx = size.width / 2f
                     val cy = size.height / 2f - Settings.ballRadius * 0.2f
-                    bdDrawShadow(cx, cy, Settings.ballRadius)
+                    bdDrawShadow(cx, cy, Settings.ballRadius, isDark)
                     renderer.x = cx; renderer.y = cy; renderer.radius = Settings.ballRadius
                     renderer.strokeWidth = Settings.strokeWidth
                     renderer.effectEnabled = true

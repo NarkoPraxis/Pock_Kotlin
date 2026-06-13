@@ -103,6 +103,8 @@
     <string name="cbc_showing">Showing:</string>
     <string name="cbc_high_player">High Player</string>
     <string name="cbc_low_player">Low Player</string>
+    <string name="ccp_top_colors">Top Colors</string>
+    <string name="ccp_bottom_colors">Bottom Colors</string>
 
     <!-- Ball type names -->
     <string name="ball_type_pokpok">Pok Pok</string>
@@ -131,6 +133,7 @@
     <string name="style_paddle_egg">Egg</string>
     <string name="style_paddle_bubble">Bubble</string>
     <string name="style_paddle_star">Star</string>
+    <string name="style_paddle_dynamite">Dynamite</string>
 
     <!-- Navigation -->
     <string name="swipe_again_to_exit">Swipe edge again to exit</string>

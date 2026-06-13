@@ -196,7 +196,9 @@ fun MainMenuScreen(
                     Spacer(Modifier.width(buttonHeight * 0.135f))
                     UnlockThermometer(
                         progress = unlockProgress,
-                        outlineColor = PaintBucket.white,
+                        meterColor = PaintBucket.white,
+                        filledLabelColor = PaintBucket.menuAccentRed,
+                        emptyLabelColor = PaintBucket.white,
                         fontFamily = poppins,
                         modifier = Modifier
                             .weight(1f)

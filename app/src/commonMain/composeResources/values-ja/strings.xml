@@ -116,6 +116,7 @@
     <string name="style_paddle_egg">たまご</string>
     <string name="style_paddle_bubble">バブル</string>
     <string name="style_paddle_star">スター</string>
+    <string name="style_paddle_dynamite">ダイナマイト</string>
 
     <!-- In-game tips -->
     <string name="ball_select_ready">準備はいい？</string>

@@ -116,6 +116,7 @@
     <string name="style_paddle_egg">Œuf</string>
     <string name="style_paddle_bubble">Bulle</string>
     <string name="style_paddle_star">Étoile</string>
+    <string name="style_paddle_dynamite">Dynamite</string>
 
     <!-- In-game tips -->
     <string name="ball_select_ready">Prêt ?</string>

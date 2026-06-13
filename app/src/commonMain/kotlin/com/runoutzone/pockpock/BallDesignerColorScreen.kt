@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -36,10 +37,13 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -55,7 +59,9 @@ import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.CustomBallConfig
 import gameobjects.puckstyle.PuckRenderer
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
 import shapes.ColorCarousel
 import utility.AdUnlock
@@ -66,6 +72,7 @@ import utility.edgeSwipeBack
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 private const val ROW_NORMAL = 0
 private const val ROW_SHIELD = 1
@@ -81,16 +88,24 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
     val poppins = poppinsFamily()
     val lockPainter = painterResource(Res.drawable.ic_menu_lock)
     val adLockPainter = painterResource(Res.drawable.ic_menu_adlock)
+    // A VectorPainter holds one size at a time, so the preview's lock glyph (drawn at a different
+    // size than the carousel's) needs its own instance or it renders clipped. See BallDesignerScreen.
+    val previewAdLockPainter = painterResource(Res.drawable.ic_menu_adlock)
 
     val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
     val fgColor = if (isDark) PaintBucket.white else Color(0xFF222222)
-    val wrapperBg = if (isDark) Color(0xFF1E1E2A) else Color(ColorTheme.Cold.inert.primary)
+    val wrapperBg = if (isDark) BD_WRAPPER_DARK else BD_WRAPPER_LIGHT
     val controlBg = if (isDark) Color(0xFF2A3A4E) else PaintBucket.white
     val accentBlue = PaintBucket.menuAccentBlue
 
     var rootW by remember { mutableIntStateOf(0) }
     var rootH by remember { mutableIntStateOf(0) }
     var initDone by remember { mutableStateOf(false) }
+
+    // Demo-only animation clock for the composition preview (mirrors BallDesignerScreen). `frame`
+    // forces the Canvas to redraw each tick; `previewStep` advances one motion-step per draw.
+    var frame by remember { mutableIntStateOf(0) }
+    val previewStep = remember { floatArrayOf(0f) }
 
     var highHue by remember { mutableFloatStateOf(0f) }
     var highShieldHue by remember { mutableFloatStateOf(0f) }
@@ -103,6 +118,14 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
 
     var meterPopupVisible by remember { mutableStateOf(false) }
     var adLimitPopupVisible by remember { mutableStateOf(false) }
+
+    // Geometry for centering the action pills between the progress bar and preview (see
+    // BallDesignerScreen). All values are in root coords.
+    var rootCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var progressBottomPx by remember { mutableFloatStateOf(0f) }
+    var previewTopPx by remember { mutableFloatStateOf(0f) }
+    var previewBottomPx by remember { mutableFloatStateOf(0f) }
+    var pillColHeightPx by remember { mutableIntStateOf(0) }
 
     val presets = remember { arrayOfNulls<CcpPreset>(5) }
     var selectedPreset by remember { mutableIntStateOf(-1) }
@@ -147,15 +170,21 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
         if (selectedPreset in 0..4) Storage.saveCcpPreset(selectedPreset, CcpPreset(highHue, highShieldHue, lowHue, lowShieldHue))
     }
 
-    fun setTargetHue(hue: Float) {
+    // [persist] = false is the fully-isolated "show but don't save" path for a locked colour: it only
+    // updates this screen's local hue state (which drives the preview + left control entirely on its
+    // own, via Color.hsv / bdThemeFromHues). It never touches PaintBucket or Storage, so the live
+    // gameplay palette is untouched until the colour is actually unlocked and persisted.
+    fun setTargetHue(hue: Float, persist: Boolean) {
         when {
             activePlayerHigh && activeRow == ROW_SHIELD -> highShieldHue = hue
             activePlayerHigh -> highHue = hue
             activeRow == ROW_SHIELD -> lowShieldHue = hue
             else -> lowHue = hue
         }
-        applyHueToPaint(activePlayerHigh, activeRow == ROW_SHIELD, hue)
-        persistHues(); updateSelectedPresetInMemory(); saveSelectedPreset()
+        if (persist) {
+            applyHueToPaint(activePlayerHigh, activeRow == ROW_SHIELD, hue)
+            persistHues(); updateSelectedPresetInMemory(); saveSelectedPreset()
+        }
     }
 
     var previewRenderer by remember { mutableStateOf<PuckRenderer?>(null) }
@@ -166,9 +195,13 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
             ?: CustomBallConfig(BallType.Classic, BallType.Classic, BallType.Classic, 0, 1, 2)
     }
     fun rebuildPreview() {
-        val theme = if (activePlayerHigh) ColorTheme.Warm else ColorTheme.Cold
-        val r = BallStyleFactory.buildCustomRenderer(previewConfig(), theme)
-        r.isHigh = activePlayerHigh; r.staticUiMode = true; r.effect.frozen = true
+        previewRenderer?.tail?.clear()
+        // Isolated theme built from the local hues (never from PaintBucket) so a locked-colour preview
+        // can't leak into gameplay. Live motion (not a static pose): see bdDrawAnimatedPreview.
+        val nHue = if (activePlayerHigh) highHue else lowHue
+        val sHue = if (activePlayerHigh) highShieldHue else lowShieldHue
+        val r = BallStyleFactory.buildCustomRenderer(previewConfig(), bdThemeFromHues(activePlayerHigh, nHue, sHue))
+        r.isHigh = activePlayerHigh; r.staticUiMode = false; r.effect.frozen = false
         previewRenderer = r
     }
 
@@ -180,6 +213,9 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
         else if (Storage.canWatchAdNow()) AdUnlock.watchAdToUnlock(grant = { Storage.unlockColor(index) }) { }
         else adLimitPopupVisible = true
     }
+
+    // Drives the preview ball's demo motion (~60fps). Purely cosmetic — no physics involved.
+    LaunchedEffect(Unit) { while (true) { delay(16L); frame++ } }
 
     LaunchedEffect(rootW, rootH) {
         if (!initDone && rootW > 0 && rootH > 0) {
@@ -206,12 +242,24 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
 
     val presetSlotHues = ColorCarousel.PRESETS
 
+    // Which carousel index a hue corresponds to (CUSTOM_IDX if it isn't one of the presets), and
+    // whether that color is still locked. Used both to centre the carousel and to decide when the
+    // lock glyph shows on the left control + preview.
+    fun colorIndexForHue(hue: Float): Int {
+        for (i in 0 until ColorCarousel.CUSTOM_IDX) {
+            if (abs((presetSlotHues[i]?.hue ?: -999f) - hue) < 1f) return i
+        }
+        return ColorCarousel.CUSTOM_IDX
+    }
+    fun hueLocked(hue: Float): Boolean = !Storage.isColorUnlocked(colorIndexForHue(hue))
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor)
             .statusBarsPadding()
             .onSizeChanged { rootW = it.width; rootH = it.height }
+            .onGloballyPositioned { rootCoords = it }
             .edgeSwipeBack(onBack)
     ) {
         if (initDone) {
@@ -222,28 +270,44 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                     UnlockProgressBar(
                         progress = Storage.unlockProgress,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(32.dp)
+                            .onGloballyPositioned { pc ->
+                                rootCoords?.let { progressBottomPx = it.localPositionOf(pc, Offset.Zero).y + pc.size.height }
+                            }
                     )
                     Box(Modifier.height(8.dp))
                 }
 
-                // Preview — selected custom ball, active player theme, normal/shield color + shadow.
-                Box(modifier = Modifier.fillMaxWidth().weight(0.9f).clipToBounds()) {
+                // Preview — selected custom ball, active player theme, normal/shield color. When the
+                // chosen color is still locked it mirrors BallDesigner: the design shows but a lock
+                // glyph marks it as un-saved.
+                val previewColorLocked = hueLocked(currentTargetHue())
+                // Any of the four colors still locked → the current selection can't be saved into a
+                // slot. The selected slot reflects this (lock + desaturated colors).
+                val saveDisabled = hueLocked(highHue) || hueLocked(highShieldHue) ||
+                    hueLocked(lowHue) || hueLocked(lowShieldHue)
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(0.9f).clipToBounds()
+                        .onGloballyPositioned { pc ->
+                            rootCoords?.let {
+                                val y = it.localPositionOf(pc, Offset.Zero).y
+                                previewTopPx = y; previewBottomPx = y + pc.size.height
+                            }
+                        }
+                ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val pr = previewRenderer ?: return@Canvas
-                        val theme = if (activePlayerHigh) ColorTheme.Warm else ColorTheme.Cold
-                        val grp = if (activeRow == ROW_SHIELD) theme.shield else theme.main
-                        val cx = size.width / 2f
-                        val r = Settings.ballRadius
-                        val cy = size.height / 2f - r * 0.3f
-                        bdDrawShadow(cx, cy, r)
-                        pr.theme = theme
-                        pr.x = cx; pr.y = cy; pr.radius = r
-                        pr.strokeWidth = Settings.strokeWidth
-                        pr.effectEnabled = true
-                        pr.shielded = activeRow == ROW_SHIELD
-                        pr.inertLocked = false
-                        pr.fillColor = grp.primary; pr.strokeColor = grp.secondary; pr.baseFillColor = grp.primary
-                        with(pr) { draw() }
+                        // Isolated theme from the local hues — previewing (even a locked colour) never
+                        // touches the live PaintBucket palette.
+                        val theme = bdThemeFromHues(
+                            activePlayerHigh,
+                            if (activePlayerHigh) highHue else lowHue,
+                            if (activePlayerHigh) highShieldHue else lowShieldHue
+                        )
+                        previewStep[0] += 1f
+                        bdDrawAnimatedPreview(
+                            pr, theme, shielded = activeRow == ROW_SHIELD, step = previewStep[0],
+                            frame = frame, locked = previewColorLocked, lockPainter = previewAdLockPainter
+                        )
                     }
                 }
                 Box(Modifier.height(8.dp))
@@ -260,13 +324,15 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                         Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             // Left: Normal / Shield / Player (not draggable).
                             Column(modifier = Modifier.fillMaxHeight().weight(0.58f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                val normalHue = if (activePlayerHigh) highHue else lowHue
+                                val shieldHue = if (activePlayerHigh) highShieldHue else lowShieldHue
                                 ColorTargetBox(
-                                    label = "Normal", hue = if (activePlayerHigh) highHue else lowHue,
+                                    label = "Normal", hue = normalHue, locked = hueLocked(normalHue),
                                     active = activeRow == ROW_NORMAL, controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { selectRow(ROW_NORMAL) }
                                 )
                                 ColorTargetBox(
-                                    label = "Shield", hue = if (activePlayerHigh) highShieldHue else lowShieldHue,
+                                    label = "Shield", hue = shieldHue, locked = hueLocked(shieldHue),
                                     active = activeRow == ROW_SHIELD, controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { selectRow(ROW_SHIELD) }
                                 )
@@ -277,14 +343,7 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                             }
 
                             // Right: vertical color carousel (+ optional custom hue slider).
-                            val selIdx = run {
-                                val hue = currentTargetHue()
-                                var found = ColorCarousel.CUSTOM_IDX
-                                for (i in 0 until ColorCarousel.CUSTOM_IDX) {
-                                    if (abs((presetSlotHues[i]?.hue ?: -999f) - hue) < 1f) { found = i; break }
-                                }
-                                found
-                            }
+                            val selIdx = colorIndexForHue(currentTargetHue())
                             Column(modifier = Modifier.fillMaxHeight().weight(0.42f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().weight(1f)
@@ -296,14 +355,21 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                             if (i == ColorCarousel.CUSTOM_IDX) {
                                                 if (Storage.isColorUnlocked(i)) customSliderActive = true else handleLockedColor(i)
                                             } else if (Storage.isColorUnlocked(i)) {
-                                                customSliderActive = false; presetSlotHues[i]?.hue?.let { setTargetHue(it) }
-                                            } else handleLockedColor(i)
+                                                customSliderActive = false; presetSlotHues[i]?.hue?.let { setTargetHue(it, persist = true) }
+                                            } else {
+                                                // Locked: preview it (no save) AND fire the unlock ad — mirrors BallDesigner.
+                                                customSliderActive = false; presetSlotHues[i]?.hue?.let { setTargetHue(it, persist = false) }
+                                                handleLockedColor(i)
+                                            }
                                         },
                                         onSnap = { i ->
                                             if (i == ColorCarousel.CUSTOM_IDX) {
                                                 if (Storage.isColorUnlocked(i)) customSliderActive = true
                                             } else if (Storage.isColorUnlocked(i)) {
-                                                customSliderActive = false; presetSlotHues[i]?.hue?.let { setTargetHue(it) }
+                                                customSliderActive = false; presetSlotHues[i]?.hue?.let { setTargetHue(it, persist = true) }
+                                            } else {
+                                                // Locked: scrolling onto it just previews the design (no save, no ad).
+                                                customSliderActive = false; presetSlotHues[i]?.hue?.let { setTargetHue(it, persist = false) }
                                             }
                                         }
                                     ) { index, cx, cy, r, isCenter, isPressed, cellW, cellH ->
@@ -328,26 +394,36 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                             }
                                         }
                                         if (unlocked) {
-                                            bdDrawShadow(cx, cy, r)
+                                            // Colors carry no contact shadow (that's only for ballstyle parts).
                                             drawSwatch()
-                                        } else {
-                                            // Presets are ad-unlockable (AdLock glyph); the custom "any
-                                            // color" unlocks only at 100% meter, so it keeps a plain lock.
+                                        } else if (isCustom) {
+                                            // The custom "any color" unlocks only at 100% meter and has no
+                                            // single hue, so it keeps its rainbow/hue-wheel face + plain lock.
                                             val faceColor = Color(
                                                 if (activePlayerHigh) ColorTheme.Warm.main.primary
                                                 else ColorTheme.Cold.main.primary
                                             )
                                             bdDrawLockedOption(
                                                 cx, cy, cellW, cellH, faceColor, isPressed,
-                                                if (isCustom) lockPainter else adLockPainter,
-                                                if (isCustom) BD_LOCK_ASPECT else BD_ADLOCK_ASPECT
+                                                lockPainter, BD_LOCK_ASPECT
                                             ) { drawSwatch() }
+                                        } else {
+                                            // Ad-unlockable preset: the button face IS the color it unlocks —
+                                            // primary fill + secondary outline like a ball, no swatch circle.
+                                            // Nothing to cover, so the lock sits large & centred.
+                                            val hue = presetSlotHues[index]?.hue ?: 0f
+                                            bdDrawLockedOption(
+                                                cx, cy, cellW, cellH,
+                                                faceColor = Color.hsv(hue, 0.359f, 0.961f), pressed = isPressed,
+                                                icon = adLockPainter, iconAspectHW = BD_ADLOCK_ASPECT,
+                                                faceStroke = Color.hsv(hue, 0.661f, 0.961f), centerIcon = true
+                                            ) { }
                                         }
                                     }
                                 }
                                 if (customSliderActive && Storage.isColorUnlocked(ColorCarousel.CUSTOM_IDX)) {
                                     HueSliderRow(
-                                        hue = currentTargetHue(), onHue = { setTargetHue(it) },
+                                        hue = currentTargetHue(), onHue = { setTargetHue(it, persist = true) },
                                         modifier = Modifier.fillMaxWidth().height(36.dp)
                                     )
                                 }
@@ -369,6 +445,7 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                 for (i in 0..4) {
                                     CcpPresetSlot(
                                         preset = presets[i], selected = i == selectedPreset, isDark = isDark,
+                                        disabled = i == selectedPreset && saveDisabled,
                                         accent = accentBlue, fg = fgColor, sizeDp = slotDp,
                                         onTap = {
                                             val existing = presets[i]
@@ -395,15 +472,26 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                 }
             }
 
+            // Action pills — vertically centered between the progress bar and the preview's lock
+            // glyph region (matches BallDesignerScreen).
+            val lockReservePx = with(density) { (12.dp + 36.dp).toPx() }
+            val topAnchorPx = if (Storage.unlockProgress < 100) progressBottomPx else previewTopPx
             Column(
-                modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 14.dp),
-                horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .onSizeChanged { pillColHeightPx = it.height }
+                    .offset {
+                        val lockTop = previewBottomPx - lockReservePx
+                        val center = (topAnchorPx + lockTop) / 2f
+                        IntOffset(0, (center - pillColHeightPx / 2f).roundToInt().coerceAtLeast(0))
+                    },
+                horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                EdgePill(side = PillSide.End, color = accentBlue, modifier = Modifier.height(42.dp).clickable(onClick = onNavigateToStyle)) {
-                    Image(painterResource(Res.drawable.ic_menu_customize), null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
+                EdgePill(side = PillSide.End, color = accentBlue, modifier = Modifier.height(52.dp).clickable(onClick = onNavigateToStyle)) {
+                    Image(painterResource(Res.drawable.ic_menu_customize), null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
                 }
-                EdgePill(side = PillSide.End, color = PaintBucket.menuAccentRed, modifier = Modifier.height(42.dp).clickable(onClick = onBack)) {
-                    Image(painterResource(Res.drawable.ic_menu_check), null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
+                EdgePill(side = PillSide.End, color = PaintBucket.menuAccentRed, modifier = Modifier.height(52.dp).clickable(onClick = onBack)) {
+                    Image(painterResource(Res.drawable.ic_menu_check), null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
                 }
             }
         }
@@ -417,6 +505,7 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
 private fun ColorTargetBox(
     label: String,
     hue: Float,
+    locked: Boolean,
     active: Boolean,
     controlBg: Color,
     accent: Color,
@@ -426,6 +515,8 @@ private fun ColorTargetBox(
     onTap: () -> Unit,
 ) {
     val shape = RoundedCornerShape(14.dp)
+    // Own painter instance (see note at previewAdLockPainter) so it isn't resized by other draws.
+    val lockPainter = painterResource(Res.drawable.ic_menu_adlock)
     Box(
         modifier = modifier.clip(shape).background(controlBg)
             .then(if (active) Modifier.border(4.dp, accent, shape) else Modifier)
@@ -435,9 +526,13 @@ private fun ColorTargetBox(
             val r = Settings.ballRadius
             val cx = size.width / 2f
             val cy = size.height / 2f + r * 0.2f
-            bdDrawShadow(cx, cy, r)
             drawCircle(Color.hsv(hue, 0.359f, 0.961f), radius = r, center = Offset(cx, cy))
             drawCircle(Color.hsv(hue, 0.661f, 0.961f), radius = r, center = Offset(cx, cy), style = Stroke(r * 0.16f))
+            // Chosen color is locked → the same right-centred ad-lock glyph the BallDesigner uses.
+            if (locked) {
+                val h = 24.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 10.dp.toPx()
+                bdDrawAdLockGlyph(lockPainter, PaintBucket.menuAccentRed, size.width - pad - w / 2f, size.height / 2f, h)
+            }
         }
         Text(label, color = fg, fontFamily = poppins, fontSize = 13.sp, fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic,
             modifier = Modifier.align(Alignment.TopStart).padding(start = 10.dp, top = 4.dp))
@@ -459,8 +554,9 @@ private fun PlayerToggleBox(
             .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) },
         contentAlignment = Alignment.Center
     ) {
-        Text(text = if (high) "High\nPlayer" else "Low\nPlayer", color = fg, fontFamily = poppins,
-            fontSize = 14.sp, fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic)
+        // high = Top, low = Bottom (user-facing wording).
+        Text(text = if (high) stringResource(Res.string.ccp_top_colors) else stringResource(Res.string.ccp_bottom_colors),
+            color = fg, fontFamily = poppins, fontSize = 14.sp, fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic)
     }
 }
 
@@ -494,6 +590,7 @@ private fun CcpPresetSlot(
     preset: CcpPreset?,
     selected: Boolean,
     isDark: Boolean,
+    disabled: Boolean,
     accent: Color,
     fg: Color,
     sizeDp: androidx.compose.ui.unit.Dp,
@@ -502,6 +599,8 @@ private fun CcpPresetSlot(
 ) {
     val shape = RoundedCornerShape(12.dp)
     val bg = if (isDark) Color(0xFF1A2A3E) else Color(0xFFEDEDF4)
+    // Own painter instance (see note at previewAdLockPainter) so it isn't resized by other draws.
+    val lockPainter = painterResource(Res.drawable.ic_menu_adlock)
     Box(
         modifier = Modifier.size(sizeDp).clip(shape).background(bg)
             .then(if (selected) Modifier.border(4.dp, accent, shape) else Modifier)
@@ -509,21 +608,29 @@ private fun CcpPresetSlot(
         contentAlignment = Alignment.Center
     ) {
         if (preset != null) {
-            // Four rounded-corner squares (2x2), matching the SVG's color slot swatch.
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val pad = size.minDimension * 0.16f
-                val gap = size.minDimension * 0.08f
-                val cell = (size.minDimension - pad * 2f - gap) / 2f
-                val r = CornerRadius(cell * 0.28f)
-                fun sq(col: Int, row: Int, hue: Float) {
-                    val x = pad + col * (cell + gap)
-                    val y = pad + row * (cell + gap)
-                    drawRoundRect(Color.hsv(hue, 0.661f, 0.961f), topLeft = Offset(x, y), size = Size(cell, cell), cornerRadius = r)
+            // Four horizontal bands in the order an arena draws top→bottom, so the slot reads as a
+            // miniature of real gameplay: High shield (1/6) · High color (1/3) · Low color (1/3) ·
+            // Low shield (1/6). The whole formed square keeps rounded corners (clip below). When
+            // [disabled] (a locked colour is selected so saving is off) the bands desaturate and a
+            // lock is stamped over the slot.
+            val sat = if (disabled) 0.12f else 0.661f
+            val value = if (disabled) 0.74f else 0.961f
+            Box(modifier = Modifier.fillMaxSize().padding(6.dp).clip(RoundedCornerShape(8.dp))) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val sH = size.height / 6f   // shield band
+                    val mH = size.height / 3f   // main band
+                    fun band(top: Float, h: Float, hue: Float) =
+                        drawRect(Color.hsv(hue, sat, value), topLeft = Offset(0f, top), size = Size(w, h))
+                    band(0f, sH, preset.highShieldHue)        // High shield (top)
+                    band(sH, mH, preset.highHue)               // High color
+                    band(sH + mH, mH, preset.lowHue)           // Low color
+                    band(sH + mH * 2f, sH, preset.lowShieldHue) // Low shield (bottom)
                 }
-                sq(0, 0, preset.highHue)       // TL high
-                sq(1, 0, preset.highShieldHue) // TR high shield
-                sq(0, 1, preset.lowHue)        // BL low
-                sq(1, 1, preset.lowShieldHue)  // BR low shield
+            }
+            if (disabled) Canvas(modifier = Modifier.fillMaxSize()) {
+                bdDrawAdLockGlyph(lockPainter, PaintBucket.menuAccentRed,
+                    size.width / 2f, size.height / 2f, size.minDimension * 0.4f)
             }
         } else {
             Text("+", color = fg.copy(alpha = 0.5f), fontSize = 22.sp)

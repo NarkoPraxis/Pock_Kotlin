@@ -147,11 +147,13 @@ object BallStyleFactory {
         return renderer
     }
 
-    /** Paddle-only preview renderer (invisible skin/tail), primed + frozen for static preview. */
+    /** Paddle-only preview renderer (invisible skin/tail), frozen at zero charge for static preview. */
     fun buildPaddleOnlyRenderer(paddleType: BallType, theme: ColorTheme): PuckRenderer {
         val renderer = PuckRenderer(theme)
         renderer.attach(InvisibleSkin(renderer), InvisibleTail(renderer), buildPaddle(paddleType, renderer))
-        renderer.effect.increaseCharge()
+        // Do NOT prime the charge: cbcCarouselMode already makes the idle paddle draw, and because
+        // chargeStart == 0 the first increaseCharge() jumps to a non-zero fill, leaving the static
+        // preview looking "a little bit charged". Stay at phase Idle / fill 0.
         renderer.effect.frozen = true
         renderer.effect.cbcCarouselMode = true
         return renderer
