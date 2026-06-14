@@ -1042,8 +1042,8 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
 /**
  * Boolean-style mode toggle for the Ball Designer. OFF = the per-piece **S**eparation view (the
  * default every visit); ON = the **U**nified composed-ball view. Solid default-light-blue track with
- * a sliding darker-blue knob carrying a white letter (S/U). No text label — the S/U glyphs stand in
- * for the eventual "separation"/"unification" SVG icons.
+ * a sliding darker-blue knob carrying a white icon: the "separate" (three split circles) glyph when
+ * OFF, the "joined" (interlocked blob) glyph when ON.
  */
 @Composable
 private fun SeparationUnificationToggle(unified: Boolean, accent: Color, onToggle: () -> Unit) {
@@ -1069,11 +1069,13 @@ private fun SeparationUnificationToggle(unified: Boolean, accent: Color, onToggl
                 .background(bdShadowOver(accent)),
             contentAlignment = Alignment.Center
         ) {
-            androidx.compose.material3.Text(
-                text = if (unified) "U" else "S",
-                color = PaintBucket.white,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
+            Image(
+                painter = painterResource(
+                    if (unified) Res.drawable.ic_toggle_joined else Res.drawable.ic_toggle_separate
+                ),
+                contentDescription = if (unified) "Joined" else "Separate",
+                modifier = Modifier.size(14.dp),
+                colorFilter = ColorFilter.tint(PaintBucket.white)
             )
         }
     }
