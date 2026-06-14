@@ -73,6 +73,7 @@ import utility.AdUnlock
 import utility.CcpPreset
 import utility.PaintBucket
 import utility.Storage
+import utility.UiStrobeClock
 import utility.edgeSwipeBack
 import kotlin.math.abs
 import kotlin.math.max
@@ -81,10 +82,6 @@ import kotlin.math.roundToInt
 
 private const val ROW_NORMAL = 0
 private const val ROW_SHIELD = 1
-
-// Degrees of hue advanced per animation frame for the custom "any color" carousel button's
-// rainbow strobe (it has no single hue, so its face cycles like the Rainbow skin).
-private const val CCP_STROBE_SPEED = 4f
 
 // Localized display name for a colour-carousel index (parallels ColorCarousel.PRESETS). The status
 // label shows the browsed colour's name when unlocked, or "Watch Ad To Own" when locked — mirrors
@@ -145,6 +142,13 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
     var lowHue by remember { mutableFloatStateOf(0f) }
     var lowShieldHue by remember { mutableFloatStateOf(0f) }
 
+    // Rainbow colour overrides — local edit state mirroring the four hues above (see RainbowOverride).
+    // The Rainbow carousel option toggles these per target instead of choosing a concrete colour.
+    var highRainbow by remember { mutableStateOf(false) }
+    var highShieldRainbow by remember { mutableStateOf(false) }
+    var lowRainbow by remember { mutableStateOf(false) }
+    var lowShieldRainbow by remember { mutableStateOf(false) }
+
     var activePlayerHigh by remember { mutableStateOf(false) }
     var activeRow by remember { mutableIntStateOf(ROW_NORMAL) }
     var customSliderActive by remember { mutableStateOf(false) }
@@ -170,6 +174,13 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
         activePlayerHigh -> highHue
         activeRow == ROW_SHIELD -> lowShieldHue
         else -> lowHue
+    }
+
+    fun currentTargetRainbow(): Boolean = when {
+        activePlayerHigh && activeRow == ROW_SHIELD -> highShieldRainbow
+        activePlayerHigh -> highRainbow
+        activeRow == ROW_SHIELD -> lowShieldRainbow
+        else -> lowRainbow
     }
 
     val presetSlotHues = ColorCarousel.PRESETS
@@ -213,12 +224,26 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
         Storage.saveLowPlayerColorHue(lowHue); Storage.saveLowShieldColorHue(lowShieldHue)
     }
 
+    // The live rainbow flags ride alongside the live hues (and the gameplay Settings flags, so a
+    // game started from here strobes immediately without a reload).
+    fun persistRainbow() {
+        Storage.saveHighPlayerRainbow(highRainbow); Storage.saveHighPlayerRainbowShield(highShieldRainbow)
+        Storage.saveLowPlayerRainbow(lowRainbow); Storage.saveLowPlayerRainbowShield(lowShieldRainbow)
+        Settings.highPlayerRainbow = highRainbow; Settings.highPlayerRainbowShield = highShieldRainbow
+        Settings.lowPlayerRainbow = lowRainbow; Settings.lowPlayerRainbowShield = lowShieldRainbow
+    }
+
+    fun currentCcpPreset() = CcpPreset(
+        highHue, highShieldHue, lowHue, lowShieldHue,
+        highRainbow, highShieldRainbow, lowRainbow, lowShieldRainbow
+    )
+
     fun updateSelectedPresetInMemory() {
-        if (selectedPreset in 0..4) { presets[selectedPreset] = CcpPreset(highHue, highShieldHue, lowHue, lowShieldHue); presetsVersion++ }
+        if (selectedPreset in 0..4) { presets[selectedPreset] = currentCcpPreset(); presetsVersion++ }
     }
 
     fun saveSelectedPreset() {
-        if (selectedPreset in 0..4) Storage.saveCcpPreset(selectedPreset, CcpPreset(highHue, highShieldHue, lowHue, lowShieldHue))
+        if (selectedPreset in 0..4) Storage.saveCcpPreset(selectedPreset, currentCcpPreset())
     }
 
     // [persist] = false is the fully-isolated "show but don't save" path for a locked colour: it only
@@ -226,16 +251,41 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
     // own, via Color.hsv / bdThemeFromHues). It never touches PaintBucket or Storage, so the live
     // gameplay palette is untouched until the colour is actually unlocked and persisted.
     fun setTargetHue(hue: Float, persist: Boolean) {
+        val shield = activeRow == ROW_SHIELD
         when {
-            activePlayerHigh && activeRow == ROW_SHIELD -> highShieldHue = hue
+            activePlayerHigh && shield -> highShieldHue = hue
             activePlayerHigh -> highHue = hue
-            activeRow == ROW_SHIELD -> lowShieldHue = hue
+            shield -> lowShieldHue = hue
             else -> lowHue = hue
         }
         if (persist) {
-            applyHueToPaint(activePlayerHigh, activeRow == ROW_SHIELD, hue)
-            persistHues(); updateSelectedPresetInMemory(); saveSelectedPreset()
+            // Choosing a concrete colour turns off the rainbow override for this target (the hue
+            // takes over). Locked previews (persist = false) can't reach here with rainbow on.
+            when {
+                activePlayerHigh && shield -> highShieldRainbow = false
+                activePlayerHigh -> highRainbow = false
+                shield -> lowShieldRainbow = false
+                else -> lowRainbow = false
+            }
+            applyHueToPaint(activePlayerHigh, shield, hue)
+            persistHues(); persistRainbow(); updateSelectedPresetInMemory(); saveSelectedPreset()
         }
+    }
+
+    // Select the rainbow override for the current target (player + Normal/Shield), like choosing any
+    // other colour — it turns the override ON (picking a concrete colour turns it back off; see
+    // setTargetHue). The stored hue underneath is preserved. Only reachable at 100% (the carousel
+    // gates the Rainbow option below it). No-op if already on, so re-selecting is harmless.
+    fun selectTargetRainbow() {
+        val shield = activeRow == ROW_SHIELD
+        if (currentTargetRainbow()) return
+        when {
+            activePlayerHigh && shield -> highShieldRainbow = true
+            activePlayerHigh -> highRainbow = true
+            shield -> lowShieldRainbow = true
+            else -> lowRainbow = true
+        }
+        persistRainbow(); updateSelectedPresetInMemory(); saveSelectedPreset()
     }
 
     var previewRenderer by remember { mutableStateOf<PuckRenderer?>(null) }
@@ -254,6 +304,8 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
         val r = BallStyleFactory.buildCustomRenderer(previewConfig(), bdThemeFromHues(activePlayerHigh, nHue, sHue))
         r.isHigh = activePlayerHigh; r.staticUiMode = false; r.effect.frozen = false
         r.suppressSounds = true   // cosmetic preview — never play the charge/sweet-spot SFX
+        r.rainbowMain = if (activePlayerHigh) highRainbow else lowRainbow
+        r.rainbowShield = if (activePlayerHigh) highShieldRainbow else lowShieldRainbow
         previewRenderer = r
     }
 
@@ -302,7 +354,9 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
     }
 
     // Drives the preview ball's demo motion (~60fps). Purely cosmetic — no physics involved.
-    LaunchedEffect(Unit) { while (true) { delay(16L); frame++ } }
+    // Also advances UiStrobeClock so the static Normal/Shield swatch boxes (staticUiMode) keep
+    // cycling when their rainbow override is on.
+    LaunchedEffect(Unit) { while (true) { delay(16L); frame++; UiStrobeClock.advance() } }
 
     LaunchedEffect(rootW, rootH) {
         if (!initDone && rootW > 0 && rootH > 0) {
@@ -321,6 +375,8 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
             Settings.unlockProgress = Storage.unlockProgress
             highHue = Storage.highPlayerColorHue; highShieldHue = Storage.highShieldColorHue
             lowHue = Storage.lowPlayerColorHue; lowShieldHue = Storage.lowShieldColorHue
+            highRainbow = Storage.highPlayerRainbow; highShieldRainbow = Storage.highPlayerRainbowShield
+            lowRainbow = Storage.lowPlayerRainbow; lowShieldRainbow = Storage.lowPlayerRainbowShield
             loadPresets(); selectedPreset = Storage.ccpSelectedSlot
             applyAllHues(); rebuildPreview()
             initDone = true
@@ -379,6 +435,10 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val pr = previewRenderer ?: return@Canvas
+                        // Refresh the rainbow overrides live so a toggle takes effect without a
+                        // rebuild (mirrors how the theme is recomputed from local hues each frame).
+                        pr.rainbowMain = if (activePlayerHigh) highRainbow else lowRainbow
+                        pr.rainbowShield = if (activePlayerHigh) highShieldRainbow else lowShieldRainbow
                         // Isolated theme from the local hues — previewing (even a locked colour) never
                         // touches the live PaintBucket palette.
                         val theme = bdThemeFromHues(
@@ -414,25 +474,32 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                 ColorTargetBox(
                                     label = "Normal", hue = normalHue, locked = hueLocked(normalHue),
                                     meterLock = hueUsesMeterLock(normalHue), high = activePlayerHigh,
+                                    rainbow = if (activePlayerHigh) highRainbow else lowRainbow,
                                     active = activeRow == ROW_NORMAL, controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { selectRow(ROW_NORMAL) }
                                 )
                                 ColorTargetBox(
                                     label = "Shield", hue = shieldHue, locked = hueLocked(shieldHue),
                                     meterLock = hueUsesMeterLock(shieldHue), high = activePlayerHigh,
+                                    rainbow = if (activePlayerHigh) highShieldRainbow else lowShieldRainbow,
                                     active = activeRow == ROW_SHIELD, controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { selectRow(ROW_SHIELD) }
                                 )
                                 PlayerToggleBox(
                                     high = activePlayerHigh,
                                     theme = bdThemeFromHues(activePlayerHigh, normalHue, shieldHue),
+                                    mainRainbow = if (activePlayerHigh) highRainbow else lowRainbow,
+                                    shieldRainbow = if (activePlayerHigh) highShieldRainbow else lowShieldRainbow,
                                     poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { togglePlayer() }
                                 )
                             }
 
-                            // Right: vertical color carousel (+ optional custom hue slider).
-                            val selIdx = colorIndexForHue(currentTargetHue())
+                            // Right: vertical color carousel (+ optional custom hue slider). When the
+                            // current target is a rainbow override the carousel centres on the Rainbow
+                            // option (like any other selected colour); otherwise on the stored hue.
+                            val selIdx = if (currentTargetRainbow()) ColorCarousel.CUSTOM_IDX
+                                         else colorIndexForHue(currentTargetHue())
                             // The colour under the carousel's centre drives the status label. It resets to
                             // the equipped selection whenever that selection changes.
                             var browsedColorIndex by remember(selIdx) { mutableIntStateOf(selIdx) }
@@ -448,7 +515,9 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                         onCenterChanged = { browsedColorIndex = it },
                                         onTap = { i ->
                                             if (i == ColorCarousel.CUSTOM_IDX) {
-                                                if (Storage.isColorUnlocked(i)) customSliderActive = true else handleLockedColor(i)
+                                                // Rainbow behaves like any other colour: selecting it turns the
+                                                // override on (a concrete colour turns it back off). Gated at 100%.
+                                                if (Storage.isColorUnlocked(i)) selectTargetRainbow() else handleLockedColor(i)
                                             } else if (Storage.isColorUnlocked(i)) {
                                                 customSliderActive = false; presetSlotHues[i]?.hue?.let { setTargetHue(it, persist = true) }
                                             } else {
@@ -459,7 +528,11 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                         },
                                         onSnap = { i ->
                                             if (i == ColorCarousel.CUSTOM_IDX) {
-                                                if (Storage.isColorUnlocked(i)) customSliderActive = true
+                                                // Auto-select like every other colour: snapping onto Rainbow turns
+                                                // the override on. Below 100% it's locked — just browse (tap shows
+                                                // the meter popup).
+                                                customSliderActive = false
+                                                if (Storage.isColorUnlocked(i)) selectTargetRainbow()
                                             } else if (Storage.isColorUnlocked(i)) {
                                                 customSliderActive = false; presetSlotHues[i]?.hue?.let { setTargetHue(it, persist = true) }
                                             } else {
@@ -470,18 +543,29 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                     ) { index, cx, cy, r, isCenter, isPressed, cellW, cellH ->
                                         // Every color is the same raised square button (no swatch ball). Reading
                                         // `frame` here keeps the carousel redrawing so the custom button can strobe.
-                                        val strobeHue = (frame * CCP_STROBE_SPEED) % 360f
                                         val unlocked = Storage.isColorUnlocked(index)
                                         val isCustom = index == ColorCarousel.CUSTOM_IDX
-                                        // Custom has no fixed hue → its face cycles the rainbow (like the Rainbow
-                                        // skin); presets show the exact colour they unlock.
-                                        val hue = if (isCustom) strobeHue else (presetSlotHues[index]?.hue ?: 0f)
-                                        val faceColor = utility.SwatchPalette.primary(hue)
-                                        val faceStroke = utility.SwatchPalette.secondary(hue)
+                                        // Custom has no fixed hue → its face cycles the SAME continuous rainbow as the
+                                        // override itself (via RainbowOverride, so the brown/forest-green exception
+                                        // colours never appear); presets show the exact colour they unlock.
+                                        val faceColor: Color
+                                        val faceStroke: Color
+                                        if (isCustom) {
+                                            val strobeHue = gameobjects.puckstyle.RainbowOverride.hue(isHigh = false, strobe = frame)
+                                            faceColor = gameobjects.puckstyle.RainbowOverride.primaryColor(strobeHue)
+                                            faceStroke = gameobjects.puckstyle.RainbowOverride.secondaryColor(strobeHue)
+                                        } else {
+                                            val hue = presetSlotHues[index]?.hue ?: 0f
+                                            faceColor = utility.SwatchPalette.primary(hue)
+                                            faceStroke = utility.SwatchPalette.secondary(hue)
+                                        }
                                         if (unlocked) {
-                                            // Unlocked → flat (always-pressed) rectangle, no lock glyph.
+                                            // Unlocked → flat (always-pressed) rectangle, no lock glyph. The Rainbow
+                                            // option reads as selected (flat) when the current target's override is on,
+                                            // raised (tappable) when off — same as any selectable colour.
+                                            val pressedLook = if (isCustom) currentTargetRainbow() else true
                                             bdDrawLockedOption(
-                                                cx, cy, cellW, cellH, faceColor = faceColor, pressed = true,
+                                                cx, cy, cellW, cellH, faceColor = faceColor, pressed = pressedLook,
                                                 icon = null, iconAspectHW = 0f, faceStroke = faceStroke
                                             ) { }
                                         } else {
@@ -560,8 +644,10 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                             if (existing != null) {
                                                 highHue = existing.highHue; highShieldHue = existing.highShieldHue
                                                 lowHue = existing.lowHue; lowShieldHue = existing.lowShieldHue
+                                                highRainbow = existing.highRainbow; highShieldRainbow = existing.highShieldRainbow
+                                                lowRainbow = existing.lowRainbow; lowShieldRainbow = existing.lowShieldRainbow
                                                 selectedPreset = i; Storage.saveCcpSelectedSlot(i)
-                                                applyAllHues(); persistHues(); rebuildPreview()
+                                                applyAllHues(); persistHues(); persistRainbow(); rebuildPreview()
                                             } else {
                                                 selectedPreset = i; Storage.saveCcpSelectedSlot(i)
                                                 saveSelectedPreset(); loadPresets()
@@ -617,6 +703,7 @@ private fun ColorTargetBox(
     meterLock: Boolean,
     active: Boolean,
     high: Boolean,
+    rainbow: Boolean,
     controlBg: Color,
     accent: Color,
     fg: Color,
@@ -651,6 +738,8 @@ private fun ColorTargetBox(
             renderer.x = cx; renderer.y = cy; renderer.radius = r
             renderer.strokeWidth = Settings.strokeWidth
             renderer.shielded = false; renderer.inertLocked = false
+            // The box draws the "main" state, so the normal-rainbow flag is what strobes it.
+            renderer.rainbowMain = rainbow
             renderer.fillColor = theme.main.primary
             renderer.strokeColor = theme.main.secondary
             renderer.baseFillColor = theme.main.primary
@@ -680,6 +769,8 @@ private const val TOGGLE_DEPTH_K = 0.09f
 private fun PlayerToggleBox(
     high: Boolean,
     theme: ColorTheme,
+    mainRainbow: Boolean,
+    shieldRainbow: Boolean,
     poppins: androidx.compose.ui.text.font.FontFamily,
     modifier: Modifier = Modifier,
     onTap: () -> Unit,
@@ -697,7 +788,7 @@ private fun PlayerToggleBox(
             },
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) { drawPlayerToggleButton(high, theme, pressed) }
+        Canvas(modifier = Modifier.fillMaxSize()) { drawPlayerToggleButton(high, theme, pressed, mainRainbow, shieldRainbow) }
         // The face sits `depth` above the cell at rest and slides down onto its shadow lip when
         // pressed; the label rides with it so it stays centred on the face in both states.
         val depthPx = boxHeightPx / (1f + TOGGLE_DEPTH_K) * TOGGLE_DEPTH_K
@@ -715,7 +806,9 @@ private fun PlayerToggleBox(
 // (Bottom player) [TOGGLE_BAND_FRACTION] of the button is overlaid with the shield colours
 // (theme.shield.primary fill + theme.shield.secondary outline) to mark which goal that player's
 // colors edit. When [pressed] the face slides straight down onto the lip (matches bdDrawLockedOption).
-private fun DrawScope.drawPlayerToggleButton(high: Boolean, theme: ColorTheme, pressed: Boolean) {
+private fun DrawScope.drawPlayerToggleButton(
+    high: Boolean, theme: ColorTheme, pressed: Boolean, mainRainbow: Boolean, shieldRainbow: Boolean
+) {
     val w = size.width
     val h = size.height
     val faceH = h / (1f + TOGGLE_DEPTH_K)
@@ -725,10 +818,15 @@ private fun DrawScope.drawPlayerToggleButton(high: Boolean, theme: ColorTheme, p
     val bandH = faceH * TOGGLE_BAND_FRACTION
     val faceOff = if (pressed) depth else 0f
 
-    val mainP = Color(theme.main.primary)
-    val mainS = Color(theme.main.secondary)
-    val shieldP = Color(theme.shield.primary)
-    val shieldS = Color(theme.shield.secondary)
+    // When a section's rainbow override is on, strobe it off the same hue the live ball uses (read
+    // UiStrobeClock only if needed, so a non-rainbow toggle stays static). Per-player offset keeps
+    // Top/Bottom distinct, matching gameplay.
+    val rainbowHue = if (mainRainbow || shieldRainbow)
+        gameobjects.puckstyle.RainbowOverride.hue(high, UiStrobeClock.frame) else 0f
+    val mainP = if (mainRainbow) gameobjects.puckstyle.RainbowOverride.primaryColor(rainbowHue) else Color(theme.main.primary)
+    val mainS = if (mainRainbow) gameobjects.puckstyle.RainbowOverride.secondaryColor(rainbowHue) else Color(theme.main.secondary)
+    val shieldP = if (shieldRainbow) gameobjects.puckstyle.RainbowOverride.primaryColor(rainbowHue) else Color(theme.shield.primary)
+    val shieldS = if (shieldRainbow) gameobjects.puckstyle.RainbowOverride.secondaryColor(rainbowHue) else Color(theme.shield.secondary)
 
     // Band sits on the goal edge: top for Top player, bottom for Bottom player.
     fun bandTop(faceTop: Float) = if (high) faceTop else faceTop + faceH - bandH
@@ -829,17 +927,31 @@ private fun CcpPresetSlot(
                     val w = size.width
                     val sH = size.height / 6f   // shield band
                     val mH = size.height / 3f   // main band
+                    // Rainbow colours don't fit a single swatch, so a rainbow-override band shows a
+                    // full spectral gradient instead — the slot reads as "this colour strobes".
+                    val rainbowStops = listOf(0f, 60f, 120f, 180f, 240f, 300f, 360f).map {
+                        Color.hsv(it, utility.SwatchPalette.SECONDARY_SAT, utility.SwatchPalette.SWATCH_VALUE)
+                    }
                     // Disabled (un-saveable) slots desaturate every band; otherwise each shows its
-                    // true swatch colour (the secondary tone, incl. the Brown/Forest Green overrides).
-                    fun band(top: Float, h: Float, hue: Float) =
-                        drawRect(
-                            if (disabled) Color.hsv(hue, sat, value) else utility.SwatchPalette.secondary(hue),
-                            topLeft = Offset(0f, top), size = Size(w, h)
-                        )
-                    band(0f, sH, preset.highShieldHue)        // High shield (top)
-                    band(sH, mH, preset.highHue)               // High color
-                    band(sH + mH, mH, preset.lowHue)           // Low color
-                    band(sH + mH * 2f, sH, preset.lowShieldHue) // Low shield (bottom)
+                    // true swatch colour (the secondary tone, incl. the Brown/Forest Green overrides),
+                    // or a rainbow gradient when that colour is a rainbow override.
+                    fun band(top: Float, h: Float, hue: Float, rainbow: Boolean) {
+                        if (rainbow && !disabled) {
+                            drawRect(
+                                brush = Brush.horizontalGradient(rainbowStops, startX = 0f, endX = w),
+                                topLeft = Offset(0f, top), size = Size(w, h)
+                            )
+                        } else {
+                            drawRect(
+                                if (disabled) Color.hsv(hue, sat, value) else utility.SwatchPalette.secondary(hue),
+                                topLeft = Offset(0f, top), size = Size(w, h)
+                            )
+                        }
+                    }
+                    band(0f, sH, preset.highShieldHue, preset.highShieldRainbow)         // High shield (top)
+                    band(sH, mH, preset.highHue, preset.highRainbow)                     // High color
+                    band(sH + mH, mH, preset.lowHue, preset.lowRainbow)                  // Low color
+                    band(sH + mH * 2f, sH, preset.lowShieldHue, preset.lowShieldRainbow) // Low shield (bottom)
                 }
             }
             if (disabled) Canvas(modifier = Modifier.fillMaxSize()) {

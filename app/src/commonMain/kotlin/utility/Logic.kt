@@ -173,6 +173,13 @@ object Logic {
             BallStyleFactory.buildRenderer(Settings.lowBallType, ColorTheme.getTheme(false), Settings.lowRandomRoll)
         }
 
+        // Rainbow colour overrides (see RainbowOverride): copy the loaded Settings flags onto each
+        // puck renderer so its main/shield colours strobe in play.
+        highRenderer.rainbowMain = Settings.highPlayerRainbow
+        highRenderer.rainbowShield = Settings.highPlayerRainbowShield
+        lowRenderer.rainbowMain = Settings.lowPlayerRainbow
+        lowRenderer.rainbowShield = Settings.lowPlayerRainbowShield
+
         highPlayer = Player(
             Puck(Settings.ballRadius, highStartX, Settings.middleY, highRenderer),
             Circle(Settings.ballRadius, Settings.screenWidth / 2f, Settings.screenHeight / 5, PaintBucket.highBallFill.toArgb(), PaintBucket.highBallStroke.toArgb()),

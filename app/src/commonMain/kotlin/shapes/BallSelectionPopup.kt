@@ -94,6 +94,10 @@ class BallSelectionPopup(val isHigh: Boolean) : ScrollSnapCarousel() {
             // Display these as frozen "screenshots": static swoosh tail + overhead static paddle.
             renderer.staticUiMode = true
             renderer.effect.frozen = true
+            // Reflect this player's rainbow colour overrides — their hue cycles off UiStrobeClock
+            // (advanced each gameplay tick) even though the geometry is frozen.
+            renderer.rainbowMain = if (isHigh) Settings.highPlayerRainbow else Settings.lowPlayerRainbow
+            renderer.rainbowShield = if (isHigh) Settings.highPlayerRainbowShield else Settings.lowPlayerRainbowShield
             rendererList.add(renderer)
         }
 

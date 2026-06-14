@@ -13,6 +13,14 @@ object Settings {
     var lowRandomRoll: RandomRoll? = null
     var highCustomBallIndex: Int? = null
     var lowCustomBallIndex: Int? = null
+
+    // Rainbow colour overrides (see gameobjects.puckstyle.RainbowOverride). When set, the player's
+    // main / shield colours strobe through the rainbow instead of using their configured hue.
+    // Loaded from Storage in initializeForScreen and pushed onto the puck renderers by Logic.
+    var highPlayerRainbow: Boolean = false
+    var highPlayerRainbowShield: Boolean = false
+    var lowPlayerRainbow: Boolean = false
+    var lowPlayerRainbowShield: Boolean = false
     val scoreFlashEnabled = true
     val scoreBurstEnabled = true
     val scorePopEnabled = true
@@ -116,6 +124,10 @@ object Settings {
         lowPlayerChargeMeterStyle = utility.Storage.lowPlayerChargeMeterStyle
         scoreOffsetHigh = utility.Storage.scoreOffsetHigh.toFloat()
         scoreOffsetLow = utility.Storage.scoreOffsetLow.toFloat()
+        highPlayerRainbow = utility.Storage.highPlayerRainbow
+        highPlayerRainbowShield = utility.Storage.highPlayerRainbowShield
+        lowPlayerRainbow = utility.Storage.lowPlayerRainbow
+        lowPlayerRainbowShield = utility.Storage.lowPlayerRainbowShield
 
         screenWidth = width.toFloat()
         screenHeight = height.toFloat()

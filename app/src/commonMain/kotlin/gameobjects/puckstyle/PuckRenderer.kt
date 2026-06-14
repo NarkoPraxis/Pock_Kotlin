@@ -96,6 +96,15 @@ class PuckRenderer(var theme: ColorTheme) {
 
     var shielded: Boolean = false
     var launched: Boolean = false
+
+    /**
+     * Rainbow colour overrides (see [RainbowOverride]). When [rainbowMain] is set, the puck's main
+     * colours strobe; [rainbowShield] does the same for its shielded colours. Set from
+     * [gameobjects.Settings] for gameplay pucks and from the Ball Designer's local edit state for
+     * its previews. Inert/stunned never strobes (it stays the grey "inert" group).
+     */
+    var rainbowMain: Boolean = false
+    var rainbowShield: Boolean = false
     var baseFillColor: Int = Palette.WHITE
     var effectEnabled: Boolean = true
     var inertLocked: Boolean = false
@@ -151,6 +160,11 @@ class PuckRenderer(var theme: ColorTheme) {
             isInert  -> theme.inert
             shielded -> theme.shield
             else     -> theme.main
+        }
+        // Rainbow override: replace the live colour group (once per draw) with a synced strobing one
+        // so every component reading the responsive group cycles together. Inert never strobes.
+        if (!isInert && (if (shielded) rainbowShield else rainbowMain)) {
+            responsiveColorGroup = RainbowOverride.group(isHigh, strobe)
         }
 
         for (layer in layerOrder) {
