@@ -117,9 +117,7 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
         private set
 
     var paddleX = 0f
-        protected set
     var paddleY = 0f
-        protected set
 
     private var _chargeFillRatio = 0f
     override val chargeFillRatio: Float get() = _chargeFillRatio

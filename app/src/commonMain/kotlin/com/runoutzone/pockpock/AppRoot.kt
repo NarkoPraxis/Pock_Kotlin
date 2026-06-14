@@ -70,6 +70,9 @@ fun AppRoot() {
     var showDifficultyDialog by remember { mutableStateOf(false) }
     var darkMode by remember { mutableStateOf(Storage.darkMode) }
 
+    // Zen mode: hide the menu chrome and unblur the demo game for endless passive viewing.
+    var zenMode by remember { mutableStateOf(false) }
+
     // SVG painters used by PokPokSkin must be created in a composable scope. `painterResource`
     // is internally remembered, so this is effectively a one-time cost per app session.
     PokPokSkinPainters.load()
@@ -97,7 +100,7 @@ fun AppRoot() {
             // by isOnMainMenu at AppRoot level. When false, the composable leaves the tree,
             // DisposableEffect.onDispose fires, and the game loop is stopped immediately.
             if (isOnMainMenu) {
-                MenuDemoCanvas()
+                MenuDemoCanvas(zenMode = zenMode)
             }
 
             key(LocaleController.version) {
@@ -119,6 +122,9 @@ fun AppRoot() {
                             Settings.isDemoMode = false
                             navController.navigate(Screen.BallDesigner.name)
                         },
+                        onZenTapped = { zenMode = true },
+                        zenMode = zenMode,
+                        onExitZen = { zenMode = false },
                     )
                 }
                 composable(Screen.Game.name) {

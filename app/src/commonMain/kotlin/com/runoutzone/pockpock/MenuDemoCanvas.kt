@@ -22,7 +22,7 @@ import utility.Sounds
 import utility.drawGameFrame
 
 @Composable
-fun MenuDemoCanvas() {
+fun MenuDemoCanvas(zenMode: Boolean = false) {
     val tickState = remember { mutableIntStateOf(0) }
     var initialized by remember { mutableStateOf(false) }
     val textMeasurer = rememberTextMeasurer()
@@ -83,7 +83,8 @@ fun MenuDemoCanvas() {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .blur(4.dp)
+            // Zen mode removes the blur so the endless demo game is watched in full clarity.
+            .blur(if (zenMode) 0.dp else 4.dp)
             .onSizeChanged { size ->
                 if (!initialized && size.width > 0 && size.height > 0) {
                     initialized = true

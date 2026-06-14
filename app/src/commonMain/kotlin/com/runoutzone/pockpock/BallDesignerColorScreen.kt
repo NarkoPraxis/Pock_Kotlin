@@ -117,6 +117,9 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
     // A VectorPainter holds one size at a time, so the preview's lock glyph (drawn at a different
     // size than the carousel's) needs its own instance or it renders clipped. See BallDesignerScreen.
     val previewAdLockPainter = painterResource(Res.drawable.ic_menu_adlock)
+    // Plain meter-lock glyph for the preview when the chosen colour is the Rainbow (its own instance
+    // for the same VectorPainter size-sharing reason as previewAdLockPainter).
+    val previewLockPainter = painterResource(Res.drawable.ic_menu_lock)
 
     val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
     val fgColor = if (isDark) PaintBucket.white else Color(0xFF222222)
@@ -177,6 +180,11 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
         return ColorCarousel.CUSTOM_IDX
     }
     fun hueLocked(hue: Float): Boolean = !Storage.isColorUnlocked(colorIndexForHue(hue))
+
+    // The Rainbow (index CUSTOM_IDX) unlocks at 100% meter rather than by watching an ad, so its
+    // "won't be saved" markers use the plain lock glyph (like the Rainbow carousel button) instead
+    // of the ad-lock the preset colours use.
+    fun hueUsesMeterLock(hue: Float): Boolean = colorIndexForHue(hue) == ColorCarousel.CUSTOM_IDX
 
     fun applyHueToPaint(high: Boolean, shield: Boolean, hue: Float) {
         val pri = Color.hsv(hue, 0.359f, 0.961f)
@@ -343,10 +351,19 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                 // chosen color is still locked it mirrors BallDesigner: the design shows but a lock
                 // glyph marks it as un-saved.
                 val previewColorLocked = hueLocked(currentTargetHue())
+                // Rainbow (meter-unlocked) → plain lock glyph; preset colours (ad-unlocked) → ad-lock.
+                val previewLockIsMeter = previewColorLocked && hueUsesMeterLock(currentTargetHue())
                 // Any of the four colors still locked → the current selection can't be saved into a
                 // slot. The selected slot reflects this (lock + desaturated colors).
                 val saveDisabled = hueLocked(highHue) || hueLocked(highShieldHue) ||
                     hueLocked(lowHue) || hueLocked(lowShieldHue)
+                // If a blocking locked colour is the Rainbow (meter-unlocked), the slot's "can't save"
+                // stamp uses the plain lock instead of the ad-lock.
+                val saveBlockedByMeter =
+                    (hueLocked(highHue) && hueUsesMeterLock(highHue)) ||
+                    (hueLocked(highShieldHue) && hueUsesMeterLock(highShieldHue)) ||
+                    (hueLocked(lowHue) && hueUsesMeterLock(lowHue)) ||
+                    (hueLocked(lowShieldHue) && hueUsesMeterLock(lowShieldHue))
                 Box(
                     modifier = Modifier.fillMaxWidth().weight(0.9f).clipToBounds()
                         .onGloballyPositioned { pc ->
@@ -368,7 +385,9 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                         previewStep[0] += 1f
                         bdDrawAnimatedPreview(
                             pr, theme, shielded = activeRow == ROW_SHIELD, step = previewStep[0],
-                            frame = frame, locked = previewColorLocked, lockPainter = previewAdLockPainter
+                            frame = frame, locked = previewColorLocked,
+                            lockPainter = if (previewLockIsMeter) previewLockPainter else previewAdLockPainter,
+                            lockWidthOverHeight = if (previewLockIsMeter) 1f / BD_LOCK_ASPECT else 1f / BD_ADLOCK_ASPECT
                         )
                     }
                 }
@@ -389,12 +408,14 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                 val normalHue = if (activePlayerHigh) highHue else lowHue
                                 val shieldHue = if (activePlayerHigh) highShieldHue else lowShieldHue
                                 ColorTargetBox(
-                                    label = "Normal", hue = normalHue, locked = hueLocked(normalHue), high = activePlayerHigh,
+                                    label = "Normal", hue = normalHue, locked = hueLocked(normalHue),
+                                    meterLock = hueUsesMeterLock(normalHue), high = activePlayerHigh,
                                     active = activeRow == ROW_NORMAL, controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { selectRow(ROW_NORMAL) }
                                 )
                                 ColorTargetBox(
-                                    label = "Shield", hue = shieldHue, locked = hueLocked(shieldHue), high = activePlayerHigh,
+                                    label = "Shield", hue = shieldHue, locked = hueLocked(shieldHue),
+                                    meterLock = hueUsesMeterLock(shieldHue), high = activePlayerHigh,
                                     active = activeRow == ROW_SHIELD, controlBg = controlBg, accent = accentBlue, fg = fgColor, poppins = poppins,
                                     modifier = Modifier.fillMaxWidth().weight(1f), onTap = { selectRow(ROW_SHIELD) }
                                 )
@@ -528,6 +549,7 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                         index = i, preset = presets[i], selected = i == selectedPreset, isDark = isDark,
                                         unlocked = Storage.isCcpSlotUnlocked(i),
                                         disabled = i == selectedPreset && saveDisabled,
+                                        meterLock = saveBlockedByMeter,
                                         accent = accentBlue, fg = fgColor, sizeDp = slotDp,
                                         onTap = {
                                             val existing = presets[i]
@@ -588,6 +610,7 @@ private fun ColorTargetBox(
     label: String,
     hue: Float,
     locked: Boolean,
+    meterLock: Boolean,
     active: Boolean,
     high: Boolean,
     controlBg: Color,
@@ -599,8 +622,10 @@ private fun ColorTargetBox(
 ) {
     val isDark = LocalDarkMode.current
     val shape = RoundedCornerShape(14.dp)
-    // Own painter instance (see note at previewAdLockPainter) so it isn't resized by other draws.
+    // Own painter instances (see note at previewAdLockPainter) so they aren't resized by other draws.
+    // adLockPainter = ad-unlockable preset colours; meterLockPainter = the Rainbow (100% meter).
     val lockPainter = painterResource(Res.drawable.ic_menu_adlock)
+    val meterLockPainter = painterResource(Res.drawable.ic_menu_lock)
     // The swatch is a real Classic skin posed in static UI mode (closer to 1:1 with gameplay than a
     // bare circle). Built once; its theme/hue is set per-draw below. Theme drives the body colours.
     val renderer = remember {
@@ -626,10 +651,15 @@ private fun ColorTargetBox(
             renderer.strokeColor = theme.main.secondary
             renderer.baseFillColor = theme.main.primary
             with(renderer) { draw() }
-            // Chosen color is locked → the same right-centred ad-lock glyph the BallDesigner uses.
+            // Chosen color is locked → right-centred lock glyph (plain meter lock for the Rainbow,
+            // ad-lock for ad-unlockable preset colours), matching the BallDesigner.
             if (locked) {
-                val h = 24.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 10.dp.toPx()
-                bdDrawAdLockGlyph(lockPainter, PaintBucket.menuAccentRed, size.width - pad - w / 2f, size.height / 2f, h)
+                val ratio = if (meterLock) 1f / BD_LOCK_ASPECT else 1f / BD_ADLOCK_ASPECT
+                val h = 24.dp.toPx(); val w = h * ratio; val pad = 10.dp.toPx()
+                bdDrawAdLockGlyph(
+                    if (meterLock) meterLockPainter else lockPainter, PaintBucket.menuAccentRed,
+                    size.width - pad - w / 2f, size.height / 2f, h, ratio
+                )
             }
         }
         Text(label, color = fg, fontFamily = poppins, fontSize = 13.sp, fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic,
@@ -758,6 +788,7 @@ private fun CcpPresetSlot(
     isDark: Boolean,
     unlocked: Boolean,
     disabled: Boolean,
+    meterLock: Boolean,
     accent: Color,
     fg: Color,
     sizeDp: androidx.compose.ui.unit.Dp,
@@ -766,8 +797,9 @@ private fun CcpPresetSlot(
 ) {
     val shape = RoundedCornerShape(12.dp)
     val bg = if (isDark) Color(0xFF1A2A3E) else Color(0xFFEDEDF4)
-    // Own painter instance (see note at previewAdLockPainter) so it isn't resized by other draws.
+    // Own painter instances (see note at previewAdLockPainter) so they aren't resized by other draws.
     val lockPainter = painterResource(Res.drawable.ic_menu_adlock)
+    val meterLockPainter = painterResource(Res.drawable.ic_menu_lock)
     Box(
         modifier = Modifier.size(sizeDp).clip(shape).background(bg)
             .then(if (unlocked && selected) Modifier.border(4.dp, accent, shape) else Modifier)
@@ -802,8 +834,11 @@ private fun CcpPresetSlot(
                 }
             }
             if (disabled) Canvas(modifier = Modifier.fillMaxSize()) {
-                bdDrawAdLockGlyph(lockPainter, PaintBucket.menuAccentRed,
-                    size.width / 2f, size.height / 2f, size.minDimension * 0.4f)
+                bdDrawAdLockGlyph(
+                    if (meterLock) meterLockPainter else lockPainter, PaintBucket.menuAccentRed,
+                    size.width / 2f, size.height / 2f, size.minDimension * 0.4f,
+                    if (meterLock) 1f / BD_LOCK_ASPECT else 1f / BD_ADLOCK_ASPECT
+                )
             }
         } else {
             Text("+", color = fg.copy(alpha = 0.5f), fontSize = 22.sp)

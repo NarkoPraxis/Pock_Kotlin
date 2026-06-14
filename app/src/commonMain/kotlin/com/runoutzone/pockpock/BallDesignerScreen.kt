@@ -206,6 +206,7 @@ internal fun bdThemeFromHues(isHigh: Boolean, normalHue: Float, shieldHue: Float
 internal fun DrawScope.bdDrawAnimatedPreview(
     renderer: PuckRenderer, theme: ColorTheme, shielded: Boolean,
     step: Float, frame: Int, locked: Boolean, lockPainter: Painter,
+    lockWidthOverHeight: Float = 1f / BD_ADLOCK_ASPECT,
 ) {
     val r = Settings.ballRadius
     val cx = size.width / 2f
@@ -231,9 +232,9 @@ internal fun DrawScope.bdDrawAnimatedPreview(
     // No contact shadow on the moving preview — that's only for static displays.
     with(renderer) { draw() }
     if (locked) {
-        val h = 36.dp.toPx(); val w = h * (89.37f / 106.46f); val pad = 12.dp.toPx()
+        val h = 36.dp.toPx(); val w = h * lockWidthOverHeight; val pad = 12.dp.toPx()
         bdDrawAdLockGlyph(lockPainter, PaintBucket.menuAccentRed,
-            size.width - pad - w / 2f, size.height - pad - h / 2f, h)
+            size.width - pad - w / 2f, size.height - pad - h / 2f, h, lockWidthOverHeight)
     }
 }
 
@@ -291,8 +292,11 @@ internal fun bdShadowOver(c: Color) = Color(
  * composable path was cropping the vector, this one shows it whole. [h] is the glyph height; it is
  * centred on ([cx],[cy]).
  */
-internal fun DrawScope.bdDrawAdLockGlyph(painter: Painter, tint: Color, cx: Float, cy: Float, h: Float) {
-    val w = h * (89.37f / 106.46f)
+internal fun DrawScope.bdDrawAdLockGlyph(
+    painter: Painter, tint: Color, cx: Float, cy: Float, h: Float,
+    widthOverHeight: Float = 1f / BD_ADLOCK_ASPECT,
+) {
+    val w = h * widthOverHeight
     translate(cx - w / 2f, cy - h / 2f) {
         with(painter) { draw(Size(w, h), colorFilter = ColorFilter.tint(tint)) }
     }
@@ -912,9 +916,18 @@ private fun DesignerSlotCell(
                     }
                 }
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    val cx = size.width / 2f
-                    val cy = size.height / 2f - Settings.ballRadius * 0.2f
-                    bdDrawShadow(cx, cy, Settings.ballRadius, isDark)
+                    // Save-slot preview only: nudge the ball down-and-right so the paddle
+                    // (drawn up-and-left of the ball) clears the cell edge and stays visible.
+                    // Tweak these two multipliers to taste — they are fractions of the ball
+                    // radius (0f = no shift, 0.25f ≈ a quarter-radius nudge, larger = more).
+                    val slotShiftX = Settings.ballRadius * 0.4f
+                    val slotShiftY = Settings.ballRadius * 0.6f
+                    val cx = size.width / 2f + slotShiftX
+                    val cy = size.height / 2f - Settings.ballRadius * 0.2f + slotShiftY
+
+                    // ** I want to add a line here so the slot preview draws the paddle shifted down and left a little bit instead of it's default static position.
+                    renderer.effect.paddleX -= Settings.ballRadius * .2f
+                    renderer.effect.paddleY -= Settings.ballRadius * 4f
                     renderer.x = cx; renderer.y = cy; renderer.radius = Settings.ballRadius
                     renderer.strokeWidth = Settings.strokeWidth
                     renderer.effectEnabled = true

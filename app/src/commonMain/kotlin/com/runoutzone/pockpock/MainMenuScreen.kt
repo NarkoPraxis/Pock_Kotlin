@@ -54,6 +54,9 @@ fun MainMenuScreen(
     onSinglePlayerTapped: () -> Unit,
     onSettingsTapped: () -> Unit,
     onCustomBallTapped: () -> Unit,
+    onZenTapped: () -> Unit,
+    zenMode: Boolean,
+    onExitZen: () -> Unit,
 ) {
     val unlockProgress = Storage.unlockProgress
     val poppins = poppinsFamily()
@@ -71,6 +74,17 @@ fun MainMenuScreen(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        // Zen mode: hide all menu chrome and let the unblurred demo game play behind us.
+        // A full-screen invisible tap target restores the menu.
+        if (zenMode) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(onClick = onExitZen)
+            )
+            return@BoxWithConstraints
+        }
+
         val screenW = maxWidth
         val screenH = maxHeight
         val density = LocalDensity.current
@@ -119,7 +133,7 @@ fun MainMenuScreen(
             val bottomGoalTopPx = screenHpx - goalPx
             ((screenHpx / 2f + bottomGoalTopPx) / 2f).toDp()
         }
-        val groupHeight = buttonHeight * 2 + buttonSpacing
+        val groupHeight = buttonHeight * 3 + buttonSpacing * 2
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -145,6 +159,16 @@ fun MainMenuScreen(
                 onClick = onSinglePlayerTapped,
             ) {
                 MenuGlyph(Res.drawable.ic_menu_player, glyphSize)
+                MenuGlyph(Res.drawable.ic_menu_ai, glyphSize, Modifier.offset(x = (-5).dp))
+            }
+            SlantedMenuButton(
+                text = stringResource(Res.string.zen),
+                height = buttonHeight,
+                fontFamily = poppins,
+                onClick = onZenTapped,
+            ) {
+                // Two computer glyphs read as "AI vs AI" — the demo plays itself.
+                MenuGlyph(Res.drawable.ic_menu_ai, glyphSize)
                 MenuGlyph(Res.drawable.ic_menu_ai, glyphSize, Modifier.offset(x = (-5).dp))
             }
         }
