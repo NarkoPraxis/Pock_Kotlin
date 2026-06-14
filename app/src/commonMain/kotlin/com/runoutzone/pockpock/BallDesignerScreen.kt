@@ -1,5 +1,6 @@
 package com.runoutzone.pockpock
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.runoutzone.pockpock.components.AdLimitPopup
+import com.runoutzone.pockpock.components.HorizontalOptionCarousel
 import com.runoutzone.pockpock.components.MeterLockedPopup
 import com.runoutzone.pockpock.components.VerticalOptionCarousel
 import com.runoutzone.pockpock.menu.EdgePill
@@ -91,8 +94,26 @@ private val BD_COMPONENT_TYPES: List<BallType> = BallType.entries.filter { it !=
 private val BD_PADDLE_ALIAS_TYPES = setOf(BallType.Dragon, BallType.Cat)
 private val BD_PADDLE_TYPES: List<BallType> = BD_COMPONENT_TYPES.filter { it !in BD_PADDLE_ALIAS_TYPES }
 
+// Unified ("U") view: every composable ball type, composed as the built-in ball composes it.
+private val BD_UNIFIED_TYPES: List<BallType> = BD_COMPONENT_TYPES
+
 private fun bdTypesFor(component: Int): List<BallType> =
     if (component == BD_PADDLE) BD_PADDLE_TYPES else BD_COMPONENT_TYPES
+
+// Dragon and Cat have no paddle of their own — Dragon borrows Fire's paddle, Cat borrows Rainbow's
+// (which is why they're excluded from the paddle carousel). For the unified ball the paddle PIECE is
+// therefore that borrowed type: its visual, its unlock state, and its persisted paddleType all track
+// the real paddle, so toggling back to the separation view lands on a selectable paddle option.
+private fun bdEffectivePaddleType(type: BallType): BallType = when (type) {
+    BallType.Dragon -> BallType.Fire
+    BallType.Cat -> BallType.Rainbow
+    else -> type
+}
+
+// The natural (built-in) composition for a unified type: each piece is the type itself (paddle uses
+// the borrowed type for aliases), z-ranks read live off the real components — never hardcoded.
+private fun bdNaturalConfig(type: BallType): CustomBallConfig =
+    BallStyleFactory.naturalCustomConfig(type, type, bdEffectivePaddleType(type))
 
 private fun bdBuildPartRenderer(component: Int, type: BallType, theme: ColorTheme): PuckRenderer {
     val r = when (component) {
@@ -428,6 +449,9 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
     // previewLockPainter → the preview badge; the control boxes and slots make their own below.
     val carouselLockPainter = painterResource(Res.drawable.ic_menu_adlock)
     val previewLockPainter = painterResource(Res.drawable.ic_menu_adlock)
+    // Own instance for the unified tall carousel's per-ball lock badge (drawn at a different size than
+    // the carousel/piece buttons, so it must not share a painter — see the size-sharing note above).
+    val unifiedBallLockPainter = painterResource(Res.drawable.ic_menu_adlock)
 
     val bgColor = if (isDark) PaintBucket.menuBackgroundDark else PaintBucket.menuBackgroundLight
     val fgColor = if (isDark) PaintBucket.white else Color(0xFF222222)
@@ -448,6 +472,9 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
     var paddleType by remember { mutableStateOf(BallType.Classic) }
     var ranks by remember { mutableStateOf(Triple(0, 1, 2)) }
     var activeComp by remember { mutableIntStateOf(BD_SKIN) }
+
+    // Unified ("U") view toggle. Default OFF (separation view) every visit — never persisted.
+    var unified by remember { mutableStateOf(false) }
 
     var draggingComp by remember { mutableIntStateOf(-1) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
@@ -526,6 +553,35 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
         if (Storage.canWatchAdNow()) {
             AdUnlock.watchAdToUnlock(grant = { bdUnlock(component, type) }) { success ->
                 if (success) selectComponent(component, type)
+            }
+        } else adLimitPopupVisible = true
+    }
+
+    // Unified view: selecting a composed type sets all three pieces (paddle uses the borrowed type
+    // for aliases) plus the natural z-ranks, reusing the same state the separation view edits — so
+    // toggling back preserves the selection and lets the player tweak any piece individually. Saves
+    // to the currently selected slot only when all three pieces are unlocked (trySave's guard).
+    fun selectUnifiedType(type: BallType, save: Boolean) {
+        val cfg = bdNaturalConfig(type)
+        skinType = cfg.skinType
+        tailType = cfg.tailType
+        paddleType = cfg.paddleType
+        ranks = Triple(cfg.skinZRank, cfg.tailZRank, cfg.paddleZRank)
+        rebuildPreview()
+        // Browsing updates the previews live (so the top preview shows the type from all angles);
+        // only a committed pick (snap/tap) writes the selected slot.
+        if (save) trySave()
+    }
+
+    // Unified 3-piece carousel: tapping a locked piece watches an ad to unlock it; an already
+    // unlocked piece is inert. [pieceType] is the piece's effective type (borrowed paddle for
+    // aliases). After a successful unlock, rebuild + trySave so the buttons refresh and the slot
+    // saves if all three are now unlocked.
+    fun onUnifiedPieceTapped(component: Int, pieceType: BallType) {
+        if (bdIsUnlocked(component, pieceType)) return
+        if (Storage.canWatchAdNow()) {
+            AdUnlock.watchAdToUnlock(grant = { bdUnlock(component, pieceType) }) { success ->
+                if (success) { rebuildPreview(); trySave() }
             }
         } else adLimitPopupVisible = true
     }
@@ -618,6 +674,12 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                 }
                 Box(Modifier.height(8.dp))
 
+                // Separation/Unification toggle, sat above the control's top-left corner. OFF (S) =
+                // the per-piece separation view; ON (U) = the unified composed-ball view.
+                Row(modifier = Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 6.dp)) {
+                    SeparationUnificationToggle(unified = unified, accent = accentBlue) { unified = !unified }
+                }
+
                 // Grey wrapper holding all controls (no outline).
                 Box(
                     modifier = Modifier
@@ -628,6 +690,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                         .padding(10.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                      if (!unified) {
                         Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             // Left: draggable Skin/Tail/Paddle column (wider than the carousel, as in the SVG).
                             Column(modifier = Modifier.fillMaxHeight().weight(0.58f)) {
@@ -751,6 +814,110 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                 )
                             }
                         }
+                      } else {
+                        // === Unified ("U") view ===
+                        // A tall horizontal carousel of every fully composed ball type, over a
+                        // 3-button row showing that type's skin / tail / paddle pieces. The save slots
+                        // (below) are shared with the separation view and unaffected by the toggle.
+                        val uList = BD_UNIFIED_TYPES
+                        // Centre on the type matching the current skin selection (a unified pick sets
+                        // all three pieces to the same type, so this is the equipped unified type).
+                        val uSelIdx = uList.indexOf(skinType).coerceAtLeast(0)
+                        var uBrowsed by remember(uSelIdx) { mutableIntStateOf(uSelIdx) }
+                        val uBrowsedType = uList[uBrowsed.coerceIn(0, uList.lastIndex)]
+                        // One fully composed static renderer per type (rebuilt only on theme change).
+                        val uRendererCache = remember(isDark) {
+                            uList.associateWith { t ->
+                                BallStyleFactory.buildCustomRenderer(bdNaturalConfig(t), theme).also {
+                                    it.isHigh = theme.isWarm; it.staticUiMode = true; it.effect.frozen = true
+                                }
+                            }
+                        }
+                        Column(
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Tall carousel of composed balls — scroll to browse, snap/tap commits.
+                            Box(
+                                modifier = Modifier.fillMaxWidth().weight(1f)
+                                    .clip(RoundedCornerShape(16.dp)).background(controlBg)
+                            ) {
+                                HorizontalOptionCarousel(
+                                    itemCount = uList.size,
+                                    selectedIndex = uSelIdx,
+                                    modifier = Modifier.fillMaxSize(),
+                                    onCenterChanged = { i -> uBrowsed = i; selectUnifiedType(uList[i], save = false) },
+                                    onSnap = { i -> selectUnifiedType(uList[i], save = true) },
+                                    onTap = { i -> selectUnifiedType(uList[i], save = true) }
+                                ) { index, cx, cy, r, _, _, _, _ ->
+                                    val t = uList[index]
+                                    val renderer = uRendererCache[t] ?: return@HorizontalOptionCarousel
+                                    val fullyUnlocked = Storage.isSkinUnlocked(t) &&
+                                        Storage.isTailUnlocked(t) &&
+                                        Storage.isPaddleUnlocked(bdEffectivePaddleType(t))
+                                    // Full composed ball + its contact shadow, static like the in-game
+                                    // Ball Select previews. Colours follow the cold/low preview theme.
+                                    bdDrawShadow(cx, cy, r, isDark)
+                                    renderer.x = cx; renderer.y = cy; renderer.radius = r
+                                    renderer.strokeWidth = Settings.strokeWidth * (r / Settings.ballRadius)
+                                    renderer.effectEnabled = true
+                                    renderer.fillColor = theme.main.primary
+                                    renderer.strokeColor = theme.main.secondary
+                                    renderer.baseFillColor = theme.main.primary
+                                    with(renderer) { draw() }
+                                    // Not all three pieces owned → stamp the AdLock badge, the same
+                                    // lock cue the live preview uses.
+                                    if (!fullyUnlocked) {
+                                        bdDrawAdLockGlyph(unifiedBallLockPainter, PaintBucket.menuAccentRed,
+                                            cx + r * 0.95f, cy + r * 0.95f, 26.dp.toPx())
+                                    }
+                                }
+                            }
+
+                            // Browsed type name (+ "Watch Ad To Own" hint when any piece is locked).
+                            val uAllUnlocked = Storage.isSkinUnlocked(uBrowsedType) &&
+                                Storage.isTailUnlocked(uBrowsedType) &&
+                                Storage.isPaddleUnlocked(bdEffectivePaddleType(uBrowsedType))
+                            androidx.compose.material3.Text(
+                                text = if (uAllUnlocked) bdSkinTailName(uBrowsedType)
+                                       else "${bdSkinTailName(uBrowsedType)} — ${stringResource(Res.string.style_ad_to_own)}",
+                                color = fgColor, fontFamily = poppins, fontSize = 13.sp,
+                                fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic,
+                                modifier = Modifier.fillMaxWidth().padding(start = 4.dp)
+                            )
+
+                            // Three piece buttons (skin / tail / paddle) for the browsed type. Same
+                            // locked/unlocked look as the separation carousel's option buttons; tap a
+                            // locked piece to watch an ad, an unlocked piece is inert.
+                            Row(
+                                modifier = Modifier.fillMaxWidth().weight(0.55f),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                for (comp in intArrayOf(BD_SKIN, BD_TAIL, BD_PADDLE)) {
+                                    val pieceType = if (comp == BD_PADDLE) bdEffectivePaddleType(uBrowsedType) else uBrowsedType
+                                    val unlocked = bdIsUnlocked(comp, pieceType)
+                                    val pieceRenderer = remember(comp, pieceType, isDark) { bdBuildPartRenderer(comp, pieceType, theme) }
+                                    Box(
+                                        modifier = Modifier.weight(1f).fillMaxHeight()
+                                            .clip(RoundedCornerShape(14.dp)).background(controlBg)
+                                            .pointerInput(comp, pieceType, unlocked) {
+                                                detectTapGestures(onTap = { if (!unlocked) onUnifiedPieceTapped(comp, pieceType) })
+                                            }
+                                    ) {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            val rr = min(size.width, size.height) * 0.32f
+                                            bdDrawLockedOption(
+                                                size.width / 2f, size.height / 2f, size.width, size.height,
+                                                faceColor = BD_BUTTON_FILL, pressed = false,
+                                                icon = if (unlocked) null else carouselLockPainter,
+                                                iconAspectHW = BD_ADLOCK_ASPECT, faceStroke = BD_BUTTON_OUTLINE
+                                            ) { bdDrawPart(pieceRenderer, theme, comp, size.width / 2f, size.height / 2f, rr, isDark, drawShadow = false) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                      }
 
                         // Save-slot strip — inside the wrapper, themed sub-container, right space for pills.
                         Box(
@@ -831,6 +998,46 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
 
         if (meterPopupVisible) MeterLockedPopup(Storage.unlockProgress) { meterPopupVisible = false }
         if (adLimitPopupVisible) AdLimitPopup(Storage.minutesUntilNextAd()) { adLimitPopupVisible = false }
+    }
+}
+
+/**
+ * Boolean-style mode toggle for the Ball Designer. OFF = the per-piece **S**eparation view (the
+ * default every visit); ON = the **U**nified composed-ball view. Solid default-light-blue track with
+ * a sliding darker-blue knob carrying a white letter (S/U). No text label — the S/U glyphs stand in
+ * for the eventual "separation"/"unification" SVG icons.
+ */
+@Composable
+private fun SeparationUnificationToggle(unified: Boolean, accent: Color, onToggle: () -> Unit) {
+    val trackW = 58.dp
+    val trackH = 30.dp
+    val knobD = 24.dp
+    val pad = 3.dp
+    val pos by animateFloatAsState(if (unified) 1f else 0f, label = "su-toggle")
+    Box(
+        modifier = Modifier
+            .size(trackW, trackH)
+            .clip(RoundedCornerShape(50))
+            .background(accent)
+            .clickable(onClick = onToggle),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(start = pad)
+                .offset { IntOffset((pos * (trackW - knobD - pad * 2).toPx()).roundToInt(), 0) }
+                .size(knobD)
+                .clip(CircleShape)
+                .background(bdShadowOver(accent)),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.material3.Text(
+                text = if (unified) "U" else "S",
+                color = PaintBucket.white,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
