@@ -57,10 +57,18 @@ object Storage {
     private const val unlockedTailsKey   = "unlocked_tails"
     private const val unlockedPaddlesKey = "unlocked_paddles"
     private const val unlockedColorsKey  = "unlocked_colors"
-    private const val defaultsSeededKey  = "default_slots_seeded"
+    // Bumped to _v2 when the seeded defaults were corrected (PokPok/Classic order + natural z-index
+    // draw order for ball slots, plus a free-color CCP preset). A reinstall starts this false.
+    private const val defaultsSeededKey  = "default_slots_seeded_v2"
 
-    /** Preset color carousel indices unlocked for free: Red (0), Blue (5), Purple/shield (6). */
-    private val FREE_COLOR_INDICES = setOf(0, 5, 6)
+    /**
+     * Preset color carousel indices unlocked for free — the game's default branding colors only:
+     * Red (0) = high-player default 0°, Sky Blue (4) = low-player default 202.5°, Purple (6) =
+     * shield default 264°. Every other preset is ad-unlockable. (These hues must stay in lockstep
+     * with the defaults in [highPlayerColorHue]/[lowPlayerColorHue]/[*ShieldColorHue] and the
+     * matching entries in ColorCarousel.PRESETS, or a default color would resolve as locked.)
+     */
+    private val FREE_COLOR_INDICES = setOf(0, 4, 6)
     private const val CUSTOM_COLOR_INDEX = 9
 
     fun initialize(context: Any?) {
@@ -68,11 +76,8 @@ object Storage {
         ensureDefaultSlots()
     }
 
-    // --- Unlock progress (0–100) ---
-
     val unlockProgress: Int get() {
         dataVersion // subscribe
-        return 60 // don't fix, manual, intentional override.
         //return PlatformStorage.getInt(AD, unlockProgressKey, 0)
     }
 
@@ -200,16 +205,38 @@ object Storage {
     fun countCustomBalls(): Int = (0 until SLOT_COUNT).count { loadCustomBall(it) != null }
 
     /**
-     * Seeds slots 0 and 1 with a composed Classic and PokPok ball on first run.
-     * Guarded by a flag so deleting all custom balls won't silently re-add them.
+     * Seeds the free defaults on first run so a fresh install is fully playable without editing a
+     * single custom setting, and using ONLY already-unlocked pieces (no slot starts on a locked
+     * cosmetic — the game makes no safety checks on save files, so the defaults themselves must be
+     * clean): slot 0 = PokPok, slot 1 = Classic (the only two free balls), each composed from its
+     * own components' natural z-index draw order, plus CCP preset 0 built from the three free colors.
+     * Guarded by a flag so deleting all custom balls/presets won't silently re-add them.
      */
     fun ensureDefaultSlots() {
         if (PlatformStorage.getBoolean(AD, defaultsSeededKey, false)) return
         if (countCustomBalls() == 0) {
-            saveCustomBall(0, CustomBallConfig(BallType.Classic, BallType.Classic, BallType.Classic, 0, 1, 2))
-            saveCustomBall(1, CustomBallConfig(BallType.PokPok,  BallType.PokPok,  BallType.PokPok,  0, 1, 2))
+            saveCustomBall(0, BallStyleFactory.naturalCustomConfig(BallType.PokPok, BallType.PokPok, BallType.PokPok))
+            saveCustomBall(1, BallStyleFactory.naturalCustomConfig(BallType.Classic, BallType.Classic, BallType.Classic))
         }
+        ensureDefaultColorPreset()
         PlatformStorage.saveBoolean(AD, defaultsSeededKey, true)
+    }
+
+    /**
+     * Seeds CCP preset slot 0 with the three free colors and selects it: Red (top color), Sky Blue
+     * (bottom color), Purple (both shields). Hues match [FREE_COLOR_INDICES] / ColorCarousel.PRESETS
+     * exactly so they resolve as unlocked. The live player hues are persisted too, so the selected
+     * preset and the gameplay palette agree from the first frame.
+     */
+    private fun ensureDefaultColorPreset() {
+        if (loadCcpPreset(0) != null) return
+        val preset = CcpPreset(highHue = 0f, highShieldHue = 264f, lowHue = 202.5f, lowShieldHue = 264f)
+        saveCcpPreset(0, preset)
+        saveCcpSelectedSlot(0)
+        saveHighPlayerColorHue(preset.highHue)
+        saveHighShieldColorHue(preset.highShieldHue)
+        saveLowPlayerColorHue(preset.lowHue)
+        saveLowShieldColorHue(preset.lowShieldHue)
     }
 
     // --- Custom ball slot gating (0–1 free; 2–9 unlock at 30%/40%…100%) ---
@@ -373,6 +400,15 @@ object Storage {
     // --- CCP preset slots (0–4) ---
     val ccpSelectedSlot: Int get() = PlatformStorage.getInt(AD, "ccp_selected_slot", -1)
     fun saveCcpSelectedSlot(index: Int) = PlatformStorage.saveInt(AD, "ccp_selected_slot", index)
+
+    // --- CCP preset slot gating (0 free; 1–4 unlock at 20%/40%/60%/80%) ---
+    // Mirrors the custom-ball slot gating but on 20% increments, so the fully-free custom color
+    // selector at 100% is the ultimate progress reward.
+
+    fun isCcpSlotUnlocked(index: Int): Boolean =
+        index < 1 || unlockProgress >= ccpSlotRequiredPercent(index)
+
+    fun ccpSlotRequiredPercent(index: Int): Int = if (index < 1) 0 else index * 20
 
     fun loadCcpPreset(index: Int): CcpPreset? {
         val h = PlatformStorage.getFloat(SETTINGS, "ccp${index}_h", Float.MIN_VALUE)
