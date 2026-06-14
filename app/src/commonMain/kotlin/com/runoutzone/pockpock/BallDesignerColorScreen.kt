@@ -88,18 +88,22 @@ private const val CCP_STROBE_SPEED = 4f
 
 // Localized display name for a colour-carousel index (parallels ColorCarousel.PRESETS). The status
 // label shows the browsed colour's name when unlocked, or "Watch Ad To Own" when locked — mirrors
-// BallDesigner (see bdStyleName). Index 9 is the custom "any color" slot.
+// BallDesigner (see bdStyleName). Index 13 is the custom "any color" slot.
 @Composable
 private fun ccpColorName(index: Int): String = when (index) {
     0 -> stringResource(Res.string.color_name_red)
-    1 -> stringResource(Res.string.color_name_orange)
-    2 -> stringResource(Res.string.color_name_yellow)
-    3 -> stringResource(Res.string.color_name_green)
-    4 -> stringResource(Res.string.color_name_sky_blue)
-    5 -> stringResource(Res.string.color_name_deep_purple)
-    6 -> stringResource(Res.string.color_name_purple)
-    7 -> stringResource(Res.string.color_name_magenta)
-    8 -> stringResource(Res.string.color_name_pink)
+    1 -> stringResource(Res.string.color_name_brown)
+    2 -> stringResource(Res.string.color_name_orange)
+    3 -> stringResource(Res.string.color_name_yellow)
+    4 -> stringResource(Res.string.color_name_lime)
+    5 -> stringResource(Res.string.color_name_green)
+    6 -> stringResource(Res.string.color_name_forest_green)
+    7 -> stringResource(Res.string.color_name_teal)
+    8 -> stringResource(Res.string.color_name_sky_blue)
+    9 -> stringResource(Res.string.color_name_deep_purple)
+    10 -> stringResource(Res.string.color_name_purple)
+    11 -> stringResource(Res.string.color_name_magenta)
+    12 -> stringResource(Res.string.color_name_pink)
     else -> stringResource(Res.string.color_name_custom)
 }
 
@@ -187,8 +191,8 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
     fun hueUsesMeterLock(hue: Float): Boolean = colorIndexForHue(hue) == ColorCarousel.CUSTOM_IDX
 
     fun applyHueToPaint(high: Boolean, shield: Boolean, hue: Float) {
-        val pri = Color.hsv(hue, 0.359f, 0.961f)
-        val sec = Color.hsv(hue, 0.661f, 0.961f)
+        val pri = utility.SwatchPalette.primary(hue)
+        val sec = utility.SwatchPalette.secondary(hue)
         when {
             high && !shield -> { PaintBucket.highPlayerPrimary = pri; PaintBucket.highPlayerSecondary = sec }
             high && shield -> { PaintBucket.highShieldPrimary = pri; PaintBucket.highShieldSecondary = sec }
@@ -440,7 +444,7 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                         .onSizeChanged { carouselWidthPx = it.width }
                                 ) {
                                     VerticalOptionCarousel(
-                                        itemCount = 10, selectedIndex = selIdx, modifier = Modifier.fillMaxSize(),
+                                        itemCount = 14, selectedIndex = selIdx, modifier = Modifier.fillMaxSize(),
                                         onCenterChanged = { browsedColorIndex = it },
                                         onTap = { i ->
                                             if (i == ColorCarousel.CUSTOM_IDX) {
@@ -472,8 +476,8 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                         // Custom has no fixed hue → its face cycles the rainbow (like the Rainbow
                                         // skin); presets show the exact colour they unlock.
                                         val hue = if (isCustom) strobeHue else (presetSlotHues[index]?.hue ?: 0f)
-                                        val faceColor = Color.hsv(hue, 0.359f, 0.961f)
-                                        val faceStroke = Color.hsv(hue, 0.661f, 0.961f)
+                                        val faceColor = utility.SwatchPalette.primary(hue)
+                                        val faceStroke = utility.SwatchPalette.secondary(hue)
                                         if (unlocked) {
                                             // Unlocked → flat (always-pressed) rectangle, no lock glyph.
                                             bdDrawLockedOption(
@@ -498,7 +502,7 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                     // ad-buttons scroll behind it. Colours unified across dark/light.
                                     val carouselLabel =
                                         if (Storage.isColorUnlocked(browsedColorIndex))
-                                            ccpColorName(browsedColorIndex.coerceIn(0, 9))
+                                            ccpColorName(browsedColorIndex.coerceIn(0, 13))
                                         else stringResource(Res.string.style_ad_to_own)
                                     val labelShape = RoundedCornerShape(8.dp)
                                     Text(
@@ -825,8 +829,13 @@ private fun CcpPresetSlot(
                     val w = size.width
                     val sH = size.height / 6f   // shield band
                     val mH = size.height / 3f   // main band
+                    // Disabled (un-saveable) slots desaturate every band; otherwise each shows its
+                    // true swatch colour (the secondary tone, incl. the Brown/Forest Green overrides).
                     fun band(top: Float, h: Float, hue: Float) =
-                        drawRect(Color.hsv(hue, sat, value), topLeft = Offset(0f, top), size = Size(w, h))
+                        drawRect(
+                            if (disabled) Color.hsv(hue, sat, value) else utility.SwatchPalette.secondary(hue),
+                            topLeft = Offset(0f, top), size = Size(w, h)
+                        )
                     band(0f, sH, preset.highShieldHue)        // High shield (top)
                     band(sH, mH, preset.highHue)               // High color
                     band(sH + mH, mH, preset.lowHue)           // Low color

@@ -121,9 +121,13 @@
 
     <!-- Color picker color names -->
     <string name="color_name_red">Rojo</string>
+    <string name="color_name_brown">Marrón</string>
     <string name="color_name_orange">Naranja</string>
     <string name="color_name_yellow">Amarillo</string>
+    <string name="color_name_lime">Lima</string>
     <string name="color_name_green">Verde</string>
+    <string name="color_name_forest_green">Verde Bosque</string>
+    <string name="color_name_teal">Verde Azulado</string>
     <string name="color_name_sky_blue">Azul Cielo</string>
     <string name="color_name_deep_purple">Púrpura Intenso</string>
     <string name="color_name_purple">Morado</string>

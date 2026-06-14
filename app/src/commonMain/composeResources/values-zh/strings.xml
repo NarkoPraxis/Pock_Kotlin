@@ -121,9 +121,13 @@
 
     <!-- Color picker color names -->
     <string name="color_name_red">红色</string>
+    <string name="color_name_brown">棕色</string>
     <string name="color_name_orange">橙色</string>
     <string name="color_name_yellow">黄色</string>
+    <string name="color_name_lime">青柠色</string>
     <string name="color_name_green">绿色</string>
+    <string name="color_name_forest_green">森林绿</string>
+    <string name="color_name_teal">蓝绿色</string>
     <string name="color_name_sky_blue">天蓝色</string>
     <string name="color_name_deep_purple">深紫色</string>
     <string name="color_name_purple">紫色</string>

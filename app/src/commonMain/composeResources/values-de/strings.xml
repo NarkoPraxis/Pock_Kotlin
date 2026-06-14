@@ -121,9 +121,13 @@
 
     <!-- Color picker color names -->
     <string name="color_name_red">Rot</string>
+    <string name="color_name_brown">Braun</string>
     <string name="color_name_orange">Orange</string>
     <string name="color_name_yellow">Gelb</string>
+    <string name="color_name_lime">Limette</string>
     <string name="color_name_green">Grün</string>
+    <string name="color_name_forest_green">Waldgrün</string>
+    <string name="color_name_teal">Blaugrün</string>
     <string name="color_name_sky_blue">Himmelblau</string>
     <string name="color_name_deep_purple">Dunkelviolett</string>
     <string name="color_name_purple">Violett</string>

@@ -205,9 +205,9 @@ internal fun DrawScope.bdDrawShadow(cx: Float, cy: Float, r: Float, isDark: Bool
 // inert (dead) group is hue-independent, so it's read from the live theme (constant either way).
 internal fun bdThemeFromHues(isHigh: Boolean, normalHue: Float, shieldHue: Float): ColorTheme {
     fun grp(hue: Float) = ColorGroup(
-        Color.hsv(hue, 0.359f, 0.961f).toArgb(),
-        Color.hsv(hue, 0.661f, 0.961f).toArgb(),
-        Color.hsv(hue, 0.10f, 0.99f).toArgb()
+        utility.SwatchPalette.primary(hue).toArgb(),
+        utility.SwatchPalette.secondary(hue).toArgb(),
+        utility.SwatchPalette.pale(hue).toArgb()
     )
     return ColorTheme(
         main = grp(normalHue),
@@ -674,21 +674,17 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                 }
                 Box(Modifier.height(8.dp))
 
-                // Separation/Unification toggle, sat above the control's top-left corner. OFF (S) =
-                // the per-piece separation view; ON (U) = the unified composed-ball view.
-                Row(modifier = Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 6.dp)) {
-                    SeparationUnificationToggle(unified = unified, accent = accentBlue) { unified = !unified }
-                }
-
-                // Grey wrapper holding all controls (no outline).
-                Box(
+                // Grey wrapper holding all controls (no outline), wrapped so the mode toggle can float
+                // above its top-left corner without consuming the preview's height (the old in-flow row
+                // shrank the preview and put a full-width gap band across the orbiting ball's path).
+                Box(modifier = Modifier.fillMaxWidth().weight(2.3f)) {
+                  Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(2.3f)
+                        .fillMaxSize()
                         .clip(RoundedCornerShape(22.dp))
                         .background(wrapperBg)
                         .padding(10.dp)
-                ) {
+                  ) {
                     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                       if (!unified) {
                         Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -833,6 +829,15 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                 }
                             }
                         }
+                        var uCarouselWidthPx by remember { mutableIntStateOf(0) }
+                        val uAllUnlocked = Storage.isSkinUnlocked(uBrowsedType) &&
+                            Storage.isTailUnlocked(uBrowsedType) &&
+                            Storage.isPaddleUnlocked(bdEffectivePaddleType(uBrowsedType))
+                        // Same label convention as the separation carousel: the style name, or
+                        // "Watch Ad To Own" while any of the three pieces is still locked.
+                        val uCarouselLabel =
+                            if (uAllUnlocked) bdSkinTailName(uBrowsedType)
+                            else stringResource(Res.string.style_ad_to_own)
                         Column(
                             modifier = Modifier.fillMaxWidth().weight(1f),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -841,6 +846,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                             Box(
                                 modifier = Modifier.fillMaxWidth().weight(1f)
                                     .clip(RoundedCornerShape(16.dp)).background(controlBg)
+                                    .onSizeChanged { uCarouselWidthPx = it.width }
                             ) {
                                 HorizontalOptionCarousel(
                                     itemCount = uList.size,
@@ -855,9 +861,14 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                     val fullyUnlocked = Storage.isSkinUnlocked(t) &&
                                         Storage.isTailUnlocked(t) &&
                                         Storage.isPaddleUnlocked(bdEffectivePaddleType(t))
-                                    // Full composed ball + its contact shadow, static like the in-game
-                                    // Ball Select previews. Colours follow the cold/low preview theme.
-                                    bdDrawShadow(cx, cy, r, isDark)
+                                    // Full composed ball, static like the in-game Ball Select preview —
+                                    // including its floating contact shadow, which sits well below the
+                                    // body (not touching it). Width/height/drop mirror
+                                    // BallSelectionPopup's SHADOW_* so the two screens read the same.
+                                    val shadowColor = if (isDark) BD_WRAPPER_DARK
+                                        else Color(Palette.withAlpha(ColorTheme.Cold.inert.primary, 130))
+                                    val shW = r * 2.12f; val shH = r * 0.58f; val shCy = cy + r * 3.5f
+                                    drawOval(shadowColor, Offset(cx - shW / 2f, shCy - shH / 2f), Size(shW, shH))
                                     renderer.x = cx; renderer.y = cy; renderer.radius = r
                                     renderer.strokeWidth = Settings.strokeWidth * (r / Settings.ballRadius)
                                     renderer.effectEnabled = true
@@ -872,46 +883,62 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                             cx + r * 0.95f, cy + r * 0.95f, 26.dp.toPx())
                                     }
                                 }
+
+                                // Browsed type label — top-left of the carousel, same chip treatment
+                                // as the separation view's carousel label (not squished between rows).
+                                val uLabelShape = RoundedCornerShape(8.dp)
+                                androidx.compose.material3.Text(
+                                    text = uCarouselLabel,
+                                    color = fgColor, fontFamily = poppins, fontSize = 13.sp,
+                                    fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic, maxLines = 3,
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(6.dp)
+                                        .then(
+                                            if (uCarouselWidthPx > 0)
+                                                Modifier.widthIn(max = with(density) { uCarouselWidthPx.toDp() } - 12.dp)
+                                            else Modifier
+                                        )
+                                        .clip(uLabelShape)
+                                        .background(controlBg)
+                                        .border(2.dp, wrapperBg, uLabelShape)
+                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
                             }
 
-                            // Browsed type name (+ "Watch Ad To Own" hint when any piece is locked).
-                            val uAllUnlocked = Storage.isSkinUnlocked(uBrowsedType) &&
-                                Storage.isTailUnlocked(uBrowsedType) &&
-                                Storage.isPaddleUnlocked(bdEffectivePaddleType(uBrowsedType))
-                            androidx.compose.material3.Text(
-                                text = if (uAllUnlocked) bdSkinTailName(uBrowsedType)
-                                       else "${bdSkinTailName(uBrowsedType)} — ${stringResource(Res.string.style_ad_to_own)}",
-                                color = fgColor, fontFamily = poppins, fontSize = 13.sp,
-                                fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic,
-                                modifier = Modifier.fillMaxWidth().padding(start = 4.dp)
-                            )
-
-                            // Three piece buttons (skin / tail / paddle) for the browsed type. Same
-                            // locked/unlocked look as the separation carousel's option buttons; tap a
-                            // locked piece to watch an ad, an unlocked piece is inert.
-                            Row(
-                                modifier = Modifier.fillMaxWidth().weight(0.55f),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            // The three piece buttons (skin / tail / paddle) for the browsed type live
+                            // in ONE container — a single unified section, not three separate slots —
+                            // mirroring the separation view's single carousel box. Same locked/unlocked
+                            // look as that carousel's option buttons; tap a locked piece to watch an ad,
+                            // an unlocked piece is inert.
+                            Box(
+                                modifier = Modifier.fillMaxWidth().weight(0.55f)
+                                    .clip(RoundedCornerShape(16.dp)).background(controlBg)
                             ) {
-                                for (comp in intArrayOf(BD_SKIN, BD_TAIL, BD_PADDLE)) {
-                                    val pieceType = if (comp == BD_PADDLE) bdEffectivePaddleType(uBrowsedType) else uBrowsedType
-                                    val unlocked = bdIsUnlocked(comp, pieceType)
-                                    val pieceRenderer = remember(comp, pieceType, isDark) { bdBuildPartRenderer(comp, pieceType, theme) }
-                                    Box(
-                                        modifier = Modifier.weight(1f).fillMaxHeight()
-                                            .clip(RoundedCornerShape(14.dp)).background(controlBg)
-                                            .pointerInput(comp, pieceType, unlocked) {
-                                                detectTapGestures(onTap = { if (!unlocked) onUnifiedPieceTapped(comp, pieceType) })
+                                Row(
+                                    modifier = Modifier.fillMaxSize().padding(6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    for (comp in intArrayOf(BD_SKIN, BD_TAIL, BD_PADDLE)) {
+                                        val pieceType = if (comp == BD_PADDLE) bdEffectivePaddleType(uBrowsedType) else uBrowsedType
+                                        val unlocked = bdIsUnlocked(comp, pieceType)
+                                        val pieceRenderer = remember(comp, pieceType, isDark) { bdBuildPartRenderer(comp, pieceType, theme) }
+                                        Box(
+                                            modifier = Modifier.weight(1f).fillMaxHeight()
+                                                .pointerInput(comp, pieceType, unlocked) {
+                                                    detectTapGestures(onTap = { if (!unlocked) onUnifiedPieceTapped(comp, pieceType) })
+                                                }
+                                        ) {
+                                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                                // Draw the part at the play radius (1:1 with the
+                                                // separation carousel), not scaled up to the button.
+                                                bdDrawLockedOption(
+                                                    size.width / 2f, size.height / 2f, size.width, size.height,
+                                                    faceColor = BD_BUTTON_FILL, pressed = false,
+                                                    icon = if (unlocked) null else carouselLockPainter,
+                                                    iconAspectHW = BD_ADLOCK_ASPECT, faceStroke = BD_BUTTON_OUTLINE
+                                                ) { bdDrawPart(pieceRenderer, theme, comp, size.width / 2f, size.height / 2f, Settings.ballRadius, isDark, drawShadow = false) }
                                             }
-                                    ) {
-                                        Canvas(modifier = Modifier.fillMaxSize()) {
-                                            val rr = min(size.width, size.height) * 0.32f
-                                            bdDrawLockedOption(
-                                                size.width / 2f, size.height / 2f, size.width, size.height,
-                                                faceColor = BD_BUTTON_FILL, pressed = false,
-                                                icon = if (unlocked) null else carouselLockPainter,
-                                                iconAspectHW = BD_ADLOCK_ASPECT, faceStroke = BD_BUTTON_OUTLINE
-                                            ) { bdDrawPart(pieceRenderer, theme, comp, size.width / 2f, size.height / 2f, rr, isDark, drawShadow = false) }
                                         }
                                     }
                                 }
@@ -959,6 +986,17 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                             }
                         }
                     }
+                  }
+                  // Separation/Unification toggle floating above the control's top-left corner. OFF
+                  // (S) = the per-piece separation view; ON (U) = the unified composed-ball view. No
+                  // label — the S/U glyphs stand in for the eventual separation/unification SVGs.
+                  // Lifted clear of the control box: the toggle is 30.dp tall, so a -38.dp offset
+                  // leaves its bottom edge ~8.dp above the control's top, floating above the first
+                  // carousel instead of overlapping it. No background filler, so the orbiting preview
+                  // ball is never occluded.
+                  Box(modifier = Modifier.align(Alignment.TopStart).offset(x = 4.dp, y = (-38).dp)) {
+                      SeparationUnificationToggle(unified = unified, accent = accentBlue) { unified = !unified }
+                  }
                 }
             }
 

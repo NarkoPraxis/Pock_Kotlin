@@ -20,28 +20,40 @@ import kotlin.math.abs
 class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
 
     companion object {
-        const val CUSTOM_IDX = 9
+        const val CUSTOM_IDX = 13
         const val CUSTOM_UNLOCK_PCT = 100
 
         data class Preset(val hue: Float, val unlockPct: Int)
-        // Hues for the three default/free colors (indices 0, 4, 6) must exactly match the game's
+        // Each color is identified by its HUE; the rendered tones come from utility.SwatchPalette.
+        // Most colors use the uniform pastel pair (hsv(hue, 0.359f/0.661f, 0.961f)), so adding one is
+        // just inserting a new hue in rainbow order. Brown (25°) and Forest Green (140°) are dark,
+        // low-value colors that can't exist at that fixed value, so SwatchPalette overrides their
+        // hue with the true #8B4513 / #228B22 tones (the hue stays their unique storage id). Forest
+        // Green keeps hue 140 rather than true forest green's 120° so it doesn't collide with Green
+        // (color identity is hue-only). Lime (90°) is the midpoint of the largest hue gap
+        // (Yellow→Green), so it sits as far from its neighbors as possible.
+        // Hues for the three default/free colors (indices 0, 8, 10) must exactly match the game's
         // default player/shield hues in Storage, or those defaults resolve to "custom" and read as
         // locked. See Storage.FREE_COLOR_INDICES.
         val PRESETS: Array<Preset?> = arrayOf(
-            Preset(  0f,  0),   // Red — high player default (free)
-            Preset( 30f,  5),   // Orange
-            Preset( 60f, 15),   // Yellow
-            Preset(120f, 25),   // Green
-            Preset(202.5f, 35), // Sky Blue — low player default (free)
-            Preset(240f,  0),   // Blue
-            Preset(264f, 45),   // Purple — shield default (free)
-            Preset(300f, 55),   // Magenta
-            Preset(330f, 65),   // Pink
-            null,               // Custom
+            Preset(  0f,   0),  // 0  Red — high player default (free)
+            Preset( 25f,  10),  // 1  Brown (closest representable hue at fixed S/V)
+            Preset( 30f,   5),  // 2  Orange
+            Preset( 60f,  15),  // 3  Yellow
+            Preset( 90f,  20),  // 4  Lime (farthest from its neighbors)
+            Preset(120f,  25),  // 5  Green
+            Preset(140f,  30),  // 6  Forest Green
+            Preset(180f,  35),  // 7  Teal
+            Preset(202.5f,  0), // 8  Sky Blue — low player default (free)
+            Preset(240f,  40),  // 9  Blue
+            Preset(264f,   0),  // 10 Purple — shield default (free)
+            Preset(300f,  55),  // 11 Magenta
+            Preset(330f,  65),  // 12 Pink
+            null,               // 13 Custom
         )
     }
 
-    override val itemCount: Int = 10
+    override val itemCount: Int = 14
     override val slotW: Float get() = Settings.screenRatio * 3f
     override val cx: Float get() = Settings.middleX
 
@@ -86,9 +98,9 @@ class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
         if (isCustomSelected && isUnlocked(CUSTOM_IDX)) isCustomSliderActive = true
     }
 
-    // The three game-default colors are free: Red (0) = high player, Sky Blue (4) = low player,
-    // Purple (6) = shield. The other presets are individually ad-unlockable; the custom slider
-    // (index 9) is gated behind 100% completion. Resolved in Storage.
+    // The three game-default colors are free: Red (0) = high player, Sky Blue (8) = low player,
+    // Purple (10) = shield. The other presets are individually ad-unlockable; the custom slider
+    // (index 13) is gated behind 100% completion. Resolved in Storage.
     fun isUnlocked(index: Int): Boolean = utility.Storage.isColorUnlocked(index)
 
     fun initializeToHue(hue: Float) {
@@ -124,7 +136,7 @@ class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
         val bgColor = if (isDark) Color(0xFF0A0A14.toInt()) else Color.White
         drawRect(bgColor, topLeft = Offset(cx - halfW, centerY - halfH), size = Size(w, h))
 
-        val borderColor = Color.hsv(currentHue, 0.661f, 0.961f)
+        val borderColor = utility.SwatchPalette.secondary(currentHue)
         drawRect(borderColor,
             topLeft = Offset(cx - halfW, centerY - halfH),
             size    = Size(w, h),
@@ -254,9 +266,9 @@ class ColorCarousel(initialHue: Float = 0f) : ScrollSnapCarousel() {
                 val preset   = PRESETS[i] ?: continue
                 val unlocked = isUnlocked(i)
                 val alpha    = if (unlocked) 1f else 0.35f
-                drawCircle(Color.hsv(preset.hue, 0.359f, 0.961f).copy(alpha = alpha),
+                drawCircle(utility.SwatchPalette.primary(preset.hue).copy(alpha = alpha),
                     radius = circleRadius, center = Offset(slotCx, centerY))
-                drawCircle(Color.hsv(preset.hue, 0.661f, 0.961f).copy(alpha = alpha),
+                drawCircle(utility.SwatchPalette.secondary(preset.hue).copy(alpha = alpha),
                     radius = circleRadius, center = Offset(slotCx, centerY),
                     style = Stroke(ratio * 0.18f))
 

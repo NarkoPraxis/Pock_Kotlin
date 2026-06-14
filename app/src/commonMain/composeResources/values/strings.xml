@@ -138,9 +138,13 @@
 
     <!-- Color picker color names -->
     <string name="color_name_red">Red</string>
+    <string name="color_name_brown">Brown</string>
     <string name="color_name_orange">Orange</string>
     <string name="color_name_yellow">Yellow</string>
+    <string name="color_name_lime">Lime</string>
     <string name="color_name_green">Green</string>
+    <string name="color_name_forest_green">Forest Green</string>
+    <string name="color_name_teal">Teal</string>
     <string name="color_name_sky_blue">Sky Blue</string>
     <string name="color_name_deep_purple">Deep Purple</string>
     <string name="color_name_purple">Purple</string>

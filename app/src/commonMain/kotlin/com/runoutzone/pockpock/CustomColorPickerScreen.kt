@@ -183,8 +183,8 @@ fun CustomColorPickerScreen(onBack: () -> Unit, onNavigateToCbc: () -> Unit) {
     // ── Color application ─────────────────────────────────────────────────────
     fun applyColorsFromCarousels() {
         fun applyHue(slot: Int, hue: Float) {
-            val pri = Color.hsv(hue, 0.359f, 0.961f)
-            val sec = Color.hsv(hue, 0.661f, 0.961f)
+            val pri = utility.SwatchPalette.primary(hue)
+            val sec = utility.SwatchPalette.secondary(hue)
             when (slot) {
                 0 -> { PaintBucket.highPlayerPrimary = pri; PaintBucket.highPlayerSecondary = sec }
                 1 -> { PaintBucket.highShieldPrimary = pri; PaintBucket.highShieldSecondary = sec }
@@ -604,13 +604,13 @@ private fun DrawScope.drawCcpSlotRow(
             val pieRect  = Size(pieR * 2f, pieR * 2f)
             val pieLeft  = Offset(slotCx - pieR, slotCy - pieR)
             // Top-right: highHue (startAngle=-90, sweep=90)
-            drawArc(Color.hsv(preset.highHue,       0.661f, 0.961f), -90f, 90f, true, pieLeft, pieRect)
+            drawArc(utility.SwatchPalette.secondary(preset.highHue),       -90f, 90f, true, pieLeft, pieRect)
             // Bottom-right: highShieldHue (startAngle=0, sweep=90)
-            drawArc(Color.hsv(preset.highShieldHue, 0.661f, 0.961f),   0f, 90f, true, pieLeft, pieRect)
+            drawArc(utility.SwatchPalette.secondary(preset.highShieldHue),   0f, 90f, true, pieLeft, pieRect)
             // Bottom-left: lowHue (startAngle=90, sweep=90)
-            drawArc(Color.hsv(preset.lowHue,        0.661f, 0.961f),  90f, 90f, true, pieLeft, pieRect)
+            drawArc(utility.SwatchPalette.secondary(preset.lowHue),         90f, 90f, true, pieLeft, pieRect)
             // Top-left: lowShieldHue (startAngle=180, sweep=90)
-            drawArc(Color.hsv(preset.lowShieldHue,  0.661f, 0.961f), 180f, 90f, true, pieLeft, pieRect)
+            drawArc(utility.SwatchPalette.secondary(preset.lowShieldHue),  180f, 90f, true, pieLeft, pieRect)
         } else {
             // Empty slot: dimmed circle + "+"
             drawCircle(Color(if (isDark) 0x22FFFFFF else 0x22000000.toInt()),

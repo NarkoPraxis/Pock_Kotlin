@@ -121,9 +121,13 @@
 
     <!-- Color picker color names -->
     <string name="color_name_red">レッド</string>
+    <string name="color_name_brown">ブラウン</string>
     <string name="color_name_orange">オレンジ</string>
     <string name="color_name_yellow">イエロー</string>
+    <string name="color_name_lime">ライム</string>
     <string name="color_name_green">グリーン</string>
+    <string name="color_name_forest_green">フォレストグリーン</string>
+    <string name="color_name_teal">ティール</string>
     <string name="color_name_sky_blue">スカイブルー</string>
     <string name="color_name_deep_purple">ディープパープル</string>
     <string name="color_name_purple">パープル</string>

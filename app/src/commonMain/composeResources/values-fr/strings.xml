@@ -121,9 +121,13 @@
 
     <!-- Color picker color names -->
     <string name="color_name_red">Rouge</string>
+    <string name="color_name_brown">Marron</string>
     <string name="color_name_orange">Orange</string>
     <string name="color_name_yellow">Jaune</string>
+    <string name="color_name_lime">Vert Citron</string>
     <string name="color_name_green">Vert</string>
+    <string name="color_name_forest_green">Vert Forêt</string>
+    <string name="color_name_teal">Sarcelle</string>
     <string name="color_name_sky_blue">Bleu Ciel</string>
     <string name="color_name_deep_purple">Violet Profond</string>
     <string name="color_name_purple">Pourpre</string>

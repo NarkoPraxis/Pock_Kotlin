@@ -222,26 +222,26 @@ object PaintBucket {
 
     /**
      * Apply stored player hue selections to all player/shield color fields.
-     * Secondary: HSV(hue, 66.1%, 96.1%). Primary: HSV(hue, 35.9%, 96.1%).
-     * Call after [initialize] (and [initializePlatformColors] on iOS).
+     * Tones come from [SwatchPalette] (the standard pastel pair for most hues, or a true-colour
+     * override for Brown/Forest Green). Call after [initialize] (and [initializePlatformColors] on iOS).
      */
     fun applyPlayerHues() {
         val highHue = Storage.highPlayerColorHue
         val lowHue = Storage.lowPlayerColorHue
         val highShieldHue = Storage.highShieldColorHue
         val lowShieldHue = Storage.lowShieldColorHue
-        highPlayerSecondary = Color.hsv(highHue, 0.661f, 0.961f)
-        highPlayerPrimary = Color.hsv(highHue, 0.359f, 0.961f)
-        highPlayerPale = Color.hsv(highHue, 0.10f, 0.99f)
-        lowPlayerSecondary = Color.hsv(lowHue, 0.661f, 0.961f)
-        lowPlayerPrimary = Color.hsv(lowHue, 0.359f, 0.961f)
-        lowPlayerPale = Color.hsv(lowHue, 0.10f, 0.99f)
-        highShieldSecondary = Color.hsv(highShieldHue, 0.661f, 0.961f)
-        highShieldPrimary = Color.hsv(highShieldHue, 0.359f, 0.961f)
-        highShieldPale = Color.hsv(highShieldHue, 0.10f, 0.99f)
-        lowShieldSecondary = Color.hsv(lowShieldHue, 0.661f, 0.961f)
-        lowShieldPrimary = Color.hsv(lowShieldHue, 0.359f, 0.961f)
-        lowShieldPale = Color.hsv(lowShieldHue, 0.10f, 0.99f)
+        highPlayerSecondary = SwatchPalette.secondary(highHue)
+        highPlayerPrimary = SwatchPalette.primary(highHue)
+        highPlayerPale = SwatchPalette.pale(highHue)
+        lowPlayerSecondary = SwatchPalette.secondary(lowHue)
+        lowPlayerPrimary = SwatchPalette.primary(lowHue)
+        lowPlayerPale = SwatchPalette.pale(lowHue)
+        highShieldSecondary = SwatchPalette.secondary(highShieldHue)
+        highShieldPrimary = SwatchPalette.primary(highShieldHue)
+        highShieldPale = SwatchPalette.pale(highShieldHue)
+        lowShieldSecondary = SwatchPalette.secondary(lowShieldHue)
+        lowShieldPrimary = SwatchPalette.primary(lowShieldHue)
+        lowShieldPale = SwatchPalette.pale(lowShieldHue)
     }
 
     /**
