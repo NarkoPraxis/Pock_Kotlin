@@ -7,6 +7,7 @@ import kotlinx.cinterop.value
 import platform.AVFAudio.*
 import platform.Foundation.*
 import platform.darwin.*
+import gameobjects.Settings
 import utility.Logic
 
 actual object Sounds {
@@ -35,8 +36,25 @@ actual object Sounds {
     private var incomingPlayer: AVAudioPlayer? = null
     private var currentAmbienceName: String? = null
     private var crossfadeGeneration = 0
-    private var isPaused = false
-    private var adMuted = false
+
+    // Audio is suspended for explicit, independently-cleared reasons rather than a single
+    // sticky `isPaused`/`adMuted` pair the old design could leave stuck (a dropped ad-dismiss
+    // callback, or — the iOS-specific killer — an AVAudioSession interruption from a call/Siri/
+    // ad that stops the engine in the foreground with nothing to restart it). Each reason has a
+    // guaranteed clear path, so `audioSuspended` always reflects reality and self-heals.
+    private var adMuted = false          // a rewarded ad is on screen
+    private var appBackgrounded = false  // app went to background
+    private var interrupted = false      // AVAudioSession interruption in progress (call, Siri, ad…)
+
+    private val audioSuspended: Boolean
+        get() = adMuted || appBackgrounded || interrupted
+
+    // Safety net for a dropped ad-dismiss callback (see Android twin). dispatch_after can't be
+    // cancelled, so a generation counter invalidates a stale watchdog.
+    private var adWatchdogGen = 0
+    private const val MAX_AD_MUTE_SECS = 90.0
+
+    private var initialized = false
 
     private enum class AmbienceMode { MENU, GAME }
     private var ambienceMode: AmbienceMode? = null
@@ -56,13 +74,26 @@ actual object Sounds {
         }
 
     actual fun initialize(context: Any?) {
+        // Guard against a second call (e.g. host UIViewController recreated): re-running would
+        // attach another 10 SFX nodes to the engine and stack duplicate notification observers.
+        if (initialized) return
+        initialized = true
         setupAudioSession()
         setupSfxPool()
         loadSounds()
         registerLifecycleObservers()
     }
 
-    actual fun initializeGame() {}
+    actual fun initializeGame() {
+        // A new game only starts foregrounded, so re-assert a known-good baseline. This is the
+        // backstop guaranteeing a fresh game is never silenced by stale state from a prior ad,
+        // background, or interruption that failed to clear.
+        appBackgrounded = false
+        if (!audioSuspended) {
+            AVAudioSession.sharedInstance().setActive(true, error = null)
+            try { engine.startAndReturnError(null) } catch (_: Exception) {}
+        }
+    }
 
     private fun setupAudioSession() {
         val session = AVAudioSession.sharedInstance()
@@ -75,16 +106,53 @@ actual object Sounds {
             name = "UIApplicationDidEnterBackgroundNotification",
             `object` = null,
             queue = NSOperationQueue.mainQueue
-        ) { _ -> pauseAll() }
+        ) { _ ->
+            appBackgrounded = true
+            suspendAudio()
+        }
         NSNotificationCenter.defaultCenter.addObserverForName(
             name = "UIApplicationWillEnterForegroundNotification",
             `object` = null,
             queue = NSOperationQueue.mainQueue
         ) { _ ->
-            if (!adMuted) resumeAll()
+            appBackgrounded = false
+            resumeAudioIfAllowed()
             // Any in-progress touches were cancelled by the system while backgrounded;
             // release pointer locks so neither player stays permanently frozen.
             Logic.releaseAllPointers()
+        }
+        // AVAudioSession interruptions (incoming/declined call, Siri, alarm, another app's audio,
+        // and a rewarded ad presenting its own audio) stop the engine and deactivate the session
+        // WITHOUT backgrounding the app — so the foreground observer above never fires. Without
+        // this handler the engine stays dead and every sound is silent after the interruption ends.
+        NSNotificationCenter.defaultCenter.addObserverForName(
+            name = AVAudioSessionInterruptionNotification,
+            `object` = null,
+            queue = NSOperationQueue.mainQueue
+        ) { notification ->
+            val type = (notification?.userInfo?.get(AVAudioSessionInterruptionTypeKey) as? NSNumber)
+                ?.unsignedLongValue
+            when (type) {
+                AVAudioSessionInterruptionTypeBegan -> {
+                    interrupted = true
+                    suspendAudio()
+                }
+                AVAudioSessionInterruptionTypeEnded -> {
+                    interrupted = false
+                    resumeAudioIfAllowed()
+                }
+            }
+        }
+        // A route change (headphones plugged/unplugged, Bluetooth connect) stops AVAudioEngine.
+        // It must be restarted or all audio dies until the next cold start.
+        NSNotificationCenter.defaultCenter.addObserverForName(
+            name = AVAudioEngineConfigurationChangeNotification,
+            `object` = null,
+            queue = NSOperationQueue.mainQueue
+        ) { _ ->
+            if (!audioSuspended) {
+                try { engine.startAndReturnError(null) } catch (_: Exception) {}
+            }
         }
     }
 
@@ -170,7 +238,7 @@ actual object Sounds {
     }
 
     private fun playSfx(name: String, rate: Float = 1f, volume: Float = effectiveSfxVol) {
-        if (isPaused || adMuted) return
+        if (audioSuspended) return
         val buffer = sfxBuffers[name] ?: return
 
         val now = NSDate.timeIntervalSinceReferenceDate
@@ -248,7 +316,6 @@ actual object Sounds {
     actual fun playWeHaveAWinner() = playSfx("we_have_a_winner")
 
     actual fun playGameAmbiance() {
-        isPaused = false
         try { engine.startAndReturnError(null) } catch (_: Exception) {}
         if (ambienceMode == AmbienceMode.GAME) return
         ambienceMode = AmbienceMode.GAME
@@ -256,7 +323,6 @@ actual object Sounds {
     }
 
     actual fun playMenuAmbiance() {
-        isPaused = false
         try { engine.startAndReturnError(null) } catch (_: Exception) {}
         if (ambienceMode == AmbienceMode.MENU) {
             ambientPlayer?.let { if (!it.playing) it.play() }
@@ -302,12 +368,12 @@ actual object Sounds {
         val delay = (remaining - CROSSFADE_SECS).coerceAtLeast(0.0)
         val delayNs = (delay * 1_000_000_000.0).toLong()
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayNs), dispatch_get_main_queue()) {
-            if (!isPaused && crossfadeGeneration == gen) beginCrossfade(gen)
+            if (!audioSuspended && crossfadeGeneration == gen) beginCrossfade(gen)
         }
     }
 
     private fun beginCrossfade(gen: Int) {
-        if (isPaused || crossfadeGeneration != gen) return
+        if (audioSuspended || crossfadeGeneration != gen) return
         val name = currentAmbienceName ?: return
         val outgoing = ambientPlayer ?: return
         val url = soundUrl(name) ?: return
@@ -333,15 +399,30 @@ actual object Sounds {
     }
 
     actual fun pauseAll() {
-        isPaused = true
+        appBackgrounded = true
+        suspendAudio()
+    }
+
+    actual fun resumeAll() {
+        appBackgrounded = false
+        resumeAudioIfAllowed()
+    }
+
+    /** Pause the engine and ambient players. Idempotent; safe to call from any suspend reason. */
+    private fun suspendAudio() {
         try { engine.pause() } catch (_: Exception) {}
         ambientPlayer?.pause()
         incomingPlayer?.pause()
     }
 
-    actual fun resumeAll() {
-        if (adMuted) return
-        isPaused = false
+    /**
+     * Reactivate the session, restart the engine, and resume music — but only when no reason to
+     * stay silent remains. Called from every "clear a reason" path (resumeAll/foreground,
+     * interruption-ended, unmuteForAd). Whichever clears the last reason performs the resume,
+     * so no single path can strand the system silent.
+     */
+    private fun resumeAudioIfAllowed() {
+        if (audioSuspended) return
         AVAudioSession.sharedInstance().setActive(true, error = null)
         try { engine.startAndReturnError(null) } catch (_: Exception) {}
         ambientPlayer?.let { player ->
@@ -370,13 +451,28 @@ actual object Sounds {
 
     actual fun muteForAd() {
         adMuted = true
-        pauseAll()
+        suspendAudio()
+        // Arm the safety net in case the ad SDK never reports back.
+        val gen = ++adWatchdogGen
+        val ns = (MAX_AD_MUTE_SECS * 1_000_000_000.0).toLong()
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, ns), dispatch_get_main_queue()) {
+            if (adWatchdogGen == gen && adMuted) {
+                Settings.adIsPlaying = false
+                clearAdMute()
+            }
+        }
     }
 
     actual fun unmuteForAd() {
+        clearAdMute()
+    }
+
+    private fun clearAdMute() {
+        adWatchdogGen++   // invalidate any pending watchdog
         adMuted = false
-        isPaused = false
-        resumeAll()
+        resumeAudioIfAllowed()
+        // Revive music even if the ad's audio session fully stopped our players.
+        if (ambienceMode == AmbienceMode.MENU) playMenuAmbiance()
     }
 
     actual fun abandonAudioFocus() {

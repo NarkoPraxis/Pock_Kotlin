@@ -9,6 +9,7 @@ import android.media.SoundPool
 import android.os.Handler
 import android.os.Looper
 import com.runoutzone.pockpock.R
+import gameobjects.Settings
 
 actual object Sounds {
 
@@ -37,8 +38,26 @@ actual object Sounds {
     private enum class AmbienceMode { MENU, GAME }
     private var ambienceMode: AmbienceMode? = null
     private var audioFocusRequest: AudioFocusRequest? = null
-    private var adMuted = false
-    private var sfxPaused = false
+
+    // SFX are gated by deriving "may I play?" from the explicit reasons to be silent,
+    // rather than a single sticky `sfxPaused` boolean that the old design could leave
+    // stuck `true` forever (a dropped ad-dismiss callback or an unhandled AUDIOFOCUS_GAIN
+    // killed all SFX for the rest of the session while music kept playing). Each reason
+    // below has a guaranteed clear path, so the gate always self-heals.
+    private var adMuted = false          // a rewarded ad is on screen
+    private var appBackgrounded = false  // Activity is paused (onPause without onResume)
+    private var focusLost = false        // audio focus lost to another app
+
+    private val sfxAllowed: Boolean
+        get() = !adMuted && !appBackgrounded && !focusLost
+
+    // Safety net: AdMob does not guarantee onAdDismissed/onAdFailedToShow ever fires. If it
+    // doesn't, adMuted would otherwise stay true forever. This watchdog force-clears the ad
+    // state after longer than any real rewarded ad could run.
+    private const val MAX_AD_MUTE_MS = 90_000L
+    private var adWatchdog: Runnable? = null
+
+    private var initialized = false
 
     private const val CROSSFADE_MS = 3000L
     private const val STEP_MS = 16L
@@ -54,6 +73,12 @@ actual object Sounds {
     actual fun initialize(context: Any?) {
         val ctx = (context as Context).applicationContext
         this.context = ctx
+        // initialize() runs on every Activity onCreate, including recreate() (dark-mode toggle).
+        // The SoundPool and AudioFocusRequest live for the whole process (this is an `object`),
+        // so reloading would orphan samples, reassign IDs to not-yet-loaded samples (async load →
+        // dropped play() calls right after a recreate), and stack a second focus request. Guard it.
+        if (initialized) return
+        initialized = true
         requestAudioFocus()
         weHaveAWinnerId = load(R.raw.we_have_a_winner)
         stingerTransitionId = load(R.raw.stinger_transition)
@@ -70,7 +95,13 @@ actual object Sounds {
         gameStartSoundId = load(R.raw.game_start)
     }
 
-    actual fun initializeGame() {}
+    actual fun initializeGame() {
+        // A new game only starts when the game screen is visible and the app is foregrounded,
+        // so re-assert a known-good SFX baseline. This is the backstop that guarantees a fresh
+        // game is never silenced by stale state carried in from a prior ad / pause / focus blip.
+        appBackgrounded = false
+        if (!adMuted && !focusLost) soundPool.autoResume()
+    }
 
     private val effectiveBackgroundVol: Float
         get() {
@@ -91,9 +122,10 @@ actual object Sounds {
     }
 
     // SoundPool.autoPause() only freezes already-playing streams; new play() calls bypass it.
-    // This guard ensures no new SFX fire while the app is paused or an ad is showing.
+    // This guard ensures no new SFX fire while the app is paused, an ad is showing, or audio
+    // focus is lost. `sfxAllowed` is derived, so it can never get stuck silent.
     private fun playSfx(soundId: Int, vol: Float, rate: Float) {
-        if (sfxPaused) return
+        if (!sfxAllowed) return
         soundPool.play(soundId, vol, vol, 1, 0, rate)
     }
 
@@ -158,14 +190,9 @@ actual object Sounds {
     }
 
     actual fun pauseAll() {
-        sfxPaused = true
+        appBackgrounded = true
         soundPool.autoPause()
-        if (fadeRunnable != null) {
-            fadePauseOffset += System.currentTimeMillis() - fadeStartTime
-        }
-        cancelAllCallbacks()
-        try { if (primaryPlayer?.isPlaying == true) primaryPlayer?.pause() } catch (e: Exception) { }
-        try { if (secondaryPlayer?.isPlaying == true) secondaryPlayer?.pause() } catch (e: Exception) { }
+        pauseMusic()
     }
 
     actual fun stopAllSfx() {
@@ -175,8 +202,35 @@ actual object Sounds {
     }
 
     actual fun resumeAll() {
-        if (adMuted) return
-        sfxPaused = false
+        appBackgrounded = false
+        resumeAudioIfAllowed()
+    }
+
+    actual fun autoPauseSfx() {
+        soundPool.autoPause()
+    }
+
+    actual fun autoResumeSfx() {
+        soundPool.autoResume()
+    }
+
+    /** Pause the ambient music players, preserving crossfade progress. */
+    private fun pauseMusic() {
+        if (fadeRunnable != null) {
+            fadePauseOffset += System.currentTimeMillis() - fadeStartTime
+        }
+        cancelAllCallbacks()
+        try { if (primaryPlayer?.isPlaying == true) primaryPlayer?.pause() } catch (e: Exception) { }
+        try { if (secondaryPlayer?.isPlaying == true) secondaryPlayer?.pause() } catch (e: Exception) { }
+    }
+
+    /**
+     * Resume music + SFX only when no reason to stay silent remains. Called from every
+     * "clear a reason" path (resumeAll/onResume, AUDIOFOCUS_GAIN, unmuteForAd); whichever one
+     * clears the last reason performs the resume. No single path can strand the system.
+     */
+    private fun resumeAudioIfAllowed() {
+        if (adMuted || appBackgrounded || focusLost) return
         soundPool.autoResume()
         val pri = primaryPlayer ?: return
         val sec = secondaryPlayer
@@ -190,29 +244,37 @@ actual object Sounds {
         }
     }
 
-    actual fun autoPauseSfx() {
-        sfxPaused = true
-        soundPool.autoPause()
-    }
-
-    actual fun autoResumeSfx() {
-        sfxPaused = false
-        soundPool.autoResume()
-    }
-
     actual fun playWeHaveAWinner() =
         playSfx(weHaveAWinnerId, effectiveSfxVol, 1f)
 
     actual fun muteForAd() {
         adMuted = true
-        sfxPaused = true
-        pauseAll()
+        soundPool.autoPause()
+        pauseMusic()
+        // Arm the safety net in case the ad never reports back (see MAX_AD_MUTE_MS).
+        adWatchdog?.let { ambienceHandler.removeCallbacks(it) }
+        val w = Runnable {
+            adWatchdog = null
+            if (adMuted) {
+                // The ad SDK never delivered a dismiss/fail callback. Recover so SFX aren't
+                // silenced for the rest of the session.
+                Settings.adIsPlaying = false
+                clearAdMute()
+            }
+        }
+        adWatchdog = w
+        ambienceHandler.postDelayed(w, MAX_AD_MUTE_MS)
     }
 
     actual fun unmuteForAd() {
+        clearAdMute()
+    }
+
+    private fun clearAdMute() {
+        adWatchdog?.let { ambienceHandler.removeCallbacks(it) }
+        adWatchdog = null
         adMuted = false
-        sfxPaused = false
-        resumeAll()
+        resumeAudioIfAllowed()
         playMenuAmbiance()
     }
 
@@ -304,9 +366,19 @@ actual object Sounds {
         audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(attrs)
             .setOnAudioFocusChangeListener { focusChange ->
-                if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
-                    focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                    pauseAll()
+                when (focusChange) {
+                    AudioManager.AUDIOFOCUS_LOSS,
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                        focusLost = true
+                        soundPool.autoPause()
+                        pauseMusic()
+                    }
+                    AudioManager.AUDIOFOCUS_GAIN -> {
+                        // Without this branch, any transient focus grab (notification, Assistant,
+                        // Bluetooth blip) left focusLost stuck and silenced all SFX permanently.
+                        focusLost = false
+                        resumeAudioIfAllowed()
+                    }
                 }
             }
             .build()
