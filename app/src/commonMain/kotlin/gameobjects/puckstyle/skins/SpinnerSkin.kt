@@ -56,7 +56,10 @@ class SpinnerSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         val r = renderer.radius
         val speed = (renderer.movementPower * 0.5f).coerceIn(2f, 10f)
-        spinAngle += speed * spinDir
+        // Static UI: drive the spin off the strobe clock so the arms keep spinning in place (frame is
+        // frozen in the preview); live play accumulates per frame as before.
+        spinAngle = if (renderer.staticUiMode) renderer.strobe * 4f * spinDir
+                    else spinAngle + speed * spinDir
         val armCount = 8
         val baseTipDist = (renderer.movementPower / 30f).coerceIn(.5f, r) * r * 2f
         val ct = celebrationT

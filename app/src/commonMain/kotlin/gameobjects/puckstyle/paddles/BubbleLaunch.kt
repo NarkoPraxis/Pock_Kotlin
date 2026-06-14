@@ -25,12 +25,13 @@ class BubbleLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     )
 
     private val trailingBubbles = mutableListOf<TrailingBubble>()
-    private var spawnTimer = 0
     private var lastPaddleX = Float.NaN
     private var lastPaddleY = Float.NaN
 
     override fun drawChargingPaddle(scope: DrawScope) {
-        updateTrailingBubbles(scope)
+        // animFrame follows the strobe clock in static UI, so the bubble sim keeps ticking (and the
+        // canvas keeps repainting) even though the paddle frame is frozen in the Ball Designer.
+        updateTrailingBubbles(scope, animFrame)
         drawBubblePaddle(scope, paddleX, paddleY, chargeFillRatio, phase)
     }
 
@@ -129,11 +130,9 @@ class BubbleLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         )
     }
 
-    private fun updateTrailingBubbles(scope: DrawScope) {
-        spawnTimer++
-        if (!lastPaddleX.isNaN() && spawnTimer >= 3 && trailingBubbles.size < 15) {
+    private fun updateTrailingBubbles(scope: DrawScope, clock: Int) {
+        if (!lastPaddleX.isNaN() && clock % 3 == 0 && trailingBubbles.size < 15) {
             val r = renderer.radius
-            spawnTimer = 0
             trailingBubbles.add(TrailingBubble(
                 x = paddleX + (Random.nextFloat() - 0.5f) * r * 0.3f,
                 y = paddleY + (Random.nextFloat() - 0.5f) * r * 0.3f,

@@ -58,9 +58,18 @@ class PlasmaSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer
 
         withTransform({ translate(renderer.x, renderer.y) }) {
             drawCircle(brush = cachedBrush!!, radius = renderer.radius, center = Offset.Zero)
-            repeat(3) {
-                val a1 = Random.nextFloat() * TWO_PI
-                val a2 = a1 + (Random.nextFloat() - 0.5f) * 2
+            repeat(3) { i ->
+                // Static UI: reseed off the strobe clock so the arcs keep crackling in place (the
+                // circle geometry is frozen); reading strobe also re-invalidates the static canvas
+                // so it keeps repainting. Advance every strobe frame (no /2) and spread the seed with
+                // a multiplicative hash so consecutive frames/arcs decorrelate — otherwise sequential
+                // seeds produce near-identical "sprinkle" arcs instead of fast crackling plasma lines.
+                // Live play uses global randomness, so gameplay is unchanged.
+                val rnd = if (renderer.staticUiMode)
+                    Random(renderer.strobe.toLong() * 0x9E3779B97F4A7C15uL.toLong() + (i + 1) * 0x2545F4914F6CDD1DuL.toLong())
+                else Random
+                val a1 = rnd.nextFloat() * TWO_PI
+                val a2 = a1 + (rnd.nextFloat() - 0.5f) * 2
                 drawLine(
                     arcColor,
                     Offset(kotlin.math.cos(a1) * innerR, kotlin.math.sin(a1) * innerR),

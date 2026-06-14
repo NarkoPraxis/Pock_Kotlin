@@ -86,7 +86,8 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val sw = cachedStrokeWidth
         val descs = starDescs
         val sx = renderer.x; val sy = renderer.y
-        val baseRot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
+        // animFrame follows the strobe clock in static UI so the stars keep orbiting in place.
+        val baseRot = animFrame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
         val (stroke1, fill1) = resolveStarColors(1, phase)
 
         buildStar(sx, sy, descs[0].starRadius * .8f, baseRot)
@@ -105,7 +106,7 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val dist = paddleDistance.coerceIn(0f, renderer.radius * 5f)
         val sx = renderer.x - aimX * dist
         val sy = renderer.y - aimY * dist
-        val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
+        val rot = animFrame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
 
         val dipStart = 0.2f; val dipEnd = 0.5f
         val halfSize = renderer.radius * 0.5f
@@ -143,7 +144,7 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val ret = starReturnProgress[0]
         val sx = cx + (renderer.x - cx) * ret
         val sy = cy + (renderer.y - cy) * ret
-        val rot = frame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
+        val rot = animFrame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
 
         val (stroke0, fill0) = resolveStarColors(0, phase)
         buildStar(sx, sy, desc.starRadius, rot)

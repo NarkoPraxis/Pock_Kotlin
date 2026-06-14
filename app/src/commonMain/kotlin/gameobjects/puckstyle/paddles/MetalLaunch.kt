@@ -85,8 +85,11 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 cap = StrokeCap.Round
             )
 
-            if (ph == ChargePhase.SweetSpot) {
-                val flicker = 0.6f + 0.4f * sin(frame * 0.9f)
+            // Static UI shows the fuse already lit at zero charge (to show off the lit-fuse design);
+            // in live play it only lights in the sweet-spot window. animFrame keeps the flame
+            // flickering in the Ball Designer where the paddle frame is frozen.
+            if (ph == ChargePhase.SweetSpot || renderer.staticUiMode) {
+                val flicker = 0.6f + 0.4f * sin(animFrame * 0.9f)
                 drawCircle(
                     color = Color(Palette.withAlpha(responsivePrimary, (255 * flicker).toInt().coerceIn(0, 255))),
                     radius = halfThick,

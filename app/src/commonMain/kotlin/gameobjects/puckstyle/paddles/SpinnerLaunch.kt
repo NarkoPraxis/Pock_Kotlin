@@ -56,7 +56,10 @@ class SpinnerLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private fun drawSpinner(scope: DrawScope, cx: Float, cy: Float) {
         ensureRadiusCache()
         val speed = (renderer.movementPower * 0.5f).coerceIn(2f, 10f)
-        spinAngle += speed * spinDir
+        // Static UI: drive the spin off the strobe clock so the blades keep spinning in place (the
+        // paddle frame is frozen in the Ball Designer); live play accumulates per frame as before.
+        spinAngle = if (renderer.staticUiMode) animFrame * 4f * spinDir
+                    else spinAngle + speed * spinDir
 
         val secColor   = responsiveSecondary
         val primColor  = responsivePrimary

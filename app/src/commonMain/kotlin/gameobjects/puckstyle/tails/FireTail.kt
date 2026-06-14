@@ -87,17 +87,21 @@ class FireTail(override val renderer: PuckRenderer) : TailRenderer {
         val count = maxCount.coerceIn(18, 70)
         val last = (count - 1).coerceAtLeast(1)
         val jitter = renderer.radius * 0.6f
+        // Embers hold their swoosh positions but flicker over the strobe clock, so the static
+        // screenshot reads as fire burning in place rather than a frozen frame.
+        val clock = renderer.strobe.toFloat()
         for (i in 0 until count) {
             val ratio = i.toFloat() / last
             val base = staticSwooshPoint(ratio)
             val rnd = Random(i + 1)
             val jx = (rnd.nextFloat() - 0.5f) * jitter
             val jy = (rnd.nextFloat() - 0.5f) * jitter
-            val life = 1f - ratio
+            val flicker = 0.7f + 0.3f * kotlin.math.sin(clock * 0.18f + i * 0.7f)
+            val life = (1f - ratio) * flicker
             val c = Palette.lerpColor(colors.secondary, colors.primary, ratio)
             val size = PARTICLE_BASE_SIZE * life + baseParticleSize
             scope.drawCircle(
-                color = Color(Palette.withAlpha(c, (255f * life).toInt())),
+                color = Color(Palette.withAlpha(c, (255f * life).toInt().coerceIn(0, 255))),
                 radius = size,
                 center = Offset(base.x + jx, base.y + jy)
             )

@@ -33,7 +33,9 @@ class SpinnerTail(override val renderer: PuckRenderer) : TailRenderer {
         val history = history!!
 
         if (renderer.staticUiMode) {
-            // Static screenshot: freeze the rotation and pose the blades along the swoosh.
+            // Static UI: blades hold their swoosh positions but keep spinning in place off the strobe
+            // clock, so the screenshot reads as a tail in motion. (frame is frozen in the preview.)
+            tailRotation = renderer.strobe * 10f
             val last = (history.size - 1).coerceAtLeast(1)
             for (i in history.indices) {
                 val p = staticSwooshPoint(i.toFloat() / last)

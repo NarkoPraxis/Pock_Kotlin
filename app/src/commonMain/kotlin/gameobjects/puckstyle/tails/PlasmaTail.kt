@@ -82,8 +82,9 @@ class PlasmaTail(override val renderer: PuckRenderer) : TailRenderer {
             val b = points[i + 1]
             val ratio = i.toFloat() * nInv
             val boltAlpha = (200f * (1f - ratio)).toInt()
-            // Static UI freezes the bolt jitter (seeded per segment) so the screenshot doesn't flicker.
-            val rnd = if (renderer.staticUiMode) Random(i + 1) else Random
+            // Static UI: reseed the bolt jitter off the strobe clock so the lightning keeps crackling
+            // in place (the core dots hold their swoosh positions); live play uses global randomness.
+            val rnd = if (renderer.staticUiMode) Random((i + 1) + renderer.strobe / 2L) else Random
             val midX = (a.x + b.x) * 0.5f + (rnd.nextFloat() - 0.5f) * screenRatioJitter
             val midY = (a.y + b.y) * 0.5f + (rnd.nextFloat() - 0.5f) * screenRatioJitter
             val boltColor = Color(Palette.withAlpha(white, boltAlpha))

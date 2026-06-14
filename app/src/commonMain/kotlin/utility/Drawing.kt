@@ -67,6 +67,7 @@ object Drawing {
         drawChargeFill()
         if (!Settings.isDemoMode) with(Effects) { drawEffects() }
         drawPlayersCompose()
+        if (!Settings.isDemoMode) with(Effects) { drawPriorityEffects() }
         drawWalls()
         if (!Settings.isDemoMode) drawTimer()
         drawAimArrows()

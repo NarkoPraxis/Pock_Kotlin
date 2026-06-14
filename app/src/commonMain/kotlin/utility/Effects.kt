@@ -20,19 +20,35 @@ object Effects {
     private val persistentEffects = mutableListOf<PersistentEffect>()
     private val pendingEffects = mutableListOf<PersistentEffect>()
 
+    // Priority effects draw in front of the balls (via drawPriorityEffects, called after the
+    // players are drawn) rather than behind them like regular persistent effects. Used for the rare
+    // case where an effect must overlay its own skin — e.g. the dragon's victory fire breath.
+    private val priorityEffects = mutableListOf<PersistentEffect>()
+    private val pendingPriorityEffects = mutableListOf<PersistentEffect>()
+
     fun addPersistentEffect(effect: PersistentEffect) {
         pendingEffects.add(effect)
+    }
+
+    fun addPriorityEffect(effect: PersistentEffect) {
+        pendingPriorityEffects.add(effect)
     }
 
     fun clearPersistentEffects() {
         persistentEffects.clear()
         pendingEffects.clear()
+        priorityEffects.clear()
+        pendingPriorityEffects.clear()
     }
 
     fun signalScored() {
         val iter = persistentEffects.iterator()
         while (iter.hasNext()) {
             if (!iter.next().onScoreSignal()) iter.remove()
+        }
+        val priorityIter = priorityEffects.iterator()
+        while (priorityIter.hasNext()) {
+            if (!priorityIter.next().onScoreSignal()) priorityIter.remove()
         }
     }
 
@@ -62,6 +78,21 @@ object Effects {
             val c = collIter.next()
             with(c) { drawTo() }
             if (c.finished) collIter.remove()
+        }
+    }
+
+    /** Draws effects that must overlay the balls. Called after the players are drawn. */
+    fun DrawScope.drawPriorityEffects() {
+        val iter = priorityEffects.iterator()
+        while (iter.hasNext()) {
+            val e = iter.next()
+            e.step()
+            e.draw(this)
+            if (e.isDone) iter.remove()
+        }
+        if (pendingPriorityEffects.isNotEmpty()) {
+            priorityEffects.addAll(pendingPriorityEffects)
+            pendingPriorityEffects.clear()
         }
     }
 

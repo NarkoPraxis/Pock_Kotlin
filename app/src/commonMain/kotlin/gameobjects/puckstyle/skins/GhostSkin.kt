@@ -163,8 +163,10 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
         val radiusOffset = radiusOffset(renderer)
         val center = Offset(renderer.x, renderer.y)
 
-        val framePhase = renderer.frame * 0.04f
-        val innerFramePhase = renderer.frame * 0.025f
+        // Strobe (not frame) so the aura keeps breathing in a static UI preview, where geometry is
+        // frozen but the strobe clock keeps ticking; in live play strobe == frame, so play is unchanged.
+        val framePhase = renderer.strobe * 0.04f
+        val innerFramePhase = renderer.strobe * 0.025f
 
         for (ring in auraRings) {
             val sinVal = sin(framePhase + ring.phase)

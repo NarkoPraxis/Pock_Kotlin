@@ -29,6 +29,15 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
     /** When true, the frame counter does not advance — keeps paddle fully static. */
     var frozen: Boolean = false
 
+    /**
+     * Animation clock for in-place paddle cosmetics. In [PuckRenderer.staticUiMode] the paddle's
+     * [frame] is held frozen (effect.frozen = true) so the geometry parks still in the Ball Designer;
+     * this returns the ever-advancing [PuckRenderer.strobe] (driven by UiStrobeClock) instead, so
+     * paddles that opt in keep animating there. Reading it during draw also re-invalidates the static
+     * canvas. In live play it is just [frame], so gameplay rendering is unchanged.
+     */
+    protected val animFrame: Int get() = if (renderer.staticUiMode) renderer.strobe else frame
+
     /** When true (carousel display), the paddle is forced to draw at the ball center. */
     var cbcCarouselMode: Boolean = false
 

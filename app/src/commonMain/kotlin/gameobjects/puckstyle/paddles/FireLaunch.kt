@@ -78,12 +78,14 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     private fun drawFireball(scope: DrawScope, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
-        val jitter = 1f + 0.08f * sin(frame * 0.9f)
+        // animFrame follows the strobe clock in static UI, so the fireball keeps breathing and its
+        // spark tail keeps streaming in place even though the paddle frame is frozen.
+        val jitter = 1f + 0.08f * sin(animFrame * 0.9f)
         val outerR = BASE_SIZE * jitter
         scope.drawCircle(Color(responsiveSecondary), outerR, Offset(cx, cy))
         if (fill > 0f) {
             val coreColor = if (ph == ChargePhase.SweetSpot) theme.shield.primary else responsivePrimary
-            val pulse = if (ph == ChargePhase.SweetSpot) 0.8f + 0.2f * sin(frame * 0.4f) else 1f
+            val pulse = if (ph == ChargePhase.SweetSpot) 0.8f + 0.2f * sin(animFrame * 0.4f) else 1f
             scope.drawCircle(
                 Color(Palette.withAlpha(coreColor, (255 * pulse).toInt().coerceIn(0, 255))),
                 outerR * 0.6f * fill,

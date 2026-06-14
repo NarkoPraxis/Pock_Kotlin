@@ -183,7 +183,9 @@ class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
 
         val outerRBase = renderer.radius * 0.12f
         val primaryColor = lastColors.primary
-        val frameF = renderer.frame.toFloat()
+        // Strobe (not frame) so stars keep twinkling and drifting in a static UI preview; in live
+        // play strobe == frame, so gameplay rendering is unchanged.
+        val frameF = renderer.strobe.toFloat()
         for (seed in starSeeds) {
             seed[0] += seed[3]
             val ang = seed[0]

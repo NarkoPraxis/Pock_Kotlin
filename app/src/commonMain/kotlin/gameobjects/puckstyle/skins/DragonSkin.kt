@@ -15,11 +15,14 @@ import androidx.compose.ui.graphics.painter.Painter
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import gameobjects.Settings
 import physics.Point
+import utility.Effects
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
@@ -808,6 +811,18 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
     override fun onVictory(x: Float, y: Float) {
         animLoop = true
         startAnim(DragonAnim.Celebration)
+        // Instead of scattered fireworks, the dragon exhales a torrent of fire from his mouth.
+        // The mouth opens during Celebration, so the breath reads as coming straight from it.
+        // Local +y is the mouth direction; the high player is mirrored, so the screen direction
+        // and the small face-follow x-offset both flip.
+        val rad = renderer.radius
+        val dirSign = if (renderer.isHigh) -1f else 1f
+        val mouthX = renderer.x + (if (renderer.isHigh) -faceOffX else faceOffX)
+        val mouthY = renderer.y + dirSign * rad * MOUTH_OFFSET_Y_K
+        // Priority effect so the breath overlays the dragon's body instead of drawing behind it.
+        Effects.addPriorityEffect(
+            DragonFireBreath(mouthX, mouthY, dirSign, rad, responsivePrimary, responsiveSecondary)
+        )
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────
@@ -822,6 +837,89 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         sin(min(frame, duration) / duration * HALF_PI)
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+
+    // ── fire breath ──────────────────────────────────────────────────────────────
+
+    /**
+     * A sustained cone of fire streaming out of the dragon's mouth. Particles are emitted over the
+     * first [emitFrames] (so back-to-back victory pulses chain into one continuous jet), shoot out
+     * along the head-facing axis with a cone spread, then decelerate, curl back, cool, and fade.
+     * Mirrors FireSkin's spark-particle approach but shaped as a directional breath rather than a
+     * radial burst.
+     */
+    private class DragonFireBreath(
+        private val ox: Float, private val oy: Float,
+        private val dirSign: Float,
+        private val radius: Float,
+        private val primary: Int, private val secondary: Int
+    ) : Effects.PersistentEffect {
+
+        private class Spark(
+            var x: Float, var y: Float, var vx: Float, var vy: Float,
+            var life: Float, val decay: Float, val baseSize: Float, val spreadAbs: Float
+        )
+
+        private val sparks = ArrayDeque<Spark>()
+        private var frame = 0
+        private val emitFrames = 16
+        // Breath axis points along the mouth direction: +90° (screen down) or -90° (screen up).
+        private val axisAngle = dirSign * (PI / 2.0).toFloat()
+        private val coneHalf = 0.5f       // ~29° half-angle cone
+        private val buoyancy = radius * 0.004f
+        override var isDone = false
+            private set
+
+        private fun emit() {
+            repeat(4) {
+                val spread = Random.nextFloat() * 2f - 1f
+                val spreadAbs = abs(spread)
+                val ang = axisAngle + spread * coneHalf
+                // Narrow (core) sparks fly fastest; wide (billow) sparks lag and fan out.
+                val speed = radius * (0.16f + (1f - spreadAbs) * 0.26f + Random.nextFloat() * 0.08f)
+                val jx = (Random.nextFloat() - 0.5f) * radius * 0.30f
+                val jy = (Random.nextFloat() - 0.5f) * radius * 0.30f
+                sparks.addLast(
+                    Spark(
+                        ox + jx, oy + jy,
+                        cos(ang) * speed, sin(ang) * speed,
+                        1f,
+                        0.020f + Random.nextFloat() * 0.012f,
+                        radius * (0.22f + spreadAbs * 0.30f),
+                        spreadAbs
+                    )
+                )
+            }
+        }
+
+        override fun step() {
+            frame++
+            if (frame <= emitFrames) emit()
+            var i = 0
+            while (i < sparks.size) {
+                val s = sparks[i]
+                s.x += s.vx; s.y += s.vy
+                s.vx *= 0.93f; s.vy *= 0.93f
+                // Flame tips curl back toward the head as they slow and cool.
+                s.vy -= dirSign * buoyancy
+                s.life -= s.decay
+                if (s.life <= 0f) { sparks.removeAt(i); continue }
+                i++
+            }
+            if (frame > 90 || (frame > emitFrames && sparks.isEmpty())) isDone = true
+        }
+
+        override fun draw(scope: DrawScope) {
+            for (s in sparks) {
+                // Hot core (primary) near the mouth fades to cooler secondary at the cone edges
+                // and as each spark ages.
+                val colorT = (s.spreadAbs * 0.5f + (1f - s.life) * 0.6f).coerceIn(0f, 1f)
+                val c = Palette.lerpColor(primary, secondary, colorT)
+                val alpha = (235f * s.life * s.life).toInt().coerceIn(0, 255)
+                val sz = (s.baseSize * (1.15f - s.life * 0.35f)).coerceAtLeast(1f)
+                scope.drawCircle(Color(Palette.withAlpha(c, alpha)), sz, Offset(s.x, s.y))
+            }
+        }
+    }
 
     companion object {
         private val HALF_PI = (PI / 2.0).toFloat()

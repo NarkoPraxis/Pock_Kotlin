@@ -99,6 +99,9 @@ class GalaxyTail(override val renderer: PuckRenderer) : TailRenderer {
         val count = cap.coerceIn(24, 80)
         val last = (count - 1).coerceAtLeast(1)
         val jitter = renderer.radius * 1.2f
+        // Stars hold their swoosh positions but twinkle over the strobe clock, so the static
+        // screenshot reads as a trail in motion rather than a frozen frame.
+        val clock = renderer.strobe.toFloat()
         for (i in 0 until count) {
             val ratio = i.toFloat() / last
             val base = staticSwooshPoint(ratio)
@@ -106,7 +109,9 @@ class GalaxyTail(override val renderer: PuckRenderer) : TailRenderer {
             val sx = base.x + (rnd.nextFloat() - 0.5f) * jitter
             val sy = base.y + (rnd.nextFloat() - 0.5f) * jitter
             val life = 1f - ratio
-            val twinkle = 0.7f + 0.3f * rnd.nextFloat()
+            val twSpeed = 0.12f + rnd.nextFloat() * 0.16f
+            val twSeed = rnd.nextFloat() * TAU
+            val twinkle = 0.7f + 0.3f * sin(clock * twSpeed + twSeed)
             val outerR = outerRBase * life * twinkle
             val innerR = outerR * 0.38f
             val alpha = (255f * life).toInt()

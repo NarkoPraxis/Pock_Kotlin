@@ -79,9 +79,12 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         ensureBrush(cx, cy, medRadius)
         val brush = cachedBrush ?: return
         scope.drawCircle(brush, medRadius, Offset(cx, cy))
+        // Static UI: reseed the arcs off the strobe clock each tick so the lightning keeps crackling
+        // in place (frame is frozen); live play keeps the global per-frame randomness.
+        val arcRng = if (renderer.staticUiMode) Random(animFrame * 2654435761L) else Random
         repeat(3) {
-            val a1 = Random.nextFloat() * TWO_PI
-            val a2 = a1 + (Random.nextFloat() - 0.5f) * 2f
+            val a1 = arcRng.nextFloat() * TWO_PI
+            val a2 = a1 + (arcRng.nextFloat() - 0.5f) * 2f
             scope.drawLine(
                 color = Color(Palette.WHITE),
                 start = Offset(cx + cos(a1) * smallRadius, cy + sin(a1) * smallRadius),
