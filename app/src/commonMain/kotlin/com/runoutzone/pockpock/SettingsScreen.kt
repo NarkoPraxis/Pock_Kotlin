@@ -251,11 +251,11 @@ fun SettingsScreen(
 
                     CircleRadioRow(
                         strGameSpeed,
-                        listOf(24 to strSlow, 16 to strDefault, 8 to strFast),
+                        listOf(20 to strSlow, 16 to strDefault, 12 to strFast),
                         gameSpeed, circleD, poppins
                     ) {
                         gameSpeed = it
-                        val key = when (it) { 24 -> "small"; 8 -> "large"; else -> "default" }
+                        val key = when (it) { 20 -> "small"; 12 -> "large"; else -> "default" }
                         PlatformStorage.saveString("settings", "game_speed", key)
                     }
 

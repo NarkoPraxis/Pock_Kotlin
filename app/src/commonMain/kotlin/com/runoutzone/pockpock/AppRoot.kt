@@ -16,7 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavController
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -43,6 +45,33 @@ import utility.edgeSwipeBack
 val LocalDarkMode = compositionLocalOf { false }
 
 private enum class Screen { MainMenu, Game, Settings, ScoreCalibration, BallDesigner, BallDesignerColor, CustomBallCreator, CustomColorPicker }
+
+/**
+ * Navigation guarded against rapid double-taps.
+ *
+ * Compose dispatches click events per-frame, and during a nav transition both the leaving and
+ * entering destinations are briefly composed (so their buttons are both hit-testable). The settings
+ * button and the Settings screen's back button occupy the same bottom-left corner, so rapidly
+ * tapping that spot can fire a second [popBackStack] mid-transition — popping the start destination
+ * (MainMenu) off an otherwise-empty back stack. The NavHost is then left with nothing to render
+ * (the menu chrome vanishes) while [MenuDemoCanvas], which lives *outside* the NavHost and is keyed
+ * on `isOnMainMenu`, keeps drawing with its blur. That is the "soft lock" the menu can't recover
+ * from. Likewise, a double-tap on a navigate button can push the same destination twice.
+ *
+ * A navigation action is only honored when the current destination is fully [Lifecycle.State.RESUMED]
+ * (i.e. no transition is in flight); taps that arrive mid-transition are dropped. This is the
+ * standard debounce for Compose Navigation.
+ */
+private fun NavController.isTransitionIdle(): Boolean =
+    currentBackStackEntry?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) == true
+
+private fun NavController.navigateIfIdle(route: String, builder: NavOptionsBuilder.() -> Unit = {}) {
+    if (isTransitionIdle()) navigate(route, builder)
+}
+
+private fun NavController.popBackStackIfIdle() {
+    if (isTransitionIdle()) popBackStack()
+}
 
 @Composable
 fun AppRoot() {
@@ -111,16 +140,16 @@ fun AppRoot() {
                             Settings.isDemoMode = false
                             Settings.isSinglePlayer = false
                             Sounds.playGameAmbiance()
-                            navController.navigate(Screen.Game.name)
+                            navController.navigateIfIdle(Screen.Game.name)
                         },
                         onSinglePlayerTapped = { showDifficultyDialog = true },
                         onSettingsTapped = {
                             Settings.isDemoMode = false
-                            navController.navigate(Screen.Settings.name)
+                            navController.navigateIfIdle(Screen.Settings.name)
                         },
                         onCustomBallTapped = {
                             Settings.isDemoMode = false
-                            navController.navigate(Screen.BallDesigner.name)
+                            navController.navigateIfIdle(Screen.BallDesigner.name)
                         },
                         onZenTapped = { zenMode = true },
                         zenMode = zenMode,
@@ -128,27 +157,27 @@ fun AppRoot() {
                     )
                 }
                 composable(Screen.Game.name) {
-                    IosGameHost(onBack = { navController.popBackStack() })
+                    IosGameHost(onBack = { navController.popBackStackIfIdle() })
                 }
                 composable(Screen.Settings.name) {
-                    Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStack() }) {
+                    Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStackIfIdle() }) {
                         SettingsScreen(
-                            onBack = { navController.popBackStack() },
+                            onBack = { navController.popBackStackIfIdle() },
                             onDarkModeChanged = { darkMode = it },
-                            onScoreCalibrationTapped = { navController.navigate(Screen.ScoreCalibration.name) }
+                            onScoreCalibrationTapped = { navController.navigateIfIdle(Screen.ScoreCalibration.name) }
                         )
                     }
                 }
                 composable(Screen.ScoreCalibration.name) {
-                    Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStack() }) {
-                        ScoreCalibrationScreen(onBack = { navController.popBackStack() })
+                    Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStackIfIdle() }) {
+                        ScoreCalibrationScreen(onBack = { navController.popBackStackIfIdle() })
                     }
                 }
                 composable(Screen.BallDesigner.name) {
                     BallDesignerScreen(
-                        onBack = { navController.popBackStack() },
+                        onBack = { navController.popBackStackIfIdle() },
                         onNavigateToColor = {
-                            navController.navigate(Screen.BallDesignerColor.name) {
+                            navController.navigateIfIdle(Screen.BallDesignerColor.name) {
                                 popUpTo(Screen.MainMenu.name) { inclusive = false }
                             }
                         }
@@ -156,9 +185,9 @@ fun AppRoot() {
                 }
                 composable(Screen.BallDesignerColor.name) {
                     BallDesignerColorScreen(
-                        onBack = { navController.popBackStack() },
+                        onBack = { navController.popBackStackIfIdle() },
                         onNavigateToStyle = {
-                            navController.navigate(Screen.BallDesigner.name) {
+                            navController.navigateIfIdle(Screen.BallDesigner.name) {
                                 popUpTo(Screen.MainMenu.name) { inclusive = false }
                             }
                         }
@@ -166,9 +195,9 @@ fun AppRoot() {
                 }
                 composable(Screen.CustomBallCreator.name) {
                     CustomBallCreatorScreen(
-                        onBack = { navController.popBackStack() },
+                        onBack = { navController.popBackStackIfIdle() },
                         onNavigateToCcp = {
-                            navController.navigate(Screen.CustomColorPicker.name) {
+                            navController.navigateIfIdle(Screen.CustomColorPicker.name) {
                                 popUpTo(Screen.MainMenu.name) { inclusive = false }
                             }
                         }
@@ -176,9 +205,9 @@ fun AppRoot() {
                 }
                 composable(Screen.CustomColorPicker.name) {
                     CustomColorPickerScreen(
-                        onBack = { navController.popBackStack() },
+                        onBack = { navController.popBackStackIfIdle() },
                         onNavigateToCbc = {
-                            navController.navigate(Screen.CustomBallCreator.name) {
+                            navController.navigateIfIdle(Screen.CustomBallCreator.name) {
                                 popUpTo(Screen.MainMenu.name) { inclusive = false }
                             }
                         }
@@ -205,7 +234,7 @@ fun AppRoot() {
                                 Settings.isSinglePlayer = true
                                 showDifficultyDialog = false
                                 Sounds.playGameAmbiance()
-                                navController.navigate(Screen.Game.name)
+                                navController.navigateIfIdle(Screen.Game.name)
                             }) {
                                 Text(label, color = PaintBucket.white)
                             }
