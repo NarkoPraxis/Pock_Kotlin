@@ -27,22 +27,22 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
     )
 
     override fun onCollisionWin(position: Point, speed: Float) {
-        GhostLaunch.spawnImpact(position.x, position.y, renderer.radius * .4f, theme.main.primary, renderer)
+        GhostLaunch.spawnImpact(position.x, position.y, renderer.radius * .4f, renderer.bakedPrimary(theme.main.primary), renderer)
     }
 
     override fun onShieldedCollision(position: Point) {
-        GhostLaunch.spawnImpact(position.x, position.y, renderer.radius * .6f, theme.shield.primary, renderer)
+        GhostLaunch.spawnImpact(position.x, position.y, renderer.radius * .6f, renderer.bakedPrimary(theme.shield.primary), renderer)
     }
 
     override val explosionFrequency get() = 35
     override val scatterDensity get() = 1.2f
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(SpiritCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, color = theme.main.secondary))
+        Effects.addPersistentEffect(SpiritCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, color = renderer.bakedSecondary(theme.main.secondary)))
     }
 
     override fun onVictory(x: Float, y: Float) {
-        Effects.addPersistentEffect(SpiritCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true, color = theme.main.secondary))
+        Effects.addPersistentEffect(SpiritCelebration(x, y, renderer.radius, highGoal = true, fullCircle = true, color = renderer.bakedSecondary(theme.main.secondary)))
     }
 
     private class SpiritCelebration(

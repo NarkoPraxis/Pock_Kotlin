@@ -75,6 +75,11 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     private fun resolveStarColors(starIndex: Int, ph: ChargePhase): Pair<Int, Int> {
+        // Under a rainbow override the body follows the responsive group so the stars strobe with
+        // the ball (this is what was missing — Galaxy read theme.* directly and never cycled).
+        if (renderer.responsiveIsRainbow) {
+            return Pair(renderer.responsiveColorGroup.secondary, renderer.responsiveColorGroup.primary)
+        }
         if (renderer.shielded && phase == ChargePhase.Idle) return Pair(theme.shield.secondary, theme.shield.primary)
         if (renderer.isInert) return Pair(theme.inert.secondary, theme.inert.primary)
         if (ph == ChargePhase.Inert) return Pair(theme.inert.secondary, theme.inert.primary)
@@ -127,7 +132,7 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         scope.drawPath(outerPath, Color(fill2))
         scope.drawPath(outerPath, Color(stroke2), style = Stroke(width = sw))
-        scope.drawPath(chargePath, Color(theme.shield.primary))
+        scope.drawPath(chargePath, Color(renderer.invertedChargeColor(theme.shield.primary)))
     }
 
     override fun drawStrikingPaddle(
@@ -155,7 +160,8 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(NebulaMark(rx, ry, renderer.radius, theme.shield.primary, theme.shield.secondary))
+        Effects.addPersistentEffect(NebulaMark(rx, ry, renderer.radius,
+            renderer.bakedPrimary(theme.shield.primary), renderer.bakedSecondary(theme.shield.secondary)))
     }
 
     companion object {

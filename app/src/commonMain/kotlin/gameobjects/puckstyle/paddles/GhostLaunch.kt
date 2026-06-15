@@ -52,7 +52,7 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         tailXs[0] = paddleX; tailYs[0] = paddleY
 
         drawGhostOrb(scope, paddleX, paddleY)
-        drawGhostTail(scope, tailXs, tailYs, tailSize, orbRadius, responsivePrimary, chargeFillRatio, theme.shield.primary)
+        drawGhostTail(scope, tailXs, tailYs, tailSize, orbRadius, responsivePrimary, chargeFillRatio, renderer.invertedChargeColor(theme.shield.primary))
     }
 
     override fun drawStrikingPaddle(
@@ -73,7 +73,7 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val frameF = frame.toFloat()
         val pulse = 0.88f + 0.12f * sin(frameF * 0.18f)
         val r = orbRadius * pulse
-        val glowColor = if (phase == ChargePhase.SweetSpot) theme.shield.primary else responsivePrimary
+        val glowColor = if (phase == ChargePhase.SweetSpot) renderer.invertedChargeColor(theme.shield.primary) else responsivePrimary
         val sw = baseSw
         val center = Offset(cx, cy)
 
@@ -95,13 +95,14 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         scope.drawCircle(Color(glowWhite160), innerR, center, style = Stroke(width = sw * 0.7f))
 
         if (chargeFillRatio > 0f) {
-            val chargeColor = Palette.lerpColor(theme.shield.primary, theme.shield.secondary, sin(frameF * 0.25f) * 0.5f + 0.5f)
+            val baseCharge = Palette.lerpColor(theme.shield.primary, theme.shield.secondary, sin(frameF * 0.25f) * 0.5f + 0.5f)
+            val chargeColor = renderer.invertedChargeColor(baseCharge)
             scope.drawCircle(Color(chargeColor), r * chargeFillRatio, center)
         }
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(GhostSpirit(rx, ry, renderer.radius * 0.5f, theme.shield.primary, renderer))
+        Effects.addPersistentEffect(GhostSpirit(rx, ry, renderer.radius * 0.5f, renderer.bakedPrimary(theme.shield.primary), renderer))
     }
 
     companion object {

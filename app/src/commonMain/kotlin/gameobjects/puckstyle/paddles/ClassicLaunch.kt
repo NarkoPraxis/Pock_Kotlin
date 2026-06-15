@@ -13,7 +13,7 @@ import utility.Effects
 class ClassicLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(ClassicResidual(rx, ry, renderer.radius, theme.main.primary))
+        Effects.addPersistentEffect(ClassicResidual(rx, ry, renderer.radius, renderer.bakedPrimary(theme.main.primary)))
     }
 
     private class ClassicResidual(

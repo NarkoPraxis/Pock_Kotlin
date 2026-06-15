@@ -793,7 +793,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         startAnim(PokPokAnim.Chatter)
         Effects.addPersistentEffect(
             FeatherCelebration(position.x, position.y, renderer.radius, highGoal,
-                theme.main.primary, theme.main.secondary, fullCircle = false)
+                renderer.bakedPrimary(theme.main.primary), renderer.bakedSecondary(theme.main.secondary), fullCircle = false)
         )
     }
 
@@ -806,7 +806,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         startAnim(PokPokAnim.Celebration)
         Effects.addPersistentEffect(
             FeatherCelebration(x, y, renderer.radius, highGoal = true,
-                theme.main.primary, theme.main.secondary, fullCircle = true)
+                renderer.bakedPrimary(theme.main.primary), renderer.bakedSecondary(theme.main.secondary), fullCircle = true)
         )
     }
 

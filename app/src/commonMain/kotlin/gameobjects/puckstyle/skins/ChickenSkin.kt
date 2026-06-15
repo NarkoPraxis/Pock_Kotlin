@@ -572,7 +572,7 @@ class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         startAnim(ChickenAnim.Taunt)
-        Effects.addPersistentEffect(FeatherCelebration(position.x, position.y, renderer.radius, highGoal, theme.main.primary, theme.main.secondary, fullCircle = false))
+        Effects.addPersistentEffect(FeatherCelebration(position.x, position.y, renderer.radius, highGoal, renderer.bakedPrimary(theme.main.primary), renderer.bakedSecondary(theme.main.secondary), fullCircle = false))
     }
 
     override fun onScored() {
@@ -582,7 +582,7 @@ class ChickenSkin(override val renderer: PuckRenderer) : PuckSkin {
     override fun onVictory(x: Float, y: Float) {
         animLoop = true
         startAnim(ChickenAnim.Celebration)
-        Effects.addPersistentEffect(FeatherCelebration(x, y, renderer.radius, highGoal = true, theme.main.primary, theme.main.secondary, fullCircle = true))
+        Effects.addPersistentEffect(FeatherCelebration(x, y, renderer.radius, highGoal = true, renderer.bakedPrimary(theme.main.primary), renderer.bakedSecondary(theme.main.secondary), fullCircle = true))
     }
 
     private class FeatherCelebration(

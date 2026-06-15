@@ -337,21 +337,20 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
         val thickness = paddleThickness()
 
         val isInert = renderer.isInert || ph == ChargePhase.Inert
-        val stateColors = when {
-            isInert -> theme.inert
-            renderer.shielded -> theme.shield
-            else -> theme.main
-        }
+        // Body reads the responsive group (strobes with the puck under a rainbow override). The
+        // `responsiveSecondary` helper already resolves inert internally; renderer.draw() has
+        // resolved shield-vs-main into the group, so this stays in lockstep with the ball.
         val hitStunBlend = renderer.hitStunned && !isInert
         val hitStunR = if (hitStunBlend) renderer.hitStunRatio else 0f
         val baseColor = when {
-            hitStunBlend -> blendColor(stateColors.secondary, theme.inert.secondary, hitStunR)
-            else -> stateColors.secondary
+            hitStunBlend -> blendColor(responsiveSecondary, theme.inert.secondary, hitStunR)
+            else -> responsiveSecondary
         }
+        // Charge fill inverts the body's hue under rainbow so it stays visible over the bar.
         val chargeColor = if (hitStunBlend)
-            blendColor(theme.shield.primary, theme.inert.primary, hitStunR)
+            blendColor(renderer.invertedChargeColor(theme.shield.primary), theme.inert.primary, hitStunR)
         else
-            theme.shield.primary
+            renderer.invertedChargeColor(theme.shield.primary)
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
 
         scope.drawLine(

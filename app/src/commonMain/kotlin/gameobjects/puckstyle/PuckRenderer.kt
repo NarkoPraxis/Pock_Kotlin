@@ -3,6 +3,7 @@ package gameobjects.puckstyle
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.toArgb
 import gameobjects.Settings
 import utility.Sounds
 import utility.UiStrobeClock
@@ -30,6 +31,40 @@ class PuckRenderer(var theme: ColorTheme) {
     var strokeWidth: Float = Settings.strokeWidth
 
     var responsiveColorGroup: ColorGroup = theme.main
+
+    /**
+     * Whether [responsiveColorGroup] is currently a [RainbowOverride] strobe (set each [draw]).
+     * Read by elements that need the *live* rainbow colour without re-deriving the gating: the
+     * paddle's inverted charge fill, and effect-spawn sites that bake the current rainbow colour.
+     */
+    var responsiveIsRainbow: Boolean = false
+        private set
+
+    /** The hue driving [responsiveColorGroup] this frame; only meaningful when [responsiveIsRainbow]. */
+    var responsiveHue: Float = 0f
+        private set
+
+    /**
+     * Bake the current rainbow colour for an effect that should hold it for its whole lifetime
+     * (persistent residuals, score bursts, collision rings, the metal blast scorch, …). Returns
+     * [fallback] (the configured theme colour) when this puck isn't strobing, so non-rainbow
+     * behaviour is unchanged.
+     */
+    fun bakedPrimary(fallback: Int): Int =
+        if (responsiveIsRainbow) RainbowOverride.primaryColor(responsiveHue).toArgb() else fallback
+
+    fun bakedSecondary(fallback: Int): Int =
+        if (responsiveIsRainbow) RainbowOverride.secondaryColor(responsiveHue).toArgb() else fallback
+
+    /**
+     * A charge / fill colour that strobes at the *inverted* hue of the puck body, so the fill stays
+     * visible over the (same-hue) strobing paddle bar. Returns [fallback] (the configured charge
+     * colour, usually shield primary) when not strobing.
+     */
+    fun invertedChargeColor(fallback: Int): Int =
+        if (responsiveIsRainbow)
+            RainbowOverride.primaryColor(RainbowOverride.invertedHue(responsiveHue)).toArgb()
+        else fallback
 
     private val layerOrder = ArrayList<Any>(3)
 
@@ -164,7 +199,11 @@ class PuckRenderer(var theme: ColorTheme) {
         // Rainbow override: replace the live colour group (once per draw) with a synced strobing one
         // so every component reading the responsive group cycles together. Inert never strobes.
         if (!isInert && (if (shielded) rainbowShield else rainbowMain)) {
+            responsiveHue = RainbowOverride.hue(isHigh, strobe)
             responsiveColorGroup = RainbowOverride.group(isHigh, strobe)
+            responsiveIsRainbow = true
+        } else {
+            responsiveIsRainbow = false
         }
 
         for (layer in layerOrder) {

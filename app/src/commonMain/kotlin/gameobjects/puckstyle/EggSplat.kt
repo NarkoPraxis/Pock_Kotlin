@@ -18,7 +18,8 @@ class EggSplat(
     val cx: Float,
     val cy: Float,
     val radius: Float,
-    val theme: ColorTheme
+    // Yolk colour, baked at spawn (rainbow-resolved when the puck was strobing).
+    val yolkColor: Int
 ) {
     private var frame = 0
     val isDone get() = false
@@ -92,7 +93,7 @@ class EggSplat(
         val yolkCy = cy + yolkDy
         scope.withTransform({ rotate(yolkRot, pivot = Offset(yolkCx, yolkCy)) }) {
             drawOval(
-                color = Color(Palette.withAlpha(theme.main.primary, alpha)),
+                color = Color(Palette.withAlpha(yolkColor, alpha)),
                 topLeft = Offset(yolkCx - yolkRx, yolkCy - yolkRy),
                 size = Size(yolkRx * 2, yolkRy * 2)
             )

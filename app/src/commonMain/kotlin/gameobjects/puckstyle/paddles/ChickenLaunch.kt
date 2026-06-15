@@ -59,7 +59,7 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             )
             if (fillRatio > 0f && ph != ChargePhase.Inert) {
                 drawOval(
-                    color = Color(Palette.withAlpha(theme.shield.primary, (220 * pulse).toInt())),
+                    color = Color(Palette.withAlpha(renderer.invertedChargeColor(theme.shield.primary), (220 * pulse).toInt())),
                     topLeft = Offset(cx - ew * fillRatio, cy - eh * fillRatio),
                     size = Size(ew * 2 * fillRatio, eh * 2 * fillRatio)
                 )
@@ -70,7 +70,7 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(ChickenPersistentEffect(EggSplat(rx, ry, renderer.radius, theme)))
+        Effects.addPersistentEffect(ChickenPersistentEffect(EggSplat(rx, ry, renderer.radius, renderer.bakedPrimary(theme.main.primary))))
     }
 
     private class ChickenPersistentEffect(private val splat: EggSplat) : Effects.PersistentEffect {

@@ -8,7 +8,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -72,9 +71,10 @@ class PixelLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             }
             if (filledCount > 0) {
                 val startX = cx - filledCount * cellW / 2f
+                val chargeColor = renderer.invertedChargeColor(theme.shield.primary)
                 for (i in 0 until filledCount) {
                     drawRect(
-                        color = Color(theme.shield.primary),
+                        color = Color(chargeColor),
                         topLeft = Offset(startX + i * cellW, cy - thick),
                         size = Size(cellW, thick * 2)
                     )
@@ -84,14 +84,15 @@ class PixelLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        spawnSquare(rx, ry, renderer.radius, responsivePrimary, theme)
+        spawnSquare(rx, ry, renderer.radius, responsivePrimary, renderer.bakedSecondary(theme.main.secondary))
     }
 
     override fun paddleThickness(): Float = Settings.strokeWidth * 1.6f
 
     companion object {
-        fun spawnSquare(cx: Float, cy: Float, puckRadius: Float, color: Int, theme: ColorTheme) {
-            Effects.addPersistentEffect(PixelSquare(cx, cy, puckRadius, color, theme))
+        // color and rippleColor are baked at spawn (rainbow-resolved when the puck is strobing).
+        fun spawnSquare(cx: Float, cy: Float, puckRadius: Float, color: Int, rippleColor: Int) {
+            Effects.addPersistentEffect(PixelSquare(cx, cy, puckRadius, color, rippleColor))
         }
     }
 
@@ -100,7 +101,7 @@ class PixelLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val cy: Float,
         private val puckRadius: Float,
         private val color: Int,
-        private val theme: ColorTheme
+        private val rippleColor: Int
     ) : Effects.PersistentEffect {
         private val halfSize = puckRadius * 0.5f
         private val ringStrokeWidth = puckRadius * 0.3f
@@ -135,7 +136,7 @@ class PixelLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             } else if (!_isDone) {
                 val half = rippleSize / 2f
                 scope.drawRect(
-                    color = Color(Palette.withAlpha(theme.main.secondary, rippleAlpha.coerceIn(0, 255))),
+                    color = Color(Palette.withAlpha(rippleColor, rippleAlpha.coerceIn(0, 255))),
                     topLeft = Offset(cx - half, cy - half),
                     size = Size(rippleSize, rippleSize),
                     style = Stroke(width = ringStrokeWidth)

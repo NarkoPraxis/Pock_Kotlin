@@ -93,11 +93,11 @@ class PlasmaSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer
     override val scatterDensity get() = 1.2f
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        PlasmaLaunch.spawnCelebration(position.x, position.y, renderer.radius, theme.main.primary, theme.main.secondary, highGoal, fullCircle = false)
+        PlasmaLaunch.spawnCelebration(position.x, position.y, renderer.radius, renderer.bakedPrimary(theme.main.primary), renderer.bakedSecondary(theme.main.secondary), highGoal, fullCircle = false)
     }
 
     override fun onVictory(x: Float, y: Float) {
-        PlasmaLaunch.spawnCelebration(x, y, renderer.radius, theme.main.primary, theme.main.secondary, highGoal = true, fullCircle = true)
+        PlasmaLaunch.spawnCelebration(x, y, renderer.radius, renderer.bakedPrimary(theme.main.primary), renderer.bakedSecondary(theme.main.secondary), highGoal = true, fullCircle = true)
     }
 
     companion object {

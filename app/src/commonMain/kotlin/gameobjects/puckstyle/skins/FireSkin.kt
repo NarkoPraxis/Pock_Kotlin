@@ -33,10 +33,10 @@ class FireSkin(override val renderer: PuckRenderer) : PuckSkin {
     override val scatterDensity get() = 0.8f
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        FireLaunch.spawnFireCelebration(position.x, position.y, renderer.radius, theme.main.secondary, highGoal, fullCircle = false)
+        FireLaunch.spawnFireCelebration(position.x, position.y, renderer.radius, renderer.bakedSecondary(theme.main.secondary), highGoal, fullCircle = false)
     }
 
     override fun onVictory(x: Float, y: Float) {
-        FireLaunch.spawnFireCelebration(x, y, renderer.radius, theme.main.secondary, highGoal = true, fullCircle = true)
+        FireLaunch.spawnFireCelebration(x, y, renderer.radius, renderer.bakedSecondary(theme.main.secondary), highGoal = true, fullCircle = true)
     }
 }

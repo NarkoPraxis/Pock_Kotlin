@@ -2,6 +2,7 @@ package gameobjects.puckstyle
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import gameobjects.Settings
 import utility.SwatchPalette
 
 /**
@@ -35,6 +36,22 @@ object RainbowOverride {
     /** Base strobing hue (0–360) for a player at a given strobe tick. */
     fun hue(isHigh: Boolean, strobe: Int): Float =
         ((strobe * SPEED + if (isHigh) PLAYER_OFFSET else 0f) % 360f + 360f) % 360f
+
+    /**
+     * The opposite hue (+180°). Used by elements that must stay visible *on top of* a strobing
+     * element — e.g. a paddle's charge fill drawn over the strobing paddle bar, or the aim arrow's
+     * fill drawn over its base — so the two are always a high-contrast complementary pair.
+     */
+    fun invertedHue(hue: Float): Float = (hue + 180f) % 360f
+
+    // ---- Gating: is a player's main / shield colour currently overridden? -------------------
+    // These read the live Settings flags so every off-renderer element (goals, walls, charge
+    // meters, arena tint, aim arrows) can decide whether to strobe without each re-deriving it.
+    fun mainActive(isHigh: Boolean): Boolean =
+        if (isHigh) Settings.highPlayerRainbow else Settings.lowPlayerRainbow
+
+    fun shieldActive(isHigh: Boolean): Boolean =
+        if (isHigh) Settings.highPlayerRainbowShield else Settings.lowPlayerRainbowShield
 
     // The two-tone pair at a hue, built directly from SwatchPalette's S/V constants (NOT the
     // `SwatchPalette.primary/secondary` helpers, which special-case 25°/140° to dark true-colours —

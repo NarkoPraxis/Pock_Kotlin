@@ -165,11 +165,11 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {
-        IceLaunch.spawnImpact(position.x, position.y, renderer.radius * .4f, theme)
+        IceLaunch.spawnImpact(position.x, position.y, renderer.radius * .4f, renderer.bakedPrimary(theme.main.primary))
     }
 
     override fun onShieldedCollision(position: Point) {
-        IceLaunch.spawnImpact(position.x, position.y, renderer.radius * .6f, theme)
+        IceLaunch.spawnImpact(position.x, position.y, renderer.radius * .6f, renderer.bakedPrimary(theme.main.primary))
     }
 
     override fun buildBrush(radius: Float): Brush {

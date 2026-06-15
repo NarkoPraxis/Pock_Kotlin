@@ -4,6 +4,7 @@ import enums.ChargeMeterStyle
 import gameobjects.Player
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
+import gameobjects.puckstyle.RainbowOverride
 import kotlin.math.sin
 import kotlin.math.sqrt
 import androidx.compose.ui.geometry.Offset
@@ -58,6 +59,78 @@ object Drawing {
     private val lowZoneBottom get() = Settings.screenHeight
 
     // -------------------------------------------------------------------------
+    // Rainbow override helpers (for arena elements drawn outside the puck renderer)
+    //
+    // These elements read PaintBucket.high*/low* (the same custom-colour source that feeds
+    // ColorTheme) rather than the puck's responsiveColorGroup, so they need to resolve the
+    // strobe themselves. The strobe tick for a player is its renderer.frame, so they stay in
+    // lockstep with that player's ball. Gating per element (see answers): goals → shield flag,
+    // walls/arena/charge-meters/aim-arrows → main flag.
+    // -------------------------------------------------------------------------
+
+    private fun playerFrame(isHigh: Boolean): Int =
+        (if (isHigh) Logic.highPlayer else Logic.lowPlayer).puck.renderer.frame
+
+    // ---- Arena background tint (slow strobe, latched during an alert flash) ----
+    private var highArenaFlashColor: Int? = null
+    private var lowArenaFlashColor: Int? = null
+
+    /**
+     * The half-screen background tint colour for a player. Under a main-rainbow override it strobes
+     * at a quarter speed (the hue only advances every 4th frame) so the faint full-screen tint never
+     * becomes a fast flash. While an alert flash is active the colour is latched at the frame the
+     * flash began and held for the whole flash (the flash pulses alpha, not hue).
+     */
+    private fun arenaTintColor(isHigh: Boolean, flashing: Boolean): Color {
+        val configured = if (isHigh) PaintBucket.highBallFill else PaintBucket.lowBallFill
+        if (!RainbowOverride.mainActive(isHigh)) {
+            if (isHigh) highArenaFlashColor = null else lowArenaFlashColor = null
+            return configured
+        }
+        val slow = RainbowOverride.primaryColor(RainbowOverride.hue(isHigh, playerFrame(isHigh) / 4))
+        return if (flashing) {
+            val latched = (if (isHigh) highArenaFlashColor else lowArenaFlashColor)
+                ?: slow.toArgb().also { if (isHigh) highArenaFlashColor = it else lowArenaFlashColor = it }
+            Color(latched)
+        } else {
+            if (isHigh) highArenaFlashColor = null else lowArenaFlashColor = null
+            slow
+        }
+    }
+
+    // ---- Goal zones (shield-gated, full-speed strobe) ----
+    private fun goalColor(isHigh: Boolean, canScore: Boolean): Color {
+        if (RainbowOverride.shieldActive(isHigh)) {
+            val hue = RainbowOverride.hue(isHigh, playerFrame(isHigh))
+            return if (canScore) RainbowOverride.primaryColor(hue) else RainbowOverride.secondaryColor(hue)
+        }
+        return if (canScore) {
+            if (isHigh) PaintBucket.highShieldPrimary else PaintBucket.lowShieldPrimary
+        } else {
+            if (isHigh) PaintBucket.highShieldSecondary else PaintBucket.lowShieldSecondary
+        }
+    }
+
+    // ---- canScore (goal-open) wall, the closing layer over each goal. Shield-gated like the goal
+    // zone, but strobes at the INVERTED hue so the open zone and the closing wall stay a contrasting
+    // pair and the opening animation remains visible. ----
+    private fun canScoreWallDefaultColor(isHigh: Boolean): Int {
+        if (RainbowOverride.shieldActive(isHigh)) {
+            val hue = RainbowOverride.invertedHue(RainbowOverride.hue(isHigh, playerFrame(isHigh)))
+            return RainbowOverride.primaryColor(hue).toArgb()
+        }
+        return (if (isHigh) PaintBucket.highShieldSecondary else PaintBucket.lowShieldSecondary).toArgb()
+    }
+
+    // ---- Wall highlight (main-gated). Mirrors the puck's stroke colour as it nears a wall. ----
+    private fun playerWallStroke(isHigh: Boolean): Int {
+        val player = if (isHigh) Logic.highPlayer else Logic.lowPlayer
+        return if (RainbowOverride.mainActive(isHigh))
+            RainbowOverride.secondaryColor(RainbowOverride.hue(isHigh, player.puck.renderer.frame)).toArgb()
+        else player.puck.strokeColor
+    }
+
+    // -------------------------------------------------------------------------
     // Entry point
     // -------------------------------------------------------------------------
 
@@ -106,16 +179,18 @@ object Drawing {
         val lowFlash  = Logic.highSideHasMultiTouch || Logic.lowPlayerCrossedCenter
         val pulseAlpha = (0.7f + 0.3f * sin(chargeFillFrame * 0.35f)).coerceIn(0f, 1f)
 
-        var color = if (highFlash) PaintBucket.highBallFill.copy(alpha = pulseAlpha)
-                    else PaintBucket.highBallFill.copy(alpha = .2f)
+        // Faded-ness preserved: alpha is unchanged (.2f at rest, pulse while flashing); only the
+        // base hue is rainbow-resolved (quarter-speed) so the tint stays a subtle backdrop.
+        var color = if (highFlash) arenaTintColor(isHigh = true, flashing = true).copy(alpha = pulseAlpha)
+                    else arenaTintColor(isHigh = true, flashing = false).copy(alpha = .2f)
         drawRect(
             color = color,
             topLeft = Offset(0f, 0f),
             size = Size(Settings.screenWidth, Settings.middleY)
         )
 
-        color = if (lowFlash) PaintBucket.lowBallFill.copy(alpha = pulseAlpha)
-                    else PaintBucket.lowBallFill.copy(alpha = .2f)
+        color = if (lowFlash) arenaTintColor(isHigh = false, flashing = true).copy(alpha = pulseAlpha)
+                    else arenaTintColor(isHigh = false, flashing = false).copy(alpha = .2f)
         drawRect(
             color = color,
             topLeft = Offset(0f, Settings.middleY),
@@ -130,8 +205,8 @@ object Drawing {
 
     fun DrawScope.drawArenaForeground() {
         val canScore = Settings.canScore
-        val highGoalColor = if (canScore) PaintBucket.highShieldPrimary else PaintBucket.highShieldSecondary
-        val lowGoalColor = if (canScore) PaintBucket.lowShieldPrimary else PaintBucket.lowShieldSecondary
+        val highGoalColor = goalColor(isHigh = true, canScore = canScore)
+        val lowGoalColor = goalColor(isHigh = false, canScore = canScore)
         drawRect(
             color = highGoalColor,
             topLeft = Offset(highZoneLeft, highZoneTop),
@@ -151,9 +226,11 @@ object Drawing {
         fun getAlpha(location: Float) = (1 - (location / minDistance)) * 200
         val highPlayer = Logic.highPlayer
         val lowPlayer = Logic.lowPlayer
+        val highStroke = playerWallStroke(isHigh = true)
+        val lowStroke = playerWallStroke(isHigh = false)
         val baseAlpha = 255
-        val highDefaultColorInt = PaintBucket.highShieldSecondary.toArgb()
-        val lowDefaultColorInt = PaintBucket.lowShieldSecondary.toArgb()
+        val highDefaultColorInt = canScoreWallDefaultColor(isHigh = true)
+        val lowDefaultColorInt = canScoreWallDefaultColor(isHigh = false)
 
         for (x in 0..wallWidthParticleCount) {
             val xPos = x * Settings.longParticleSide
@@ -164,13 +241,13 @@ object Drawing {
             var proximityAlpha = 0f
             if (highDist < minDistance) {
                 proximityAlpha = getAlpha(highDist)
-                wallColorInt = if (lowDist < highDist) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+                wallColorInt = if (lowDist < highDist) lowStroke else highStroke
             }
             if (lowDist < minDistance) {
                 val a = getAlpha(lowDist)
                 if (a > proximityAlpha) {
                     proximityAlpha = a
-                    wallColorInt = if (highDist < lowDist) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                    wallColorInt = if (highDist < lowDist) highStroke else lowStroke
                 }
             }
             val topAlpha = maxOf(baseAlpha, proximityAlpha.toInt())
@@ -188,13 +265,13 @@ object Drawing {
             var proximityAlphaB = 0f
             if (highDistB < minDistance) {
                 proximityAlphaB = getAlpha(highDistB)
-                wallColorIntB = if (lowDistB < highDistB) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+                wallColorIntB = if (lowDistB < highDistB) lowStroke else highStroke
             }
             if (lowDistB < minDistance) {
                 val a = getAlpha(lowDistB)
                 if (a > proximityAlphaB) {
                     proximityAlphaB = a
-                    wallColorIntB = if (highDistB < lowDistB) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                    wallColorIntB = if (highDistB < lowDistB) highStroke else lowStroke
                 }
             }
             val botAlpha = maxOf(baseAlpha, proximityAlphaB.toInt())
@@ -214,6 +291,11 @@ object Drawing {
 
     private var chargeFillFrame = 0
 
+    // FullScreen charge meter bakes a single hue per fill cycle (a strobing full-screen tint would
+    // be an epilepsy risk). SideBar meters strobe live. Latches cleared when the charge ends.
+    private var highFullScreenHue: Float? = null
+    private var lowFullScreenHue: Float? = null
+
     fun DrawScope.drawChargeFill() {
         chargeFillFrame++
         when (Settings.highPlayerChargeMeterStyle) {
@@ -228,17 +310,24 @@ object Drawing {
         }
     }
 
-    private fun DrawScope.resolveChargeColor(player: Player): Pair<Int, Float>? {
+    /**
+     * Charge-meter colour. Under a main-rainbow override the customisable phases strobe (Building →
+     * primary, SweetSpot → secondary); Draining stays the grey inert colour. [frozenHue] forces a
+     * fixed hue (FullScreen bake-at-fill); null uses the player's live frame (SideBar live strobe).
+     */
+    private fun DrawScope.resolveChargeColor(player: Player, isHigh: Boolean, frozenHue: Float?): Pair<Int, Float>? {
         val effect = player.puck.renderer.effect ?: return null
         val ph = effect.phase
         if (ph == ChargePhase.Idle || ph == ChargePhase.Inert) return null
         val ratio = effect.chargeFillRatio
         if (ratio <= 0f) return null
         val theme = effect.theme
+        val mainRainbow = RainbowOverride.mainActive(isHigh)
+        val hue = frozenHue ?: RainbowOverride.hue(isHigh, player.puck.renderer.frame)
         val rawColor = when (ph) {
-            ChargePhase.Building -> theme.main.primary
+            ChargePhase.Building -> if (mainRainbow) RainbowOverride.primaryColor(hue).toArgb() else theme.main.primary
             ChargePhase.Draining -> theme.inert.secondary
-            ChargePhase.SweetSpot -> theme.shield.secondary
+            ChargePhase.SweetSpot -> if (mainRainbow) RainbowOverride.secondaryColor(hue).toArgb() else theme.shield.secondary
             else -> return null
         }
         val alpha = when (ph) {
@@ -252,10 +341,21 @@ object Drawing {
     private fun DrawScope.drawPlayerChargeFill(player: Player, isHigh: Boolean) {
         val effect = player.puck.renderer.effect ?: return
         val ph = effect.phase
-        if (ph == ChargePhase.Idle || ph == ChargePhase.Inert) return
+        if (ph == ChargePhase.Idle || ph == ChargePhase.Inert) {
+            if (isHigh) highFullScreenHue = null else lowFullScreenHue = null
+            return
+        }
         val ratio = effect.chargeFillRatio
-        if (ratio <= 0f) return
-        val (rawColor, alpha) = resolveChargeColor(player) ?: return
+        if (ratio <= 0f) {
+            if (isHigh) highFullScreenHue = null else lowFullScreenHue = null
+            return
+        }
+        // Bake one hue for the whole fill so the full-screen tint holds a single colour, not a strobe.
+        val frozen = (if (isHigh) highFullScreenHue else lowFullScreenHue)
+            ?: RainbowOverride.hue(isHigh, player.puck.renderer.frame).also {
+                if (isHigh) highFullScreenHue = it else lowFullScreenHue = it
+            }
+        val (rawColor, alpha) = resolveChargeColor(player, isHigh, frozen) ?: return
         val color = Color(rawColor).copy(alpha = alpha)
         if (isHigh) {
             val bottom = Settings.topGoalBottom + ratio * (Settings.middleY - Settings.topGoalBottom)
@@ -278,7 +378,8 @@ object Drawing {
         val effect = player.puck.renderer.effect ?: return
         val ratio = effect.chargeFillRatio
         if (ratio <= 0f) return
-        val (rawColor, alpha) = resolveChargeColor(player) ?: return
+        // SideBar strobes live (thin side bars, no epilepsy concern) — no frozen hue.
+        val (rawColor, alpha) = resolveChargeColor(player, isHigh, frozenHue = null) ?: return
         val color = Color(rawColor).copy(alpha = alpha)
         val barWidth = Settings.shortParticleSide
         if (isHigh) {
@@ -312,6 +413,8 @@ object Drawing {
         fun getAlpha(location: Float) = (1 - (location / minDistance)) * 200
         val highPlayer = Logic.highPlayer
         val lowPlayer = Logic.lowPlayer
+        val highStroke = playerWallStroke(isHigh = true)
+        val lowStroke = playerWallStroke(isHigh = false)
 
         for (x in 0 until wallWidthParticleCount) {
             val position = x * Settings.longParticleSide
@@ -322,13 +425,13 @@ object Drawing {
             var particleAlpha = 0f
             if (highDistanceToHigh < minDistance) {
                 particleAlpha = getAlpha(highDistanceToHigh)
-                wallColorInt = if (lowDistanceToHigh < highDistanceToHigh) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+                wallColorInt = if (lowDistanceToHigh < highDistanceToHigh) lowStroke else highStroke
             }
             if (lowDistanceToHigh < minDistance) {
                 val tempAlpha = getAlpha(lowDistanceToHigh)
                 if (tempAlpha > particleAlpha) {
                     particleAlpha = tempAlpha
-                    wallColorInt = if (highDistanceToHigh < lowDistanceToHigh) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                    wallColorInt = if (highDistanceToHigh < lowDistanceToHigh) highStroke else lowStroke
                 }
             }
             val topWallColor = Color(wallColorInt).copy(alpha = (particleAlpha / 255f).coerceIn(0f, 1f))
@@ -344,13 +447,13 @@ object Drawing {
             val lowDistanceToLow  = lowPlayer.puck.distanceTo(position, Settings.bottomGoalTop + Settings.longParticleSide)  - Settings.screenRatio
             if (highDistanceToLow < minDistance) {
                 particleAlpha = getAlpha(highDistanceToLow)
-                wallColorInt = if (lowDistanceToLow < highDistanceToLow) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+                wallColorInt = if (lowDistanceToLow < highDistanceToLow) lowStroke else highStroke
             }
             if (lowDistanceToLow < minDistance) {
                 val tempAlpha = getAlpha(lowDistanceToLow)
                 if (tempAlpha > particleAlpha) {
                     particleAlpha = tempAlpha
-                    wallColorInt = if (highDistanceToLow < lowDistanceToLow) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                    wallColorInt = if (highDistanceToLow < lowDistanceToLow) highStroke else lowStroke
                 }
             }
             val botWallColor = Color(wallColorInt).copy(alpha = (particleAlpha / 255f).coerceIn(0f, 1f))
@@ -371,13 +474,13 @@ object Drawing {
             var particleAlpha = 0f
             if (highDistLeft < minDistance) {
                 particleAlpha = getAlpha(highDistLeft)
-                wallColorInt = if (lowDistLeft < highDistLeft) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+                wallColorInt = if (lowDistLeft < highDistLeft) lowStroke else highStroke
             }
             if (lowDistLeft < minDistance) {
                 val tempAlpha = getAlpha(lowDistLeft)
                 if (tempAlpha > particleAlpha) {
                     particleAlpha = tempAlpha
-                    wallColorInt = if (highDistLeft < lowDistLeft) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                    wallColorInt = if (highDistLeft < lowDistLeft) highStroke else lowStroke
                 }
             }
             val leftColor = Color(wallColorInt).copy(alpha = (particleAlpha / 255f).coerceIn(0f, 1f))
@@ -394,13 +497,13 @@ object Drawing {
             val lowDistRight  = lowPlayer.puck.distanceTo(Settings.screenWidth - Settings.shortParticleSide, position)  - Settings.screenRatio
             if (highDistRight < minDistance) {
                 particleAlpha = getAlpha(highDistRight)
-                wallColorInt = if (lowDistRight < highDistRight) lowPlayer.puck.strokeColor else highPlayer.puck.strokeColor
+                wallColorInt = if (lowDistRight < highDistRight) lowStroke else highStroke
             }
             if (lowDistRight < minDistance) {
                 val tempAlpha = getAlpha(lowDistRight)
                 if (tempAlpha > particleAlpha) {
                     particleAlpha = tempAlpha
-                    wallColorInt = if (highDistRight < lowDistRight) highPlayer.puck.strokeColor else lowPlayer.puck.strokeColor
+                    wallColorInt = if (highDistRight < lowDistRight) highStroke else lowStroke
                 }
             }
             val rightColor = Color(wallColorInt).copy(alpha = (particleAlpha / 255f).coerceIn(0f, 1f))
@@ -420,6 +523,11 @@ object Drawing {
     private val aimArrowPath = Path()
     private var aimArrowFrame = 0
 
+    // Aim arrow bakes its colours once per fling and holds them for the whole drag (so it never
+    // strobes mid-aim). Under a main-rainbow override the base and fill are a complementary pair.
+    private var highArrowHue: Float? = null
+    private var lowArrowHue: Float? = null
+
     fun DrawScope.drawAimArrows() {
         aimArrowFrame++
         if (Settings.lowPlayerArrow) drawAimArrow(Logic.lowPlayer, isHigh = false)
@@ -427,7 +535,10 @@ object Drawing {
     }
 
     private fun DrawScope.drawAimArrow(player: Player, isHigh: Boolean) {
-        if (!player.isFlingHeld) return
+        if (!player.isFlingHeld) {
+            if (isHigh) highArrowHue = null else lowArrowHue = null
+            return
+        }
 
         val tailX = player.flingCurrent.x
         val tailY = player.flingCurrent.y
@@ -438,8 +549,21 @@ object Drawing {
         val dist = sqrt(dx * dx + dy * dy)
         if (dist < Settings.screenRatio * 0.3f) return
 
-        val themeColor = if (isHigh) PaintBucket.highBallStroke else PaintBucket.lowBallStroke
-        val chargeColor = if (isHigh) PaintBucket.highShieldSecondary else PaintBucket.lowShieldSecondary
+        val themeColor: Color
+        val chargeColor: Color
+        if (RainbowOverride.mainActive(isHigh)) {
+            // Bake at fling: base = baked hue, fill = inverted hue → two high-contrast colours held
+            // for the whole drag.
+            val h = (if (isHigh) highArrowHue else lowArrowHue)
+                ?: RainbowOverride.hue(isHigh, player.puck.renderer.frame).also {
+                    if (isHigh) highArrowHue = it else lowArrowHue = it
+                }
+            themeColor = RainbowOverride.secondaryColor(h)
+            chargeColor = RainbowOverride.secondaryColor(RainbowOverride.invertedHue(h))
+        } else {
+            themeColor = if (isHigh) PaintBucket.highBallStroke else PaintBucket.lowBallStroke
+            chargeColor = if (isHigh) PaintBucket.highShieldSecondary else PaintBucket.lowShieldSecondary
+        }
 
         val range = (Settings.sweetSpotMin - Settings.chargeStart).toFloat()
         val ratio = ((player.charge - Settings.chargeStart) / range).coerceIn(0f, 1f)

@@ -127,6 +127,15 @@ private fun bdBuildPartRenderer(component: Int, type: BallType, theme: ColorThem
     return r
 }
 
+// Push the active rainbow override onto a static control renderer (left controls, carousels, slots)
+// so its style components strobe when the colour they show is overridden — matching the live preview
+// and gameplay. isHigh selects which player's flags apply (these previews use the low/cold theme).
+// Read per-draw so a toggle in the colour screen takes effect on return.
+private fun bdApplyRainbow(renderer: PuckRenderer) {
+    renderer.rainbowMain = if (renderer.isHigh) Settings.highPlayerRainbow else Settings.lowPlayerRainbow
+    renderer.rainbowShield = if (renderer.isHigh) Settings.highPlayerRainbowShield else Settings.lowPlayerRainbowShield
+}
+
 private fun bdIsUnlocked(component: Int, type: BallType): Boolean = when (component) {
     BD_SKIN -> Storage.isSkinUnlocked(type)
     BD_TAIL -> Storage.isTailUnlocked(type)
@@ -275,6 +284,7 @@ private fun DrawScope.bdDrawPart(
     renderer.fillColor = theme.main.primary
     renderer.strokeColor = theme.main.secondary
     renderer.baseFillColor = theme.main.primary
+    bdApplyRainbow(renderer)
     with(renderer) { draw() }
 }
 
@@ -663,6 +673,11 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val pr = previewRenderer ?: return@Canvas
+                        // Apply the rainbow override for the colour source this preview reads (the
+                        // low/cold theme), so a slot whose colour is set to "Rainbow" strobes here too.
+                        // Refreshed per-draw so a toggle in the colour screen takes effect on return.
+                        pr.rainbowMain = Settings.lowPlayerRainbow
+                        pr.rainbowShield = Settings.lowPlayerRainbowShield
                         // Advance one motion-step per draw so position and tail history stay in
                         // lockstep — exactly one tail point per position step, like the live game.
                         previewStep[0] += 1f
@@ -875,6 +890,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                                     renderer.fillColor = theme.main.primary
                                     renderer.strokeColor = theme.main.secondary
                                     renderer.baseFillColor = theme.main.primary
+                                    bdApplyRainbow(renderer)
                                     with(renderer) { draw() }
                                     // Not all three pieces owned → stamp the AdLock badge, the same
                                     // lock cue the live preview uses.
@@ -1181,6 +1197,7 @@ private fun DesignerSlotCell(
                     renderer.fillColor = theme.main.primary
                     renderer.strokeColor = theme.main.secondary
                     renderer.baseFillColor = theme.main.primary
+                    bdApplyRainbow(renderer)
                     with(renderer) { draw() }
                 }
             }

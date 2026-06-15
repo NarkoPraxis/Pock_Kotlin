@@ -295,7 +295,9 @@ object Logic {
             winner.clearPower()
             if (Settings.scoreFlashEnabled) {
                 Settings.scoreFlashAlpha = 200f
-                Settings.scoreFlashColor = winner.puckFillColor
+                // Bake the winner's current rainbow colour (if strobing) so the full-screen flash
+                // holds one colour and never strobes; falls back to the configured fill otherwise.
+                Settings.scoreFlashColor = winner.puck.renderer.bakedPrimary(winner.puckFillColor)
             }
             if (Settings.scorePopEnabled) {
                 if (winner.isHigh) {

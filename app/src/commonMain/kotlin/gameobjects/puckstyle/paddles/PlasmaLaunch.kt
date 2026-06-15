@@ -63,10 +63,18 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     private fun createBrush(cx: Float, cy: Float, radius: Float): Brush {
-        val primary = if (phase == ChargePhase.Inert || renderer.isInert) theme.inert.primary
-                      else Palette.lerpColor(theme.main.primary, theme.shield.primary, chargeFillRatio)
-        val secondary = if (phase == ChargePhase.Inert || renderer.isInert) theme.inert.secondary
-                        else Palette.lerpColor(theme.main.secondary, theme.shield.secondary, chargeFillRatio)
+        // Under a rainbow override main and shield are the same strobing hue, so the charge lerp
+        // collapses to that single hue (the body strobes); otherwise keep the main→shield charge blend.
+        val primary = when {
+            phase == ChargePhase.Inert || renderer.isInert -> theme.inert.primary
+            renderer.responsiveIsRainbow -> renderer.responsiveColorGroup.primary
+            else -> Palette.lerpColor(theme.main.primary, theme.shield.primary, chargeFillRatio)
+        }
+        val secondary = when {
+            phase == ChargePhase.Inert || renderer.isInert -> theme.inert.secondary
+            renderer.responsiveIsRainbow -> renderer.responsiveColorGroup.secondary
+            else -> Palette.lerpColor(theme.main.secondary, theme.shield.secondary, chargeFillRatio)
+        }
         return Brush.radialGradient(
             colorStops = arrayOf(0f to Color(Palette.WHITE), 0.4f to Color(primary), 1f to Color(secondary)),
             center = Offset(cx, cy),

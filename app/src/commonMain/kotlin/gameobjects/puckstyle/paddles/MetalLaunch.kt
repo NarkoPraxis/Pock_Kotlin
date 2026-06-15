@@ -66,7 +66,7 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             if (fill > 0f) {
                 val bandHalf = (halfLen * fill).coerceAtMost(halfLen - halfLen * .1f)
                 drawRoundRect(
-                    color = Color(theme.shield.primary),
+                    color = Color(renderer.invertedChargeColor(theme.shield.primary)),
                     topLeft = Offset(cx - bandHalf, cy - halfThick * 0.6f),
                     size = Size(bandHalf * 2, halfThick * 1.2f),
                     cornerRadius = CornerRadius(halfThick, halfThick)
@@ -113,7 +113,7 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(BlastScorch(rx, ry, renderer.radius, theme.main.primary))
+        Effects.addPersistentEffect(BlastScorch(rx, ry, renderer.radius, renderer.bakedPrimary(theme.main.primary)))
     }
 
     internal class BlastScorch(

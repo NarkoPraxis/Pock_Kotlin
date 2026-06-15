@@ -39,9 +39,11 @@ class MetalTail(override val renderer: PuckRenderer) : TailRenderer {
 
         for (i in points.indices) {
             val ratio = i.toFloat() / lastIndex
+            // Use the responsive group (not theme.main) so the metal sheen strobes under a rainbow
+            // override in both live play and static UI (carousels/previews drive it off the strobe clock).
             val color = if (useSimpleColor) simpleColor else when {
-                ratio < 0.5f -> Palette.lerpColor(grey, theme.main.primary, ratio * 2f)
-                else -> Palette.lerpColor(theme.main.primary, Palette.WHITE, (ratio - 0.5f) * 2f)
+                ratio < 0.5f -> Palette.lerpColor(grey, colors.primary, ratio * 2f)
+                else -> Palette.lerpColor(colors.primary, Palette.WHITE, (ratio - 0.5f) * 2f)
             }
             points[i].setColor(color)
             points[i].size = renderer.radius * 0.95f

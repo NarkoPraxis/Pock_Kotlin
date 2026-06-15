@@ -8,7 +8,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
-import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -54,7 +53,7 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         if (fill > 0f) {
             scope.drawPath(
                 path,
-                Color(Palette.withAlpha(theme.shield.primary, (180 * fill).toInt().coerceIn(0, 255)))
+                Color(Palette.withAlpha(renderer.invertedChargeColor(theme.shield.primary), (180 * fill).toInt().coerceIn(0, 255)))
             )
         }
 
@@ -66,12 +65,13 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(IcePuddle(rx, ry, renderer.radius, theme))
+        Effects.addPersistentEffect(IcePuddle(rx, ry, renderer.radius, renderer.bakedPrimary(theme.main.primary)))
     }
 
     companion object {
-        fun spawnImpact(cx: Float, cy: Float, radius: Float, theme: ColorTheme) {
-            Effects.addPersistentEffect(IcePuddle(cx, cy, radius, theme))
+        // primary is the puck's current colour baked at spawn (rainbow-resolved when strobing).
+        fun spawnImpact(cx: Float, cy: Float, radius: Float, primary: Int) {
+            Effects.addPersistentEffect(IcePuddle(cx, cy, radius, primary))
         }
 
         private val CRYSTAL_ANGLES = FloatArray(8) { i -> (i * 2.0 * PI / 8).toFloat() }
@@ -79,10 +79,10 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private class IcePuddle(
         private val cx: Float, private val cy: Float,
-        private val radius: Float, private val theme: ColorTheme
+        private val radius: Float, private val primary: Int
     ) : Effects.PersistentEffect {
         private val crystalPath = Path()
-        private val strokeColor = Palette.withAlpha(theme.main.primary, 130)
+        private val strokeColor = Palette.withAlpha(primary, 130)
         private val strokeWidth = Settings.strokeWidth * 0.5f
         private var frame = 0
         private val evaporateDuration = 120f
@@ -124,7 +124,7 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 val alpha = (120 * (1f - fadeT)).toInt().coerceIn(0, 255)
                 if (alpha > 0) {
                     scope.drawCircle(
-                        Color(Palette.withAlpha(theme.main.primary, alpha)),
+                        Color(Palette.withAlpha(primary, alpha)),
                         radius * growT * 1.5f,
                         Offset(cx, cy)
                     )
@@ -134,7 +134,7 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 val alpha = (120 - (60 * uncappedTime)).toInt().coerceIn(0, 255)
                 if (alpha > 0) {
                     scope.drawCircle(
-                        Color(Palette.withAlpha(theme.main.primary, alpha)),
+                        Color(Palette.withAlpha(primary, alpha)),
                         radius * uncappedTime * 1.5f,
                         Offset(cx, cy)
                     )

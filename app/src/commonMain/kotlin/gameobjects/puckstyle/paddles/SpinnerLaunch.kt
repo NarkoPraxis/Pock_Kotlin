@@ -63,7 +63,7 @@ class SpinnerLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         val secColor   = responsiveSecondary
         val primColor  = responsivePrimary
-        val shieldColor = theme.shield.primary
+        val shieldColor = renderer.invertedChargeColor(theme.shield.primary)
 
         val armCount = 4
         val armStepRad = armAngleStep * PI.toFloat() / 180f
@@ -126,8 +126,8 @@ class SpinnerLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, theme.main.primary, spinDir))
-        Effects.addPersistentEffect(SpinnerSkin.SpinnerResidual(rx, ry, renderer.radius, theme.shield.primary, spinDir))
+        Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, renderer.bakedPrimary(theme.main.primary), spinDir))
+        Effects.addPersistentEffect(SpinnerSkin.SpinnerResidual(rx, ry, renderer.radius, renderer.bakedPrimary(theme.shield.primary), spinDir))
     }
 
     private class SpinnerMark(

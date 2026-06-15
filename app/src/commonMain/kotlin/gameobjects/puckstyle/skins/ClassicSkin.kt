@@ -32,20 +32,20 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
     }
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(ClassicScoreEffect(theme.main.primary, otherColor, position, Settings.screenRatio / 3f, highGoal))
+        Effects.addPersistentEffect(ClassicScoreEffect(renderer.bakedPrimary(theme.main.primary), otherColor, position, Settings.screenRatio / 3f, highGoal))
     }
 
     override fun onVictory(x: Float, y: Float) {
-        Effects.addPersistentEffect(ClassicScoreEffect(theme.main.primary, theme.main.secondary, Point(x, y), Settings.screenRatio / 3f, highGoal = true, fullCircle = true))
+        Effects.addPersistentEffect(ClassicScoreEffect(renderer.bakedPrimary(theme.main.primary), renderer.bakedSecondary(theme.main.secondary), Point(x, y), Settings.screenRatio / 3f, highGoal = true, fullCircle = true))
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {
         val radiusModifier = 3f * (speed / Settings.maxPuckSpeed)
-        Effects.addPersistentEffect(ClassicCollisionEffect(theme.main.primary, position, Settings.screenRatio * radiusModifier))
+        Effects.addPersistentEffect(ClassicCollisionEffect(renderer.bakedPrimary(theme.main.primary), position, Settings.screenRatio * radiusModifier))
     }
 
     override fun onShieldedCollision(position: Point) {
-        Effects.addPersistentEffect(ClassicCollisionEffect(theme.main.primary, position, Settings.screenRatio * 3f))
+        Effects.addPersistentEffect(ClassicCollisionEffect(renderer.bakedPrimary(theme.main.primary), position, Settings.screenRatio * 3f))
     }
 
     private class ClassicScoreEffect(

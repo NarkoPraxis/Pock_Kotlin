@@ -89,11 +89,11 @@ class SpinnerSkin(override val renderer: PuckRenderer) : PuckSkin {
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {
-        Effects.addPersistentEffect(SpinnerResidual(renderer.x, renderer.y, renderer.radius, theme.main.primary, if (theme.isWarm) -1f else 1f))
+        Effects.addPersistentEffect(SpinnerResidual(renderer.x, renderer.y, renderer.radius, renderer.bakedPrimary(theme.main.primary), if (theme.isWarm) -1f else 1f))
     }
 
     override fun onShieldedCollision(position: Point) {
-        Effects.addPersistentEffect(SpinnerResidual(renderer.x, renderer.y, renderer.radius, theme.main.primary, if (theme.isWarm) -1f else 1f))
+        Effects.addPersistentEffect(SpinnerResidual(renderer.x, renderer.y, renderer.radius, renderer.bakedPrimary(theme.main.primary), if (theme.isWarm) -1f else 1f))
     }
 
     override val explosionFrequency get() = 45
@@ -107,7 +107,7 @@ class SpinnerSkin(override val renderer: PuckRenderer) : PuckSkin {
     override fun onVictory(x: Float, y: Float) {
         celebrationActive = true
         celebrationFrame = 0
-        Effects.addPersistentEffect(SpinnerResidual(x, y, renderer.radius, theme.main.primary, if (theme.isWarm) -1f else 1f, asVictory = true))
+        Effects.addPersistentEffect(SpinnerResidual(x, y, renderer.radius, renderer.bakedPrimary(theme.main.primary), if (theme.isWarm) -1f else 1f, asVictory = true))
     }
 
     class SpinnerResidual(

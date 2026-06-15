@@ -45,12 +45,9 @@ class BubbleLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val r = renderer.radius * 0.6f * expandScale
         val ph = if (sweet) ChargePhase.SweetSpot else if (fatigued) ChargePhase.Inert else ChargePhase.Building
 
-        val isInert = renderer.isInert || ph == ChargePhase.Inert
-        val baseColor = when {
-            isInert -> theme.inert.primary
-            renderer.shielded -> theme.shield.primary
-            else -> theme.main.primary
-        }
+        // Body follows the responsive group so it strobes under a rainbow override (resolves inert
+        // internally, and shield/main via renderer.draw()).
+        val baseColor = responsivePrimary
 
         scope.drawCircle(
             Color(Palette.withAlpha(baseColor, (alpha * 0.3f).toInt().coerceIn(0, 255))),
@@ -74,27 +71,23 @@ class BubbleLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
-        Effects.addPersistentEffect(BubblePopResidual(rx, ry, renderer.radius, theme.main.primary))
+        Effects.addPersistentEffect(BubblePopResidual(rx, ry, renderer.radius, renderer.bakedPrimary(theme.main.primary)))
     }
 
     private fun drawBubblePaddle(scope: DrawScope, cx: Float, cy: Float, fill: Float, ph: ChargePhase) {
         val r = renderer.radius * (0.4f + 0.2f * fill)
 
         val isInert = renderer.isInert || ph == ChargePhase.Inert
-        val stateColors = when {
-            isInert -> theme.inert
-            renderer.shielded -> theme.shield
-            else -> theme.main
-        }
         val hitStunBlend = renderer.hitStunned && !isInert
         val hitStunR = if (hitStunBlend) renderer.hitStunRatio else 0f
+        // Body follows the responsive group (strobes under rainbow); inert is resolved internally.
         val baseColor = when {
-            hitStunBlend -> blendColor(stateColors.primary, theme.inert.primary, hitStunR)
-            else -> stateColors.primary
+            hitStunBlend -> blendColor(responsivePrimary, theme.inert.primary, hitStunR)
+            else -> responsivePrimary
         }
         val strokeColor = when {
-            hitStunBlend -> blendColor(stateColors.secondary, theme.inert.secondary, hitStunR)
-            else -> stateColors.secondary
+            hitStunBlend -> blendColor(responsiveSecondary, theme.inert.secondary, hitStunR)
+            else -> responsiveSecondary
         }
 
         scope.drawCircle(
@@ -108,7 +101,7 @@ class BubbleLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         )
 
         if (fill > 0f && !isInert) {
-            val chargeColor = theme.shield.primary
+            val chargeColor = renderer.invertedChargeColor(theme.shield.primary)
             val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(scope.hashCode().toFloat() * 0.35f) else 1f
             scope.drawCircle(
                 Color(Palette.withAlpha(chargeColor, (100 * fill * pulse).toInt().coerceIn(0, 255))),
