@@ -99,7 +99,16 @@ actual object Sounds {
 
     private fun setupAudioSession() {
         val session = AVAudioSession.sharedInstance()
-        session.setCategory(AVAudioSessionCategoryPlayback, error = null)
+        // Ambient (not Playback) + MixWithOthers: our audio coexists with whatever the user is
+        // already playing (audiobook, podcast, YouTube, music) instead of interrupting/ducking it.
+        // Ambient also obeys the hardware silent switch, so a player who has the phone muted hears
+        // nothing from us at all and their other media is never touched. The goal is a "zen" game
+        // the player can run alongside other media without it stealing the audio session.
+        session.setCategory(
+            AVAudioSessionCategoryAmbient,
+            withOptions = AVAudioSessionCategoryOptionMixWithOthers,
+            error = null
+        )
         session.setActive(true, error = null)
     }
 

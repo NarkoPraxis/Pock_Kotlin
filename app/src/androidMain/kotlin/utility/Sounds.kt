@@ -2,8 +2,6 @@ package utility
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.SoundPool
 import android.os.Handler
@@ -37,19 +35,22 @@ actual object Sounds {
 
     private enum class AmbienceMode { MENU, GAME }
     private var ambienceMode: AmbienceMode? = null
-    private var audioFocusRequest: AudioFocusRequest? = null
 
+    // We deliberately do NOT request audio focus. The game is meant to be played alongside
+    // whatever the user is already listening to (audiobook, podcast, music, YouTube) without
+    // pausing or ducking it. Requesting AUDIOFOCUS_GAIN would force those apps to pause, so we
+    // never request focus and never react to focus changes — our SoundPool/MediaPlayer simply
+    // mix on top of (or stay silent alongside) other media.
+    //
     // SFX are gated by deriving "may I play?" from the explicit reasons to be silent,
     // rather than a single sticky `sfxPaused` boolean that the old design could leave
-    // stuck `true` forever (a dropped ad-dismiss callback or an unhandled AUDIOFOCUS_GAIN
-    // killed all SFX for the rest of the session while music kept playing). Each reason
-    // below has a guaranteed clear path, so the gate always self-heals.
+    // stuck `true` forever (a dropped ad-dismiss callback). Each reason below has a
+    // guaranteed clear path, so the gate always self-heals.
     private var adMuted = false          // a rewarded ad is on screen
     private var appBackgrounded = false  // Activity is paused (onPause without onResume)
-    private var focusLost = false        // audio focus lost to another app
 
     private val sfxAllowed: Boolean
-        get() = !adMuted && !appBackgrounded && !focusLost
+        get() = !adMuted && !appBackgrounded
 
     // Safety net: AdMob does not guarantee onAdDismissed/onAdFailedToShow ever fires. If it
     // doesn't, adMuted would otherwise stay true forever. This watchdog force-clears the ad
@@ -74,12 +75,11 @@ actual object Sounds {
         val ctx = (context as Context).applicationContext
         this.context = ctx
         // initialize() runs on every Activity onCreate, including recreate() (dark-mode toggle).
-        // The SoundPool and AudioFocusRequest live for the whole process (this is an `object`),
-        // so reloading would orphan samples, reassign IDs to not-yet-loaded samples (async load →
-        // dropped play() calls right after a recreate), and stack a second focus request. Guard it.
+        // The SoundPool lives for the whole process (this is an `object`), so reloading would
+        // orphan samples and reassign IDs to not-yet-loaded samples (async load → dropped play()
+        // calls right after a recreate). Guard it.
         if (initialized) return
         initialized = true
-        requestAudioFocus()
         weHaveAWinnerId = load(R.raw.we_have_a_winner)
         stingerTransitionId = load(R.raw.stinger_transition)
         lowPlayerSoundId = load(R.raw.low_synth)
@@ -100,7 +100,7 @@ actual object Sounds {
         // so re-assert a known-good SFX baseline. This is the backstop that guarantees a fresh
         // game is never silenced by stale state carried in from a prior ad / pause / focus blip.
         appBackgrounded = false
-        if (!adMuted && !focusLost) soundPool.autoResume()
+        if (!adMuted) soundPool.autoResume()
     }
 
     private val effectiveBackgroundVol: Float
@@ -241,11 +241,11 @@ actual object Sounds {
 
     /**
      * Resume music + SFX only when no reason to stay silent remains. Called from every
-     * "clear a reason" path (resumeAll/onResume, AUDIOFOCUS_GAIN, unmuteForAd); whichever one
-     * clears the last reason performs the resume. No single path can strand the system.
+     * "clear a reason" path (resumeAll/onResume, unmuteForAd); whichever one clears the last
+     * reason performs the resume. No single path can strand the system.
      */
     private fun resumeAudioIfAllowed() {
-        if (adMuted || appBackgrounded || focusLost) return
+        if (adMuted || appBackgrounded) return
         soundPool.autoResume()
         val pri = primaryPlayer ?: return
         val sec = secondaryPlayer
@@ -294,11 +294,8 @@ actual object Sounds {
     }
 
     actual fun abandonAudioFocus() {
-        audioFocusRequest?.let {
-            val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            am.abandonAudioFocusRequest(it)
-            audioFocusRequest = null
-        }
+        // No-op: we never request audio focus (see note by adMuted/appBackgrounded), so there
+        // is nothing to abandon. Other apps' media is never ours to release.
     }
 
     private fun startAmbience(resId: Int) {
@@ -371,34 +368,6 @@ actual object Sounds {
         fadeRunnable?.let { ambienceHandler.removeCallbacks(it) }
         scheduleRunnable = null
         fadeRunnable = null
-    }
-
-    private fun requestAudioFocus() {
-        val attrs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_GAME)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-        audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(attrs)
-            .setOnAudioFocusChangeListener { focusChange ->
-                when (focusChange) {
-                    AudioManager.AUDIOFOCUS_LOSS,
-                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                        focusLost = true
-                        soundPool.autoPause()
-                        pauseMusic()
-                    }
-                    AudioManager.AUDIOFOCUS_GAIN -> {
-                        // Without this branch, any transient focus grab (notification, Assistant,
-                        // Bluetooth blip) left focusLost stuck and silenced all SFX permanently.
-                        focusLost = false
-                        resumeAudioIfAllowed()
-                    }
-                }
-            }
-            .build()
-        val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        am.requestAudioFocus(audioFocusRequest!!)
     }
 
     private fun load(id: Int): Int {
