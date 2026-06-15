@@ -2,17 +2,24 @@ package utility
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import androidx.preference.PreferenceManager
 
 actual object PlatformStorage {
     private lateinit var adPrefs: SharedPreferences
     private lateinit var settingsPrefs: SharedPreferences
+    private lateinit var appContext: Context
 
     actual fun initialize(context: Any?) {
         val ctx = context as Context
+        appContext = ctx.applicationContext
         adPrefs = ctx.getSharedPreferences("adPreferences", Context.MODE_PRIVATE)
         settingsPrefs = PreferenceManager.getDefaultSharedPreferences(ctx)
     }
+
+    actual fun isSystemInDarkMode(): Boolean =
+        (appContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
 
     private fun prefs(store: String) = if (store == "ad") adPrefs else settingsPrefs
 

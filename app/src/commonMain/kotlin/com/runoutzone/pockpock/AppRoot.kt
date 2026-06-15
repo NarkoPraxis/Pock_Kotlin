@@ -44,7 +44,7 @@ import utility.edgeSwipeBack
 /** Provides the current dark-mode flag to any composable in the tree. */
 val LocalDarkMode = compositionLocalOf { false }
 
-private enum class Screen { MainMenu, Game, Settings, ScoreCalibration, BallDesigner, BallDesignerColor, CustomBallCreator, CustomColorPicker }
+private enum class Screen { Splash, MainMenu, Game, Settings, ScoreCalibration, BallDesigner, BallDesignerColor, CustomBallCreator, CustomColorPicker }
 
 /**
  * Navigation guarded against rapid double-taps.
@@ -80,7 +80,9 @@ fun AppRoot() {
     // Drive isOnMainMenu via a destination-changed listener for guaranteed synchronous updates.
     // `currentBackStackEntryAsState` is Flow-backed and can lag by a frame, leaving MenuDemoCanvas
     // mounted briefly after navigation — long enough to emit collision sounds.
-    var isOnMainMenu by remember { mutableStateOf(true) }
+    // Starts false: the app opens on the Splash destination, not the menu. The destination-changed
+    // listener flips it true once MainMenu becomes active.
+    var isOnMainMenu by remember { mutableStateOf(false) }
     DisposableEffect(navController) {
         val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
             val onMenu = destination.route == Screen.MainMenu.name
@@ -133,7 +135,14 @@ fun AppRoot() {
             }
 
             key(LocaleController.version) {
-            NavHost(navController, startDestination = Screen.MainMenu.name) {
+            NavHost(navController, startDestination = Screen.Splash.name) {
+                composable(Screen.Splash.name) {
+                    SplashScreen(onDone = {
+                        navController.navigate(Screen.MainMenu.name) {
+                            popUpTo(Screen.Splash.name) { inclusive = true }
+                        }
+                    })
+                }
                 composable(Screen.MainMenu.name) {
                     MainMenuScreen(
                         onPlayTapped = {

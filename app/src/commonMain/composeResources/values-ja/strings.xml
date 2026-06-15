@@ -69,6 +69,7 @@
     <string name="charge_meter_fullscreen">全画面</string>
     <string name="charge_meter_none">なし</string>
     <string name="dark_mode">ダークモード</string>
+    <string name="dark_mode_match_device">端末に合わせる</string>
     <string name="charge_arrows">チャージ矢印を表示</string>
     <string name="charge_meter">チャージメーター</string>
     <string name="player_top_short">上</string>
@@ -153,4 +154,7 @@
 
     <!-- In-game warnings -->
     <string name="stay_on_your_side">自分のサイドにいて</string>
+
+    <!-- Legal / safety -->
+    <string name="epilepsy_warning">光過敏性に関する警告：このゲームには点滅する色彩効果が含まれており、光過敏性てんかんのある方に影響を与える可能性があります。</string>
 </resources>

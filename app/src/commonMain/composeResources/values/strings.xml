@@ -69,6 +69,7 @@
     <string name="charge_meter_fullscreen">Full Screen</string>
     <string name="charge_meter_none">None</string>
     <string name="dark_mode">Dark Mode</string>
+    <string name="dark_mode_match_device">Match Device</string>
     <string name="charge_arrows">Display Charge Arrows</string>
     <string name="charge_meter">Charge Meter</string>
     <string name="player_top_short">Top</string>
@@ -168,4 +169,7 @@
 
     <!-- In-game warnings -->
     <string name="stay_on_your_side">Stay On Your Side</string>
+
+    <!-- Legal / safety -->
+    <string name="epilepsy_warning">Photosensitivity warning: this game includes flashing color effects that may affect players with photosensitive epilepsy.</string>
 </resources>

@@ -13,4 +13,6 @@ expect object PlatformStorage {
     fun saveFloat(store: String, key: String, value: Float)
     fun getFloat(store: String, key: String, default: Float): Float
     fun currentTimeMs(): Long
+    /** Whether the device's OS-level theme is currently dark (drives the "Match Device" dark-mode option). */
+    fun isSystemInDarkMode(): Boolean
 }

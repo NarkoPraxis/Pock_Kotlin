@@ -14,7 +14,7 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:resizeableActivity="false"
             android:supportsRtl="true"
-            android:theme="@style/LightMode"
+            android:theme="@style/Theme.Pock.Splash"
             android:localeConfig="@xml/locales_config">
 
         <meta-data

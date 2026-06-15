@@ -1,4 +1,14 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- System splash / launch theme. Applied via the manifest so it themes the cold-start window
+         the OS draws before MainActivity runs. windowBackground covers pre-API-31; the
+         windowSplashScreenBackground attr covers the API-31+ splash. Both point at a day/night
+         color so the OS splash is white on a light device and black on a dark device. MainActivity
+         immediately swaps to LightMode/DarkMode in onCreate, so this only affects the splash. -->
+    <style name="Theme.Pock.Splash" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/splash_background</item>
+    </style>
 
     <!-- Main menu themes (no action bar) -->
     <style name="LightMode" parent="Theme.MaterialComponents.Light.NoActionBar">

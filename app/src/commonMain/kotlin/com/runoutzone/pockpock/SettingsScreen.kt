@@ -57,6 +57,7 @@ import com.runoutzone.pockpock.menu.MenuIconButton
 import com.runoutzone.pockpock.menu.PillSide
 import com.runoutzone.pockpock.menu.poppinsFamily
 import enums.ChargeMeterStyle
+import enums.DarkModeSetting
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
@@ -74,7 +75,7 @@ import kotlinx.coroutines.launch
  * left) and a brand-blue tab tray (flush right) whose selected icon sits on a white pill. The screen
  * themes to the dark-mode toggle (white text on a dark background; the red/blue chrome keeps its
  * white-on-color text). Toggling dark mode triggers an Activity recreate on Android (MainActivity
- * recreates on the "darkmode" pref change); the pager's [rememberPagerState] persists the selected
+ * recreates on the dark-mode pref change); the pager's [rememberPagerState] persists the selected
  * tab to survive it.
  *
  * Radio/toggle circles render like the Classic ball skin: inert = neutral grey; selected/on = the
@@ -127,6 +128,7 @@ fun SettingsScreen(
     var lowArrow by remember { mutableStateOf(Storage.lowPlayerArrow) }
     var highChargeMeter by remember { mutableStateOf(Storage.highPlayerChargeMeterStyle) }
     var lowChargeMeter by remember { mutableStateOf(Storage.lowPlayerChargeMeterStyle) }
+    var darkModeSetting by remember { mutableStateOf(Storage.darkModeSetting) }
 
     fun resetToDefaults() {
         PlatformStorage.saveString("settings", "ball_sizes", "default")
@@ -199,6 +201,7 @@ fun SettingsScreen(
     val strTailDefault = stringResource(Res.string.tail_default)
     val strTailLong = stringResource(Res.string.tail_long)
     val strDarkMode = stringResource(Res.string.dark_mode)
+    val strMatchDevice = stringResource(Res.string.dark_mode_match_device)
     val strSetScorePosition = stringResource(Res.string.set_score_position)
     val strResetDefaults = stringResource(Res.string.reset_defaults)
 
@@ -299,9 +302,22 @@ fun SettingsScreen(
                         PlatformStorage.saveString("settings", "tail_length", key)
                     }
 
-                    DarkModeRow(strDarkMode, isDark, strOn, strOff, circleD, poppins) { next ->
-                        PlatformStorage.saveBoolean("settings", "darkmode", next)
-                        onDarkModeChanged(next)
+                    CircleRadioRow(
+                        strDarkMode,
+                        listOf(
+                            DarkModeSetting.On to strOn,
+                            DarkModeSetting.Off to strOff,
+                            DarkModeSetting.System to strMatchDevice
+                        ),
+                        darkModeSetting, circleD, poppins
+                    ) { next ->
+                        // No-op on re-selecting the active option so we don't needlessly trigger the
+                        // dark-mode Activity recreate.
+                        if (next != darkModeSetting) {
+                            darkModeSetting = next
+                            Storage.darkModeSetting = next
+                            onDarkModeChanged(Storage.darkMode)
+                        }
                     }
 
                     ScorePositionBanner(strSetScorePosition, poppins, onScoreCalibrationTapped)
@@ -540,34 +556,6 @@ private fun <T> ChargeMeterPlayerRow(
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 ClassicCircle(value == selected, circleD, Modifier.clickable { onSelect(value) })
             }
-        }
-    }
-}
-
-/**
- * Dark Mode: centered title with two mutually-exclusive On/Off radio circles, laid out like the
- * Charge Arrows block. Tapping the already-selected option is a no-op so it doesn't needlessly
- * trigger the dark-mode Activity recreate.
- */
-@Composable
-private fun DarkModeRow(
-    title: String,
-    on: Boolean,
-    onLabel: String,
-    offLabel: String,
-    circleD: Dp,
-    poppins: FontFamily,
-    onToggle: (Boolean) -> Unit
-) {
-    Column {
-        SectionTitle(title, poppins, center = true)
-        Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(64.dp, Alignment.CenterHorizontally)
-        ) {
-            ToggleColumn(onLabel, on, circleD, poppins) { if (!on) onToggle(true) }
-            ToggleColumn(offLabel, !on, circleD, poppins) { if (on) onToggle(false) }
         }
     }
 }

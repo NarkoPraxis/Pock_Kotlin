@@ -69,6 +69,7 @@
     <string name="charge_meter_fullscreen">Plein écran</string>
     <string name="charge_meter_none">Aucune</string>
     <string name="dark_mode">Mode sombre</string>
+    <string name="dark_mode_match_device">Suivre l\'appareil</string>
     <string name="charge_arrows">Afficher les flèches de charge</string>
     <string name="charge_meter">Jauge de charge</string>
     <string name="player_top_short">Haut</string>
@@ -153,4 +154,7 @@
 
     <!-- In-game warnings -->
     <string name="stay_on_your_side">Reste de ton côté</string>
+
+    <!-- Legal / safety -->
+    <string name="epilepsy_warning">Avertissement de photosensibilité : ce jeu contient des effets de couleur clignotants qui peuvent affecter les joueurs atteints d\'épilepsie photosensible.</string>
 </resources>

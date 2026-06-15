@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity() {
     private var appliedDarkMode = false
 
     private val darkModeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "darkmode") recreate()
+        if (key == Storage.DARK_MODE_PREF_KEY) recreate()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

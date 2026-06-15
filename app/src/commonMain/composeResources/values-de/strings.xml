@@ -69,6 +69,7 @@
     <string name="charge_meter_fullscreen">Vollbild</string>
     <string name="charge_meter_none">Kein</string>
     <string name="dark_mode">Dunkelmodus</string>
+    <string name="dark_mode_match_device">Gerät folgen</string>
     <string name="charge_arrows">Ladepfeile anzeigen</string>
     <string name="charge_meter">Ladeanzeige</string>
     <string name="player_top_short">Oben</string>
@@ -153,4 +154,7 @@
 
     <!-- In-game warnings -->
     <string name="stay_on_your_side">Bleib auf deiner Seite</string>
+
+    <!-- Legal / safety -->
+    <string name="epilepsy_warning">Warnung vor Photosensibilität: Dieses Spiel enthält blinkende Farbeffekte, die bei Personen mit photosensitiver Epilepsie Anfälle auslösen können.</string>
 </resources>

@@ -6,6 +6,8 @@ import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import platform.Foundation.NSUserDefaults
+import platform.UIKit.UITraitCollection
+import platform.UIKit.UIUserInterfaceStyle
 import platform.posix.gettimeofday
 import platform.posix.timeval
 
@@ -49,4 +51,8 @@ actual object PlatformStorage {
         gettimeofday(tv.ptr, null)
         tv.tv_sec * 1000L + tv.tv_usec / 1000L
     }
+
+    actual fun isSystemInDarkMode(): Boolean =
+        UITraitCollection.currentTraitCollection.userInterfaceStyle ==
+            UIUserInterfaceStyle.UIUserInterfaceStyleDark
 }
