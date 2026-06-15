@@ -4,7 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -82,6 +81,11 @@ import kotlin.math.roundToInt
 
 private const val ROW_NORMAL = 0
 private const val ROW_SHIELD = 1
+
+// The game's "branding" default colours — red top, blue bottom, purple shields — the same preset
+// seeded into slot 0 on first load (see Storage.ensureDefaultColorPreset). A newly filled save slot
+// starts from these, and a long-pressed slot resets back to them.
+private val CCP_BRANDING_DEFAULT = utility.CcpPreset(highHue = 0f, highShieldHue = 264f, lowHue = 202.5f, lowShieldHue = 264f)
 
 // Localized display name for a colour-carousel index (parallels ColorCarousel.PRESETS). The status
 // label shows the browsed colour's name when unlocked, or "Watch Ad To Own" when locked — mirrors
@@ -649,13 +653,30 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                                                 selectedPreset = i; Storage.saveCcpSelectedSlot(i)
                                                 applyAllHues(); persistHues(); persistRainbow(); rebuildPreview()
                                             } else {
+                                                // Filling an empty slot starts from the branding defaults
+                                                // (red/blue/purple), not the previously-selected slot's colors.
+                                                val d = CCP_BRANDING_DEFAULT
+                                                highHue = d.highHue; highShieldHue = d.highShieldHue
+                                                lowHue = d.lowHue; lowShieldHue = d.lowShieldHue
+                                                highRainbow = d.highRainbow; highShieldRainbow = d.highShieldRainbow
+                                                lowRainbow = d.lowRainbow; lowShieldRainbow = d.lowShieldRainbow
                                                 selectedPreset = i; Storage.saveCcpSelectedSlot(i)
-                                                saveSelectedPreset(); loadPresets()
+                                                applyAllHues(); persistHues(); persistRainbow()
+                                                saveSelectedPreset(); loadPresets(); rebuildPreview()
                                             }
                                         },
                                         onLongPress = {
-                                            Storage.deleteCcpPreset(i)
-                                            if (selectedPreset == i) { selectedPreset = -1; Storage.saveCcpSelectedSlot(-1) }
+                                            // Holding a slot resets it to the branding defaults
+                                            // (red/blue/purple) instead of emptying it.
+                                            Storage.saveCcpPreset(i, CCP_BRANDING_DEFAULT)
+                                            if (selectedPreset == i) {
+                                                val d = CCP_BRANDING_DEFAULT
+                                                highHue = d.highHue; highShieldHue = d.highShieldHue
+                                                lowHue = d.lowHue; lowShieldHue = d.lowShieldHue
+                                                highRainbow = d.highRainbow; highShieldRainbow = d.highShieldRainbow
+                                                lowRainbow = d.lowRainbow; lowShieldRainbow = d.lowShieldRainbow
+                                                applyAllHues(); persistHues(); persistRainbow(); rebuildPreview()
+                                            }
                                             loadPresets()
                                         }
                                     )
@@ -681,10 +702,10 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
                     },
                 horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                EdgePill(side = PillSide.End, color = accentBlue, modifier = Modifier.height(52.dp).clickable(onClick = onNavigateToStyle)) {
+                EdgePill(side = PillSide.End, color = accentBlue, modifier = Modifier.height(52.dp), onClick = onNavigateToStyle) {
                     Image(painterResource(Res.drawable.ic_menu_customize), null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
                 }
-                EdgePill(side = PillSide.End, color = PaintBucket.menuAccentRed, modifier = Modifier.height(52.dp).clickable(onClick = onBack)) {
+                EdgePill(side = PillSide.End, color = PaintBucket.menuAccentRed, modifier = Modifier.height(52.dp), onClick = onBack) {
                     Image(painterResource(Res.drawable.ic_menu_check), null, Modifier.size(28.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
                 }
             }

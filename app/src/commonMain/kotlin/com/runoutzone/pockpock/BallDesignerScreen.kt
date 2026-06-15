@@ -1061,14 +1061,14 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
             ) {
                 EdgePill(
                     side = PillSide.End, color = accentBlue,
-                    modifier = Modifier.height(52.dp).clickable(onClick = onNavigateToColor)
+                    modifier = Modifier.height(52.dp), onClick = onNavigateToColor
                 ) {
                     Image(painterResource(Res.drawable.ic_menu_customize), null,
                         Modifier.size(28.dp), colorFilter = ColorFilter.tint(PaintBucket.white))
                 }
                 EdgePill(
                     side = PillSide.End, color = PaintBucket.menuAccentRed,
-                    modifier = Modifier.height(52.dp).clickable(onClick = onBack)
+                    modifier = Modifier.height(52.dp), onClick = onBack
                 ) {
                     Image(painterResource(Res.drawable.ic_menu_check), null,
                         Modifier.size(28.dp), colorFilter = ColorFilter.tint(PaintBucket.white))

@@ -145,6 +145,10 @@ fun EdgePill(
     // Inner horizontal inset for the icon row. Callers pass a height-proportional value so it scales
     // with the screen instead of staying a fixed 18dp that looks oversized on a phone-sized pill.
     contentPadding: androidx.compose.ui.unit.Dp = 18.dp,
+    // When the whole pill is tappable, pass the handler here instead of adding `.clickable` to
+    // `modifier`. Applying it inside (after `.clip(shape)`) lets the press ripple follow the pill's
+    // rounded shape; a caller-side `.clickable` runs before the clip and the ripple stays a rectangle.
+    onClick: (() -> Unit)? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     val cap = CornerSize(50)
@@ -156,7 +160,8 @@ fun EdgePill(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(color),
+            .background(color)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center
     ) {
         Row(

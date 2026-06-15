@@ -208,8 +208,8 @@ fun MainMenuScreen(
                     contentPadding = pillContentPad,
                     modifier = Modifier
                         .weight(1f)
-                        .height(pillHeight)
-                        .clickable(onClick = onCustomBallTapped)
+                        .height(pillHeight),
+                    onClick = onCustomBallTapped
                 ) {
                     Image(
                         painter = painterResource(Res.drawable.ic_menu_customize),
@@ -239,8 +239,8 @@ fun MainMenuScreen(
                     color = PaintBucket.menuAccentRed,
                     contentPadding = pillContentPad,
                     modifier = Modifier
-                        .height(pillHeight)
-                        .clickable(onClick = onCustomBallTapped)
+                        .height(pillHeight),
+                    onClick = onCustomBallTapped
                 ) {
                     Image(
                         painter = painterResource(Res.drawable.ic_menu_customize),
