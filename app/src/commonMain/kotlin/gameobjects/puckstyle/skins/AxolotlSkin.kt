@@ -18,6 +18,7 @@ import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
+import gameobjects.puckstyle.paddles.BubbleLaunch
 import physics.Point
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -555,8 +556,21 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     override val explosionFrequency get() = 20
 
+    private fun spawnBubbles(x: Float, y: Float) {
+        BubbleLaunch.spawnBubbleBurst(x, y, renderer.radius, responsivePrimary, responsiveSecondary, renderer.isHigh)
+    }
+
+    override fun onCollisionWin(position: Point, speed: Float) {
+        spawnBubbles(position.x, position.y)
+    }
+
+    override fun onShieldedCollision(position: Point) {
+        spawnBubbles(position.x, position.y)
+    }
+
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         startAnim(AxolotlAnim.Chatter)
+        spawnBubbles(position.x, position.y)
     }
 
     override fun onScored() {
@@ -566,6 +580,7 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
     override fun onVictory(x: Float, y: Float) {
         animLoop = true
         startAnim(AxolotlAnim.Celebration)
+        spawnBubbles(x, y)
     }
 
     // -- Helpers --

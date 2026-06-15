@@ -18,6 +18,7 @@ import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
+import gameobjects.puckstyle.paddles.FireLaunch
 import gameobjects.Settings
 import physics.Point
 import utility.Effects
@@ -800,8 +801,19 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     override val explosionFrequency get() = 20
 
+    // Reuse Fire's impact + score effects (the dragon breathes fire, so they fit). The unique
+    // fire-breath victory effect in onVictory is deliberately left as-is.
+    override fun onCollisionWin(position: Point, speed: Float) {
+        FireLaunch.spawnFireImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, theme.inert.primary)
+    }
+
+    override fun onShieldedCollision(position: Point) {
+        FireLaunch.spawnFireImpact(position.x, position.y, renderer.radius, responsivePrimary, responsiveSecondary, theme.inert.secondary)
+    }
+
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         startAnim(DragonAnim.Chatter)
+        FireLaunch.spawnFireCelebration(position.x, position.y, renderer.radius, renderer.bakedSecondary(theme.main.secondary), highGoal, fullCircle = false)
     }
 
     override fun onScored() {

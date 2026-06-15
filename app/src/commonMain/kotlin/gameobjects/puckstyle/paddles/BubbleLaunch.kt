@@ -182,4 +182,119 @@ class BubbleLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             }
         }
     }
+
+    companion object {
+        /**
+         * One ring of bubbles, modelled after the bubble paddle: a translucent fill, a coloured
+         * stroke ring and a small white highlight. They burst outward in a ring, then drift
+         * chaotically (drag + jitter + buoyancy toward the player's "up"), each on its own random
+         * lifespan, and finally pop into a scatter of specks before vanishing.
+         *
+         * This single burst is the building block: [gameobjects.puckstyle.skins.AxolotlSkin] fires it
+         * on collisions/scores, and the victory loop in Logic spawns it repeatedly across the play
+         * area to make the firework celebration.
+         */
+        fun spawnBubbleBurst(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int, isHigh: Boolean) {
+            Effects.addPersistentEffect(BubbleBurst(cx, cy, radius, primary, secondary, isHigh))
+        }
+    }
+
+    private class BubbleBurst(
+        cx: Float, cy: Float,
+        private val radius: Float,
+        private val primary: Int,
+        private val secondary: Int,
+        isHigh: Boolean
+    ) : Effects.PersistentEffect {
+
+        private class Bubble(
+            var x: Float, var y: Float,
+            var vx: Float, var vy: Float,
+            val size: Float,
+            val maxLife: Int,
+            val popFrames: Int,
+            val seed: Float
+        ) { var age = 0 }
+
+        // Buoyancy lifts bubbles toward the owning player's "up". The high player's world is mirrored,
+        // so their up is +y (screen-down); the low player's is -y.
+        private val buoyancy = (if (isHigh) 1f else -1f) * radius * 0.004f
+        private val bubbles: List<Bubble>
+        private val maxAge: Int
+        private var frame = 0
+        override var isDone = false
+            private set
+
+        init {
+            val count = 18
+            val twoPi = 2f * PI.toFloat()
+            bubbles = List(count) { i ->
+                val angle = (i.toFloat() / count) * twoPi + (Random.nextFloat() - 0.5f) * 0.6f
+                val speed = radius * (0.10f + Random.nextFloat() * 0.16f)
+                Bubble(
+                    cx, cy,
+                    cos(angle) * speed, sin(angle) * speed,
+                    radius * (0.10f + Random.nextFloat() * 0.14f),
+                    24 + Random.nextInt(34),   // random lifespans
+                    6,
+                    Random.nextFloat() * twoPi
+                )
+            }
+            maxAge = bubbles.maxOf { it.maxLife + it.popFrames }
+        }
+
+        override fun step() {
+            frame++
+            val jitter = radius * 0.012f
+            for (b in bubbles) {
+                b.age++
+                if (b.age <= b.maxLife) {
+                    b.x += b.vx; b.y += b.vy
+                    b.vx = b.vx * 0.92f + (Random.nextFloat() - 0.5f) * jitter
+                    b.vy = b.vy * 0.92f + (Random.nextFloat() - 0.5f) * jitter + buoyancy
+                }
+            }
+            if (frame >= maxAge) isDone = true
+        }
+
+        override fun draw(scope: DrawScope) {
+            val strokeW = Settings.strokeWidth * 0.4f
+            for (b in bubbles) {
+                if (b.age <= b.maxLife) {
+                    // Alive: translucent fill + stroke ring + highlight, matching the bubble paddle.
+                    scope.drawCircle(
+                        Color(Palette.withAlpha(primary, 90)),
+                        b.size, Offset(b.x, b.y)
+                    )
+                    scope.drawCircle(
+                        Color(Palette.withAlpha(secondary, 220)),
+                        b.size, Offset(b.x, b.y),
+                        style = Stroke(width = strokeW)
+                    )
+                    val hl = b.size * 0.35f
+                    scope.drawCircle(
+                        Color.White.copy(alpha = 0.55f),
+                        hl, Offset(b.x - b.size * 0.3f, b.y - b.size * 0.3f)
+                    )
+                } else {
+                    // Popped: a scatter of specks expanding outward and fading to nothing.
+                    val popT = ((b.age - b.maxLife).toFloat() / b.popFrames).coerceIn(0f, 1f)
+                    val specks = 4
+                    val speckR = (b.size * 0.30f * (1f - popT)).coerceAtLeast(0.5f)
+                    val dist = b.size * (0.6f + popT * 2.2f)
+                    val alpha = (220 * (1f - popT)).toInt().coerceIn(0, 255)
+                    if (alpha > 0) {
+                        val speckColor = Color(Palette.withAlpha(secondary, alpha))
+                        for (k in 0 until specks) {
+                            val a = b.seed + k * (2f * PI.toFloat() / specks)
+                            scope.drawCircle(
+                                speckColor, speckR,
+                                Offset(b.x + cos(a) * dist, b.y + sin(a) * dist)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

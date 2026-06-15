@@ -9,16 +9,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.painter.Painter
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.PaddleLaunchEffect
+import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.PuckSkin
 import physics.Point
+import utility.Effects
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -835,8 +839,21 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     override val explosionFrequency get() = 20
 
+    private fun spawnHair(x: Float, y: Float) {
+        spawnHairBurst(x, y, renderer.radius, responsivePrimary, responsiveSecondary, renderer.isHigh)
+    }
+
+    override fun onCollisionWin(position: Point, speed: Float) {
+        spawnHair(position.x, position.y)
+    }
+
+    override fun onShieldedCollision(position: Point) {
+        spawnHair(position.x, position.y)
+    }
+
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
         startAnim(CatAnim.Chatter)
+        spawnHair(position.x, position.y)
     }
 
     override fun onScored() {
@@ -846,6 +863,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     override fun onVictory(x: Float, y: Float) {
         animLoop = true
         startAnim(CatAnim.Celebration)
+        spawnHair(x, y)
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────
@@ -863,5 +881,102 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     companion object {
         private val HALF_PI = (PI / 2.0).toFloat()
+
+        /**
+         * One burst of "hair balls": short, slightly-bent arcs of fur that explode outward in a ring
+         * (fire-celebration style), then drift slowly "down" relative to the owning player while
+         * tumbling and fading away.
+         *
+         * This single burst is the building block: [CatSkin] fires it on collisions/scores, and the
+         * victory loop in Logic spawns it repeatedly across the play area for the firework celebration.
+         */
+        fun spawnHairBurst(cx: Float, cy: Float, radius: Float, primary: Int, secondary: Int, isHigh: Boolean) {
+            Effects.addPersistentEffect(HairBurst(cx, cy, radius, primary, secondary, isHigh))
+        }
+    }
+
+    private class HairBurst(
+        cx: Float, cy: Float,
+        private val radius: Float,
+        private val primary: Int,
+        private val secondary: Int,
+        isHigh: Boolean
+    ) : Effects.PersistentEffect {
+
+        private class Hair(
+            var x: Float, var y: Float,
+            var vx: Float, var vy: Float,
+            var angle: Float,
+            val spin: Float,
+            val bend: Float,
+            val len: Float,
+            val tipPrimary: Boolean
+        ) { var age = 0 }
+
+        // Gravity pulls toward the owning player's "down". The high player's world is mirrored 180°,
+        // so their down is -y (up-screen, toward their goal); the low player's is +y (down-screen).
+        private val gravity = (if (isHigh) -1f else 1f) * radius * 0.006f
+        private val hairs: List<Hair>
+        private val maxLife = 64
+        private val path = Path()
+        private var frame = 0
+        override var isDone = false
+            private set
+
+        init {
+            val count = 16
+            val twoPi = 2f * PI.toFloat()
+            hairs = List(count) { i ->
+                val angle = (i.toFloat() / count) * twoPi + (Random.nextFloat() - 0.5f) * 0.5f
+                val speed = radius * (0.15f + Random.nextFloat() * 0.20f)  // ~25% larger reach
+                Hair(
+                    cx, cy,
+                    cos(angle) * speed, sin(angle) * speed,
+                    angle + (Random.nextFloat() - 0.5f) * 0.8f,
+                    (Random.nextFloat() - 0.5f) * 0.06f,           // slow tumble
+                    (Random.nextFloat() - 0.5f) * 0.9f,            // arc bend (sign + magnitude)
+                    radius * (0.45f + Random.nextFloat() * 0.45f), // strand length
+                    Random.nextBoolean()
+                )
+            }
+        }
+
+        override fun step() {
+            frame++
+            for (h in hairs) {
+                h.x += h.vx; h.y += h.vy
+                h.vx *= 0.90f
+                h.vy = h.vy * 0.90f + gravity
+                h.angle += h.spin
+                h.age++
+            }
+            if (frame >= maxLife) isDone = true
+        }
+
+        override fun draw(scope: DrawScope) {
+            val lifeRatio = (1f - frame.toFloat() / maxLife).coerceIn(0f, 1f)
+            val alpha = (235f * lifeRatio * lifeRatio).toInt().coerceIn(0, 255)
+            if (alpha == 0) return
+            val strokeW = Settings.strokeWidth * 0.6f
+            for (h in hairs) {
+                val dx = cos(h.angle); val dy = sin(h.angle)
+                val px = -dy; val py = dx
+                val half = h.len * 0.5f
+                val sx = h.x - dx * half; val sy = h.y - dy * half
+                val ex = h.x + dx * half; val ey = h.y + dy * half
+                // Control point pushed perpendicular to the strand to give it a gentle hair-like arc.
+                val mx = h.x + px * h.bend * radius
+                val my = h.y + py * h.bend * radius
+                path.reset()
+                path.moveTo(sx, sy)
+                path.quadraticTo(mx, my, ex, ey)
+                val base = if (h.tipPrimary) primary else secondary
+                scope.drawPath(
+                    path,
+                    Color(Palette.withAlpha(base, alpha)),
+                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                )
+            }
+        }
     }
 }
