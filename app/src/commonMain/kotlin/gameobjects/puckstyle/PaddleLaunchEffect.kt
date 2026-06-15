@@ -408,7 +408,11 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
         private val helperScope = CanvasDrawScope()
 
         // Static UI (ball-selection) paddle pose.
-        const val STATIC_PADDLE_TILT_DEG = 15f
+        // STATIC_PADDLE_TILT_DEG is the paddle's angle around the ball center for all static,
+        // fully-composed previews (BallSelectionPopup, BallDesigner slot previews + unified carousel).
+        // 0 = paddle parked straight "up" from the ball; increasing the value rotates it
+        // counter-clockwise around the ball center. Bump this to tweak the static angle.
+        const val STATIC_PADDLE_TILT_DEG = 45f
         const val STATIC_PADDLE_DIST_K = 2.2f
     }
 }

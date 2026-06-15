@@ -115,6 +115,23 @@ private fun bdEffectivePaddleType(type: BallType): BallType = when (type) {
 private fun bdNaturalConfig(type: BallType): CustomBallConfig =
     BallStyleFactory.naturalCustomConfig(type, type, bdEffectivePaddleType(type))
 
+// The raw zIndex each built-in style declares (PuckSkin/TailRenderer/PaddleLaunchEffect.zIndex) is a
+// *default* meant only to seed the natural draw order — and those values collide across pieces (e.g.
+// Ghost's tail and paddle are both z=2; Plasma's/Prism's tail and paddle both z=1). The separation
+// view edits these as a Triple and reorders by swapping the two pieces' rank *values*; when two
+// pieces share a value that swap is a no-op, which made the left column "sticky" (certain pieces
+// refused to move). Normalize any raw rank triple into a strict 0/1/2 permutation so every piece has
+// a unique, freely-swappable rank. Ties are broken exactly the way PuckRenderer.rebuildLayerOrder
+// does (stable ascending: skin before tail before paddle), so the normalized order is identical to
+// how the composed ball actually draws — the default still informs the order, it just no longer
+// constrains the separated view. (0 = drawn first/back, 2 = drawn last/front, per CustomBallConfig.)
+private fun bdNormalizeRanks(skinZ: Int, tailZ: Int, paddleZ: Int): Triple<Int, Int, Int> {
+    val ordered = listOf(BD_SKIN to skinZ, BD_TAIL to tailZ, BD_PADDLE to paddleZ).sortedBy { it.second }
+    val rank = IntArray(3)
+    ordered.forEachIndexed { pos, (id, _) -> rank[id] = pos }
+    return Triple(rank[BD_SKIN], rank[BD_TAIL], rank[BD_PADDLE])
+}
+
 private fun bdBuildPartRenderer(component: Int, type: BallType, theme: ColorTheme): PuckRenderer {
     val r = when (component) {
         BD_SKIN -> BallStyleFactory.buildSkinOnlyRenderer(type, theme)
@@ -538,7 +555,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
         skinType = config.skinType
         tailType = config.tailType
         paddleType = config.paddleType
-        ranks = Triple(config.skinZRank, config.tailZRank, config.paddleZRank)
+        ranks = bdNormalizeRanks(config.skinZRank, config.tailZRank, config.paddleZRank)
         rebuildPreview()
     }
 
@@ -576,7 +593,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
         skinType = cfg.skinType
         tailType = cfg.tailType
         paddleType = cfg.paddleType
-        ranks = Triple(cfg.skinZRank, cfg.tailZRank, cfg.paddleZRank)
+        ranks = bdNormalizeRanks(cfg.skinZRank, cfg.tailZRank, cfg.paddleZRank)
         rebuildPreview()
         // Browsing updates the previews live (so the top preview shows the type from all angles);
         // only a committed pick (snap/tap) writes the selected slot.
@@ -1011,7 +1028,16 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                   // carousel instead of overlapping it. No background filler, so the orbiting preview
                   // ball is never occluded.
                   Box(modifier = Modifier.align(Alignment.TopStart).offset(x = 4.dp, y = (-38).dp)) {
-                      SeparationUnificationToggle(unified = unified, accent = accentBlue) { unified = !unified }
+                      SeparationUnificationToggle(unified = unified, accent = accentBlue) {
+                          unified = !unified
+                          // Entering the unified view re-selects the currently-equipped unified type
+                          // (tracked by skinType, same as uSelIdx) so its three pieces snap back to
+                          // their natural composition — including z-order, undoing any per-piece
+                          // reordering the player did in the separation view. Reuses the carousel's
+                          // own browse path (save=false), matching the correction that already happens
+                          // when you scroll to another type and back.
+                          if (unified) selectUnifiedType(skinType, save = false)
+                      }
                   }
                 }
             }
