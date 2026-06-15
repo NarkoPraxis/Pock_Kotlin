@@ -47,6 +47,9 @@
     <string name="game_speed_label">Game Speed</string>
     <string name="points_to_win_label">Points to Win</string>
     <string name="time_limit_label">Time Limit</string>
+    <string name="control_scheme_label">Controls</string>
+    <string name="control_scheme_sides">Sides</string>
+    <string name="control_scheme_closest">Closest</string>
     <string name="minute_short">min</string>
     <string name="sound">Sound</string>
     <string name="sound_master">Master</string>

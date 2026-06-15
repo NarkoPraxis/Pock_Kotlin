@@ -47,6 +47,9 @@
     <string name="game_speed_label">游戏速度</string>
     <string name="points_to_win_label">获胜所需分数</string>
     <string name="time_limit_label">时间限制</string>
+    <string name="control_scheme_label">操控方式</string>
+    <string name="control_scheme_sides">两侧</string>
+    <string name="control_scheme_closest">最近</string>
     <string name="minute_short">分钟</string>
     <string name="sound">音效</string>
     <string name="sound_master">总音量</string>

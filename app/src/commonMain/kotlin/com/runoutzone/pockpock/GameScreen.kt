@@ -9,11 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import enums.GameState
+import enums.TouchScheme
 import gameobjects.Settings
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.rememberTextMeasurer
 import utility.Drawing
 import utility.Logic
+import utility.Storage
 import utility.drawGameFrame
 import utility.onGamePointerDown
 import utility.onGamePointerMove
@@ -78,8 +80,11 @@ fun GameScreen(
                             // Drag-across-center: each owned pointer's current Y
                             // is checked against the midline. Crossing flashes the
                             // crossing player's HOME side as a "bring it back" cue.
-                            Logic.highPlayerCrossedCenter = highRawId != null && highLastY >= mid
-                            Logic.lowPlayerCrossedCenter  = lowRawId  != null && lowLastY  <  mid
+                            // The proximity scheme has no notion of a home side, so the
+                            // cue is suppressed entirely there.
+                            val proximityScheme = Storage.touchScheme == TouchScheme.ByProximity
+                            Logic.highPlayerCrossedCenter = !proximityScheme && highRawId != null && highLastY >= mid
+                            Logic.lowPlayerCrossedCenter  = !proximityScheme && lowRawId  != null && lowLastY  <  mid
 
                             event.changes.forEach { change ->
                                 val rawId = change.id.value
@@ -88,21 +93,25 @@ fun GameScreen(
 
                                 when {
                                     change.pressed && !change.previousPressed -> {
-                                        // Assign to the player whose side of the screen was touched.
-                                        // GameScreen enforces single-pointer-per-player; cross-midline
-                                        // drags work because we track by rawId, not position.
-                                        val isHighSide = y < Settings.middleY
+                                        // Logic.resolveTouchOwner picks the puck per the active
+                                        // control scheme; GameScreen only tracks the assignment.
+                                        // Cross-scheme drags work because we track by rawId, not position.
                                         // In single-player, the high side is the bot. Allow touches there
                                         // only during ball selection (so the player can change the bot's
                                         // ball); during Play the bot's half is untouchable.
                                         val highSideAllowed = !Settings.isSinglePlayer ||
                                             Settings.gameState == GameState.BallSelection
-                                        if (isHighSide && highRawId == null && highSideAllowed) {
-                                            highRawId = rawId; highLastX = x; highLastY = y
-                                            onGamePointerDown(x, y, 0)
-                                        } else if (!isHighSide && lowRawId == null) {
-                                            lowRawId = rawId; lowLastX = x; lowLastY = y
-                                            onGamePointerDown(x, y, 1)
+                                        when (Logic.resolveTouchOwner(
+                                            x, y, highRawId != null, lowRawId != null, highSideAllowed
+                                        )) {
+                                            0 -> {
+                                                highRawId = rawId; highLastX = x; highLastY = y
+                                                onGamePointerDown(x, y, 0)
+                                            }
+                                            1 -> {
+                                                lowRawId = rawId; lowLastX = x; lowLastY = y
+                                                onGamePointerDown(x, y, 1)
+                                            }
                                         }
                                     }
                                     change.pressed -> {

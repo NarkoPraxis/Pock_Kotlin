@@ -585,7 +585,49 @@ object Logic {
     // -------------------------------------------------------------------------
 
     // GameScreen passes semantic player IDs: 0 = high player, 1 = low player.
-    // All pointer-to-player assignment and lifetime tracking lives in GameScreen.
+    // Pointer lifetime tracking lives in GameScreen; the per-down ownership decision is
+    // resolved here (resolveTouchOwner) because the proximity scheme needs puck geometry.
+
+    /**
+     * Decide which puck a touch-down belongs to. Returns 0 (Top/high), 1 (Bottom/low), or
+     * -1 (no assignment). [highAllowed] carries the single-player rule (the bot's half is
+     * untouchable during Play). Both control schemes are resolved here so GameScreen stays
+     * agnostic to the rule.
+     */
+    fun resolveTouchOwner(
+        x: Float, y: Float,
+        highTaken: Boolean, lowTaken: Boolean,
+        highAllowed: Boolean
+    ): Int {
+        if (!isInitialized) return -1
+        return when (Storage.touchScheme) {
+            TouchScheme.BySide -> {
+                // Legacy: claim the puck on whichever screen half was touched. No fallback.
+                if (y < Settings.middleY) { if (!highTaken && highAllowed) 0 else -1 }
+                else                      { if (!lowTaken) 1 else -1 }
+            }
+            TouchScheme.ByProximity -> {
+                // Nearest puck wins; if it is already owned, the other puck takes the input.
+                val dHigh = dist2(x, y, highPlayer.puck.x, highPlayer.puck.y)
+                val dLow  = dist2(x, y, lowPlayer.puck.x,  lowPlayer.puck.y)
+                val highFree = !highTaken && highAllowed
+                val lowFree  = !lowTaken
+                val highNearer = dHigh <= dLow
+                when {
+                    highNearer  && highFree -> 0
+                    highNearer  && lowFree  -> 1
+                    !highNearer && lowFree  -> 1
+                    !highNearer && highFree -> 0
+                    else -> -1
+                }
+            }
+        }
+    }
+
+    private fun dist2(ax: Float, ay: Float, bx: Float, by: Float): Float {
+        val dx = ax - bx; val dy = ay - by
+        return dx * dx + dy * dy
+    }
 
     fun onPointerDown(x: Float, y: Float, playerId: Int) {
         if (Settings.screenWidth == 0f) return

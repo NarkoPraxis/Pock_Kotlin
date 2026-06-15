@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import enums.BallType
 import enums.ChargeMeterStyle
+import enums.DarkModeSetting
+import enums.TouchScheme
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.CustomBallConfig
 
@@ -12,7 +14,14 @@ data class CcpPreset(
     val highHue: Float,
     val highShieldHue: Float,
     val lowHue: Float,
-    val lowShieldHue: Float
+    val lowShieldHue: Float,
+    // Rainbow colour overrides (see gameobjects.puckstyle.RainbowOverride). Stored as an override of
+    // the hue, not a replacement: when true the hue above is ignored and that colour strobes; when
+    // toggled off the hue returns.
+    val highRainbow: Boolean = false,
+    val highShieldRainbow: Boolean = false,
+    val lowRainbow: Boolean = false,
+    val lowShieldRainbow: Boolean = false
 )
 
 object Storage {
@@ -63,21 +72,23 @@ object Storage {
 
     /**
      * Preset color carousel indices unlocked for free — the game's default branding colors only:
-     * Red (0) = high-player default 0°, Sky Blue (4) = low-player default 202.5°, Purple (6) =
+     * Red (0) = high-player default 0°, Sky Blue (8) = low-player default 202.5°, Purple (10) =
      * shield default 264°. Every other preset is ad-unlockable. (These hues must stay in lockstep
      * with the defaults in [highPlayerColorHue]/[lowPlayerColorHue]/[*ShieldColorHue] and the
      * matching entries in ColorCarousel.PRESETS, or a default color would resolve as locked.)
      */
-    private val FREE_COLOR_INDICES = setOf(0, 4, 6)
-    private const val CUSTOM_COLOR_INDEX = 9
+    private val FREE_COLOR_INDICES = setOf(0, 8, 10)
+    private const val CUSTOM_COLOR_INDEX = 13
 
     fun initialize(context: Any?) {
         PlatformStorage.initialize(context)
         ensureDefaultSlots()
     }
 
+    // Ad --- Unlock progress (0–100) ---
     val unlockProgress: Int get() {
         dataVersion // subscribe
+        return 100 // don't fix, manual, intentional override.
         //return PlatformStorage.getInt(AD, unlockProgressKey, 0)
     }
 
@@ -326,9 +337,49 @@ object Storage {
     fun saveHighShieldColorHue(hue: Float) = PlatformStorage.saveFloat(SETTINGS, "high_shield_color_hue", hue)
     fun saveLowShieldColorHue(hue: Float) = PlatformStorage.saveFloat(SETTINGS, "low_shield_color_hue", hue)
 
+    // --- Rainbow colour overrides (live values; mirrors the per-slot flags in CcpPreset). ---
+
+    val highPlayerRainbow: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "high_player_rainbow", false)
+    val highPlayerRainbowShield: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "high_shield_rainbow", false)
+    val lowPlayerRainbow: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "low_player_rainbow", false)
+    val lowPlayerRainbowShield: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "low_shield_rainbow", false)
+
+    fun saveHighPlayerRainbow(on: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "high_player_rainbow", on)
+    fun saveHighPlayerRainbowShield(on: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "high_shield_rainbow", on)
+    fun saveLowPlayerRainbow(on: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "low_player_rainbow", on)
+    fun saveLowPlayerRainbowShield(on: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "low_shield_rainbow", on)
+
     // --- App settings ---
 
-    val darkMode: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "darkmode", false)
+    // Dark mode is a single tri-state preference (On / Off / Match Device). It is the only persisted
+    // state; [darkMode] derives a concrete light/dark boolean from it against the live device theme.
+    // The Android Activity recreate keys on this same pref change (see MainActivity).
+    const val DARK_MODE_PREF_KEY = "dark_mode_setting"
+
+    var darkModeSetting: DarkModeSetting
+        get() {
+            val stored = PlatformStorage.getString(SETTINGS, DARK_MODE_PREF_KEY, DarkModeSetting.System.name)
+            return try { DarkModeSetting.valueOf(stored) } catch (e: IllegalArgumentException) { DarkModeSetting.System }
+        }
+        set(value) = PlatformStorage.saveString(SETTINGS, DARK_MODE_PREF_KEY, value.name)
+
+    /** The tri-state preference resolved to a concrete light/dark boolean for the current device. */
+    val darkMode: Boolean get() = when (darkModeSetting) {
+        DarkModeSetting.On -> true
+        DarkModeSetting.Off -> false
+        DarkModeSetting.System -> PlatformStorage.isSystemInDarkMode()
+    }
+
+    // Touch-ownership scheme: how a touch-down is assigned to a puck. Defaults to ByProximity
+    // (nearest puck wins / "Closest") on a fresh install.
+    const val TOUCH_SCHEME_PREF_KEY = "touch_scheme"
+
+    var touchScheme: TouchScheme
+        get() {
+            val stored = PlatformStorage.getString(SETTINGS, TOUCH_SCHEME_PREF_KEY, TouchScheme.ByProximity.name)
+            return try { TouchScheme.valueOf(stored) } catch (e: IllegalArgumentException) { TouchScheme.ByProximity }
+        }
+        set(value) = PlatformStorage.saveString(SETTINGS, TOUCH_SCHEME_PREF_KEY, value.name)
 
     val ballSize: String get() = PlatformStorage.getString(SETTINGS, "ball_sizes", D)
     val tailLength: Int get() {
@@ -351,9 +402,9 @@ object Storage {
     }
     val gameSpeed: Int get() {
         return when (PlatformStorage.getString(SETTINGS, "game_speed", D)) {
-            S -> 24
+            S -> 20
             D -> 16
-            L -> 8
+            L -> 12
             else -> 16
         }
     }
@@ -417,7 +468,11 @@ object Storage {
             highHue       = h,
             highShieldHue = PlatformStorage.getFloat(SETTINGS, "ccp${index}_hs", 264f),
             lowHue        = PlatformStorage.getFloat(SETTINGS, "ccp${index}_l",  202.5f),
-            lowShieldHue  = PlatformStorage.getFloat(SETTINGS, "ccp${index}_ls", 264f)
+            lowShieldHue  = PlatformStorage.getFloat(SETTINGS, "ccp${index}_ls", 264f),
+            highRainbow       = PlatformStorage.getBoolean(SETTINGS, "ccp${index}_rb_h",  false),
+            highShieldRainbow = PlatformStorage.getBoolean(SETTINGS, "ccp${index}_rb_hs", false),
+            lowRainbow        = PlatformStorage.getBoolean(SETTINGS, "ccp${index}_rb_l",  false),
+            lowShieldRainbow  = PlatformStorage.getBoolean(SETTINGS, "ccp${index}_rb_ls", false)
         )
     }
 
@@ -426,6 +481,10 @@ object Storage {
         PlatformStorage.saveFloat(SETTINGS, "ccp${index}_hs", preset.highShieldHue)
         PlatformStorage.saveFloat(SETTINGS, "ccp${index}_l",  preset.lowHue)
         PlatformStorage.saveFloat(SETTINGS, "ccp${index}_ls", preset.lowShieldHue)
+        PlatformStorage.saveBoolean(SETTINGS, "ccp${index}_rb_h",  preset.highRainbow)
+        PlatformStorage.saveBoolean(SETTINGS, "ccp${index}_rb_hs", preset.highShieldRainbow)
+        PlatformStorage.saveBoolean(SETTINGS, "ccp${index}_rb_l",  preset.lowRainbow)
+        PlatformStorage.saveBoolean(SETTINGS, "ccp${index}_rb_ls", preset.lowShieldRainbow)
         notifyDataChanged()
     }
 
@@ -449,4 +508,14 @@ object Storage {
     fun saveSoundMasterMuted(m: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "sound_master_muted", m)
     fun saveSoundBackgroundMuted(m: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "sound_background_muted", m)
     fun saveSoundSfxMuted(m: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "sound_sfx_muted", m)
+
+    // --- Menu sound toggle (independent of the in-game volume/mute settings). ---
+    // A single all-or-nothing switch: when muted, both the menu ambiance and the demo game's SFX
+    // are silenced across all menu screens (Main Menu, Settings, Ball Designer). Stored as a
+    // "muted" boolean to mirror the other sound mutes; default false = plays.
+    // Gates Sounds.playMenuAmbiance (music) and effectiveSfxVol while Settings.isDemoMode (SFX).
+
+    val menusMuted: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "menus_muted", false)
+
+    fun saveMenusMuted(m: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "menus_muted", m)
 }

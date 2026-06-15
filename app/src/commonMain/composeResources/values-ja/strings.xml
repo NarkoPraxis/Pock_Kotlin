@@ -47,6 +47,9 @@
     <string name="game_speed_label">ゲーム速度</string>
     <string name="points_to_win_label">勝利ポイント</string>
     <string name="time_limit_label">制限時間</string>
+    <string name="control_scheme_label">操作方法</string>
+    <string name="control_scheme_sides">サイド</string>
+    <string name="control_scheme_closest">最も近い</string>
     <string name="minute_short">分</string>
     <string name="sound">サウンド</string>
     <string name="sound_master">マスター</string>

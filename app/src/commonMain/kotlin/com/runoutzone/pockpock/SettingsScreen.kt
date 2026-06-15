@@ -58,6 +58,7 @@ import com.runoutzone.pockpock.menu.PillSide
 import com.runoutzone.pockpock.menu.poppinsFamily
 import enums.ChargeMeterStyle
 import enums.DarkModeSetting
+import enums.TouchScheme
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
@@ -117,6 +118,7 @@ fun SettingsScreen(
     var tailLength by remember { mutableIntStateOf(Storage.tailLength) }
     var pointsToWin by remember { mutableIntStateOf(Storage.loadPointsToWin()) }
     var timeLimit by remember { mutableIntStateOf(Storage.loadTimeLimit()) }
+    var touchScheme by remember { mutableStateOf(Storage.touchScheme) }
     var masterVol by remember { mutableIntStateOf(Storage.soundMasterVolume) }
     var bgVol by remember { mutableIntStateOf(Storage.soundBackgroundVolume) }
     var sfxVol by remember { mutableIntStateOf(Storage.soundSfxVolume) }
@@ -137,6 +139,7 @@ fun SettingsScreen(
         PlatformStorage.saveString("settings", "tail_length", "default")
         Storage.savePointsToWin(5)
         Storage.saveTimeLimit(0)
+        Storage.touchScheme = TouchScheme.BySide
         Storage.saveSoundMasterVolume(70)
         Storage.saveSoundBackgroundVolume(100)
         Storage.saveSoundSfxVolume(70)
@@ -156,6 +159,7 @@ fun SettingsScreen(
         tailLength = 20
         pointsToWin = 5
         timeLimit = 0
+        touchScheme = TouchScheme.BySide
         masterVol = 70
         bgVol = 100
         sfxVol = 70
@@ -182,6 +186,9 @@ fun SettingsScreen(
     val strGameSpeed = stringResource(Res.string.game_speed_label)
     val strPointsToWin = stringResource(Res.string.points_to_win_label)
     val strTimeLimit = stringResource(Res.string.time_limit_label)
+    val strControlScheme = stringResource(Res.string.control_scheme_label)
+    val strSchemeSides = stringResource(Res.string.control_scheme_sides)
+    val strSchemeClosest = stringResource(Res.string.control_scheme_closest)
     val strMaster = stringResource(Res.string.sound_master)
     val strBackground = stringResource(Res.string.sound_background)
     val strFx = stringResource(Res.string.sound_fx)
@@ -267,6 +274,17 @@ fun SettingsScreen(
                     }
                     NumberDropdownRow(strTimeLimit, timeLimit, poppins) {
                         timeLimit = it; Storage.saveTimeLimit(it)
+                    }
+
+                    CircleRadioRow(
+                        strControlScheme,
+                        listOf(
+                            TouchScheme.BySide to strSchemeSides,
+                            TouchScheme.ByProximity to strSchemeClosest
+                        ),
+                        touchScheme, circleD, poppins
+                    ) {
+                        touchScheme = it; Storage.touchScheme = it
                     }
 
                     SlantedBanner(
