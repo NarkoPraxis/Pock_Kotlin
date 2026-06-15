@@ -8,22 +8,17 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 
-object ShareHelper {
+actual object ShareHelper {
 
-    fun shareAppPromo(activity: Activity, onTargetSelected: (() -> Unit)? = null) {
-        val message = "Just played Pock — 2-player puck battle on one phone! [PLAY_STORE_LINK]"
-        launchShareSheet(activity, message, onTargetSelected)
-    }
+    // TODO(launch): replace with the live Google Play listing URL once the app is published.
+    // The id below is the production applicationId, so this resolves correctly the moment the
+    // listing goes live. See Plans/STEPS_TO_LAUNCH/connect share functionality.md
+    actual val storeUrl: String =
+        "https://play.google.com/store/apps/details?id=com.runoutzone.pockpock"
 
-    fun shareScore(
-        activity: Activity,
-        highScore: Int,
-        lowScore: Int,
-        onTargetSelected: (() -> Unit)? = null
-    ) {
-        val message = "I just played Pock! Final score: $highScore – $lowScore. " +
-            "Grab it on Google Play: [PLAY_STORE_LINK] #PockGame"
-        launchShareSheet(activity, message, onTargetSelected)
+    actual fun shareAppPromo(message: String, onShared: () -> Unit) {
+        val activity = AdActivityProvider.activity ?: return
+        launchShareSheet(activity, message, onShared)
     }
 
     private fun launchShareSheet(

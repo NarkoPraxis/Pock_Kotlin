@@ -27,9 +27,9 @@ import org.jetbrains.compose.resources.stringResource
 import platform.Foundation.NSMutableArray
 import platform.Foundation.NSUserDefaults
 import pock_kotlin.app.generated.resources.*
-import utility.IosShareHelper
 import utility.PaintBucket
 import utility.PlatformAd
+import utility.ShareHelper
 import utility.Sounds
 import utility.Storage
 
@@ -38,6 +38,7 @@ actual fun PlatformShareButton(modifier: Modifier, iconSize: Dp) {
     var toast by remember { mutableStateOf<String?>(null) }
     val strShareThanks = stringResource(Res.string.share_thanks)
     val strShareAlreadyClaimed = stringResource(Res.string.share_already_claimed)
+    val shareMessage = stringResource(Res.string.share_message, ShareHelper.storeUrl)
 
     MenuIconButton(
         painter = painterResource(Res.drawable.ic_menu_share),
@@ -45,8 +46,7 @@ actual fun PlatformShareButton(modifier: Modifier, iconSize: Dp) {
         modifier = modifier,
         size = iconSize,
         onClick = {
-            IosShareHelper.shareAppPromo { completed ->
-                if (!completed) return@shareAppPromo
+            ShareHelper.shareAppPromo(shareMessage) {
                 if (Storage.shareRewardClaimed) {
                     toast = strShareAlreadyClaimed
                 } else {

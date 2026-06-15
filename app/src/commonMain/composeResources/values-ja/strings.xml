@@ -24,6 +24,7 @@
     <string name="percent_unlocked">%1$d% アンロック済み</string>
     <string name="share_thanks">シェアありがとう！進捗 +10%。</string>
     <string name="share_already_claimed">またシェアしてくれてありがとう！報酬はすでに受け取り済みです。</string>
+    <string name="share_message">Pok Pokを試してみて！1つの画面でマルチプレイができるよ！ %1$s</string>
 
     <!-- Difficulty dialog -->
     <string name="choose_difficulty">難易度を選択</string>
@@ -51,6 +52,7 @@
     <string name="sound_master">マスター</string>
     <string name="sound_background">BGM</string>
     <string name="sound_fx">効果音</string>
+    <string name="sound_menus">メニュー</string>
     <string name="mute">ミュート</string>
     <string name="muted">ミュート中</string>
     <string name="visual">ビジュアル</string>

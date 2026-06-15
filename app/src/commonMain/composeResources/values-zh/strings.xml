@@ -24,6 +24,7 @@
     <string name="percent_unlocked">%1$d% 已解锁</string>
     <string name="share_thanks">感谢分享！进度 +10%。</string>
     <string name="share_already_claimed">再次感谢分享！奖励已被领取。</string>
+    <string name="share_message">你应该试试 Pok Pok！它支持共享屏幕多人对战！ %1$s</string>
 
     <!-- Difficulty dialog -->
     <string name="choose_difficulty">选择难度</string>
@@ -51,6 +52,7 @@
     <string name="sound_master">总音量</string>
     <string name="sound_background">背景音乐</string>
     <string name="sound_fx">音效</string>
+    <string name="sound_menus">菜单</string>
     <string name="mute">静音</string>
     <string name="muted">已静音</string>
     <string name="visual">视觉</string>

@@ -24,6 +24,7 @@
     <string name="percent_unlocked">%1$d% Unlocked</string>
     <string name="share_thanks">Thanks for sharing! Unlock progress +10%.</string>
     <string name="share_already_claimed">Thanks for sharing again! The reward has already been claimed.</string>
+    <string name="share_message">You should try Pok Pok! It has shared-screen multiplayer! %1$s</string>
 
     <!-- Difficulty dialog -->
     <string name="choose_difficulty">Choose Difficulty</string>
@@ -51,6 +52,7 @@
     <string name="sound_master">Master</string>
     <string name="sound_background">Background</string>
     <string name="sound_fx">Sound FX</string>
+    <string name="sound_menus">Menus</string>
     <string name="mute">Mute</string>
     <string name="muted">Muted</string>
     <string name="visual">Visual</string>

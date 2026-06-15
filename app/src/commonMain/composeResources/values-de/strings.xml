@@ -24,6 +24,7 @@
     <string name="percent_unlocked">%1$d% freigeschaltet</string>
     <string name="share_thanks">Danke fürs Teilen! Fortschritt +10%.</string>
     <string name="share_already_claimed">Danke fürs Teilen! Die Belohnung wurde bereits beansprucht.</string>
+    <string name="share_message">Du musst Pok Pok ausprobieren! Es hat Mehrspieler auf einem geteilten Bildschirm! %1$s</string>
 
     <!-- Difficulty dialog -->
     <string name="choose_difficulty">Schwierigkeit wählen</string>
@@ -51,6 +52,7 @@
     <string name="sound_master">Hauptlautstärke</string>
     <string name="sound_background">Hintergrundmusik</string>
     <string name="sound_fx">Soundeffekte</string>
+    <string name="sound_menus">Menüs</string>
     <string name="mute">Stumm</string>
     <string name="muted">Stummgeschaltet</string>
     <string name="visual">Visuelle</string>

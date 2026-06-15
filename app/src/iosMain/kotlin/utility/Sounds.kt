@@ -64,6 +64,8 @@ actual object Sounds {
     private val effectiveSfxVol: Float
         get() {
             if (Storage.soundMasterMuted || Storage.soundSfxMuted) return 0f
+            // Demo game plays behind the main menu; silence its SFX when menu sounds are muted.
+            if (Settings.isDemoMode && Storage.menusMuted) return 0f
             return (Storage.soundMasterVolume / 100f) * (Storage.soundSfxVolume / 100f)
         }
 
@@ -324,6 +326,18 @@ actual object Sounds {
 
     actual fun playMenuAmbiance() {
         try { engine.startAndReturnError(null) } catch (_: Exception) {}
+        // Menu sounds muted: stop any menu music that's playing and stay silent.
+        // Clearing the players + ambienceMode means a later unmute restarts cleanly.
+        if (Storage.menusMuted) {
+            if (ambienceMode == AmbienceMode.MENU) {
+                ambientPlayer?.stop()
+                incomingPlayer?.stop()
+                ambientPlayer = null
+                incomingPlayer = null
+                ambienceMode = null
+            }
+            return
+        }
         if (ambienceMode == AmbienceMode.MENU) {
             ambientPlayer?.let { if (!it.playing) it.play() }
             return

@@ -6,24 +6,27 @@ import platform.UIKit.UIApplication
 import platform.UIKit.UIViewController
 import platform.UIKit.UIWindow
 
-object IosShareHelper {
-    fun shareAppPromo(onCompleted: (Boolean) -> Unit) {
-        val message = "Just played Pock — 2-player puck battle on one phone! [APP_STORE_LINK]"
-        present(message, onCompleted)
+actual object ShareHelper {
+
+    // TODO(launch): replace with the live App Store listing URL once App Store Connect assigns
+    // the numeric Apple ID (apps.apple.com/app/id<APPLE_ID>).
+    // See Plans/STEPS_TO_LAUNCH/connect share functionality.md
+    actual val storeUrl: String =
+        "https://apps.apple.com/app/idAPPLE_ID_PLACEHOLDER"
+
+    actual fun shareAppPromo(message: String, onShared: () -> Unit) {
+        present(message, onShared)
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun present(text: String, onCompleted: (Boolean) -> Unit) {
+    private fun present(text: String, onCompleted: () -> Unit) {
         val items = listOf<Any>(text)
         val vc = UIActivityViewController(activityItems = items, applicationActivities = null)
         vc.completionWithItemsHandler = { _, completed, _, _ ->
-            onCompleted(completed)
+            if (completed) onCompleted()
         }
         val root = topViewController()
-        if (root == null) {
-            onCompleted(false)
-            return
-        }
+        if (root == null) return
         root.presentViewController(vc, animated = true, completion = null)
     }
 

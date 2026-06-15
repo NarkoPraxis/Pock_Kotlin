@@ -122,6 +122,7 @@ fun SettingsScreen(
     var masterMuted by remember { mutableStateOf(Storage.soundMasterMuted) }
     var bgMuted by remember { mutableStateOf(Storage.soundBackgroundMuted) }
     var sfxMuted by remember { mutableStateOf(Storage.soundSfxMuted) }
+    var menusMuted by remember { mutableStateOf(Storage.menusMuted) }
     var highArrow by remember { mutableStateOf(Storage.highPlayerArrow) }
     var lowArrow by remember { mutableStateOf(Storage.lowPlayerArrow) }
     var highChargeMeter by remember { mutableStateOf(Storage.highPlayerChargeMeterStyle) }
@@ -140,11 +141,13 @@ fun SettingsScreen(
         Storage.saveSoundMasterMuted(false)
         Storage.saveSoundBackgroundMuted(false)
         Storage.saveSoundSfxMuted(false)
+        Storage.saveMenusMuted(false)
         PlatformStorage.saveBoolean("settings", "high_player_arrow", true)
         PlatformStorage.saveBoolean("settings", "low_player_arrow", true)
         Storage.saveHighPlayerChargeMeterStyle(ChargeMeterStyle.SideBar)
         Storage.saveLowPlayerChargeMeterStyle(ChargeMeterStyle.SideBar)
         Sounds.applyBackgroundVolume()
+        Sounds.playMenuAmbiance()
         ballSize = "default"
         chargeSpeed = 0.7f
         gameSpeed = 16
@@ -157,6 +160,7 @@ fun SettingsScreen(
         masterMuted = false
         bgMuted = false
         sfxMuted = false
+        menusMuted = false
         highArrow = true
         lowArrow = true
         highChargeMeter = ChargeMeterStyle.SideBar
@@ -179,6 +183,7 @@ fun SettingsScreen(
     val strMaster = stringResource(Res.string.sound_master)
     val strBackground = stringResource(Res.string.sound_background)
     val strFx = stringResource(Res.string.sound_fx)
+    val strMenus = stringResource(Res.string.sound_menus)
     val strMute = stringResource(Res.string.mute)
     val strMuted = stringResource(Res.string.muted)
     val strChargeArrows = stringResource(Res.string.charge_arrows)
@@ -326,6 +331,13 @@ fun SettingsScreen(
                             Sounds.applyBackgroundVolume()
                         }) {
                         sfxVol = it; Storage.saveSoundSfxVolume(it); Sounds.applyBackgroundVolume()
+                    }
+                    SoundToggleRow(strMenus, menusMuted, strMute, strMuted) {
+                        menusMuted = !menusMuted
+                        Storage.saveMenusMuted(menusMuted)
+                        // Apply live: starts the menu music when un-muted, stops it when muted.
+                        // (Demo SFX read the flag directly via effectiveSfxVol.)
+                        Sounds.playMenuAmbiance()
                     }
                 }
             }
@@ -647,21 +659,7 @@ private fun SoundSliderRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             SectionTitle(title, poppins)
-            Box(
-                modifier = Modifier.size(46.dp).clickable { onMute() },
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(
-                        if (muted) Res.drawable.ic_menu_audio_muted else Res.drawable.ic_menu_audio
-                    ),
-                    contentDescription = if (muted) mutedLabel else muteLabel,
-                    modifier = Modifier.size(30.dp),
-                    colorFilter = ColorFilter.tint(
-                        if (muted) PaintBucket.menuAccentRed else PaintBucket.menuAccentBlue
-                    )
-                )
-            }
+            MuteButton(muted, muteLabel, mutedLabel, onMute)
         }
         Slider(
             value = value.toFloat(),
@@ -678,6 +676,46 @@ private fun SoundSliderRow(
                 disabledInactiveTrackColor = inactiveTrack
             )
         )
+    }
+}
+
+/** The speaker mute toggle shared by the volume sliders and the title-screen sound toggles. */
+@Composable
+private fun MuteButton(muted: Boolean, muteLabel: String, mutedLabel: String, onMute: () -> Unit) {
+    Box(
+        modifier = Modifier.size(46.dp).clickable { onMute() },
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(
+                if (muted) Res.drawable.ic_menu_audio_muted else Res.drawable.ic_menu_audio
+            ),
+            contentDescription = if (muted) mutedLabel else muteLabel,
+            modifier = Modifier.size(30.dp),
+            colorFilter = ColorFilter.tint(
+                if (muted) PaintBucket.menuAccentRed else PaintBucket.menuAccentBlue
+            )
+        )
+    }
+}
+
+/** A bold-titled row with only the shared speaker mute toggle on the right (no slider). */
+@Composable
+private fun SoundToggleRow(
+    title: String,
+    muted: Boolean,
+    muteLabel: String,
+    mutedLabel: String,
+    onMute: () -> Unit
+) {
+    val poppins = poppinsFamily()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SectionTitle(title, poppins, modifier = Modifier.weight(1f))
+        MuteButton(muted, muteLabel, mutedLabel, onMute)
     }
 }
 

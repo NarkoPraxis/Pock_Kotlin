@@ -60,6 +60,7 @@ actual fun PlatformShareButton(modifier: Modifier, iconSize: Dp) {
 
     val strShareThanks = stringResource(Res.string.share_thanks)
     val strShareAlreadyClaimed = stringResource(Res.string.share_already_claimed)
+    val shareMessage = stringResource(Res.string.share_message, ShareHelper.storeUrl)
 
     com.runoutzone.pockpock.menu.MenuIconButton(
         painter = painterResource(Res.drawable.ic_menu_share),
@@ -67,7 +68,7 @@ actual fun PlatformShareButton(modifier: Modifier, iconSize: Dp) {
         modifier = modifier,
         size = iconSize,
         onClick = {
-            ShareHelper.shareAppPromo(activity) {
+            ShareHelper.shareAppPromo(shareMessage) {
                 if (Storage.shareRewardClaimed) {
                     Toast.makeText(activity, strShareAlreadyClaimed, Toast.LENGTH_SHORT).show()
                 } else {
