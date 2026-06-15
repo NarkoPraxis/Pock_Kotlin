@@ -9,7 +9,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.withTransform
-import gameobjects.Settings
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.StaticTailPath
@@ -223,7 +222,9 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
         }
 
         // --- Step 2: compute per-segment half-widths for both splines -------
-        val widthMultiplier = Settings.tailLengthMultiplier.coerceAtMost(1.5f)
+        // Organic tails ignore the tail-length setting; always render at their
+        // designed size (multiplier pinned to 1).
+        val widthMultiplier = 1f
         val edgeHalfFactor = 0.5f
         for (i in 0 until SEGMENT_COUNT) {
             val t = (i + 1f) / SEGMENT_COUNT
@@ -303,6 +304,11 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
         val canvas = scope.drawContext.canvas
         canvas.saveLayer(bounds, Paint())
         scope.drawPath(path, fillColor, style = Fill)
+        // Round off the head end: a circle (diameter = this part's root width)
+        // centered on the puck turns the flat root edge into a semicircle. The
+        // inner half hides under the body/ball; the outer half is the cap that
+        // shows when the tail swings above the puck.
+        scope.drawCircle(fillColor, rootHalfWidth, Offset(renderer.x, renderer.y))
         val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
         canvas.saveLayer(bounds, srcAtopPaint)
         // A white wash at the same alpha as the black wash reads softer:
@@ -331,6 +337,7 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
                 }
             }) {
                 drawPath(path, Color.Black, style = Fill)
+                drawCircle(Color.Black, rootHalfWidth, Offset(renderer.x, renderer.y))
             }
             canvas.restore()  // close lit erase layer
         }

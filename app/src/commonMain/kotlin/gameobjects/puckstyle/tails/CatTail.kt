@@ -9,7 +9,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.withTransform
-import gameobjects.Settings
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -238,7 +237,9 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
         }
         }
 
-        val fadeMultiplier = Settings.tailLengthMultiplier.coerceIn(0.1f, 2f)
+        // Organic tails ignore the tail-length setting; always render at their
+        // designed size & opacity (multiplier pinned to 1).
+        val fadeMultiplier = 1f
         val bodyAlpha = (255f * fadeMultiplier.coerceAtMost(1f)).toInt()
         val bodyColor = Color(Palette.withAlpha(secondary, bodyAlpha))
 
@@ -273,6 +274,17 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
             drawStrand(scope, k, headX, headY, r, bodyColor)
             unionPath.addPath(strandPath)
         }
+
+        // Round off the head end: a circle (diameter = the root width) centered
+        // on the puck turns the flat root edge into a semicircle. The inner half
+        // hides under the strands/ball; the outer half is the cap that shows
+        // when the tail swings above the puck. Added to the union so the
+        // lit-erase pass carves it consistently.
+        val headCapRadius = r * ROOT_WIDTH_K * 0.5f
+        scope.drawCircle(bodyColor, headCapRadius, Offset(headX, headY))
+        unionPath.addOval(
+            Rect(headX - headCapRadius, headY - headCapRadius, headX + headCapRadius, headY + headCapRadius)
+        )
 
         // Clamp the lit-shape offset to a fraction of the root half-width so
         // a wide center strip of the body always stays lit.

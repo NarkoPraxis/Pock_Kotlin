@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.withTransform
-import gameobjects.Settings
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.StaticTailPath
@@ -237,7 +236,9 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
         val cosRigid = cos(rigidAngle)
         val sinRigid = sin(rigidAngle)
 
-        val widthMultiplier = Settings.tailLengthMultiplier.coerceAtMost(1.5f)
+        // Organic tails ignore the tail-length setting; always render at their
+        // designed size (multiplier pinned to 1).
+        val widthMultiplier = 1f
         val tipIdx = SEGMENT_COUNT - 1
 
         // --- Step 3: build the body path --------------------------------------
@@ -368,6 +369,12 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
         canvas.saveLayer(shadowBounds, Paint())
         scope.drawPath(bodyPath, bodyColor, style = Fill)
         scope.drawCircle(bodyColor, tipHalfWidth, tipCenter)
+        // Round off the head end: a circle (diameter = the root width) centered
+        // on the puck turns the flat root edge into a semicircle. The inner half
+        // hides under the body/ball; the outer half is the cap that shows when
+        // the tail swings above the puck.
+        val headCapCenter = Offset(headX, headY)
+        scope.drawCircle(bodyColor, headHalfWidth, headCapCenter)
 
         val clampLimit = widthAtRatio(0f) * r * 0.5f * widthMultiplier * SHADOW_CLAMP_K
         val mag = hypot(shadowDx, shadowDy)
@@ -400,6 +407,7 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             withTransform({ translate(litDx, litDy) }) {
                 drawPath(bodyPath, Color.Black, style = Fill)
                 drawCircle(Color.Black, tipHalfWidth, tipCenter)
+                drawCircle(Color.Black, headHalfWidth, headCapCenter)
             }
             canvas.restore()  // close lit erase layer
         }
