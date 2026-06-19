@@ -135,19 +135,55 @@ object Drawing {
     // -------------------------------------------------------------------------
 
     fun DrawScope.drawFrame() {
+        // Dev profiler: measure produced-frame cadence at the truest point (top of the draw call).
+        // No-op when FrameProfiler.enabled is false. Settings.refreshRate is the frame INTERVAL in ms
+        // (default 16 ≈ 60fps) — pass it directly as targetMs, do NOT convert to Hz.
+        FrameProfiler.onFrame(nowNanos(), Settings.refreshRate.toFloat())
+
+        FrameProfiler.begin(FrameProfiler.S_ARENA)
         drawArenaBackground()
+        FrameProfiler.end(FrameProfiler.S_ARENA)
+
         if (!Logic.isInitialized) return
+
+        FrameProfiler.begin(FrameProfiler.S_ARENA)
         drawChargeFill()
-        if (!Settings.isDemoMode) with(Effects) { drawEffects() }
+        FrameProfiler.end(FrameProfiler.S_ARENA)
+
+        if (!Settings.isDemoMode) {
+            FrameProfiler.begin(FrameProfiler.S_PARTICLES)
+            with(Effects) { drawEffects() }
+            FrameProfiler.end(FrameProfiler.S_PARTICLES)
+        }
+
+        // Skin/tail/paddle sections are timed inside PuckRenderer.draw() (both pucks fold together).
         drawPlayersCompose()
-        if (!Settings.isDemoMode) with(Effects) { drawPriorityEffects() }
+
+        if (!Settings.isDemoMode) {
+            FrameProfiler.begin(FrameProfiler.S_PARTICLES)
+            with(Effects) { drawPriorityEffects() }
+            FrameProfiler.end(FrameProfiler.S_PARTICLES)
+        }
+
+        FrameProfiler.begin(FrameProfiler.S_ARENA)
         drawWalls()
+        FrameProfiler.end(FrameProfiler.S_ARENA)
+
+        FrameProfiler.begin(FrameProfiler.S_HUD)
         if (!Settings.isDemoMode) drawTimer()
         drawAimArrows()
+        FrameProfiler.end(FrameProfiler.S_HUD)
+
+        FrameProfiler.begin(FrameProfiler.S_ARENA)
         drawArenaForeground()
+        FrameProfiler.end(FrameProfiler.S_ARENA)
+
+        FrameProfiler.begin(FrameProfiler.S_HUD)
         drawBallPopups()
         drawScoreFlash()
         if (!Settings.isDemoMode) drawScores(Logic.highPlayer, Logic.lowPlayer)
+        FrameProfiler.end(FrameProfiler.S_HUD)
+
         Logic.updateTimer()
 
     }

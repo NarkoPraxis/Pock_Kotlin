@@ -9,6 +9,7 @@ import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.RequestConfiguration
 import gameobjects.Settings
 import utility.AdActivityProvider
+import utility.ProfileContext
 import utility.PurchaseManager
 import utility.Sounds
 import utility.Storage
@@ -23,6 +24,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Storage.initialize(this)
+        // Dev-only: lets FrameProfiler.writeProfileFile() reach the external files dir. No-op in release.
+        ProfileContext.appContext = applicationContext
         appliedDarkMode = Storage.darkMode
         if (appliedDarkMode) setTheme(R.style.DarkMode) else setTheme(R.style.LightMode)
         super.onCreate(savedInstanceState)

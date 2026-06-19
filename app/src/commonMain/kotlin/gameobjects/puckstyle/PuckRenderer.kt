@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.toArgb
 import gameobjects.Settings
+import utility.FrameProfiler
 import utility.Sounds
 import utility.UiStrobeClock
 
@@ -209,6 +210,7 @@ class PuckRenderer(var theme: ColorTheme) {
         for (layer in layerOrder) {
             when (layer) {
                 is PuckSkin -> {
+                    FrameProfiler.begin(FrameProfiler.S_SKIN)
                     if (preview) {
                         drawCircle(
                             color = Color(0.118f, 0.118f, 0.118f, 0.784f),
@@ -218,16 +220,21 @@ class PuckRenderer(var theme: ColorTheme) {
                     } else {
                         with(layer) { drawBody() }
                     }
+                    FrameProfiler.end(FrameProfiler.S_SKIN)
                 }
                 is TailRenderer -> {
+                    FrameProfiler.begin(FrameProfiler.S_TAIL)
                     if (Settings.tailLength != 0) {
                         layer.renderWithPreview(this)
                     }
+                    FrameProfiler.end(FrameProfiler.S_TAIL)
                 }
                 is PaddleLaunchEffect -> {
+                    FrameProfiler.begin(FrameProfiler.S_PADDLE)
                     if (effectEnabled || layer.alwaysVisible) {
                         layer.renderWithPreview(this)
                     }
+                    FrameProfiler.end(FrameProfiler.S_PADDLE)
                 }
             }
         }

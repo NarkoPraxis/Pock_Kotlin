@@ -33,6 +33,7 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
 import utility.Drawing
+import utility.FrameProfiler
 import utility.GameLoop
 import utility.Logic
 import utility.PaintBucket
@@ -321,6 +322,10 @@ private fun IosGameHost(onBack: () -> Unit) {
     DisposableEffect(Unit) {
         onDispose {
             gameLoop.stop()
+            // Auto-save any in-flight profiler session when leaving the game (e.g. back to the menu
+            // to switch balls), so a forgotten-running recording is finalized instead of bleeding
+            // into menu navigation. No-op when disabled or not recording.
+            if (FrameProfiler.isSessionActive) FrameProfiler.endSession()
         }
     }
 
@@ -336,6 +341,9 @@ private fun IosGameHost(onBack: () -> Unit) {
             onSizeKnown = { w, h ->
                 if (!initialized) {
                     initialized = true
+                    // Dev-only frame profiler: gated behind the compile-time DEV_TOOLS flag and the
+                    // persisted Storage toggle, so a release build leaves it a no-op (zero hot-path cost).
+                    FrameProfiler.enabled = FrameProfiler.DEV_TOOLS && Storage.profilerEnabled
                     Settings.isDemoMode = false   // stop demo loop before touching Logic state
                     Logic.initializeSettings(w.toInt(), h.toInt())
                     PaintBucket.initialize(Settings.screenRatio)
@@ -357,6 +365,9 @@ private fun IosGameHost(onBack: () -> Unit) {
                 }
             }
         )
+
+        // Dev-only profiling HUD + REC control (no-op when FrameProfiler.enabled is false).
+        ProfilerHud(gameLoopTick = tickState, modifier = Modifier.align(Alignment.TopStart))
 
         if (backWarnShown) {
             Box(
