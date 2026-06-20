@@ -433,17 +433,19 @@ object Logic {
     fun calculateCollision() : Boolean {
         if (highPlayer.pucksIntersect(lowPlayer)) {
             val direction = highPlayer.puck.directionTo(lowPlayer.puck)
-            val collisionPoint = lowPlayer.puck.intersectionPoint(highPlayer.puck)
+            // collisionPoint and the skin-callback intersection are the same point — compute it once.
+            val intersection = lowPlayer.puck.intersectionPoint(highPlayer.puck)
+            val collisionPoint = intersection
 
-            highPlayer.launchFrom = Point(highPlayer.px, highPlayer.py)
-            lowPlayer.launchFrom = Point(lowPlayer.px, lowPlayer.py)
+            // launchFrom is a reusable field; mutate it instead of allocating a Point each collision.
+            highPlayer.launchFrom.setLocation(highPlayer.px, highPlayer.py)
+            lowPlayer.launchFrom.setLocation(lowPlayer.px, lowPlayer.py)
 
             val lowPower = lowPlayer.power
             val highPower = highPlayer.power
 
             highPlayer.bonusCountdown = 0f
             lowPlayer.bonusCountdown = 0f
-            val intersection = lowPlayer.puck.intersectionPoint(highPlayer.puck)
 
             if (highPlayer.reappearing && lowPlayer.reappearing) {
                 Sounds.playTeleportFinish(highPlayer.px)
@@ -843,16 +845,16 @@ object Logic {
         var nearestX = px
         var nearestY = py
 
-        val wallPoints = arrayOf(
-            floatArrayOf(Settings.screenLeft,  py),
-            floatArrayOf(Settings.screenRight, py),
-            floatArrayOf(px, Settings.topGoalBottom),
-            floatArrayOf(px, Settings.bottomGoalTop)
-        )
-        for (wp in wallPoints) {
-            val d = hypot(px - wp[0], py - wp[1])
-            if (d < nearestDist) { nearestDist = d; nearestX = wp[0]; nearestY = wp[1] }
-        }
+        // Nearest of the four walls — left/right verticals (at py) and top/bottom goal lines (at px).
+        // Evaluated inline so this per-frame hot path never allocates the array-of-pairs it used to.
+        var d = hypot(px - Settings.screenLeft, 0f)
+        if (d < nearestDist) { nearestDist = d; nearestX = Settings.screenLeft;  nearestY = py }
+        d = hypot(px - Settings.screenRight, 0f)
+        if (d < nearestDist) { nearestDist = d; nearestX = Settings.screenRight; nearestY = py }
+        d = hypot(0f, py - Settings.topGoalBottom)
+        if (d < nearestDist) { nearestDist = d; nearestX = px; nearestY = Settings.topGoalBottom }
+        d = hypot(0f, py - Settings.bottomGoalTop)
+        if (d < nearestDist) { nearestDist = d; nearestX = px; nearestY = Settings.bottomGoalTop }
 
         val od = hypot(px - opponent.px, py - opponent.py)
         if (od < nearestDist) { nearestDist = od; nearestX = opponent.px; nearestY = opponent.py }

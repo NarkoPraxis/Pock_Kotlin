@@ -207,7 +207,9 @@ class PuckRenderer(var theme: ColorTheme) {
             responsiveIsRainbow = false
         }
 
-        for (layer in layerOrder) {
+        // Indexed loop (not for-each) so the per-frame draw never allocates an ArrayList iterator.
+        for (li in layerOrder.indices) {
+            val layer = layerOrder[li]
             when (layer) {
                 is PuckSkin -> {
                     FrameProfiler.begin(FrameProfiler.S_SKIN)

@@ -24,8 +24,9 @@ object FrameProfiler {
     const val S_PADDLE = 3     // PaddleLaunchEffect for both pucks
     const val S_PARTICLES = 4  // Explosion / ScoreExplosion / effects
     const val S_HUD = 5        // overlay/labels/score text (incl. this HUD)
-    const val SECTION_COUNT = 6
-    val sectionNames = arrayOf("arena", "skin", "tail", "paddle", "particles", "hud")
+    const val S_LOGIC = 6      // per-frame game-state tick (collision/score/danger/bot) — not a draw section
+    const val SECTION_COUNT = 7
+    val sectionNames = arrayOf("arena", "skin", "tail", "paddle", "particles", "hud", "logic")
 
     // ---- live rolling window (HUD only) ----
     private const val WINDOW = 120          // ~2s at 60fps

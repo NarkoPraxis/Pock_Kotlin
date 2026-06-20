@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -46,6 +47,15 @@ object Drawing {
         GameEvents.cantScore.connect(cantScoreListener!!)
         Effects.clearPersistentEffects()
         Effects.clearCollisionEffects()
+
+        // Drop cached HUD text layouts so a re-init (screen resize / new game) re-measures with the
+        // current dimensions instead of reusing layouts sized for the previous screen.
+        scoreStyle = null; scoreStyleKey = Float.NaN
+        highScoreLayout = null; highScoreLayoutKey = null
+        lowScoreLayout = null; lowScoreLayoutKey = null
+        timerStyle = null; timerStyleKey = Float.NaN
+        timerLayout = null; timerLayoutKey = Int.MIN_VALUE
+        timerText = ""; timerTextKey = Int.MIN_VALUE
     }
 
     private val highZoneLeft   get() = 0f
@@ -346,32 +356,40 @@ object Drawing {
         }
     }
 
+    // Scratch outputs for resolveChargeColor — avoids allocating a Pair every frame while charging.
+    private var chargeColorRaw = 0
+    private var chargeColorAlpha = 0f
+
     /**
      * Charge-meter colour. Under a main-rainbow override the customisable phases strobe (Building →
      * primary, SweetSpot → secondary); Draining stays the grey inert colour. [frozenHue] forces a
      * fixed hue (FullScreen bake-at-fill); null uses the player's live frame (SideBar live strobe).
+     *
+     * Returns true when a colour was resolved; the result is written to [chargeColorRaw] (ARGB int)
+     * and [chargeColorAlpha] (0..1). Returns false (and leaves the scratch fields untouched) when
+     * there is nothing to draw.
      */
-    private fun DrawScope.resolveChargeColor(player: Player, isHigh: Boolean, frozenHue: Float?): Pair<Int, Float>? {
-        val effect = player.puck.renderer.effect ?: return null
+    private fun DrawScope.resolveChargeColor(player: Player, isHigh: Boolean, frozenHue: Float?): Boolean {
+        val effect = player.puck.renderer.effect ?: return false
         val ph = effect.phase
-        if (ph == ChargePhase.Idle || ph == ChargePhase.Inert) return null
+        if (ph == ChargePhase.Idle || ph == ChargePhase.Inert) return false
         val ratio = effect.chargeFillRatio
-        if (ratio <= 0f) return null
+        if (ratio <= 0f) return false
         val theme = effect.theme
         val mainRainbow = RainbowOverride.mainActive(isHigh)
         val hue = frozenHue ?: RainbowOverride.hue(isHigh, player.puck.renderer.frame)
-        val rawColor = when (ph) {
+        chargeColorRaw = when (ph) {
             ChargePhase.Building -> if (mainRainbow) RainbowOverride.primaryColor(hue).toArgb() else theme.main.primary
             ChargePhase.Draining -> theme.inert.secondary
             ChargePhase.SweetSpot -> if (mainRainbow) RainbowOverride.secondaryColor(hue).toArgb() else theme.shield.secondary
-            else -> return null
+            else -> return false
         }
-        val alpha = when (ph) {
+        chargeColorAlpha = when (ph) {
             ChargePhase.Building, ChargePhase.Draining -> 255f
             ChargePhase.SweetSpot -> (0.7f + 0.3f * sin(chargeFillFrame * 0.35f)).coerceIn(0f, 1f)
-            else -> return null
+            else -> return false
         }
-        return rawColor to alpha
+        return true
     }
 
     private fun DrawScope.drawPlayerChargeFill(player: Player, isHigh: Boolean) {
@@ -391,8 +409,8 @@ object Drawing {
             ?: RainbowOverride.hue(isHigh, player.puck.renderer.frame).also {
                 if (isHigh) highFullScreenHue = it else lowFullScreenHue = it
             }
-        val (rawColor, alpha) = resolveChargeColor(player, isHigh, frozen) ?: return
-        val color = Color(rawColor).copy(alpha = alpha)
+        if (!resolveChargeColor(player, isHigh, frozen)) return
+        val color = Color(chargeColorRaw).copy(alpha = chargeColorAlpha)
         if (isHigh) {
             val bottom = Settings.topGoalBottom + ratio * (Settings.middleY - Settings.topGoalBottom)
             drawRect(
@@ -415,8 +433,8 @@ object Drawing {
         val ratio = effect.chargeFillRatio
         if (ratio <= 0f) return
         // SideBar strobes live (thin side bars, no epilepsy concern) — no frozen hue.
-        val (rawColor, alpha) = resolveChargeColor(player, isHigh, frozenHue = null) ?: return
-        val color = Color(rawColor).copy(alpha = alpha)
+        if (!resolveChargeColor(player, isHigh, frozenHue = null)) return
+        val color = Color(chargeColorRaw).copy(alpha = chargeColorAlpha)
         val barWidth = Settings.shortParticleSide
         if (isHigh) {
             val bottom = Settings.topGoalBottom + ratio * (Settings.middleY - Settings.topGoalBottom)
@@ -687,31 +705,67 @@ object Drawing {
     // Scores
     // -------------------------------------------------------------------------
 
+    // ---- HUD text caches ----------------------------------------------------
+    // The score/timer text changes a handful of times per match but the draw loop runs every frame.
+    // Rebuilding the TextStyle and re-measuring on every frame allocated a TextStyle, an
+    // AnnotatedString, a TextLayoutInput and a TextLayoutResult per draw — a steady per-frame heap
+    // churn that fed the GC. These caches rebuild only when the keying state actually changes
+    // (font size for the style, the text string / seconds value for the measured layout).
+    private var scoreStyle: TextStyle? = null
+    private var scoreStyleKey = Float.NaN
+    private var highScoreLayout: TextLayoutResult? = null
+    private var highScoreLayoutKey: String? = null
+    private var lowScoreLayout: TextLayoutResult? = null
+    private var lowScoreLayoutKey: String? = null
+
+    private var timerStyle: TextStyle? = null
+    private var timerStyleKey = Float.NaN
+    private var timerLayout: TextLayoutResult? = null
+    private var timerLayoutKey = Int.MIN_VALUE
+    private var timerText = ""
+    private var timerTextKey = Int.MIN_VALUE
+
     fun DrawScope.drawScores(highPlayer: Player, lowPlayer: Player) {
         val tm = textMeasurer ?: return
         val density = drawContext.density.density
         val fontSizeSp = (PaintBucket.scoreFontSize / density)
-        val style = TextStyle(
-            fontSize = androidx.compose.ui.unit.TextUnit(fontSizeSp, androidx.compose.ui.unit.TextUnitType.Sp),
-            color = PaintBucket.black
-        )
+        if (scoreStyle == null || scoreStyleKey != fontSizeSp) {
+            scoreStyle = TextStyle(
+                fontSize = androidx.compose.ui.unit.TextUnit(fontSizeSp, androidx.compose.ui.unit.TextUnitType.Sp),
+                color = PaintBucket.black
+            )
+            scoreStyleKey = fontSizeSp
+            highScoreLayout = null   // style changed → measured layouts are stale
+            lowScoreLayout = null
+        }
+        val style = scoreStyle!!
+
+        val highText = highPlayer.cachedScoreText
+        if (highScoreLayout == null || highScoreLayoutKey != highText) {
+            highScoreLayout = tm.measure(highText, style)
+            highScoreLayoutKey = highText
+        }
+        val highResult = highScoreLayout!!
+
+        val lowText = lowPlayer.cachedScoreText
+        if (lowScoreLayout == null || lowScoreLayoutKey != lowText) {
+            lowScoreLayout = tm.measure(lowText, style)
+            lowScoreLayoutKey = lowText
+        }
+        val lowResult = lowScoreLayout!!
 
         val xMargin = Settings.screenRatio * 3f
-        val yMargin = 0
-        val scoreY = Settings.screenHeight - yMargin
+        val scoreY = Settings.screenHeight
 
         val highX = xMargin + Settings.scoreOffsetHigh
         val midX = Settings.screenWidth / 2f
         val midY = Settings.screenHeight / 2f
-        val highResult = tm.measure(highPlayer.cachedScoreText, style)
 
         withTransform({ scale(-1f, -1f, pivot = Offset(midX, midY)) }) {
             drawText(highResult, color=PaintBucket.white, topLeft = Offset(highX, scoreY - highResult.size.height))
         }
 
         val lowX = xMargin + Settings.scoreOffsetLow
-        val lowResult = tm.measure(lowPlayer.cachedScoreText, style)
-
         drawText(lowResult, color=PaintBucket.white, topLeft = Offset(lowX, scoreY - lowResult.size.height))
 
     }
@@ -724,11 +778,26 @@ object Drawing {
         val density = drawContext.density.density
         val fontSizePx = Settings.screenRatio * 1.2f
         val fontSizeSp = fontSizePx / density
-        val style = androidx.compose.ui.text.TextStyle(
-            fontSize = androidx.compose.ui.unit.TextUnit(fontSizeSp, androidx.compose.ui.unit.TextUnitType.Sp),
-            color = PaintBucket.timerColor
-        )
-        val result = tm.measure(Logic.timerSecondsRemaining.toString(), style)
+        if (timerStyle == null || timerStyleKey != fontSizeSp) {
+            timerStyle = TextStyle(
+                fontSize = androidx.compose.ui.unit.TextUnit(fontSizeSp, androidx.compose.ui.unit.TextUnitType.Sp),
+                color = PaintBucket.timerColor
+            )
+            timerStyleKey = fontSizeSp
+            timerLayout = null   // style changed → measured layout is stale
+        }
+        val style = timerStyle!!
+
+        val seconds = Logic.timerSecondsRemaining
+        if (timerTextKey != seconds) {
+            timerText = seconds.toString()
+            timerTextKey = seconds
+        }
+        if (timerLayout == null || timerLayoutKey != seconds) {
+            timerLayout = tm.measure(timerText, style)
+            timerLayoutKey = seconds
+        }
+        val result = timerLayout!!
 
         val midX = Settings.screenWidth / 2f
         val midY = Settings.screenHeight / 2f

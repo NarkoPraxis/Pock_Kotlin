@@ -282,6 +282,7 @@ private fun IosGameHost(onBack: () -> Unit) {
             intervalMs = { Settings.refreshRate.toLong() },
             onTick = {
                 if (Logic.isInitialized) {
+                    FrameProfiler.begin(FrameProfiler.S_LOGIC)
                     Logic.botBrain?.tick()
                     Logic.updateCanScoreWall()
                     when (Settings.gameState) {
@@ -301,6 +302,7 @@ private fun IosGameHost(onBack: () -> Unit) {
                         GameState.GameOver -> Logic.gameOver()
                         else -> {}
                     }
+                    FrameProfiler.end(FrameProfiler.S_LOGIC)
                 }
                 // Keep the static rainbow/prism cosmetics strobing in the ball-select popup (their
                 // geometry is frozen there; only the hue cycles). No-op for any other style.

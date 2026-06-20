@@ -283,7 +283,8 @@ class Player(
         val canEnterGoal = puck.launch.hasPower && Settings.canScore && !shielded
         val topConstraint = (if (canEnterGoal) Settings.screenTop else Settings.topGoalBottom) + puck.radius
         val bottomConstraint = (if (canEnterGoal) Settings.screenBottom else Settings.bottomGoalTop) - puck.radius
-        val savedDirection = Point(nextDirection.x, nextDirection.y)
+        val savedX = nextDirection.x
+        val savedY = nextDirection.y
 
         if (nextX < leftConstraint) {
             nextDirection.x = -nextDirection.x
@@ -304,19 +305,23 @@ class Player(
             bounceDirection = Direction.BOTTOM
             Sounds.playGoalSound(puck.x)
         }
-        return savedDirection.x != nextDirection.x || savedDirection.y != nextDirection.y
+        return savedX != nextDirection.x || savedY != nextDirection.y
     }
+
+    // Reused per-frame scratch for the next-position calculation (avoids a Point alloc each frame).
+    private val _nextLocation = Point()
 
     fun applyForces(): Boolean {
         val nextDirection = puck.getNextDirection()
-        var nextLocation = puck + nextDirection
-        movementSpeed = puck.distanceTo(nextLocation)
-        if (shouldBounce(nextLocation, nextDirection)) {
-            nextLocation = puck + puck.startBounce(nextDirection)
-            movementSpeed = puck.distanceTo(nextLocation)
+        _nextLocation.setLocation(puck.x + nextDirection.x, puck.y + nextDirection.y)
+        movementSpeed = puck.distanceTo(_nextLocation)
+        if (shouldBounce(_nextLocation, nextDirection)) {
+            val bounce = puck.startBounce(nextDirection)
+            _nextLocation.setLocation(puck.x + bounce.x, puck.y + bounce.y)
+            movementSpeed = puck.distanceTo(_nextLocation)
             return true
         }
-        puck.setLocation(nextLocation)
+        puck.setLocation(_nextLocation)
         return false
     }
 
