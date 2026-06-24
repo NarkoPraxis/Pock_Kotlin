@@ -18,9 +18,24 @@ import kotlin.random.Random
 
 class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
-    private val starPath = Path()
+    // Dedicated reusable paths so the paddle draws never allocate Path() per frame
+    // (previously each draw did Path().apply { addPath(starPath) } 1-2x per frame).
+    private val starPathA = Path()
+    private val starPathB = Path()
 
     private var cachedStrokeWidth = -1f
+    // Cached Stroke rebuilt only when the (effectively immutable) stroke width changes,
+    // instead of allocating a new Stroke(width) every draw.
+    private var cachedStroke: Stroke? = null
+    private fun strokeFor(width: Float): Stroke {
+        val s = cachedStroke
+        if (s == null || s.width != width) {
+            val ns = Stroke(width = width)
+            cachedStroke = ns
+            return ns
+        }
+        return s
+    }
 
     override var minDist: Float = 0f
         get() = 0f
@@ -49,10 +64,10 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private val starReturnProgress = FloatArray(1) { 1f }
     private var lastStrikeProgress = 0f
 
-    private fun buildStar(cx: Float, cy: Float, outer: Float, rotation: Float) {
+    private fun buildStar(dst: Path, cx: Float, cy: Float, outer: Float, rotation: Float) {
         val inner = outer * 0.40f
         val roundness = outer * 0.04f
-        starPath.reset()
+        dst.reset()
         for (i in 0 until 5) {
             val outerAngle = rotation + i * ANGLE_STEP_5 - HALF_PI
             val tipX = cx + cos(outerAngle) * outer
@@ -65,13 +80,13 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val prevValY = cy + sin(prevInnerAngle) * inner
             val nextValX = cx + cos(nextInnerAngle) * inner
             val nextValY = cy + sin(nextInnerAngle) * inner
-            if (i == 0) starPath.moveTo(prevValX, prevValY)
+            if (i == 0) dst.moveTo(prevValX, prevValY)
             val cp1X = tipX - perpX * roundness; val cp1Y = tipY - perpY * roundness
             val cp2X = tipX + perpX * roundness; val cp2Y = tipY + perpY * roundness
-            starPath.cubicTo(cp1X, cp1Y, tipX, tipY, tipX, tipY)
-            starPath.cubicTo(tipX, tipY, cp2X, cp2Y, nextValX, nextValY)
+            dst.cubicTo(cp1X, cp1Y, tipX, tipY, tipX, tipY)
+            dst.cubicTo(tipX, tipY, cp2X, cp2Y, nextValX, nextValY)
         }
-        starPath.close()
+        dst.close()
     }
 
     private fun resolveStarColors(starIndex: Int, ph: ChargePhase): Pair<Int, Int> {
@@ -95,13 +110,12 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val baseRot = animFrame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
         val (stroke1, fill1) = resolveStarColors(1, phase)
 
-        buildStar(sx, sy, descs[0].starRadius * .8f, baseRot)
-        val path1a = Path().apply { addPath(starPath) }
-        buildStar(sx, sy, descs[1].starRadius, -baseRot)
-        val path1b = Path().apply { addPath(starPath) }
+        val stroke = strokeFor(sw)
+        buildStar(starPathA, sx, sy, descs[0].starRadius * .8f, baseRot)
+        buildStar(starPathB, sx, sy, descs[1].starRadius, -baseRot)
 
-        scope.drawPath(path1a, Color(fill1), style = Stroke(width = sw))
-        scope.drawPath(path1b, Color(stroke1), style = Stroke(width = sw))
+        scope.drawPath(starPathA, Color(fill1), style = stroke)
+        scope.drawPath(starPathB, Color(stroke1), style = stroke)
     }
 
     override fun drawChargingPaddle(scope: DrawScope) {
@@ -125,14 +139,13 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
 
         val (stroke2, fill2) = resolveStarColors(2, phase)
-        buildStar(sx, sy, desc.starRadius * starSizeRatio, rot)
-        val outerPath = Path().apply { addPath(starPath) }
-        buildStar(sx, sy, desc.starRadius * chargeFillRatio * 0.8f, rot)
-        val chargePath = Path().apply { addPath(starPath) }
+        val stroke = strokeFor(sw)
+        buildStar(starPathA, sx, sy, desc.starRadius * starSizeRatio, rot)
+        buildStar(starPathB, sx, sy, desc.starRadius * chargeFillRatio * 0.8f, rot)
 
-        scope.drawPath(outerPath, Color(fill2))
-        scope.drawPath(outerPath, Color(stroke2), style = Stroke(width = sw))
-        scope.drawPath(chargePath, Color(renderer.invertedChargeColor(theme.shield.primary)))
+        scope.drawPath(starPathA, Color(fill2))
+        scope.drawPath(starPathA, Color(stroke2), style = stroke)
+        scope.drawPath(starPathB, Color(renderer.invertedChargeColor(theme.shield.primary)))
     }
 
     override fun drawStrikingPaddle(
@@ -152,11 +165,11 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val rot = animFrame * ORBIT_SPEED * 1.5f + orbitPhaseOffset[0]
 
         val (stroke0, fill0) = resolveStarColors(0, phase)
-        buildStar(sx, sy, desc.starRadius, rot)
-        val strikePath = Path().apply { addPath(starPath) }
+        val stroke = strokeFor(sw)
+        buildStar(starPathA, sx, sy, desc.starRadius, rot)
 
-        scope.drawPath(strikePath, Color(fill0))
-        scope.drawPath(strikePath, Color(stroke0), style = Stroke(width = sw))
+        scope.drawPath(starPathA, Color(fill0))
+        scope.drawPath(starPathA, Color(stroke0), style = stroke)
     }
 
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
@@ -166,6 +179,9 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     companion object {
         private val STAR_ANGLES = FloatArray(8) { i -> (i * 45f - 90f) * PI.toFloat() / 180f }
+        // Precomputed cos/sin of the constant 8 vertex angles for the burst star path.
+        private val STAR_COS = FloatArray(8) { cos(STAR_ANGLES[it]) }
+        private val STAR_SIN = FloatArray(8) { sin(STAR_ANGLES[it]) }
         private val ANGLE_STEP_5 = (2f * PI / 5f).toFloat()
         private val HALF_STEP_5  = ANGLE_STEP_5 / 2f
         private val HALF_PI      = (PI / 2f).toFloat()
@@ -197,18 +213,21 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val twinkleSpeed: Float, val twinkleSeedRad: Float
         )
 
-        private val burstStars: List<BurstStar>
+        // Array (not List) so the per-frame burst loop iterates by index with no Iterator alloc.
+        private val burstStars: Array<BurstStar>
         private val BURST_DURATION = 48
         private val screenRatioHalf = Settings.screenRatio * 0.5f
         private val angleStep = (2f * PI / 5f).toFloat()
         private val halfStep  = angleStep / 2f
         private val halfPi    = (PI / 2f).toFloat()
         private val starStrokeWidth = radius * 0.2f
+        // Stroke is constant for this effect's lifetime; build once instead of per draw().
+        private val starStroke = Stroke(width = starStrokeWidth, cap = StrokeCap.Round)
 
         init {
             val tau = (PI * 2).toFloat()
             val count = 22
-            burstStars = List(count) { i ->
+            burstStars = Array(count) { i ->
                 val angle = (i.toFloat() / count) * tau + Random.nextFloat() * 0.28f
                 val speed = radius * (0.09f + Random.nextFloat() * 0.13f)
                 BurstStar(cx, cy, cos(angle) * speed, sin(angle) * speed, 1f,
@@ -221,8 +240,8 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             burstPath.reset()
             for (i in 0 until 8) {
                 val r = if (i % 2 == 0) outerR else innerR
-                val px = bcx + cos(STAR_ANGLES[i]) * r
-                val py = bcy + sin(STAR_ANGLES[i]) * r
+                val px = bcx + STAR_COS[i] * r
+                val py = bcy + STAR_SIN[i] * r
                 if (i == 0) burstPath.moveTo(px, py) else burstPath.lineTo(px, py)
             }
             burstPath.close()
@@ -239,7 +258,8 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 val burstT = frame.toFloat() / BURST_DURATION
                 val burstColor = Palette.lerpColor(colorA, colorB, burstT)
                 val frameF = frame.toFloat()
-                for (s in burstStars) {
+                for (sIdx in burstStars.indices) {
+                    val s = burstStars[sIdx]
                     s.x += s.vx; s.y += s.vy
                     s.vx *= 0.96f; s.vy *= 0.96f
                     s.life = (1f - burstT).coerceAtLeast(0f)
@@ -254,7 +274,7 @@ class GalaxyLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 val c = Palette.withAlpha(Palette.lerpColor(colorB, colorA, t), alpha)
                 val starR = radius * (1f - t * 0.3f).coerceAtLeast(0.5f)
                 buildStar(path, cx, cy, starR, frame * 0.03f)
-                scope.drawPath(path, Color(c), style = Stroke(width = starStrokeWidth, cap = StrokeCap.Round))
+                scope.drawPath(path, Color(c), style = starStroke)
             }
         }
 

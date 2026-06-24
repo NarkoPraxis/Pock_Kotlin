@@ -15,6 +15,11 @@ class NeonTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private val tailLen = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
 
+    // Stroke is a heap class; strokeWidth is effectively immutable after setup, so cache
+    // it and rebuild only when the width actually changes (avoids ~tailLen allocs/frame).
+    private var cachedStrokeWidth = -1f
+    private var ringStroke: Stroke = Stroke(1f)
+
     private fun neonAlpha(ratio: Float): Int {
         val blendWidth = 0.04f
         val b1 = 0.45f
@@ -35,6 +40,7 @@ class NeonTail(override val renderer: PuckRenderer) : TailRenderer {
         val rings = rings!!
         val color = responsivePrimary
         val sw = renderer.strokeWidth
+        if (cachedStrokeWidth != sw) { cachedStrokeWidth = sw; ringStroke = Stroke(sw) }
         val lastIndex = (rings.size - 1).coerceAtLeast(1)
 
         for (i in rings.size - 1 downTo 0) {
@@ -50,7 +56,7 @@ class NeonTail(override val renderer: PuckRenderer) : TailRenderer {
                 color = Color(Palette.withAlpha(color, neonAlpha(ratio))),
                 radius = renderer.radius,
                 center = Offset(rings[i].x, rings[i].y),
-                style = Stroke(sw)
+                style = ringStroke
             )
         }
     }
@@ -58,6 +64,7 @@ class NeonTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun clear() { rings = null }
 
     override fun fillTo(x: Float, y: Float) {
-        rings?.forEach { it.x = x; it.y = y }
+        val r = rings ?: return
+        for (i in r.indices) { r[i].x = x; r[i].y = y }
     }
 }

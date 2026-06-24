@@ -24,9 +24,10 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
 
     private var lastColors = theme.main
 
-    // Cache rim stroke width — updated only when radius changes
+    // Cache rim stroke width + the Stroke instance — updated only when radius changes
     private var cachedRadius = -1f
     private var rimStrokeWidth = 0f
+    private var rimStroke: Stroke = Stroke(width = 0f)
 
     override val explosionFrequency get() = 40
     override val scatterDensity get() = 0.9f
@@ -69,13 +70,18 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
             val fadeDuration = 25
         }
 
-        private val crystals: List<Crystal>
+        // Array (not List) so the per-frame step()/draw() loops iterate by index with no
+        // Iterator allocation. Built once in init.
+        private val crystals: Array<Crystal>
+        // Cached Stroke for the crystal outline — width is fixed per effect instance.
+        private val crystalStroke = Stroke(width = strokeWidth)
 
         init {
             val baseAngles = listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, PI)
             val fullAngles = List(12) { i -> i * (2.0 * PI / 12) }
             val srcAngles = if (fullCircle) fullAngles else baseAngles
-            crystals = srcAngles.map { a ->
+            crystals = Array(srcAngles.size) { idx ->
+                val a = srcAngles[idx]
                 val adj = if (!fullCircle && !highGoal) a + PI else a
                 Crystal(cx, cy, cos(adj.toFloat()), sin(adj.toFloat()), maxDistance / 45f, maxDistance, radius * 0.3f)
             }
@@ -84,7 +90,8 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
         override fun step() {
             centralFrame++
             var allDone = true
-            for (c in crystals) {
+            for (ci in crystals.indices) {
+                val c = crystals[ci]
                 if (c.done) continue
                 allDone = false
                 if (c.postMeltFrame < 0) {
@@ -110,7 +117,8 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
                 )
             }
 
-            for (c in crystals) {
+            for (ci in crystals.indices) {
+                val c = crystals[ci]
                 if (c.done) continue
                 if (c.postMeltFrame < 0) {
                     val progress = (c.traveled / c.maxDist).coerceIn(0f, 2f)
@@ -123,11 +131,11 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
                             Offset(c.x, c.y)
                         )
                     }
-                    scope.drawCrystalAt(c.x, c.y, crystalT, c.radius, crystalPath, theme.main.primary, strokeWidth)
+                    scope.drawCrystalAt(c.x, c.y, crystalT, c.radius, crystalPath, theme.main.primary, crystalStroke)
                 } else {
                     val meltFraction = (c.postMeltFrame.toFloat() / c.meltDuration).coerceIn(0f, 1f)
                     val crystalT = TRAVEL_T_END + meltFraction * (1.4f - TRAVEL_T_END)
-                    scope.drawCrystalAt(c.x, c.y, crystalT, c.radius, crystalPath, theme.main.primary, strokeWidth)
+                    scope.drawCrystalAt(c.x, c.y, crystalT, c.radius, crystalPath, theme.main.primary, crystalStroke)
                     val fadeT = ((c.postMeltFrame - c.meltDuration).toFloat() / c.fadeDuration).coerceIn(0f, 1f)
                     val alpha = (120 * (1f - fadeT)).toInt().coerceIn(0, 255)
                     if (alpha > 0) {
@@ -146,7 +154,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
             private const val TRAVEL_T_START = 0.1f
             private const val TRAVEL_T_END = 0.35f
 
-            fun DrawScope.drawCrystalAt(x: Float, y: Float, t: Float, r: Float, crystalPath: Path, primaryColor: Int, strokeWidth: Float) {
+            fun DrawScope.drawCrystalAt(x: Float, y: Float, t: Float, r: Float, crystalPath: Path, primaryColor: Int, stroke: Stroke) {
                 val crystalR = r * (1.4f - t * 1.1f)
                 if (crystalR < 1f) return
                 crystalPath.reset()
@@ -159,7 +167,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
                 }
                 crystalPath.close()
                 drawPath(crystalPath, PaintBucket.white)
-                drawPath(crystalPath, Color(Palette.withAlpha(primaryColor, 130)), style = Stroke(width = strokeWidth))
+                drawPath(crystalPath, Color(Palette.withAlpha(primaryColor, 130)), style = stroke)
             }
         }
     }
@@ -196,8 +204,12 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
         if (cachedRadius != renderer.radius) {
             cachedRadius = renderer.radius
             rimStrokeWidth = renderer.strokeWidth * 0.7f
+            rimStroke = Stroke(width = rimStrokeWidth)
         }
 
+        // Gradient brush is built in local space (center = Offset.Zero); the translate places
+        // that local origin at the puck center. Kept as withTransform to preserve gradient
+        // positioning — the radius-keyed brush cache can't be center-baked per moving frame.
         withTransform({ translate(renderer.x, renderer.y) }) {
             drawCircle(brush = cachedBrush!!, radius = renderer.radius, center = Offset.Zero)
         }
@@ -205,7 +217,7 @@ class IceSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer) {
             color = PaintBucket.white,
             radius = renderer.radius,
             center = Offset(renderer.x, renderer.y),
-            style = Stroke(width = rimStrokeWidth)
+            style = rimStroke
         )
     }
 }

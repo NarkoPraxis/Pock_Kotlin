@@ -20,11 +20,18 @@ class PixelSkin(override val renderer: PuckRenderer) : PuckSkin {
     // Cached radius-derived value
     private var cachedRadius = -1f
     private var cachedSide = 0f
+    // Stroke is a heap class — cache it; strokeWidth is effectively immutable after setup
+    private var cachedStrokeW = -1f
+    private var cachedStroke = Stroke(width = 0f)
 
     private fun ensureCache() {
         if (cachedRadius != renderer.radius) {
             cachedRadius = renderer.radius
             cachedSide = renderer.radius * .85f
+        }
+        if (cachedStrokeW != renderer.strokeWidth) {
+            cachedStrokeW = renderer.strokeWidth
+            cachedStroke = Stroke(width = renderer.strokeWidth)
         }
     }
 
@@ -38,7 +45,7 @@ class PixelSkin(override val renderer: PuckRenderer) : PuckSkin {
             Color(responsiveSecondary),
             topLeft = Offset(left, top),
             size = size,
-            style = Stroke(width = renderer.strokeWidth)
+            style = cachedStroke
         )
     }
 
@@ -72,6 +79,8 @@ class PixelSkin(override val renderer: PuckRenderer) : PuckSkin {
         private val maxDistance = radius * 5f
         private val halfSide = radius * 0.4f
         private val ringStrokeWidth = radius * 0.3f
+        // Stroke is a heap class; width is constant for this effect's lifetime — build once
+        private val ringStroke = Stroke(width = ringStrokeWidth)
 
         private class Pixel(
             var x: Float, var y: Float,
@@ -87,15 +96,16 @@ class PixelSkin(override val renderer: PuckRenderer) : PuckSkin {
             var done = false
         }
 
-        private val pixels: List<Pixel>
+        // Array (not List): index iteration in step()/draw() is allocation-free
+        private val pixels: Array<Pixel>
         private var _isDone = false
         override val isDone: Boolean get() = _isDone
 
         init {
-            val baseAngles = listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, PI)
-            val fullAngles = List(12) { i -> i * (2.0 * PI / 12) }
-            val srcAngles = if (fullCircle) fullAngles else baseAngles
-            pixels = srcAngles.map { a ->
+            val baseAngles = doubleArrayOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, PI)
+            val srcAngles = if (fullCircle) DoubleArray(12) { i -> i * (2.0 * PI / 12) } else baseAngles
+            pixels = Array(srcAngles.size) { idx ->
+                val a = srcAngles[idx]
                 val adj = if (!fullCircle && !highGoal) a + PI else a
                 Pixel(cx, cy, cos(adj.toFloat()), sin(adj.toFloat()), maxDistance / 50f, maxDistance, halfSide)
             }
@@ -103,7 +113,8 @@ class PixelSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         override fun step() {
             var allDone = true
-            for (p in pixels) {
+            for (i in pixels.indices) {
+                val p = pixels[i]
                 if (p.done) continue
                 allDone = false
                 if (!p.rippling) {
@@ -125,14 +136,16 @@ class PixelSkin(override val renderer: PuckRenderer) : PuckSkin {
         }
 
         override fun draw(scope: DrawScope) {
-            for (p in pixels) {
+            // index loop over Array avoids per-frame Iterator allocation
+            for (i in pixels.indices) {
+                val p = pixels[i]
                 if (p.done) continue
                 if (!p.rippling) {
                     scope.drawRect(
                         Color(secondaryColor),
                         topLeft = Offset(p.x - p.halfSide, p.y - p.halfSide),
                         size = Size(p.halfSide * 2f, p.halfSide * 2f),
-                        style = Stroke(width = ringStrokeWidth)
+                        style = ringStroke
                     )
                 } else {
                     val half = p.rippleSize / 2f
@@ -140,7 +153,7 @@ class PixelSkin(override val renderer: PuckRenderer) : PuckSkin {
                         Color(Palette.withAlpha(secondaryColor, p.rippleAlpha)),
                         topLeft = Offset(p.x - half, p.y - half),
                         size = Size(half * 2f, half * 2f),
-                        style = Stroke(width = ringStrokeWidth)
+                        style = ringStroke
                     )
                 }
             }

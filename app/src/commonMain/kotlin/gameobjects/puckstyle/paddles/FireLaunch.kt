@@ -22,9 +22,28 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private class Spark(var x: Float, var y: Float, var vx: Float, var vy: Float, var life: Float)
 
-    val SPAWN_JITTER get() = renderer.radius * 0.35f
-    val SPARK_BASE_SIZE get() = renderer.radius * .32f
-    val BASE_SIZE get() = renderer.radius * .6f
+    // renderer.radius is effectively immutable after setup; cache radius-derived sizes
+    // behind a cachedRadius guard instead of recomputing radius*const every frame.
+    private var cachedRadius = -1f
+    private var spawnJitter = 0f
+    private var sparkBaseSize = 0f
+    private var baseSize = 0f
+
+    private fun ensureRadiusCache() {
+        if (cachedRadius != renderer.radius) {
+            cachedRadius = renderer.radius
+            spawnJitter = renderer.radius * 0.35f
+            sparkBaseSize = renderer.radius * .32f
+            baseSize = renderer.radius * .6f
+        }
+    }
+
+    val SPAWN_JITTER: Float
+        get() { ensureRadiusCache(); return spawnJitter }
+    val SPARK_BASE_SIZE: Float
+        get() { ensureRadiusCache(); return sparkBaseSize }
+    val BASE_SIZE: Float
+        get() { ensureRadiusCache(); return baseSize }
 
     private val tailSparks = ArrayDeque<Spark>()
 
@@ -42,7 +61,20 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         drawFireball(scope, cx, cy, ph, if (sweet) 1f else if (fatigued) 0f else 1f)
     }
 
+    // Spark pool — reuse freed Spark objects instead of allocating one per spawn each frame.
+    private val tailSparkPool = ArrayDeque<Spark>()
+
+    private fun obtainSpark(x: Float, y: Float, vx: Float, vy: Float, life: Float): Spark {
+        val s = tailSparkPool.removeLastOrNull()
+        if (s != null) {
+            s.x = x; s.y = y; s.vx = vx; s.vy = vy; s.life = life
+            return s
+        }
+        return Spark(x, y, vx, vy, life)
+    }
+
     private fun updateAndDrawTail(scope: DrawScope, cx: Float, cy: Float) {
+        ensureRadiusCache()
         val dx = cx - renderer.x
         val dy = cy - renderer.y
         val dist = sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
@@ -51,15 +83,15 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         repeat(2) {
             val speed = Random.nextFloat() * 1.2f + 0.4f
             val perpAmount = (Random.nextFloat() - 0.5f) * speed * 0.7f
-            tailSparks.addLast(Spark(
-                cx + (Random.nextFloat() - 0.5f) * SPAWN_JITTER * 2f,
-                cy + (Random.nextFloat() - 0.5f) * SPAWN_JITTER * 2f,
+            tailSparks.addLast(obtainSpark(
+                cx + (Random.nextFloat() - 0.5f) * spawnJitter * 2f,
+                cy + (Random.nextFloat() - 0.5f) * spawnJitter * 2f,
                 nx * speed + (-ny) * perpAmount,
                 ny * speed + nx * perpAmount,
                 1f
             ))
         }
-        while (tailSparks.size > 24) tailSparks.removeFirst()
+        while (tailSparks.size > 24) tailSparkPool.addLast(tailSparks.removeFirst())
 
         val primary = responsivePrimary
         val secondary = responsiveSecondary
@@ -69,10 +101,10 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val s = tailSparks[i]
             s.x += s.vx; s.y += s.vy
             s.life -= 0.065f
-            if (s.life <= 0f) { tailSparks.removeAt(i); continue }
+            if (s.life <= 0f) { tailSparkPool.addLast(tailSparks.removeAt(i)); continue }
             val c = Palette.lerpColor(secondary, primary, 1f - s.life)
             val color = Palette.withAlpha(c, (220f * s.life).toInt().coerceIn(0, 255))
-            scope.drawCircle(Color(color), (SPARK_BASE_SIZE * s.life).coerceAtLeast(1f), Offset(s.x, s.y))
+            scope.drawCircle(Color(color), (sparkBaseSize * s.life).coerceAtLeast(1f), Offset(s.x, s.y))
             i++
         }
     }
@@ -80,8 +112,9 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private fun drawFireball(scope: DrawScope, cx: Float, cy: Float, ph: ChargePhase, fill: Float) {
         // animFrame follows the strobe clock in static UI, so the fireball keeps breathing and its
         // spark tail keeps streaming in place even though the paddle frame is frozen.
+        ensureRadiusCache()
         val jitter = 1f + 0.08f * sin(animFrame * 0.9f)
-        val outerR = BASE_SIZE * jitter
+        val outerR = baseSize * jitter
         scope.drawCircle(Color(responsiveSecondary), outerR, Offset(cx, cy))
         if (fill > 0f) {
             val coreColor = if (ph == ChargePhase.SweetSpot) renderer.invertedChargeColor(theme.shield.primary) else responsivePrimary
@@ -119,7 +152,9 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     ) : Effects.PersistentEffect {
         private class Spark(var x: Float, var y: Float, var vx: Float, var vy: Float, var life: Float)
 
-        private val sparks: List<Spark>
+        // Array (not List) so the per-frame draw() loop iterates by index without
+        // allocating an Iterator each frame — this draw() runs in the `particles` section.
+        private val sparks: Array<Spark>
         private var frame = 0
         private val totalFrames = 60
         private val invTotalFrames = 1f / totalFrames
@@ -131,7 +166,7 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         init {
             val count = 28
             val angleRange = 2f * PI.toFloat()
-            sparks = List(count) { i ->
+            sparks = Array(count) { i ->
                 val angle = (i.toFloat() / count) * angleRange + Random.nextFloat() * 0.4f
                 val speed = radius * (0.12f + Random.nextFloat() * 0.18f)
                 Spark(cx, cy, cos(angle) * speed, sin(angle) * speed, 1f)
@@ -148,7 +183,8 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val alpha = (230f * lifeRatio * lifeRatio).toInt().coerceIn(0, 255)
             val drawRadius = (sparkBaseRadius * lifeRatio).coerceAtLeast(1f)
             val drawColor = Color(Palette.withAlpha(color, alpha))
-            for (s in sparks) {
+            for (idx in sparks.indices) {
+                val s = sparks[idx]
                 s.x += s.vx; s.y += s.vy
                 s.vy += gravity
                 scope.drawCircle(drawColor, drawRadius, Offset(s.x, s.y))
@@ -162,7 +198,9 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val primary: Int,
         private val grey: Int
     ) : Effects.PersistentEffect {
-        private val spikePaths: List<Path>
+        // Array (not List) so the per-frame draw() loop iterates by index without
+        // allocating an Iterator each frame — this draw() runs in the `particles` section.
+        private val spikePaths: Array<Path>
         private val spikeBrush: Brush
         private var frame = 0
         override val isDone = false
@@ -175,7 +213,7 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 1.20f, 0.68f, 1.35f, 0.78f, 1.15f, 0.62f, 1.25f, 0.90f,
                 1.00f, 0.70f, 1.45f, 0.58f, 1.18f, 0.80f
             )
-            spikePaths = List(spikeCount) { i ->
+            spikePaths = Array(spikeCount) { i ->
                 val baseAngle = (i.toFloat() / spikeCount) * 2f * PI.toFloat() +
                         (rng.nextFloat() - 0.5f) * (2f * PI.toFloat() / spikeCount) * 0.6f
                 val len = radius * lengthPattern[i] * (0.90f + rng.nextFloat() * 0.20f)
@@ -208,8 +246,8 @@ class FireLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         override fun step() { frame++ }
 
         override fun draw(scope: DrawScope) {
-            for (path in spikePaths) {
-                scope.drawPath(path, spikeBrush)
+            for (idx in spikePaths.indices) {
+                scope.drawPath(spikePaths[idx], spikeBrush)
             }
         }
     }

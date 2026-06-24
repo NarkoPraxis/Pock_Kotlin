@@ -119,6 +119,37 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
     private var eyeR = 0f
     private var eyeX = 0f
 
+    // Reusable scratch objects — hoisted out of the per-frame draw path to avoid heap churn.
+    // Path is rebuilt in place each frame (reset + addOval); Paint is a constant arg to saveLayer.
+    private val scratchPath = Path()
+    private val layerPaint = Paint()
+
+    // Cached ColorFilter.tint(...) objects — ColorFilter is a heap class, not a value class, so
+    // building one per draw call allocates every frame. Rebuild only when the resolved colour
+    // actually changes (mirrors CachedBrushSkin invalidation).
+    private var tintSecondaryColor = Color.Unspecified
+    private var tintSecondaryFilter: ColorFilter? = null
+    private var tintPrimaryColor = Color.Unspecified
+    private var tintPrimaryFilter: ColorFilter? = null
+
+    private fun secondaryTint(): ColorFilter {
+        val c = Color(frameColors.secondary)
+        if (tintSecondaryFilter == null || tintSecondaryColor != c) {
+            tintSecondaryColor = c
+            tintSecondaryFilter = ColorFilter.tint(c)
+        }
+        return tintSecondaryFilter!!
+    }
+
+    private fun primaryTint(): ColorFilter {
+        val c = Color(frameColors.primary)
+        if (tintPrimaryFilter == null || tintPrimaryColor != c) {
+            tintPrimaryColor = c
+            tintPrimaryFilter = ColorFilter.tint(c)
+        }
+        return tintPrimaryFilter!!
+    }
+
     private fun ensureCache() {
         val newR = renderer.radius
         if (cachedRadius != newR) {
@@ -289,22 +320,21 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         // shadow boundary stays anchored to ball-centre space while feathers orbit through it.
         // Bounds wide enough for feathers at max orbit (20°) plus individual counter-rotation (40°).
         val fBounds = Rect(-r * 1.4f, -r * 2.0f, r * 1.4f, -r * 0.6f)
-        drawContext.canvas.saveLayer(fBounds, Paint())
+        drawContext.canvas.saveLayer(fBounds, layerPaint)
         withTransform({ rotate(featherOrbitAngle, pivot = Offset.Zero) }) {
             drawFeathersForState()
         }
 
         // Lit zone: circle directly above ball centre.  Feathers inside it are unaffected;
         // pixels outside it (sides) get the shadow overlay via SrcAtop.
-        val litPath = Path().apply {
-            addOval(Rect(
-                -r * SHADOW_FEATHER_LIT_R,
-                r * FEATHER_MID_CY_K - r * SHADOW_FEATHER_LIT_R,
-                r * SHADOW_FEATHER_LIT_R,
-                r * FEATHER_MID_CY_K + r * SHADOW_FEATHER_LIT_R
-            ))
-        }
-        withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+        scratchPath.reset()
+        scratchPath.addOval(Rect(
+            -r * SHADOW_FEATHER_LIT_R,
+            r * FEATHER_MID_CY_K - r * SHADOW_FEATHER_LIT_R,
+            r * SHADOW_FEATHER_LIT_R,
+            r * FEATHER_MID_CY_K + r * SHADOW_FEATHER_LIT_R
+        ))
+        withTransform({ clipPath(scratchPath, ClipOp.Difference) }) {
             drawRect(
                 color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                 topLeft = Offset(-r * 1.4f, -r * 2.0f),
@@ -364,25 +394,24 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val body = PokPokSkinPainters.body
         val secondary = Color(frameColors.secondary)
         val bounds = Rect(-r * 1.2f, -r * 1.2f, r * 1.2f, r * 1.2f)
-        drawContext.canvas.saveLayer(bounds, Paint())
+        drawContext.canvas.saveLayer(bounds, layerPaint)
         if (body != null) {
             val w = r * BODY_WORLD_DIAM_K
-            drawSvgPart(body, 0f, 0f, w, w, tint = secondary)
+            drawSvgPart(body, 0f, 0f, w, w, filter = secondaryTint())
         } else {
             drawCircle(secondary, r, Offset.Zero)
         }
         // Lit window: larger than body, above centre, moves left/right with look direction.
         // Shadow fills everything OUTSIDE this window (SrcAtop clips to body pixels).
         val litR = r * SHADOW_LIT_BODY_R
-        val litPath = Path().apply {
-            addOval(Rect(
-                shadowDx - litR,
-                -r * SHADOW_LIT_BODY_ABOVE_K - litR,
-                shadowDx + litR,
-                -r * SHADOW_LIT_BODY_ABOVE_K + litR
-            ))
-        }
-        withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+        scratchPath.reset()
+        scratchPath.addOval(Rect(
+            shadowDx - litR,
+            -r * SHADOW_LIT_BODY_ABOVE_K - litR,
+            shadowDx + litR,
+            -r * SHADOW_LIT_BODY_ABOVE_K + litR
+        ))
+        withTransform({ clipPath(scratchPath, ClipOp.Difference) }) {
             drawRect(
                 color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                 topLeft = Offset(-r * 1.2f, -r * 1.2f),
@@ -434,9 +463,9 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         }) {
             val wBounds = Rect(centerX - w - r * 0.15f, centerY - h - r * 0.15f,
                                centerX + w + r * 0.15f, centerY + h + r * 0.15f)
-            drawContext.canvas.saveLayer(wBounds, Paint())
+            drawContext.canvas.saveLayer(wBounds, layerPaint)
             drawSvgPart(painter, centerX, centerY, w, h, scaleX = perspScale, scaleY = perspScale,
-                tint = Color(frameColors.secondary))
+                filter = secondaryTint())
             // Lit window: larger than wing, above wing centre, moves with look direction.
             // Grows 2× min when bird looks toward this wing, shrinks to min when looking away.
             val growFactor = ((sign * irisOffX + 1f) / 2f).coerceIn(0f, 1f)
@@ -453,10 +482,9 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             val dyLit = worldLitCy   // pivotY is 0
             val localLitCx = pivotX + dxLit * cosInv - dyLit * sinInv
             val localLitCy = dxLit * sinInv + dyLit * cosInv
-            val litPath = Path().apply {
-                addOval(Rect(localLitCx - litR, localLitCy - litR, localLitCx + litR, localLitCy + litR))
-            }
-            withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+            scratchPath.reset()
+            scratchPath.addOval(Rect(localLitCx - litR, localLitCy - litR, localLitCx + litR, localLitCy + litR))
+            withTransform({ clipPath(scratchPath, ClipOp.Difference) }) {
                 drawRect(
                     color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                     topLeft = Offset(centerX - w - r * 0.15f, centerY - h - r * 0.15f),
@@ -530,7 +558,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
                 lerp(rotDeg, rotDeg - kotlin.math.sign(rotDeg) * 10f, flaredBlend)
             else -> rotDeg
         }
-        val tint = ColorFilter.tint(Color(frameColors.secondary))
+        val tint = secondaryTint()
         // Draw at the painter's constant intrinsic size; scale to the on-screen box via the canvas,
         // so the shared VectorPainter's cached layer isn't re-rasterized at carousel vs. in-game
         // sizes (see drawSvgPart). Without this, the head feathers "scale" with the carousel.
@@ -630,7 +658,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val w = r * EYES_WORLD_W_K
         val h = r * EYES_WORLD_H_K
         val cy = r * EYES_OFFSET_Y_K
-        drawSvgPart(painter, 0f, cy, w, h, tint = Color(frameColors.primary))
+        drawSvgPart(painter, 0f, cy, w, h, filter = primaryTint())
     }
 
     private fun DrawScope.drawWinceEyes() {
@@ -640,7 +668,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val cy = r * EYES_OFFSET_Y_K
         val decay   = 1f - animFrame.toFloat() / ANIM_JUST_HIT
         val shudder = sin(animFrame * 1.5f) * r * 0.02f * decay
-        drawSvgPart(painter, 0f, cy + shudder, w, h, tint = Color(frameColors.secondary))
+        drawSvgPart(painter, 0f, cy + shudder, w, h, filter = secondaryTint())
     }
 
     // ── mouth ──────────────────────────────────────────────────────────────────
@@ -670,7 +698,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val h = r * MOUTH_CLOSED_H_K
 
         drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h,
-            tint = Color(frameColors.primary))
+            filter = primaryTint())
     }
 
     private fun DrawScope.drawMouthGape(yawn: Boolean = false) {
@@ -688,7 +716,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val w = r * MOUTH_CLOSED_W_K * lerp(1f, 0.8f, t)
         val h = r * MOUTH_CLOSED_H_K * lerp(1f, 1.2f, t)
         drawSvgPart(painter, 0f, r * MOUTH_OFFSET_Y_K, w, h,
-            tint = Color(frameColors.primary))
+            filter = primaryTint())
     }
 
     // Open-mouth render: bottom + top = primary, middle = secondary.
@@ -699,9 +727,9 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         val top    = PokPokSkinPainters.mouthTop    ?: return
         val cy = r * MOUTH_OFFSET_Y_K
 
-        drawSvgPart(bottom, 0f, cy, w, h, tint = Color(frameColors.primary))
-        drawSvgPart(middle, 0f, cy, w, h, tint = Color(frameColors.secondary))
-        drawSvgPart(top,    0f, cy, w, h, tint = Color(frameColors.primary))
+        drawSvgPart(bottom, 0f, cy, w, h, filter = primaryTint())
+        drawSvgPart(middle, 0f, cy, w, h, filter = secondaryTint())
+        drawSvgPart(top,    0f, cy, w, h, filter = primaryTint())
     }
 
     // ── painter helpers ────────────────────────────────────────────────────────
@@ -713,9 +741,9 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         angleDeg: Float = 0f,
         scaleX: Float = 1f,
         scaleY: Float = 1f,
-        tint: Color? = null
+        tint: Color? = null,
+        filter: ColorFilter? = if (tint != null) ColorFilter.tint(tint) else null
     ) {
-        val filter = tint?.let { ColorFilter.tint(it) }
         // Draw the painter at its constant intrinsic size and scale that to fill the w×h box.
         // The in-game ball and the ball-selection carousel share ONE VectorPainter instance per part;
         // drawing the same painter at two different sizes within a single frame thrashes its cached
@@ -825,7 +853,9 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             var angle: Float, val spin: Float,
             val colorMix: Float
         )
-        private val feathers: List<Feather>
+        // Stored as an Array (not List) so draw()'s per-frame loop iterates by index without
+        // allocating an Iterator every frame (particles section).
+        private val feathers: Array<Feather>
         private val fw = radius * 0.4f
         private val fh = radius * 1.1f
         private var frame = 0
@@ -835,7 +865,7 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
             val count = if (fullCircle) 24 else 14
             val angleRange = if (fullCircle) 2f * PI.toFloat() else PI.toFloat()
             val angleOffset = if (fullCircle || highGoal) 0f else PI.toFloat()
-            feathers = List(count) { i ->
+            feathers = Array(count) { i ->
                 val a = (i.toFloat() / count) * angleRange + angleOffset + Random.nextFloat() * 0.3f
                 val speed = radius * (0.045f + Random.nextFloat() * 0.1f)
                 Feather(cx, cy, cos(a) * speed, sin(a) * speed,
@@ -846,7 +876,8 @@ class PokPokSkin(override val renderer: PuckRenderer) : PuckSkin {
         override fun step() { frame++; if (frame > 60) isDone = true }
 
         override fun draw(scope: DrawScope) {
-            for (f in feathers) {
+            for (i in feathers.indices) {
+                val f = feathers[i]
                 f.x += f.vx
                 f.y += f.vy
                 f.angle += f.spin

@@ -123,8 +123,8 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     ) : Effects.PersistentEffect {
 
         private class Spark(val dx: Float, val dy: Float, var alpha: Float, val fadeRate: Float)
-        private val sparks: List<Spark>
-        private val spikePaths: List<Path>
+        private val sparks: Array<Spark>
+        private val spikePaths: Array<Path>
         private val spikeBrush: Brush
         private val emberColor = primary
         private var frame = 0
@@ -137,7 +137,7 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 1.50f, 0.72f, 1.60f, 0.60f, 1.2f, 0.85f, 1.70f, 0.55f,
                 1.90f, 0.68f, 1.2f, 0.78f
             )
-            spikePaths = List(spikeCount) { i ->
+            spikePaths = Array(spikeCount) { i ->
                 val baseAngle = (i.toFloat() / spikeCount) * 2f * PI.toFloat() +
                     (rng.nextFloat() - 0.5f) * (2f * PI.toFloat() / spikeCount) * 1f
                 val len = radius * lengthPattern[i] * (0.90f + rng.nextFloat() * 0.40f)
@@ -158,7 +158,7 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             }
 
             val rand = Random(cx.toLong())
-            sparks = List((5..15).random()) {
+            sparks = Array((5..15).random()) {
                 val angle = rand.nextFloat() * 2f * PI.toFloat()
                 val dist = radius * (2f + rand.nextFloat() * 2f)
                 Spark(cos(angle) * dist, sin(angle) * dist, 200f, 0.25f + rand.nextFloat() * 0.6f)
@@ -181,7 +181,8 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         override fun draw(scope: DrawScope) {
             val emberRadius = radius * 0.09f
-            for (s in sparks) {
+            for (i in sparks.indices) {
+                val s = sparks[i]
                 if (s.alpha <= 0f) continue
                 scope.drawCircle(
                     Color(Palette.withAlpha(emberColor, s.alpha.toInt().coerceIn(0, 255))),
@@ -189,8 +190,8 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                     Offset(cx + s.dx, cy + s.dy)
                 )
             }
-            for (path in spikePaths) {
-                scope.drawPath(path, spikeBrush)
+            for (i in spikePaths.indices) {
+                scope.drawPath(spikePaths[i], spikeBrush)
             }
         }
     }
@@ -205,11 +206,11 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         override val isDone = false
 
         private class Spark(val dx: Float, val dy: Float, var alpha: Float, val fadeRate: Float)
-        private val sparks: List<Spark>
+        private val sparks: Array<Spark>
 
         init {
             val rand = Random(cx.toLong())
-            sparks = List(7) {
+            sparks = Array(7) {
                 val angle = rand.nextFloat() * 2f * PI.toFloat()
                 val dist = radius * (0.9f + rand.nextFloat() * 1.5f)
                 Spark(cos(angle) * dist, sin(angle) * dist, 200f, 0.25f + rand.nextFloat() * 0.6f)
@@ -218,13 +219,17 @@ class MetalLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         override fun step() {
             frame++
-            for (s in sparks) s.alpha = (s.alpha - s.fadeRate).coerceAtLeast(0f)
+            for (i in sparks.indices) {
+                val s = sparks[i]
+                s.alpha = (s.alpha - s.fadeRate).coerceAtLeast(0f)
+            }
         }
 
         override fun draw(scope: DrawScope) {
             scope.drawCircle(Color(scorchColor), radius * 1.1f, Offset(cx, cy))
             val sparkRadius = radius * 0.09f
-            for (s in sparks) {
+            for (i in sparks.indices) {
+                val s = sparks[i]
                 if (s.alpha <= 0f) continue
                 scope.drawCircle(
                     Color(Palette.withAlpha(sparkColor, s.alpha.toInt().coerceIn(0, 255))),

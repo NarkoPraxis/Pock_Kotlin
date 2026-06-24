@@ -21,9 +21,11 @@ class ClassicTail(override val renderer: PuckRenderer) : TailRenderer {
         val points = points!!
         val colors = responsiveGroup
 
-        fun ratio(i: Int) = (i.toFloat() / (points.size - 1))
-
+        // Inline ratio math (no capturing local fun -> no per-frame closure alloc).
+        // Denominator matches the original `ratio` helper exactly: (points.size - 1).
+        val ratioDenom = (points.size - 1).toFloat()
         val lastIndex = (points.size - 1).coerceAtLeast(1)
+        val baseSize = renderer.radius * 1.1f
         for (i in points.size - 1 downTo 0) {
             if (renderer.staticUiMode) {
                 val p = staticSwooshPoint(i.toFloat() / lastIndex)
@@ -35,9 +37,8 @@ class ClassicTail(override val renderer: PuckRenderer) : TailRenderer {
             }
 
             points[i].setColor(colors.primary)
-            val baseSize = renderer.radius * 1.1f
-            points[i].size = baseSize - Settings.strokeWidth - renderer.radius * ratio(i - 1)
-            points[i].setAlpha((255f * (1 - ratio(i))).toInt())
+            points[i].size = baseSize - Settings.strokeWidth - renderer.radius * ((i - 1).toFloat() / ratioDenom)
+            points[i].setAlpha((255f * (1 - i.toFloat() / ratioDenom)).toInt())
             points[i].drawTo(scope)
         }
     }
@@ -45,6 +46,10 @@ class ClassicTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun clear() { points = null }
 
     override fun fillTo(x: Float, y: Float) {
-        points?.forEach { it.x = x; it.y = y }
+        val pts = points ?: return
+        for (i in pts.indices) {
+            pts[i].x = x
+            pts[i].y = y
+        }
     }
 }

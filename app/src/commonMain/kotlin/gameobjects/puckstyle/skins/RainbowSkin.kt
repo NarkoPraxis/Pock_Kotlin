@@ -17,6 +17,19 @@ class RainbowSkin(override val renderer: PuckRenderer) : PuckSkin {
     private val hueOffset = Palette.themeHue(theme)
     private val shieldHue = Palette.colorHue(theme.shield.primary)
 
+    // Stroke is a heap class (not a value class); cache it and rebuild only when the
+    // stroke width actually changes (strokeWidth is effectively immutable after setup).
+    private var cachedStrokeWidth = Float.NaN
+    private var cachedStroke: Stroke = Stroke(width = 0f)
+
+    private fun strokeFor(width: Float): Stroke {
+        if (cachedStrokeWidth != width) {
+            cachedStrokeWidth = width
+            cachedStroke = Stroke(width = width)
+        }
+        return cachedStroke
+    }
+
     override fun DrawScope.drawBody() {
         // Hue cycle + shield oscillation run off the strobe clock so the colors keep cycling even in
         // a static UI preview (where the body never moves); in live play strobe == frame.
@@ -40,7 +53,7 @@ class RainbowSkin(override val renderer: PuckRenderer) : PuckSkin {
             Color(strokeColorInt),
             renderer.radius,
             center,
-            style = Stroke(width = renderer.strokeWidth)
+            style = strokeFor(renderer.strokeWidth)
         )
         renderer.chargeColor = fillColorInt
     }

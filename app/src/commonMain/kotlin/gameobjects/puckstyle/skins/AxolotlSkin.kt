@@ -130,6 +130,12 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
     private var currentEyeScaleX = 1f
     private var currentEyeScaleY = 1f
 
+    // Hoisted heap objects reused every frame (Paint/Path are NOT value classes).
+    private val plainPaint = Paint()
+    private val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+    private val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+    private val litPath = Path()
+
     override fun DrawScope.drawBody() {
         frameColors = responsiveGroup
         r = renderer.radius
@@ -263,7 +269,7 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
         val cy = r * TORSO_BASE_Y_K + torsoOffY
         val bounds = Rect(cx - tw / 2f - r * 0.1f, cy - th / 2f - r * 0.1f,
             cx + tw / 2f + r * 0.1f, cy + th / 2f + r * 0.1f)
-        drawContext.canvas.saveLayer(bounds, Paint())
+        drawContext.canvas.saveLayer(bounds, plainPaint)
         drawSvgPart(torso, cx, cy, tw, th, tint = primary)
         // Shadow: torso SVG shape used as lit region (shifted above torso center)
         val litCx = shadowDx
@@ -274,10 +280,8 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
             maxOf(bounds.right, litCx + tw / 2f + r * 0.1f),
             maxOf(bounds.bottom, litCy + th / 2f + r * 0.1f)
         )
-        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
         drawContext.canvas.saveLayer(bounds, srcAtopPaint)
         drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA), topLeft = bounds.topLeft, size = bounds.size)
-        val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
         drawContext.canvas.saveLayer(litBounds, dstOutPaint)
         drawSvgPart(torso, litCx, litCy, tw, th)
         drawContext.canvas.restore()  // close lit erase layer
@@ -294,7 +298,7 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
         val bh = r * BODY_H_K
         val bounds = Rect(-bw / 2f - r * 0.1f, -bh / 2f - r * 0.1f,
             bw / 2f + r * 0.1f, bh / 2f + r * 0.1f)
-        drawContext.canvas.saveLayer(bounds, Paint())
+        drawContext.canvas.saveLayer(bounds, plainPaint)
         if (body != null) {
             drawSvgPart(body, 0f, 0f, bw, bh, tint = secondary)
         } else {
@@ -311,11 +315,9 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
             maxOf(bounds.right, litCx + bw / 2f + r * 0.1f),
             maxOf(bounds.bottom, litCy + bh / 2f + r * 0.1f)
         )
-        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
         drawContext.canvas.saveLayer(bounds, srcAtopPaint)
         drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA), topLeft = bounds.topLeft, size = bounds.size)
         if (body != null) {
-            val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
             drawContext.canvas.saveLayer(litBounds, dstOutPaint)
             drawSvgPart(body, litCx, litCy, bw, bh)
             drawContext.canvas.restore()  // close lit erase layer
@@ -343,7 +345,7 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
         }) {
             val gBounds = Rect(centerX - w * 0.6f, centerY - h * 0.6f,
                 centerX + w * 0.6f, centerY + h * 0.6f)
-            drawContext.canvas.saveLayer(gBounds, Paint())
+            drawContext.canvas.saveLayer(gBounds, plainPaint)
             drawSvgPart(painter, centerX, centerY, w, h, tint = Color(frameColors.secondary))
             val growFactor = ((sign * followX + 1f) / 2f).coerceIn(0f, 1f)
             val litR = r * SHADOW_LIT_GILL_R_MIN * lerp(1f, 2f, growFactor)
@@ -356,9 +358,8 @@ class AxolotlSkin(override val renderer: PuckRenderer) : PuckSkin {
             val dyLit = worldLitCy
             val localLitCx = pivotX + dxLit * cosInv - dyLit * sinInv
             val localLitCy = dxLit * sinInv + dyLit * cosInv
-            val litPath = Path().apply {
-                addOval(Rect(localLitCx - litR, localLitCy - litR, localLitCx + litR, localLitCy + litR))
-            }
+            litPath.reset()
+            litPath.addOval(Rect(localLitCx - litR, localLitCy - litR, localLitCx + litR, localLitCy + litR))
             withTransform({ clipPath(litPath, ClipOp.Difference) }) {
                 drawRect(
                     color = Color(0f, 0f, 0f, SHADOW_ALPHA),

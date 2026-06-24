@@ -31,6 +31,7 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private var medRadius = 0f
     private var largeRadius = 0f
     private var arcStrokeWidth = 0f
+    private var arcStroke: Stroke? = null
 
     private fun ensureBodyCache() {
         if (cachedBodyRadius != renderer.radius) {
@@ -39,6 +40,7 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             medRadius = renderer.radius * 0.7f
             largeRadius = medRadius * 0.9f
             arcStrokeWidth = renderer.strokeWidth * 0.5f
+            arcStroke = Stroke(width = arcStrokeWidth, cap = StrokeCap.Round)
         }
     }
 
@@ -88,7 +90,9 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val brush = cachedBrush ?: return
         scope.drawCircle(brush, medRadius, Offset(cx, cy))
         // Static UI: reseed the arcs off the strobe clock each tick so the lightning keeps crackling
-        // in place (frame is frozen); live play keeps the global per-frame randomness.
+        // in place (frame is frozen); live play keeps the global per-frame randomness. The seeded
+        // Random must restart its sequence on every draw call (a single frozen frame may draw the
+        // paddle more than once), so it is allocated here for identical visuals.
         val arcRng = if (renderer.staticUiMode) Random(animFrame * 2654435761L) else Random
         repeat(3) {
             val a1 = arcRng.nextFloat() * TWO_PI
@@ -105,7 +109,7 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             color = Color(Palette.WHITE),
             radius = medRadius,
             center = Offset(cx, cy),
-            style = Stroke(width = arcStrokeWidth, cap = StrokeCap.Round)
+            style = arcStroke ?: Stroke(width = arcStrokeWidth, cap = StrokeCap.Round)
         )
     }
 
@@ -138,6 +142,7 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         private val boltStrokeWidth = Settings.strokeWidth * 0.7f
         private val boltPath = Path()
+        private val boltStroke = Stroke(width = boltStrokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
         private var frame = 0
         private val totalFrames = 80
         private val totalFramesInv = 1f / totalFrames
@@ -171,6 +176,9 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val life = (1f - frame.toFloat() * totalFramesInv).coerceAtLeast(0f)
             val alpha = (230f * life * life).toInt().coerceIn(0, 255)
             if (alpha > 0) {
+                // Must restart the same deterministic sequence on every draw within a (frame/3)
+                // bucket so repeated frames replay identical bolts; Random has no reseed, so the
+                // allocation here is required for identical visuals.
                 val rand = Random((frame / 3).toLong())
                 val boltCount = (10 * life).toInt().coerceAtLeast(3)
                 repeat(boltCount) { idx ->
@@ -200,7 +208,7 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             scope.drawPath(
                 boltPath,
                 Color(color),
-                style = Stroke(width = boltStrokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                style = boltStroke
             )
         }
     }
@@ -216,6 +224,7 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         private val burnBoltStrokeWidth = Settings.strokeWidth * 0.38f
         private val boltPath = Path()
+        private val burnBoltStroke = Stroke(width = burnBoltStrokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
         private val scorchColor = Palette.argb(170, 15, 5, 20)
 
         private data class BoltStub(
@@ -224,12 +233,13 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val midX: Float, val midY: Float,
             val color: Int
         )
-        private val stubs: List<BoltStub>
+        // Array (not List) so the per-frame draw loop iterates by index without allocating an Iterator.
+        private val stubs: Array<BoltStub>
 
         init {
             val rng = Random(cx.toInt() xor cy.toInt())
             val count = 12
-            stubs = List(count) { i ->
+            stubs = Array(count) { i ->
                 val angle = (i.toFloat() / count) * TWO_PI + rng.nextFloat() * 0.4f
                 val reach = radius * (0.7f + rng.nextFloat() * 0.9f)
                 val ex = cx + cos(angle) * reach; val ey = cy + sin(angle) * reach
@@ -246,7 +256,8 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         override fun draw(scope: DrawScope) {
             scope.drawCircle(Color(scorchColor), radius * 0.65f, Offset(cx, cy))
-            for (stub in stubs) {
+            for (i in stubs.indices) {
+                val stub = stubs[i]
                 boltPath.reset()
                 boltPath.moveTo(stub.x1, stub.y1)
                 boltPath.lineTo(stub.midX, stub.midY)
@@ -254,7 +265,7 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 scope.drawPath(
                     boltPath,
                     Color(Palette.withAlpha(stub.color, 120)),
-                    style = Stroke(width = burnBoltStrokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    style = burnBoltStroke
                 )
             }
             scope.drawCircle(Color(Palette.withAlpha(secondary, 160)), radius * 0.18f, Offset(cx, cy))

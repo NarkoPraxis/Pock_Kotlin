@@ -35,12 +35,14 @@ class PixelTail(override val renderer: PuckRenderer) : TailRenderer {
     private var cachedAlphas   = IntArray(0)      // computeAlpha per index
     private var cachedStrokeW  = 0f               // radius * 0.3f
     private var cachedGrowRate = 0f               // radius * 0.09f
+    private var cachedStroke   = Stroke(0f)       // Stroke is a heap class — cache, rebuild on width change
 
     private fun ensureCache(len: Int) {
         if (cachedRadius == renderer.radius && cachedSizes.size == len) return
         cachedRadius   = renderer.radius
         cachedStrokeW  = renderer.radius * 0.3f
         cachedGrowRate = renderer.radius * 0.09f
+        cachedStroke   = Stroke(cachedStrokeW)
         if (cachedSizes.size != len) {
             cachedSizes  = FloatArray(len)
             cachedAlphas = IntArray(len)
@@ -107,7 +109,7 @@ class PixelTail(override val renderer: PuckRenderer) : TailRenderer {
         }
 
         // rings drawn first — behind all blocks; index-based loop avoids iterator allocation
-        val strokeW = cachedStrokeW
+        val ringStroke = cachedStroke
         var ri = 0
         while (ri < rings.size) {
             val r = rings[ri]
@@ -122,7 +124,7 @@ class PixelTail(override val renderer: PuckRenderer) : TailRenderer {
                     color = Color(Palette.withAlpha(r.color, r.alpha)),
                     topLeft = Offset(r.x - half, r.y - half),
                     size = Size(r.size, r.size),
-                    style = Stroke(strokeW)
+                    style = ringStroke
                 )
                 ri++
             }

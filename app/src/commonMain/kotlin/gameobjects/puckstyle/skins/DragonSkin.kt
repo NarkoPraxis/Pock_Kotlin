@@ -136,6 +136,42 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
     private var cachedRadius = -1f
     private var r = 0f
 
+    // Hoisted heap objects reused every frame (Paint/Path/ColorFilter are NOT value classes).
+    private val plainPaint = Paint()
+    private val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+    private val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+    private val litPathReusable = Path()
+    // Tint ColorFilter cached per resolved secondary colour; only rebuilt when the colour changes.
+    private var cachedSecondaryTintColor = 0
+    private var cachedSecondaryTint: ColorFilter? = null
+
+    private fun secondaryTint(colorInt: Int): ColorFilter {
+        if (cachedSecondaryTint == null || cachedSecondaryTintColor != colorInt) {
+            cachedSecondaryTintColor = colorInt
+            cachedSecondaryTint = ColorFilter.tint(Color(colorInt))
+        }
+        return cachedSecondaryTint!!
+    }
+
+    // Two-slot tint cache for drawSvgPart (it draws with both primary and secondary each frame).
+    // Avoids a fresh ColorFilter.tint allocation per painter part per frame.
+    private var tintKey0 = 0UL
+    private var tintFilter0: ColorFilter? = null
+    private var tintKey1 = 0UL
+    private var tintFilter1: ColorFilter? = null
+
+    private fun tintFilterFor(color: Color): ColorFilter {
+        val key = color.value
+        if (tintFilter0 != null && tintKey0 == key) return tintFilter0!!
+        if (tintFilter1 != null && tintKey1 == key) return tintFilter1!!
+        // Evict slot 1, promote slot 0 to slot 1, build into slot 0 (simple LRU-ish 2-way cache).
+        tintKey1 = tintKey0; tintFilter1 = tintFilter0
+        tintKey0 = key
+        val f = ColorFilter.tint(color)
+        tintFilter0 = f
+        return f
+    }
+
     private fun ensureCache() {
         val newR = renderer.radius
         if (cachedRadius != newR) {
@@ -312,7 +348,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         val body = DragonSkinPainters.body
         val secondary = Color(frameColors.primary)
         val bounds = Rect(-r * 1.2f, -r * 1.2f, r * 1.2f, r * 1.2f)
-        drawContext.canvas.saveLayer(bounds, Paint())
+        drawContext.canvas.saveLayer(bounds, plainPaint)
         if (body != null) {
             val w = r * BODY_W_K
             val h = r * BODY_H_K
@@ -330,13 +366,12 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
             shadowDx - litR, -r * SHADOW_LIT_BODY_ABOVE_K - litR,
             shadowDx + litR, -r * SHADOW_LIT_BODY_ABOVE_K + litR
         )
-        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
         drawContext.canvas.saveLayer(bounds, srcAtopPaint)
         drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA), topLeft = bounds.topLeft, size = bounds.size)
-        val litPath = Path().apply { addOval(litBounds) }
-        val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+        litPathReusable.reset()
+        litPathReusable.addOval(litBounds)
         drawContext.canvas.saveLayer(litBounds, dstOutPaint)
-        drawPath(litPath, Color.White)
+        drawPath(litPathReusable, Color.White)
         drawContext.canvas.restore()
         drawContext.canvas.restore()
         drawContext.canvas.restore()
@@ -383,7 +418,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
                 centerX - w - r * 0.15f, centerY - h - r * 0.15f,
                 centerX + w + r * 0.15f, centerY + h + r * 0.15f
             )
-            drawContext.canvas.saveLayer(wBounds, Paint())
+            drawContext.canvas.saveLayer(wBounds, plainPaint)
             drawSvgPart(painter, centerX, centerY, w, h, scaleX = perspScale, scaleY = perspScale,
                 tint = Color(frameColors.secondary))
             val growFactor = ((sign * irisOffX + 1f) / 2f).coerceIn(0f, 1f)
@@ -397,10 +432,9 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
             val dyLit = worldLitCy
             val localLitCx = pivotX + dxLit * cosInv - dyLit * sinInv
             val localLitCy = dxLit * sinInv + dyLit * cosInv
-            val litPath = Path().apply {
-                addOval(Rect(localLitCx - litR, localLitCy - litR, localLitCx + litR, localLitCy + litR))
-            }
-            withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+            litPathReusable.reset()
+            litPathReusable.addOval(Rect(localLitCx - litR, localLitCy - litR, localLitCx + litR, localLitCy + litR))
+            withTransform({ clipPath(litPathReusable, ClipOp.Difference) }) {
                 drawRect(
                     color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                     topLeft = Offset(centerX - w - r * 0.15f, centerY - h - r * 0.15f),
@@ -506,7 +540,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
                 lerp(rotDeg, rotDeg - kotlin.math.sign(rotDeg) * 6f, flaredBlend)
             else -> rotDeg
         }
-        val tint = ColorFilter.tint(Color(frameColors.secondary))
+        val tint = secondaryTint(frameColors.secondary)
         // Draw at the painter's constant intrinsic size; scale to the on-screen box via the canvas.
         // Keeps the shared VectorPainter's cached layer from being re-rasterized at carousel vs.
         // in-game sizes (see drawSvgPart). Without this, horns "scale" with the carousel.
@@ -518,7 +552,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
             val margin = r * 0.25f
             val bounds = Rect(cx - w / 2f - margin, cy - h / 2f - margin,
                               cx + w / 2f + margin, cy + h / 2f + margin)
-            drawContext.canvas.saveLayer(bounds, Paint())
+            drawContext.canvas.saveLayer(bounds, plainPaint)
             withTransform({
                 translate(cx - w / 2f, cy - h / 2f)
                 val pivot = Offset(w / 2f, anchorY - (cy - h / 2f))
@@ -530,11 +564,10 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
             // Lit side grows when the eye looks toward this horn; dark side shrinks
             val growFactor = ((shadowSign * irisOffX + 1f) / 2f).coerceIn(0f, 1f)
             val litR = r * SHADOW_HORN_LIT_R * lerp(0.6f, 1.8f, growFactor)
-            val litPath = Path().apply {
-                addOval(Rect(cx + shadowDx * 0.5f - litR, cy - h * 0.2f - litR,
-                             cx + shadowDx * 0.5f + litR, cy - h * 0.2f + litR))
-            }
-            withTransform({ clipPath(litPath, ClipOp.Difference) }) {
+            litPathReusable.reset()
+            litPathReusable.addOval(Rect(cx + shadowDx * 0.5f - litR, cy - h * 0.2f - litR,
+                         cx + shadowDx * 0.5f + litR, cy - h * 0.2f + litR))
+            withTransform({ clipPath(litPathReusable, ClipOp.Difference) }) {
                 drawRect(
                     color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                     topLeft = Offset(cx - w / 2f - margin, cy - h / 2f - margin),
@@ -612,15 +645,12 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         val ix = irisOffX * maxOff
         val iy = irisOffY * maxOff
 
-        val layerPaint = Paint()
-        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
-
         // Left eye: sclera as mask, pupil clipped to sclera shape
         if (lScl != null) {
             val lCx = -r * EYE_OFFSET_X_K
             val hw = sW / 2f * scaleX; val hh = sH / 2f * scaleY
             val bounds = Rect(lCx - hw, cy - hh, lCx + hw, cy + hh)
-            drawContext.canvas.saveLayer(bounds, layerPaint)
+            drawContext.canvas.saveLayer(bounds, plainPaint)
             drawSvgPart(lScl, lCx, cy, sW, sH, scaleX = scaleX, scaleY = scaleY)
             if (lPup != null) {
                 drawContext.canvas.saveLayer(bounds, srcAtopPaint)
@@ -636,7 +666,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
             val rCx = r * EYE_OFFSET_X_K
             val hw = sW / 2f * scaleX; val hh = sH / 2f * scaleY
             val bounds = Rect(rCx - hw, cy - hh, rCx + hw, cy + hh)
-            drawContext.canvas.saveLayer(bounds, layerPaint)
+            drawContext.canvas.saveLayer(bounds, plainPaint)
             drawSvgPart(rScl, rCx, cy, sW, sH, scaleX = scaleX, scaleY = scaleY)
             if (rPup != null) {
                 drawContext.canvas.saveLayer(bounds, srcAtopPaint)
@@ -735,7 +765,7 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         scaleY: Float = 1f,
         tint: Color? = null
     ) {
-        val filter = tint?.let { ColorFilter.tint(it) }
+        val filter = if (tint != null) tintFilterFor(tint) else null
         // Draw the painter at its constant intrinsic size and scale that to fill the w×h box.
         // The in-game ball and the ball-selection carousel share ONE VectorPainter instance per part;
         // drawing the same painter at two different sizes within a single frame thrashes its cached
@@ -921,7 +951,9 @@ class DragonSkin(override val renderer: PuckRenderer) : PuckSkin {
         }
 
         override fun draw(scope: DrawScope) {
-            for (s in sparks) {
+            // Index loop avoids allocating an Iterator over the ArrayDeque every frame.
+            for (i in 0 until sparks.size) {
+                val s = sparks[i]
                 // Hot core (primary) near the mouth fades to cooler secondary at the cone edges
                 // and as each spark ages.
                 val colorT = (s.spreadAbs * 0.5f + (1f - s.life) * 0.6f).coerceIn(0f, 1f)

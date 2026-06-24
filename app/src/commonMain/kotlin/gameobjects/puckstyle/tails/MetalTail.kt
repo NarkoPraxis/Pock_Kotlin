@@ -13,6 +13,10 @@ class MetalTail(override val renderer: PuckRenderer) : TailRenderer {
     private val grey = Palette.argb(255, 140, 140, 150)
     private val metalLen = (30 * Settings.tailLengthMultiplier).toInt().coerceAtLeast(1)
 
+    // radius is effectively immutable after setup; cache the derived point size behind a guard.
+    private var cachedRadius = Float.NaN
+    private var cachedPointSize = 0f
+
     override fun render(scope: DrawScope) {
         // Static UI collapses to the shared list-tail density; live keeps its longer trail.
         val len = if (renderer.staticUiMode) staticPointCount else metalLen
@@ -22,6 +26,11 @@ class MetalTail(override val renderer: PuckRenderer) : TailRenderer {
         val lastIndex = (points.size - 1).coerceAtLeast(1)
         val useSimpleColor = renderer.isInert || renderer.shielded
         val simpleColor = if (useSimpleColor) colors.primary else 0
+
+        if (cachedRadius != renderer.radius) {
+            cachedRadius = renderer.radius
+            cachedPointSize = renderer.radius * 0.95f
+        }
 
         if (renderer.staticUiMode) {
             for (i in points.indices) {
@@ -46,7 +55,7 @@ class MetalTail(override val renderer: PuckRenderer) : TailRenderer {
                 else -> Palette.lerpColor(colors.primary, Palette.WHITE, (ratio - 0.5f) * 2f)
             }
             points[i].setColor(color)
-            points[i].size = renderer.radius * 0.95f
+            points[i].size = cachedPointSize
             points[i].setAlpha((255f * (1f - ratio).pow(1.5f)).toInt())
             points[i].drawTo(scope)
         }
@@ -55,6 +64,9 @@ class MetalTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun clear() { points = null }
 
     override fun fillTo(x: Float, y: Float) {
-        points?.forEach { it.x = x; it.y = y }
+        val pts = points ?: return
+        for (i in pts.indices) {
+            pts[i].x = x; pts[i].y = y
+        }
     }
 }

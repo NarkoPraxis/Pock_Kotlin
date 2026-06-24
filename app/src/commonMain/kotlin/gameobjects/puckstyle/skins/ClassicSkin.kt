@@ -20,6 +20,19 @@ import kotlin.math.sin
 
 class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
 
+    // Cached Stroke: Stroke is a heap class, not a value class. renderer.strokeWidth
+    // is effectively immutable after setup, so rebuild only when the width changes.
+    private var cachedStrokeWidth = -1f
+    private var cachedStroke: Stroke = Stroke(width = 0f)
+
+    private fun strokeFor(width: Float): Stroke {
+        if (width != cachedStrokeWidth) {
+            cachedStrokeWidth = width
+            cachedStroke = Stroke(width = width)
+        }
+        return cachedStroke
+    }
+
     override fun DrawScope.drawBody() {
         val center = Offset(renderer.x, renderer.y)
         drawCircle(Color(responsivePrimary), renderer.radius, center)
@@ -27,7 +40,7 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
             color = Color(responsiveSecondary),
             radius = renderer.radius,
             center = center,
-            style = Stroke(width = renderer.strokeWidth)
+            style = strokeFor(renderer.strokeWidth)
         )
     }
 
@@ -56,7 +69,9 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
         highGoal: Boolean,
         fullCircle: Boolean = false
     ) : Effects.PersistentEffect {
-        private val directions = mutableListOf<Point>()
+        // Built once in init; iterated as an Array (index loop) so draw() does not
+        // allocate an Iterator every frame during the score burst.
+        private val directions: Array<Point>
         private val step = 10f
         private var currentDistance = 0f
         private var drawScored = true
@@ -66,16 +81,16 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
         override val isDone get() = done
 
         init {
-            if (fullCircle) {
-                for (i in 0 until 12) {
+            directions = if (fullCircle) {
+                Array(12) { i ->
                     val a = (i * 2.0 * PI / 12).toFloat()
-                    directions.add(Point(cos(a), sin(a)))
+                    Point(cos(a), sin(a))
                 }
             } else {
-                for (angle in listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, PI)) {
-                    val a = angle.toFloat()
-                    if (highGoal) directions.add(Point(cos(a), sin(a)))
-                    else directions.add(-Point(cos(a), sin(a)))
+                val angles = doubleArrayOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, PI)
+                Array(angles.size) { idx ->
+                    val a = angles[idx].toFloat()
+                    if (highGoal) Point(cos(a), sin(a)) else -Point(cos(a), sin(a))
                 }
             }
         }
@@ -84,7 +99,8 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         override fun draw(scope: DrawScope) {
             if (done) return
-            for (direction in directions) {
+            for (i in directions.indices) {
+                val direction = directions[i]
                 val dx = position.x + direction.x * currentDistance
                 val dy = position.y + direction.y * currentDistance
                 scope.drawCircle(Color(scoringColor).copy(alpha = scoringAlpha / 255f), radius, Offset(dx, dy))
