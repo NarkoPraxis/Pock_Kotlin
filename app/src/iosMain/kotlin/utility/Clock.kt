@@ -1,6 +1,8 @@
 package utility
 
-import kotlin.system.getTimeNanos
+import kotlin.time.TimeSource
 
-// getTimeNanos() is monotonic on Kotlin/Native (never wall-clock).
-actual fun nowNanos(): Long = getTimeNanos()
+// TimeSource.Monotonic is monotonic on Kotlin/Native (never wall-clock).
+private val monotonicStart = TimeSource.Monotonic.markNow()
+
+actual fun nowNanos(): Long = monotonicStart.elapsedNow().inWholeNanoseconds
