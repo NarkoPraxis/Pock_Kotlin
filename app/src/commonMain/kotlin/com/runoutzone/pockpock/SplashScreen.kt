@@ -42,6 +42,9 @@ private const val SPLASH_HOLD_MS = 2200L
 // black in dark (matching the day/night system-splash background).
 private val ICON_BG = Color(0xFFF25252)
 
+// Shown bottom-right on the splash so the running build — and its headline feature — is obvious.
+private const val VERSION_LABEL = "v0.8 frame optimisations"
+
 /**
  * Custom splash shown as the app's first destination. It deliberately replicates the system launch
  * screen — the launcher icon centered on a white field — and adds the photosensitivity warning
@@ -96,5 +99,19 @@ fun SplashScreen(onDone: () -> Unit) {
                     .widthIn(max = 360.dp)
             )
         }
+
+        // Version label, bottom-right: makes the build immediately identifiable and surfaces its
+        // headline feature. Dimmed so it never competes with the warning above.
+        Text(
+            text = VERSION_LABEL,
+            color = textColor.copy(alpha = 0.5f),
+            fontFamily = poppins,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.End,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        )
     }
 }
