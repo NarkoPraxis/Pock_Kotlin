@@ -163,12 +163,6 @@ object PaintBucket {
         get() = lowPlayerPale
         set(v) { lowPlayerPale = v }
 
-    /** Score-flash overlay color — set at runtime by Logic when a goal is scored. */
-    var scoreFlashColor: Color = Color(0x00FFFFFF)
-
-    /** Score-flash overlay alpha (0f–255f). Decremented each frame by Drawing.drawScoreFlash(). */
-    var scoreFlashAlpha: Float = 0f
-
     var menuHintColor: Color = Color(0x3CFFFFFF)
 
     val timerColor: Color get() = if (utility.Storage.darkMode) Color(0xFF999999) else Color(0xFFD9D9D9)

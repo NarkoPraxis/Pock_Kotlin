@@ -1,6 +1,7 @@
 package utility
 
 import enums.ChargeMeterStyle
+import enums.ScorePhase
 import gameobjects.Player
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
@@ -9,9 +10,11 @@ import kotlin.math.ceil
 import kotlin.math.sin
 import kotlin.math.sqrt
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -170,7 +173,7 @@ object Drawing {
 
         FrameProfiler.begin(FrameProfiler.S_HUD)
         drawBallPopups()
-        drawScoreFlash()
+        drawScoreCinematic()
         if (!Settings.isDemoMode) drawScores(Logic.highPlayer, Logic.lowPlayer)
         FrameProfiler.end(FrameProfiler.S_HUD)
 
@@ -235,7 +238,7 @@ object Drawing {
 
     // Sizing is in screenRatio units (never pixels). Tune these to match Goal Shape.png.
     private const val SPIKE_TOOTH_WIDTH_RATIO = 1.2f // tooth base width ≈ screenRatio * this
-    private const val SPIKE_HEIGHT_RATIO = 1.0f      // full-extension spike height ≈ screenRatio * this
+    private const val SPIKE_HEIGHT_RATIO = .75f      // full-extension spike height ≈ screenRatio * this
 
     // One reusable Path per goal — rewound/refilled only when its baked progress changes, so idle
     // frames (fully safe or fully spiky, held steady) reuse the cached path and allocate nothing.
@@ -807,16 +810,38 @@ object Drawing {
         drawText(result, topLeft = Offset(timerX, timerY))
     }
 
-    fun DrawScope.drawScoreFlash() {
-        if (!Settings.scoreFlashEnabled || Settings.scoreFlashAlpha <= 0f) return
-        val flashColor = Color(Settings.scoreFlashColor)
-            .copy(alpha = (Settings.scoreFlashAlpha / 255f).coerceIn(0f, 1f))
-        drawRect(
-            color = flashColor,
-            topLeft = Offset.Zero,
-            size = Size(Settings.screenWidth, Settings.screenHeight)
-        )
-        Settings.scoreFlashAlpha -= 8f
+    // Reused even-odd Path for the score-cinematic overlay (full-screen rect minus a circular
+    // window). Rewound/refilled each frame — no offscreen layer, no per-frame Path allocation.
+    private val scoreCinematicPath = Path()
+
+    // The freeze-frame dim wash with a circular window onto the pierced ball. Driven by Logic's
+    // score-cinematic phase/ticker; a cheap early-return when no score cinematic is active. Drawn as
+    // a single even-odd Path so the rect-minus-circle leaves a clean transparent window onto the
+    // frozen scene (the pierced ball shows through; the rest dims under the wash).
+    fun DrawScope.drawScoreCinematic() {
+        if (!Logic.scoreCinematicActive) return
+        val ratio = Logic.scoreCinematicTicker.ratio.coerceIn(0f, 1f)
+        val minRadius = Settings.ballRadius * Settings.SCORE_WINDOW_MIN_RADIUS_BALLS
+        val maxRadius = Logic.scoreWindowMaxRadius
+        val (radius, alpha) = when (Logic.scorePhase) {
+            ScorePhase.Shrink -> {
+                val eased = 1f - (1f - ratio) * (1f - ratio)         // quad ease-out settle
+                Pair(maxRadius + (minRadius - maxRadius) * eased, Settings.SCORE_OVERLAY_ALPHA * ratio)
+            }
+            ScorePhase.Hold -> Pair(minRadius, Settings.SCORE_OVERLAY_ALPHA)
+            ScorePhase.Expand -> {
+                val eased = ratio * ratio                            // ease-in as it swallows the screen
+                Pair(minRadius + (maxRadius - minRadius) * eased, Settings.SCORE_OVERLAY_ALPHA)
+            }
+        }
+        val cx = Logic.pierceX
+        val cy = Logic.pierceY
+        val path = scoreCinematicPath
+        path.rewind()
+        path.addRect(Rect(0f, 0f, Settings.screenWidth, Settings.screenHeight))
+        path.addOval(Rect(cx - radius, cy - radius, cx + radius, cy + radius))
+        path.fillType = PathFillType.EvenOdd
+        drawPath(path, color = Color(Logic.scoreOverlayColor).copy(alpha = alpha))
     }
 
     // -------------------------------------------------------------------------

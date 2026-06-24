@@ -38,7 +38,6 @@ internal object AndroidPaints {
     lateinit var highBallStrokePaint: Paint
     lateinit var wallPaint: Paint
     lateinit var canScoreWallPaint: Paint
-    lateinit var scoreFlashPaint: Paint
     lateinit var highPlayerHighlightPaint: Paint
     lateinit var lowPlayerHighlightPaint: Paint
     lateinit var menuHintPaint: Paint
@@ -106,10 +105,6 @@ var PaintBucket.wallPaint: Paint
 var PaintBucket.canScoreWallPaint: Paint
     get() = AndroidPaints.canScoreWallPaint
     set(value) { AndroidPaints.canScoreWallPaint = value }
-
-var PaintBucket.scoreFlashPaint: Paint
-    get() = AndroidPaints.scoreFlashPaint
-    set(value) { AndroidPaints.scoreFlashPaint = value }
 
 var PaintBucket.highPlayerHighlightPaint: Paint
     get() = AndroidPaints.highPlayerHighlightPaint
@@ -317,10 +312,6 @@ fun PaintBucket.buildPaints(resources: Resources) {
         strokeJoin = Paint.Join.ROUND
         strokeCap = Paint.Cap.ROUND
         strokeWidth = STROKE_WIDTH
-    }
-
-    p.scoreFlashPaint = Paint().apply {
-        style = Paint.Style.FILL
     }
 
     p.highPlayerHighlightPaint = Paint().apply {

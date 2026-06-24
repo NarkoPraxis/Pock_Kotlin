@@ -21,15 +21,21 @@ object Settings {
     var highPlayerRainbowShield: Boolean = false
     var lowPlayerRainbow: Boolean = false
     var lowPlayerRainbowShield: Boolean = false
-    val scoreFlashEnabled = true
+    val scoreCinematicEnabled = true
     val scoreBurstEnabled = true
     val scorePopEnabled = true
 
-    var scoreFlashAlpha = 0f
-    var scoreFlashColor = 0
-
     var highScorePopTicker = Ticker(20, true)
     var lowScorePopTicker = Ticker(20, true)
+
+    // ---- Score cinematic (the freeze + dim wash with a circular window onto the pierced ball). ----
+    // Phase durations in frames; the window shrinks onto the pierced ball, holds, then expands away
+    // while the balls lerp home. Tunable.
+    const val SCORE_SHRINK_FRAMES = 12
+    const val SCORE_HOLD_FRAMES = 18
+    const val SCORE_EXPAND_FRAMES = 14
+    const val SCORE_OVERLAY_ALPHA = 0.30f          // dim-wash opacity at full strength
+    const val SCORE_WINDOW_MIN_RADIUS_BALLS = 3f   // min window radius = this × ballRadius
 
     // 0 = goals are flat-edged ("safe"); 1 = goals have fully extended their sawtooth spikes
     // ("spiky"). Driven by Logic.updateSpikes, consumed by Drawing's spiky-goal builder. Shared by

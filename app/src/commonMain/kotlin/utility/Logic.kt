@@ -38,6 +38,19 @@ object Logic {
     var leaving = false
     var canCollide = true
 
+    // ---- Score cinematic state (the Scored-state freeze + dim wash with a circular window). ----
+    // Driven by scored(); read by Drawing.drawScoreCinematic. scoringPlayer is the winner (its colour
+    // washes the screen); piercedPlayer is the loser the window frames (also used by Plan 3).
+    var scoreCinematicActive = false
+    var scorePhase = ScorePhase.Shrink
+    val scoreCinematicTicker = Ticker(Settings.SCORE_SHRINK_FRAMES, true)
+    var pierceX = 0f
+    var pierceY = 0f
+    var scoreOverlayColor = 0
+    var scoreWindowMaxRadius = 0f
+    var scoringPlayer: Player? = null
+    var piercedPlayer: Player? = null
+
     /** Called instead of doOnSizeChange when running under Compose (no GameView). */
     var composeReinitCallback: (() -> Unit)? = null
 
@@ -295,11 +308,10 @@ object Logic {
             winner.score()
             loser.clearPower()
             winner.clearPower()
-            if (Settings.scoreFlashEnabled) {
-                Settings.scoreFlashAlpha = 200f
-                // Bake the winner's current rainbow colour (if strobing) so the full-screen flash
-                // holds one colour and never strobes; falls back to the configured fill otherwise.
-                Settings.scoreFlashColor = winner.puck.renderer.bakedPrimary(winner.puckFillColor)
+            if (Settings.scoreCinematicEnabled) {
+                // Bake the winner's current rainbow colour (if strobing) so the dim wash holds one
+                // colour and never strobes; falls back to the configured fill otherwise.
+                startScoreCinematic(winner, loser, winner.puck.renderer.bakedPrimary(winner.puckFillColor))
             }
             if (Settings.scorePopEnabled) {
                 if (winner.isHigh) {
@@ -325,12 +337,61 @@ object Logic {
         return false
     }
 
+    // Initializes the score-cinematic interlude at the moment of a score (called from checkScored).
+    // [winner] is the scoring player (its colour washes the screen); [loser] is the pierced player
+    // the window frames. [overlayColor] is the winner's baked fill (already rainbow-resolved).
+    private fun startScoreCinematic(winner: Player, loser: Player, overlayColor: Int) {
+        scoreCinematicActive = true
+        scorePhase = ScorePhase.Shrink
+        scoreCinematicTicker.reset(Settings.SCORE_SHRINK_FRAMES)
+        pierceX = loser.px
+        pierceY = loser.py
+        scoreOverlayColor = overlayColor
+        scoringPlayer = winner
+        piercedPlayer = loser
+        // Max window radius = distance from the pierce point to the farthest screen corner, so the
+        // expanding window fully clears the screen even from an edge-of-screen pierce.
+        val farX = if (pierceX < Settings.middleX) Settings.screenWidth else 0f
+        val farY = if (pierceY < Settings.middleY) Settings.screenHeight else 0f
+        scoreWindowMaxRadius = hypot(pierceX - farX, pierceY - farY)
+    }
+
     fun scored() {
         lowPlayer.disableEffects = true
         highPlayer.disableEffects = true
+
+        if (Settings.scoreCinematicEnabled && scoreCinematicActive) {
+            when (scorePhase) {
+                // Shrink / Hold: physics frozen — the pucks hold position while the window animates.
+                ScorePhase.Shrink -> if (scoreCinematicTicker.tick) {
+                    scorePhase = ScorePhase.Hold
+                    scoreCinematicTicker.reset(Settings.SCORE_HOLD_FRAMES)
+                }
+                ScorePhase.Hold -> if (scoreCinematicTicker.tick) {
+                    scorePhase = ScorePhase.Expand
+                    scoreCinematicTicker.reset(Settings.SCORE_EXPAND_FRAMES)
+                }
+                // Expand: the balls lerp home (existing reset) while the window expands away; play
+                // resumes only once the window has fully cleared AND both pucks have arrived.
+                ScorePhase.Expand -> {
+                    returnPucksHome(gate = scoreCinematicTicker.finished)
+                    if (!scoreCinematicTicker.finished) scoreCinematicTicker.tick
+                }
+            }
+        } else {
+            // Cinematic disabled → original instant both-balls-home reset.
+            returnPucksHome()
+        }
+        resetPlayerStates(highPlayer, lowPlayer)
+    }
+
+    // Lerps both pucks toward their reset positions; once both have arrived (and [gate] is satisfied)
+    // transitions to Play/GameOver, re-enables effects, and ends the cinematic. Returns true on the
+    // frame the transition happens.
+    private fun returnPucksHome(gate: Boolean = true): Boolean {
         val lowIsReady = lowPlayer.moveTowardPoint(lowPlayer.resetLocation)
         val highIsReady = highPlayer.moveTowardPoint(highPlayer.resetLocation)
-        if (lowIsReady && highIsReady) {
+        if (lowIsReady && highIsReady && gate) {
             val scoreWin = Settings.pointsToWin > 0 && (lowPlayer.score >= Settings.pointsToWin || highPlayer.score >= Settings.pointsToWin)
             val timerGameOver = timerExpired && highPlayer.score != lowPlayer.score
             Settings.gameState = if (!Settings.gameOver && (scoreWin || timerGameOver)) {
@@ -343,8 +404,10 @@ object Logic {
             }
             highPlayer.disableEffects = false
             lowPlayer.disableEffects = false
+            scoreCinematicActive = false
+            return true
         }
-        resetPlayerStates(highPlayer, lowPlayer)
+        return false
     }
 
     fun gameOver() {
