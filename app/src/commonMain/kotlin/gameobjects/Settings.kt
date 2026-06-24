@@ -31,16 +31,11 @@ object Settings {
     var highScorePopTicker = Ticker(20, true)
     var lowScorePopTicker = Ticker(20, true)
 
-    var canScoreWallProgress: Float = 0f
+    // 0 = goals are flat-edged ("safe"); 1 = goals have fully extended their sawtooth spikes
+    // ("spiky"). Driven by Logic.updateSpikes, consumed by Drawing's spiky-goal builder. Shared by
+    // both goals so they arm together off the single canScore flag.
+    var spikeProgress: Float = 0f
     var canScore: Boolean = false
-
-    // Opening: anchored at screen edge, inner edge retreats outward (inner side clears first).
-    // Closing: anchored at inner (goal) edge, outer edge grows toward screen edge (goal boundary appears immediately).
-    val canScoreTopWallTop: Float get() = if (canScore) 0f else topGoalBottom * canScoreWallProgress
-    val canScoreTopWallBottom: Float get() = if (canScore) topGoalBottom * (1f - canScoreWallProgress) else topGoalBottom
-
-    val canScoreBottomWallTop: Float get() = if (canScore) screenHeight - (screenHeight - bottomGoalTop) * (1f - canScoreWallProgress) else bottomGoalTop
-    val canScoreBottomWallBottom: Float get() = if (canScore) screenHeight else screenHeight - (screenHeight - bottomGoalTop) * canScoreWallProgress
     var refreshRate: Int = 16
     var unlockProgress = 0
     var startWithTutorial = false

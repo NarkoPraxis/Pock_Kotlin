@@ -5,6 +5,7 @@ import gameobjects.Player
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.RainbowOverride
+import kotlin.math.ceil
 import kotlin.math.sin
 import kotlin.math.sqrt
 import androidx.compose.ui.geometry.Offset
@@ -58,16 +59,6 @@ object Drawing {
         timerText = ""; timerTextKey = Int.MIN_VALUE
     }
 
-    private val highZoneLeft   get() = 0f
-    private val highZoneTop    get() = 0f
-    private val highZoneRight  get() = Settings.screenWidth
-    private val highZoneBottom get() = Settings.topGoalBottom
-
-    private val lowZoneLeft   get() = 0f
-    private val lowZoneTop    get() = Settings.bottomGoalTop
-    private val lowZoneRight  get() = Settings.screenWidth
-    private val lowZoneBottom get() = Settings.screenHeight
-
     // -------------------------------------------------------------------------
     // Rainbow override helpers (for arena elements drawn outside the puck renderer)
     //
@@ -119,17 +110,6 @@ object Drawing {
         } else {
             if (isHigh) PaintBucket.highShieldSecondary else PaintBucket.lowShieldSecondary
         }
-    }
-
-    // ---- canScore (goal-open) wall, the closing layer over each goal. Shield-gated like the goal
-    // zone, but strobes at the INVERTED hue so the open zone and the closing wall stay a contrasting
-    // pair and the opening animation remains visible. ----
-    private fun canScoreWallDefaultColor(isHigh: Boolean): Int {
-        if (RainbowOverride.shieldActive(isHigh)) {
-            val hue = RainbowOverride.invertedHue(RainbowOverride.hue(isHigh, playerFrame(isHigh)))
-            return RainbowOverride.primaryColor(hue).toArgb()
-        }
-        return (if (isHigh) PaintBucket.highShieldSecondary else PaintBucket.lowShieldSecondary).toArgb()
     }
 
     // ---- Wall highlight (main-gated). Mirrors the puck's stroke colour as it nears a wall. ----
@@ -246,89 +226,103 @@ object Drawing {
     }
 
     // -------------------------------------------------------------------------
-    // Arena foreground (goal zones + canScore walls)
+    // Arena foreground (spiky goals)
+    //
+    // Each goal is a filled zone whose arena-facing edge is flat ("safe") or grows a row of
+    // sawtooth spikes ("spiky") as Settings.spikeProgress ramps 0→1. The fill colour still swaps
+    // primary/secondary via goalColor() as the goals arm, so hue and shape change together.
     // -------------------------------------------------------------------------
 
+    // Sizing is in screenRatio units (never pixels). Tune these to match Goal Shape.png.
+    private const val SPIKE_TOOTH_WIDTH_RATIO = 1.2f // tooth base width ≈ screenRatio * this
+    private const val SPIKE_HEIGHT_RATIO = 1.0f      // full-extension spike height ≈ screenRatio * this
+
+    // One reusable Path per goal — rewound/refilled only when its baked progress changes, so idle
+    // frames (fully safe or fully spiky, held steady) reuse the cached path and allocate nothing.
+    private val highGoalSpikePath = Path()
+    private val lowGoalSpikePath = Path()
+    private var highSpikeBuiltEase = Float.NaN
+    private var lowSpikeBuiltEase = Float.NaN
+
+    // Resolved layout, rebuilt only when screen dimensions change (constant during normal play).
+    private var spikeLayoutWidth = -1f
+    private var spikeLayoutGoalDepth = -1f
+    private var spikeCount = 0
+    private var spikeToothWidth = 0f
+    private var spikeFullHeight = 0f
+
+    private fun ensureSpikeLayout() {
+        val width = Settings.screenWidth
+        val goalDepth = Settings.topGoalBottom
+        if (width == spikeLayoutWidth && goalDepth == spikeLayoutGoalDepth) return
+        spikeLayoutWidth = width
+        spikeLayoutGoalDepth = goalDepth
+        val toothWidth = Settings.screenRatio * SPIKE_TOOTH_WIDTH_RATIO
+        spikeCount = ceil(width / toothWidth).toInt().coerceAtLeast(1)
+        // Even division so the teeth tile exactly across the full width (last valley lands on width).
+        spikeToothWidth = width / spikeCount
+        spikeFullHeight = Settings.screenRatio * SPIKE_HEIGHT_RATIO
+        // Force both cached paths to rebuild against the new layout.
+        highSpikeBuiltEase = Float.NaN
+        lowSpikeBuiltEase = Float.NaN
+    }
+
+    // Quadratic ease-out: linear progress in, a little ease-in at the end of the extension.
+    private fun easedSpike(p: Float): Float = 1f - (1f - p) * (1f - p)
+
     fun DrawScope.drawArenaForeground() {
-        val canScore = Settings.canScore
-        val highGoalColor = goalColor(isHigh = true, canScore = canScore)
-        val lowGoalColor = goalColor(isHigh = false, canScore = canScore)
-        drawRect(
-            color = highGoalColor,
-            topLeft = Offset(highZoneLeft, highZoneTop),
-            size = Size(highZoneRight - highZoneLeft, highZoneBottom - highZoneTop)
-        )
-        drawRect(
-            color = lowGoalColor,
-            topLeft = Offset(lowZoneLeft, lowZoneTop),
-            size = Size(lowZoneRight - lowZoneLeft, lowZoneBottom - lowZoneTop)
-        )
-        drawCanScoreWalls()
+        drawSpikyGoal(isHigh = true)
+        drawSpikyGoal(isHigh = false)
         drawGoalMenuHints()
     }
 
-    fun DrawScope.drawCanScoreWalls() {
-        val minDistance = Settings.screenRatio * 6f
-        fun getAlpha(location: Float) = (1 - (location / minDistance)) * 200
-        val highPlayer = Logic.highPlayer
-        val lowPlayer = Logic.lowPlayer
-        val highStroke = playerWallStroke(isHigh = true)
-        val lowStroke = playerWallStroke(isHigh = false)
-        val baseAlpha = 255
-        val highDefaultColorInt = canScoreWallDefaultColor(isHigh = true)
-        val lowDefaultColorInt = canScoreWallDefaultColor(isHigh = false)
-
-        for (x in 0..wallWidthParticleCount) {
-            val xPos = x * Settings.longParticleSide
-
-            val highDist = highPlayer.puck.distanceTo(xPos, Settings.topGoalBottom) - Settings.screenRatio
-            val lowDist  = lowPlayer.puck.distanceTo(xPos, Settings.topGoalBottom)  - Settings.screenRatio
-            var wallColorInt = highDefaultColorInt
-            var proximityAlpha = 0f
-            if (highDist < minDistance) {
-                proximityAlpha = getAlpha(highDist)
-                wallColorInt = if (lowDist < highDist) lowStroke else highStroke
-            }
-            if (lowDist < minDistance) {
-                val a = getAlpha(lowDist)
-                if (a > proximityAlpha) {
-                    proximityAlpha = a
-                    wallColorInt = if (highDist < lowDist) highStroke else lowStroke
-                }
-            }
-            val topAlpha = maxOf(baseAlpha, proximityAlpha.toInt())
-            val resolvedTop = if (proximityAlpha > baseAlpha) wallColorInt else highDefaultColorInt
-            val topColor = Color(resolvedTop).copy(alpha = topAlpha.coerceIn(0, 255) / 255f)
-            drawRect(
-                color = topColor,
-                topLeft = Offset(xPos, Settings.canScoreTopWallTop),
-                size = Size(Settings.longParticleSide, Settings.canScoreTopWallBottom - Settings.canScoreTopWallTop)
-            )
-
-            val highDistB = highPlayer.puck.distanceTo(xPos, Settings.bottomGoalTop) - Settings.screenRatio
-            val lowDistB  = lowPlayer.puck.distanceTo(xPos, Settings.bottomGoalTop)  - Settings.screenRatio
-            var wallColorIntB = lowDefaultColorInt
-            var proximityAlphaB = 0f
-            if (highDistB < minDistance) {
-                proximityAlphaB = getAlpha(highDistB)
-                wallColorIntB = if (lowDistB < highDistB) lowStroke else highStroke
-            }
-            if (lowDistB < minDistance) {
-                val a = getAlpha(lowDistB)
-                if (a > proximityAlphaB) {
-                    proximityAlphaB = a
-                    wallColorIntB = if (highDistB < lowDistB) highStroke else lowStroke
-                }
-            }
-            val botAlpha = maxOf(baseAlpha, proximityAlphaB.toInt())
-            val resolvedBot = if (proximityAlphaB > baseAlpha) wallColorIntB else lowDefaultColorInt
-            val botColor = Color(resolvedBot).copy(alpha = botAlpha.coerceIn(0, 255) / 255f)
-            drawRect(
-                color = botColor,
-                topLeft = Offset(xPos, Settings.canScoreBottomWallTop),
-                size = Size(Settings.longParticleSide, Settings.canScoreBottomWallBottom - Settings.canScoreBottomWallTop)
-            )
+    private fun DrawScope.drawSpikyGoal(isHigh: Boolean) {
+        ensureSpikeLayout()
+        val ease = easedSpike(Settings.spikeProgress)
+        val path = if (isHigh) highGoalSpikePath else lowGoalSpikePath
+        val built = if (isHigh) highSpikeBuiltEase else lowSpikeBuiltEase
+        if (ease != built) {
+            buildSpikePath(path, isHigh, ease)
+            if (isHigh) highSpikeBuiltEase = ease else lowSpikeBuiltEase = ease
         }
+        drawPath(path, color = goalColor(isHigh, Settings.canScore))
+    }
+
+    // Traces the goal outline with a sawtooth arena-facing edge. Valleys sit on the goal baseline;
+    // peaks (tips) reach [ease] of the full spike height into the play area. The low goal mirrors the
+    // high goal's Y math — no canvas mirror needed (spikes are axis-aligned, computed in screen space).
+    private fun buildSpikePath(path: Path, isHigh: Boolean, ease: Float) {
+        val width = Settings.screenWidth
+        val tooth = spikeToothWidth
+        val height = spikeFullHeight * ease
+        path.rewind()
+        if (isHigh) {
+            val baseline = Settings.topGoalBottom
+            val tipY = baseline + height
+            path.moveTo(0f, 0f)
+            path.lineTo(width, 0f)
+            path.lineTo(width, baseline)              // down the right edge to the baseline
+            var k = spikeCount                        // walk the sawtooth right→left
+            while (k > 0) {
+                path.lineTo((k - 0.5f) * tooth, tipY) // peak (tip) at tooth centre
+                path.lineTo((k - 1) * tooth, baseline) // valley at tooth boundary
+                k--
+            }
+        } else {
+            val baseline = Settings.bottomGoalTop
+            val tipY = baseline - height
+            val bottom = Settings.screenHeight
+            path.moveTo(0f, bottom)
+            path.lineTo(width, bottom)
+            path.lineTo(width, baseline)              // up the right edge to the baseline
+            var k = spikeCount
+            while (k > 0) {
+                path.lineTo((k - 0.5f) * tooth, tipY)
+                path.lineTo((k - 1) * tooth, baseline)
+                k--
+            }
+        }
+        path.close()
     }
 
     // -------------------------------------------------------------------------

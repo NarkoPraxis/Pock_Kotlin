@@ -244,13 +244,15 @@ object Logic {
         }
     }
 
-    fun updateCanScoreWall() {
+    // Ramps Settings.spikeProgress toward 1 while the goals are armed (canScore) and back toward 0
+    // when disarmed, ~1/16 per frame so the spikes grow/retract over roughly 16 frames.
+    fun updateSpikes() {
         if (!this::highPlayer.isInitialized) return
-        val delta = 0.1f
-        Settings.canScoreWallProgress = if (Settings.canScore)
-            (Settings.canScoreWallProgress + delta).coerceAtMost(1f)
+        val delta = 1f / 16f
+        Settings.spikeProgress = if (Settings.canScore)
+            (Settings.spikeProgress + delta).coerceAtMost(1f)
         else
-            (Settings.canScoreWallProgress - delta).coerceAtLeast(0f)
+            (Settings.spikeProgress - delta).coerceAtLeast(0f)
     }
 
     fun checkCharge() {
@@ -310,7 +312,7 @@ object Logic {
             setPuckColor(winner, PaintBucket.lowBallFill.toArgb(), PaintBucket.lowBallStroke.toArgb())
             Settings.gameState = GameState.Scored
             Settings.canScore = false
-            Settings.canScoreWallProgress = 0f
+            Settings.spikeProgress = 0f
             botBrain?.reset()
             Sounds.playScoreSound(loser.py)
             Effects.clearCollisionEffects()
@@ -363,7 +365,7 @@ object Logic {
             lowPlayer.disableEffects = false
             highPlayer.disableEffects = false
             Settings.canScore = false
-            Settings.canScoreWallProgress = 0f
+            Settings.spikeProgress = 0f
             lowPlayer.shielded = false
             highPlayer.shielded = false
             lowPlayer.inertLocked = false
