@@ -8,7 +8,6 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.PuckRenderer
 import gameobjects.puckstyle.StaticTailPath
@@ -127,6 +126,12 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private val finPath = Path()
     private val tailPath = Path()
+
+    // Hoisted Paints (Paint is a heap class, not a value class). Reused every
+    // frame across both shadow passes; blend modes are constant.
+    private val outerLayerPaint = Paint()
+    private val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+    private val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
 
     override val zIndex: Int get() = -1
 
@@ -302,14 +307,13 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
         val litDy = perpProj * perpSin
 
         val canvas = scope.drawContext.canvas
-        canvas.saveLayer(bounds, Paint())
+        canvas.saveLayer(bounds, outerLayerPaint)
         scope.drawPath(path, fillColor, style = Fill)
         // Round off the head end: a circle (diameter = this part's root width)
         // centered on the puck turns the flat root edge into a semicircle. The
         // inner half hides under the body/ball; the outer half is the cap that
         // shows when the tail swings above the puck.
         scope.drawCircle(fillColor, rootHalfWidth, Offset(renderer.x, renderer.y))
-        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
         canvas.saveLayer(bounds, srcAtopPaint)
         // A white wash at the same alpha as the black wash reads softer:
         // pushing a saturated fill toward white desaturates it rather than
@@ -324,21 +328,26 @@ class AxolotlTail(override val renderer: PuckRenderer) : TailRenderer {
                 topLeft = bounds.topLeft,
                 size = bounds.size
             )
-            val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
             canvas.saveLayer(bounds, dstOutPaint)
-            withTransform({
-                translate(litDx, litDy)
-                if (litScaleX != 1f) {
-                    val perpDeg = perpAngle * (180f / PI.toFloat())
-                    val pivot = Offset(renderer.x, renderer.y)
-                    rotate(perpDeg, pivot = pivot)
-                    scale(litScaleX, 1f, pivot = pivot)
-                    rotate(-perpDeg, pivot = pivot)
-                }
-            }) {
-                drawPath(path, Color.Black, style = Fill)
-                drawCircle(Color.Black, rootHalfWidth, Offset(renderer.x, renderer.y))
+            // Drive the transform directly on the canvas matrix rather than
+            // through withTransform { ... } — the capturing lambda would
+            // allocate every frame (twice: fin + tail). Equivalent matrix ops:
+            // translate, then (optional) rotate/scale-X/un-rotate about pivot.
+            canvas.save()
+            canvas.translate(litDx, litDy)
+            if (litScaleX != 1f) {
+                val perpDeg = perpAngle * (180f / PI.toFloat())
+                val pivotX = renderer.x
+                val pivotY = renderer.y
+                canvas.translate(pivotX, pivotY)
+                canvas.rotate(perpDeg)
+                canvas.scale(litScaleX, 1f)
+                canvas.rotate(-perpDeg)
+                canvas.translate(-pivotX, -pivotY)
             }
+            drawPath(path, Color.Black, style = Fill)
+            drawCircle(Color.Black, rootHalfWidth, Offset(renderer.x, renderer.y))
+            canvas.restore()  // undo transform
             canvas.restore()  // close lit erase layer
         }
         canvas.restore()  // close shadow wash layer

@@ -19,6 +19,12 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
     private var sw32 = 0f
     private var sw18 = 0f
     private var sw1 = 0f
+    // Cached Stroke objects (Stroke is a heap class, not a value class) — rebuilt only
+    // when strokeWidth changes, never per frame.
+    private var stroke5: Stroke = Stroke(width = 1f)
+    private var stroke32: Stroke = Stroke(width = 1f)
+    private var stroke18: Stroke = Stroke(width = 1f)
+    private var stroke1: Stroke = Stroke(width = 1f)
 
     // Cache for primary-color-derived glow colors — updated only when primary changes
     private var cachedPrimary = Int.MIN_VALUE
@@ -62,9 +68,14 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
         private val startAngle = if (!fullCircle && !highGoal) 180f else 0f
         private val sweepAngle = if (fullCircle) 360f else 180f
         private var frame = 0
-        private val ringBirths = mutableListOf<Int>()
+        // Fixed-capacity birth buffer: at most one birth per emitEvery within the emit
+        // window. Iterated by index (no Iterator alloc per frame).
+        private val ringBirths = IntArray(totalEmitFrames / emitEvery + 2)
+        private var ringCount = 0
         private var _isDone = false
         override val isDone: Boolean get() = _isDone
+        // Stroke is a heap class; strokeWidth is constant, so build it once.
+        private val ringStroke = Stroke(width = strokeWidth)
 
         private fun neonAlpha(ratio: Float): Int {
             val blendWidth = 0.04f
@@ -80,12 +91,21 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         override fun step() {
             frame++
-            if (frame % emitEvery == 0 && frame <= totalEmitFrames) ringBirths.add(frame)
-            if (frame > totalEmitFrames && ringBirths.all { (frame - it) * growthRate >= maxDistance }) _isDone = true
+            if (frame % emitEvery == 0 && frame <= totalEmitFrames && ringCount < ringBirths.size) {
+                ringBirths[ringCount++] = frame
+            }
+            if (frame > totalEmitFrames) {
+                var allDone = true
+                for (i in 0 until ringCount) {
+                    if ((frame - ringBirths[i]) * growthRate < maxDistance) { allDone = false; break }
+                }
+                if (allDone) _isDone = true
+            }
         }
 
         override fun draw(scope: DrawScope) {
-            for (birth in ringBirths) {
+            for (i in 0 until ringCount) {
+                val birth = ringBirths[i]
                 val age = frame - birth
                 val r = age * growthRate
                 if (r > maxDistance || r <= 0f) continue
@@ -94,7 +114,7 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
                 if (alpha <= 0) continue
                 val drawColor = Color(Palette.withAlpha(color, alpha))
                 if (fullCircle) {
-                    scope.drawCircle(drawColor, r, Offset(cx, cy), style = Stroke(width = strokeWidth))
+                    scope.drawCircle(drawColor, r, Offset(cx, cy), style = ringStroke)
                 } else {
                     scope.drawArc(
                         color = drawColor,
@@ -103,7 +123,7 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
                         useCenter = false,
                         topLeft = Offset(cx - r, cy - r),
                         size = Size(r * 2f, r * 2f),
-                        style = Stroke(width = strokeWidth)
+                        style = ringStroke
                     )
                 }
             }
@@ -116,6 +136,9 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
     ) : Effects.PersistentEffect {
         private var frame = 0
         override val isDone = false
+        // radius is constant for this scar; build the two Strokes once.
+        private val outerStroke = Stroke(width = radius * 0.7f)
+        private val innerStroke = Stroke(width = radius * 0.35f)
 
         override fun step() { frame++ }
 
@@ -127,14 +150,14 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
                 Color(Palette.withAlpha(color, (alpha * 0.5f).toInt())),
                 radius,
                 Offset(x, y),
-                style = Stroke(width = radius * 0.7f)
+                style = outerStroke
             )
             // Bright inner core
             scope.drawCircle(
                 Color(Palette.withAlpha(color, alpha)),
                 radius,
                 Offset(x, y),
-                style = Stroke(width = radius * 0.35f)
+                style = innerStroke
             )
         }
     }
@@ -147,6 +170,10 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
             sw32 = sw * 3.2f
             sw18 = sw * 1.8f
             sw1  = sw * 1.0f
+            stroke5  = Stroke(width = sw5)
+            stroke32 = Stroke(width = sw32)
+            stroke18 = Stroke(width = sw18)
+            stroke1  = Stroke(width = sw1)
         }
 
         if (cachedPrimary != responsivePrimary) {
@@ -160,9 +187,9 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
         val center = Offset(renderer.x, renderer.y)
         val r = renderer.radius
         // 4 glow rings, outermost first — body always stays theme color
-        drawCircle(Color(glowColor25),  r, center, style = Stroke(width = sw5))
-        drawCircle(Color(glowColor45),  r, center, style = Stroke(width = sw32))
-        drawCircle(Color(glowColor110), r, center, style = Stroke(width = sw18))
-        drawCircle(Color(glowColor220), r, center, style = Stroke(width = sw1))
+        drawCircle(Color(glowColor25),  r, center, style = stroke5)
+        drawCircle(Color(glowColor45),  r, center, style = stroke32)
+        drawCircle(Color(glowColor110), r, center, style = stroke18)
+        drawCircle(Color(glowColor220), r, center, style = stroke1)
     }
 }

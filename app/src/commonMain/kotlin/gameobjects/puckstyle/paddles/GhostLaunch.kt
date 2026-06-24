@@ -23,7 +23,8 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     override val zIndex: Int
         get() = 2
 
-    private val auraRings = listOf(
+    // Array (not List) so the per-frame draw loop iterates by index without allocating an Iterator.
+    private val auraRings = arrayOf(
         AuraConfig(1.10f, 0.06f, 0.0f, 70, 1.6f),
         AuraConfig(1.20f, 0.08f, 1.0f, 45, 1.2f),
         AuraConfig(1.35f, 0.10f, 2.2f, 25, 2.0f),
@@ -34,6 +35,11 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private val glowWhite200 = Palette.argb(200, 255, 255, 255)
     private val glowWhite160 = Palette.argb(160, 255, 255, 255)
     private val baseSw = Settings.strokeWidth * 0.7f
+
+    // Hoisted strokes — widths are constant (baseSw and ring multipliers never change after setup).
+    private val auraStrokes = Array(auraRings.size) { Stroke(width = baseSw * auraRings[it].strokeMult) }
+    private val bodyStroke = Stroke(width = baseSw)
+    private val innerStroke = Stroke(width = baseSw * 0.7f)
 
     private val tailCapacity = 9
     private val tailXs = FloatArray(tailCapacity)
@@ -74,25 +80,25 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val pulse = 0.88f + 0.12f * sin(frameF * 0.18f)
         val r = orbRadius * pulse
         val glowColor = if (phase == ChargePhase.SweetSpot) renderer.invertedChargeColor(theme.shield.primary) else responsivePrimary
-        val sw = baseSw
         val center = Offset(cx, cy)
 
         val auraFramePhase = frameF * 0.04f
-        for (ring in auraRings) {
+        for (idx in auraRings.indices) {
+            val ring = auraRings[idx]
             val auraR = r * ring.baseMult + r * ring.amp * sin(auraFramePhase + ring.phase)
             scope.drawCircle(
                 color = Color(Palette.withAlpha(glowColor, ring.alpha)),
                 radius = auraR,
                 center = center,
-                style = Stroke(width = sw * ring.strokeMult)
+                style = auraStrokes[idx]
             )
         }
 
         scope.drawCircle(Color(bodyWhiteColor), r, center)
-        scope.drawCircle(Color(glowWhite200), r, center, style = Stroke(width = sw))
+        scope.drawCircle(Color(glowWhite200), r, center, style = bodyStroke)
 
         val innerR = r * 0.75f + r * 0.1f * sin(frameF * 0.025f + 5f)
-        scope.drawCircle(Color(glowWhite160), innerR, center, style = Stroke(width = sw * 0.7f))
+        scope.drawCircle(Color(glowWhite160), innerR, center, style = innerStroke)
 
         if (chargeFillRatio > 0f) {
             val baseCharge = Palette.lerpColor(theme.shield.primary, theme.shield.secondary, sin(frameF * 0.25f) * 0.5f + 0.5f)
@@ -106,6 +112,12 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     }
 
     companion object {
+        // Hoisted: outline stroke width is constant (Settings.strokeWidth immutable after setup).
+        // drawGhostTail runs every frame for the charging paddle AND for every returning GhostSpirit
+        // (up to tailCapacity=20 circles each), so a per-circle Stroke alloc here is the dominant
+        // score-time GC source — build it once.
+        private val tailOutlineStroke = Stroke(width = Settings.strokeWidth * 0.7f * 1.2f)
+
         fun spawnImpact(cx: Float, cy: Float, radius: Float, color: Int, renderer: PuckRenderer) {
             Effects.addPersistentEffect(GhostSpirit(cx, cy, radius, color, renderer))
         }
@@ -120,7 +132,6 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             chargeColor: Int
         ) {
             if (count < 2) return
-            val sw = Settings.strokeWidth * 0.7f
             val outlineR = baseR * 1.15f
             val countF = count.toFloat()
             for (i in 0 until count) {
@@ -130,7 +141,7 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                     color = Color(glowColor),
                     radius = r,
                     center = Offset(xs[i], ys[i]),
-                    style = Stroke(width = sw * 1.2f)
+                    style = tailOutlineStroke
                 )
             }
             val hasCharge = chargeFill > 0f
@@ -157,7 +168,8 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     ) : Effects.PersistentEffect {
 
         private data class AuraConfig(val baseMult: Float, val amp: Float, val phase: Float, val alpha: Int, val strokeMult: Float)
-        private val auraRings = listOf(
+        // Array (not List) so the per-frame draw loop iterates by index without allocating an Iterator.
+        private val auraRings = arrayOf(
             AuraConfig(1.10f, 0.06f, 0.0f, 70, 1.6f),
             AuraConfig(1.20f, 0.08f, 1.0f, 45, 1.2f),
             AuraConfig(1.35f, 0.10f, 2.2f, 25, 2.0f),
@@ -168,6 +180,11 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val glowWhite200 = Palette.argb(200, 255, 255, 255)
         private val glowWhite160 = Palette.argb(160, 255, 255, 255)
         private val baseSw = Settings.strokeWidth * 0.7f
+
+        // Hoisted strokes — constant widths; previously 6 Stroke allocs/frame per live spirit.
+        private val auraStrokes = Array(auraRings.size) { Stroke(width = baseSw * auraRings[it].strokeMult) }
+        private val bodyStroke = Stroke(width = baseSw)
+        private val innerStroke = Stroke(width = baseSw * 0.7f)
 
         private var frame = 0
         private var returning = false
@@ -223,25 +240,25 @@ class GhostLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val sizePulse = 1.0f + 0.25f * sin(frameF * 0.052f)
             val r = baseRadius * sizePulse
             val glowColor = color
-            val sw = baseSw
             val center = Offset(cx, cy)
 
             val auraFramePhase = frameF * 0.04f
-            for (ring in auraRings) {
+            for (idx in auraRings.indices) {
+                val ring = auraRings[idx]
                 val auraR = r * ring.baseMult + r * ring.amp * sin(auraFramePhase + ring.phase)
                 scope.drawCircle(
                     color = Color(Palette.withAlpha(glowColor, ring.alpha)),
                     radius = auraR,
                     center = center,
-                    style = Stroke(width = sw * ring.strokeMult)
+                    style = auraStrokes[idx]
                 )
             }
 
             scope.drawCircle(Color(bodyWhiteColor), r, center)
-            scope.drawCircle(Color(glowWhite200), r, center, style = Stroke(width = sw))
+            scope.drawCircle(Color(glowWhite200), r, center, style = bodyStroke)
 
             val innerR = r * 0.75f + r * 0.1f * sin(frameF * 0.025f + 5f)
-            scope.drawCircle(Color(glowWhite160), innerR, center, style = Stroke(width = sw * 0.7f))
+            scope.drawCircle(Color(glowWhite160), innerR, center, style = innerStroke)
 
             if (returning && tailSize > 1) {
                 drawGhostTail(scope, tailXs, tailYs, tailSize, r, glowColor, 0f, bodyWhiteColor)

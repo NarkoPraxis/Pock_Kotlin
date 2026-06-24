@@ -107,6 +107,32 @@ object Settings {
     var adIsPlaying: Boolean = false
     var timeLimitMinutes: Int = 0
 
+    /**
+     * Descriptive name of the high player's *effective* ball, for the dev profiler's session label /
+     * filename. [highBallType] is the literal stored type, which is [BallType.Random] for any custom
+     * slot or random roll — so naming the file after it always yields "Random". This unwraps the
+     * composition to the real components: when all three match (the recommended profiling setup, both
+     * players on one ball) it returns that single name (e.g. "Classic"); when they differ it returns
+     * "skin-tail-paddle" so a mixed suite is still identifiable.
+     */
+    fun highBallProfileName(): String {
+        if (highBallType == BallType.Random) {
+            highCustomBallIndex?.let { idx ->
+                utility.Storage.loadCustomBall(idx)?.let { cfg ->
+                    return composeBallName(cfg.skinType, cfg.tailType, cfg.paddleType)
+                }
+            }
+            highRandomRoll?.let { roll ->
+                return composeBallName(roll.skinType, roll.tailType, roll.effectType)
+            }
+        }
+        return highBallType.name
+    }
+
+    private fun composeBallName(skin: BallType, tail: BallType, paddle: BallType): String =
+        if (skin == tail && tail == paddle) skin.name
+        else "${skin.name}-${tail.name}-${paddle.name}"
+
     fun initializeForScreen(width: Int, height: Int) {
         tailLength = utility.Storage.tailLength
         chargeIncreaseRate = utility.Storage.chargeSpeed

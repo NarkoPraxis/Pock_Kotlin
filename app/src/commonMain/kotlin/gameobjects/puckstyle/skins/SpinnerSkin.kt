@@ -5,7 +5,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.puckstyle.PuckRenderer
 import kotlin.math.PI
 import kotlin.math.cos
@@ -74,15 +73,22 @@ class SpinnerSkin(override val renderer: PuckRenderer) : PuckSkin {
         val tipCtrlX = tipDist * 0.55f
         val toRad = PI.toFloat() / 180f
 
+        val ox = renderer.x
+        val oy = renderer.y
         for (i in 0 until armCount) {
             val rad = (spinAngle + armAngleStep * i) * toRad
             val cosA = cos(rad); val sinA = sin(rad)
-            fun sx(lx: Float, ly: Float) = renderer.x + lx * cosA - ly * sinA
-            fun sy(lx: Float, ly: Float) = renderer.y + lx * sinA + ly * cosA
+            // Tip point (tipDist, 0) and the two control points (tipCtrlX, ±tipHalf), rotated.
+            val tipX  = ox + tipDist * cosA
+            val tipY  = oy + tipDist * sinA
+            val c1x   = ox + tipCtrlX * cosA - tipHalf * sinA
+            val c1y   = oy + tipCtrlX * sinA + tipHalf * cosA
+            val c2x   = ox + tipCtrlX * cosA + tipHalf * sinA
+            val c2y   = oy + tipCtrlX * sinA - tipHalf * cosA
             path.reset()
-            path.moveTo(renderer.x, renderer.y)
-            path.quadraticTo(sx(tipCtrlX, tipHalf), sy(tipCtrlX, tipHalf), sx(tipDist, 0f), sy(tipDist, 0f))
-            path.quadraticTo(sx(tipCtrlX, -tipHalf), sy(tipCtrlX, -tipHalf), renderer.x, renderer.y)
+            path.moveTo(ox, oy)
+            path.quadraticTo(c1x, c1y, tipX, tipY)
+            path.quadraticTo(c2x, c2y, ox, oy)
             path.close()
             drawPath(path, armColor)
         }
@@ -161,30 +167,44 @@ class SpinnerSkin(override val renderer: PuckRenderer) : PuckSkin {
 
             val drawColor = Color(armColor).copy(alpha = alpha / 255f)
 
-            scope.withTransform({
-                translate(cx, cy)
-                if (asVictory) scale(scale, scale)
-                rotate(frame * 2f * spinDir)
-            }) {
-                val armCount = 4
-                for (i in 0 until armCount) {
-                    withTransform({ rotate(armAngleStep * i) }) {
-                        path.reset()
-                        path.moveTo(0f, 0f)
-                        path.quadraticTo(midSize, outerHalf, outerTipX, 0f)
-                        path.quadraticTo(midSize, -outerHalf, 0f, 0f)
-                        path.close()
-                        drawPath(path, drawColor)
-
-                        path.reset()
-                        path.moveTo(0f, 0f)
-                        path.quadraticTo(innerCtrl, innerHalf, innerTipX, 0f)
-                        path.quadraticTo(innerCtrl, -innerHalf, 0f, 0f)
-                        path.close()
-                        drawPath(path, drawColor)
-                    }
-                }
+            // Draw in absolute screen coordinates to avoid per-frame capturing withTransform lambdas.
+            // Composite transform = translate(cx,cy) -> [scale] -> rotate(baseDeg) -> rotate(armDeg).
+            val baseDeg = frame * 2f * spinDir
+            val s = if (asVictory) scale else 1f
+            val armCount = 4
+            for (i in 0 until armCount) {
+                val deg = baseDeg + armAngleStep * i
+                val rad = deg * (PI.toFloat() / 180f)
+                val cosA = cos(rad); val sinA = sin(rad)
+                // Local point (lx,ly) -> scaled -> rotated -> translated.
+                // outer blade
+                drawResidualBlade(scope, drawColor, cx, cy, s, cosA, sinA, midSize, outerHalf, outerTipX)
+                // inner blade
+                drawResidualBlade(scope, drawColor, cx, cy, s, cosA, sinA, innerCtrl, innerHalf, innerTipX)
             }
+        }
+
+        private fun drawResidualBlade(
+            scope: DrawScope, drawColor: Color,
+            cx: Float, cy: Float, s: Float,
+            cosA: Float, sinA: Float,
+            ctrl: Float, half: Float, tipX: Float
+        ) {
+            val cX = ctrl * s; val hY = half * s; val tX = tipX * s
+            // control 1 (ctrl, half), tip (tipX, 0), control 2 (ctrl, -half), origin (0,0)
+            val p0x = cx; val p0y = cy
+            val c1x = cx + cX * cosA - hY * sinA
+            val c1y = cy + cX * sinA + hY * cosA
+            val tpx = cx + tX * cosA
+            val tpy = cy + tX * sinA
+            val c2x = cx + cX * cosA + hY * sinA
+            val c2y = cy + cX * sinA - hY * cosA
+            path.reset()
+            path.moveTo(p0x, p0y)
+            path.quadraticTo(c1x, c1y, tpx, tpy)
+            path.quadraticTo(c2x, c2y, p0x, p0y)
+            path.close()
+            scope.drawPath(path, drawColor)
         }
     }
 }

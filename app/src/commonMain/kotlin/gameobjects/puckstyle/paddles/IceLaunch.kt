@@ -20,6 +20,8 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val path = Path()
     private val shardStrokeWidth = Settings.strokeWidth * 0.6f
+    // Hoisted: width is fixed for the paddle's lifetime, so the Stroke never needs rebuilding.
+    private val shardStroke = Stroke(width = shardStrokeWidth, join = StrokeJoin.Round)
 
     override fun drawChargingPaddle(scope: DrawScope) {
         drawShard(scope, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
@@ -60,7 +62,7 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         scope.drawPath(
             path,
             Color(Palette.WHITE),
-            style = Stroke(width = shardStrokeWidth, join = StrokeJoin.Round)
+            style = shardStroke
         )
     }
 
@@ -84,6 +86,8 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val crystalPath = Path()
         private val strokeColor = Palette.withAlpha(primary, 130)
         private val strokeWidth = Settings.strokeWidth * 0.5f
+        // Hoisted: fixed width for this effect's lifetime — avoids a Stroke alloc every draw frame.
+        private val crystalStroke = Stroke(width = strokeWidth)
         private var frame = 0
         private val evaporateDuration = 120f
 
@@ -155,7 +159,7 @@ class IceLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             }
             crystalPath.close()
             scope.drawPath(crystalPath, Color(Palette.WHITE))
-            scope.drawPath(crystalPath, Color(strokeColor), style = Stroke(width = strokeWidth))
+            scope.drawPath(crystalPath, Color(strokeColor), style = crystalStroke)
         }
     }
 }

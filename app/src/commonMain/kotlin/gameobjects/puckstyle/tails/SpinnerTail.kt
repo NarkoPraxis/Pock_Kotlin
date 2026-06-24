@@ -14,9 +14,9 @@ import kotlin.math.sin
 
 class SpinnerTail(override val renderer: PuckRenderer) : TailRenderer {
 
-    private data class Pos(var x: Float = 0f, var y: Float = 0f)
+    private class Pos(var x: Float = 0f, var y: Float = 0f)
 
-    private var history: MutableList<Pos>? = null
+    private var history: Array<Pos>? = null
     private var tailRotation = 0f
     private val spinDir = if (theme.isWarm) -1f else 1f
 
@@ -29,7 +29,7 @@ class SpinnerTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun render(scope: DrawScope) {
         // Static UI collapses to the shared list-tail density; live keeps its longer trail.
         val len = if (renderer.staticUiMode) staticPointCount else tailLen
-        if (history == null || history!!.size != len) history = MutableList(len) { Pos(renderer.x, renderer.y) }
+        if (history == null || history!!.size != len) history = Array(len) { Pos(renderer.x, renderer.y) }
         val history = history!!
 
         if (renderer.staticUiMode) {
@@ -111,6 +111,7 @@ class SpinnerTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun clear() { history = null; tailRotation = 0f }
 
     override fun fillTo(x: Float, y: Float) {
-        history?.forEach { it.x = x; it.y = y }
+        val h = history ?: return
+        for (i in h.indices) { h[i].x = x; h[i].y = y }
     }
 }

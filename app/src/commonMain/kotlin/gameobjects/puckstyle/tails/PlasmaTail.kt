@@ -96,6 +96,7 @@ class PlasmaTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun clear() { points = null }
 
     override fun fillTo(x: Float, y: Float) {
-        points?.forEach { it.x = x; it.y = y }
+        val pts = points ?: return
+        for (i in pts.indices) { pts[i].x = x; pts[i].y = y }
     }
 }

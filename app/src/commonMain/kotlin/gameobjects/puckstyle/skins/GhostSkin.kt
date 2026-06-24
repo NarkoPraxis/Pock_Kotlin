@@ -19,12 +19,28 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     private data class AuraRing(val baseMult: Float, val amp: Float, val phase: Float, val alpha: Int, val strokeMult: Float)
 
-    private val auraRings = listOf(
+    // Array (not List) so the per-frame draw loop iterates by index without allocating an Iterator.
+    private val auraRings = arrayOf(
         AuraRing(.6f,   0.2f, 1.0f, 80, .5f),
         AuraRing(.8f,   0.1f, 2.0f, 50, 1f),
         AuraRing(.95f,  0.3f, 3.0f, 30, 2.0f),
         AuraRing(1.10f, 0.2f, 4.0f, 20, 4f)
     )
+
+    // Hoisted body strokes for the live skin draw. Widths derive from renderer.strokeWidth, which is
+    // effectively immutable after setup; rebuild only if it actually changes. Avoids ~5 Stroke
+    // allocations per puck per frame in drawBody().
+    private var cachedBodySw = -1f
+    private lateinit var bodyAuraStrokes: Array<Stroke>
+    private lateinit var bodyInnerStroke: Stroke
+
+    private fun ensureBodyStrokes(sw: Float) {
+        if (cachedBodySw != sw) {
+            cachedBodySw = sw
+            bodyAuraStrokes = Array(auraRings.size) { Stroke(width = sw * auraRings[it].strokeMult) }
+            bodyInnerStroke = Stroke(width = sw * 0.7f)
+        }
+    }
 
     override fun onCollisionWin(position: Point, speed: Float) {
         GhostLaunch.spawnImpact(position.x, position.y, renderer.radius * .4f, renderer.bakedPrimary(theme.main.primary), renderer)
@@ -54,13 +70,16 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
     ) : Effects.PersistentEffect {
 
         private data class AuraConfig(val baseMult: Float, val amp: Float, val phase: Float, val alpha: Int, val strokeMult: Float)
-        private val auraRings = listOf(
+        // Array (not List) so the per-frame effect draw loop iterates by index without allocating an Iterator.
+        private val auraRings = arrayOf(
             AuraConfig(1.10f, 0.06f, 0.0f, 55, 1.6f),
             AuraConfig(1.20f, 0.08f, 1.0f, 35, 1.2f),
             AuraConfig(1.35f, 0.10f, 2.2f, 20, 2.0f)
         )
 
-        private val directions = mutableListOf<Point>()
+        // Built once in init, then drawn from each frame: an immutable Array<Point> iterated by index
+        // (no per-frame Iterator). The temp list is a local in init, so nothing is retained after setup.
+        private val directions: Array<Point>
         private val step = 10f
         private var currentDistance = 0f
         private var alphaF = 0f
@@ -72,19 +91,29 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
         private val baseSw = Settings.strokeWidth * 0.7f
         private val orbR = radius * 0.7f
 
+        // Hoisted strokes: widths are constant (baseSw * constant ring/body multipliers). Previously a
+        // new Stroke was allocated per ring AND per body circle, for EVERY direction, EVERY frame —
+        // up to ~60 Stroke allocations/frame during a celebration, a direct GC-pressure spike at score time.
+        private val auraStrokes = Array(auraRings.size) { Stroke(width = baseSw * auraRings[it].strokeMult) }
+        private val bodyStroke = Stroke(width = baseSw)
+        private val innerStroke = Stroke(width = baseSw * 0.7f)
+
         init {
+            val list = mutableListOf<Point>()
             if (fullCircle) {
                 for (i in 0 until 12) {
                     val a = (i * 2.0 * PI / 12).toFloat()
-                    directions.add(Point(cos(a), sin(a)))
+                    list.add(Point(cos(a), sin(a)))
                 }
             } else {
-                for (angle in listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, PI)) {
+                val angles = doubleArrayOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, PI)
+                for (angle in angles) {
                     val a = angle.toFloat()
-                    if (highGoal) directions.add(Point(cos(a), sin(a)))
-                    else directions.add(-Point(cos(a), sin(a)))
+                    if (highGoal) list.add(Point(cos(a), sin(a)))
+                    else list.add(-Point(cos(a), sin(a)))
                 }
             }
+            directions = list.toTypedArray()
         }
 
         override fun step() {}
@@ -106,20 +135,22 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
             val frameF = frame.toFloat()
             val pulse = 1f + 0.1f * sin(frameF * 0.3f)
             val r = orbR * pulse
-            val sw = baseSw
             val auraFramePhase = frameF * 0.04f
+            val innerR = r * 0.75f + r * 0.1f * sin(frameF * 0.025f + 5f)
 
-            for (direction in directions) {
+            for (di in directions.indices) {
+                val direction = directions[di]
                 val ox = cx + direction.x * currentDistance
                 val oy = cy + direction.y * currentDistance
 
-                for (ring in auraRings) {
+                for (ri in auraRings.indices) {
+                    val ring = auraRings[ri]
                     val auraR = r * ring.baseMult + r * ring.amp * sin(auraFramePhase + ring.phase)
                     scope.drawCircle(
                         Color(Palette.withAlpha(color, (ring.alpha * a).toInt())),
                         auraR,
                         Offset(ox, oy),
-                        style = Stroke(width = sw * ring.strokeMult)
+                        style = auraStrokes[ri]
                     )
                 }
 
@@ -133,15 +164,14 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
                     Color(Palette.argb((200 * a).toInt(), 255, 255, 255)),
                     r,
                     Offset(ox, oy),
-                    style = Stroke(width = sw)
+                    style = bodyStroke
                 )
 
-                val innerR = r * 0.75f + r * 0.1f * sin(frameF * 0.025f + 5f)
                 scope.drawCircle(
                     Color(Palette.argb((160 * a).toInt(), 255, 255, 255)),
                     innerR,
                     Offset(ox, oy),
-                    style = Stroke(width = sw * 0.7f)
+                    style = innerStroke
                 )
             }
         }
@@ -162,13 +192,15 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
         val sw = renderer.strokeWidth
         val radiusOffset = radiusOffset(renderer)
         val center = Offset(renderer.x, renderer.y)
+        ensureBodyStrokes(sw)
 
         // Strobe (not frame) so the aura keeps breathing in a static UI preview, where geometry is
         // frozen but the strobe clock keeps ticking; in live play strobe == frame, so play is unchanged.
         val framePhase = renderer.strobe * 0.04f
         val innerFramePhase = renderer.strobe * 0.025f
 
-        for (ring in auraRings) {
+        for (ri in auraRings.indices) {
+            val ring = auraRings[ri]
             val sinVal = sin(framePhase + ring.phase)
             val ringR = r * ring.baseMult + r * ring.amp * sinVal
             val alpha = ring.alpha + (ring.alpha * ring.amp * sinVal).toInt()
@@ -176,7 +208,7 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
                 Color(Palette.withAlpha(glowColor, alpha)),
                 ringR,
                 center,
-                style = Stroke(width = sw * ring.strokeMult)
+                style = bodyAuraStrokes[ri]
             )
         }
 
@@ -187,7 +219,7 @@ class GhostSkin(override val renderer: PuckRenderer) : PuckSkin {
             Color(Palette.argb(200, 255, 255, 255)),
             innerR * radiusOffset,
             center,
-            style = Stroke(width = sw * 0.7f)
+            style = bodyInnerStroke
         )
 
         renderer.chargeColor = glowColor

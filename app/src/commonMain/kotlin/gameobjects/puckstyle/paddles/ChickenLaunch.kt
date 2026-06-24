@@ -40,7 +40,16 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     val EGG_WIDTH get() = renderer.radius * .5f
     val EGG_HEIGHT get() = renderer.radius * .7f
 
+    // Stroke is a heap class; building one each frame the paddle draws allocates. strokeWidth is
+    // effectively immutable after setup, so cache the Stroke and rebuild only when it changes.
+    private var cachedStrokeWidth = -1f
+    private var eggOutlineStroke = Stroke(width = 1f)
+
     private fun drawEgg(scope: DrawScope, cx: Float, cy: Float, fillRatio: Float, ph: ChargePhase) {
+        if (cachedStrokeWidth != renderer.strokeWidth) {
+            cachedStrokeWidth = renderer.strokeWidth
+            eggOutlineStroke = Stroke(width = renderer.strokeWidth * 0.35f)
+        }
         val pulse = if (ph == ChargePhase.SweetSpot) 0.7f + 0.3f * sin(frame * 0.35f) else 1f
         val angle = (atan2(aimY, aimX) * (180.0 / PI)).toFloat()
         val ew = EGG_WIDTH
@@ -55,7 +64,7 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 color = Color(theme.inert.primary),
                 topLeft = Offset(cx - ew, cy - eh),
                 size = Size(ew * 2, eh * 2),
-                style = Stroke(width = renderer.strokeWidth * 0.35f)
+                style = eggOutlineStroke
             )
             if (fillRatio > 0f && ph != ChargePhase.Inert) {
                 drawOval(
@@ -99,7 +108,9 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val colorMix: Float
         )
 
-        private val feathers: List<Feather>
+        // Array (not List) so draw()'s per-frame loop iterates by index without allocating an
+        // Iterator every frame (particles section).
+        private val feathers: Array<Feather>
         private var frame = 0
         override var isDone = false
             private set
@@ -109,7 +120,7 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
         init {
             val count = 24
-            feathers = List(count) { i ->
+            feathers = Array(count) { i ->
                 val a = (i.toFloat() / count) * 2f * PI.toFloat() + Random.nextFloat() * 0.4f
                 val speed = radius * (0.05f + Random.nextFloat() * 0.1f)
                 Feather(
@@ -129,7 +140,8 @@ class ChickenLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
 
         override fun draw(scope: DrawScope) {
-            for (f in feathers) {
+            for (i in feathers.indices) {
+                val f = feathers[i]
                 f.x += f.vx
                 f.y += f.vy
                 f.angle += f.spin

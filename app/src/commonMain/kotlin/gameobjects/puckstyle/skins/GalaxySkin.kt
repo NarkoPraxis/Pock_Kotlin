@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.drawscope.translate
 import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -52,7 +52,10 @@ class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
         highGoal: Boolean,
         fullCircle: Boolean
     ) : Effects.PersistentEffect {
-        private val directions: List<Pair<Float, Float>>
+        // Stored as parallel FloatArrays (not List<Pair>) so the per-frame draw loop iterates by
+        // index with no Iterator/Pair allocation.
+        private val dirX: FloatArray
+        private val dirY: FloatArray
         private var currentDistance = 0f
         private val maxDistance = radius * 3f
         private val speed = maxDistance / 55f
@@ -70,9 +73,13 @@ class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
             val baseAngles = listOf(0.0, .523599, 1.0472, 1.5708, 2.0944, 2.61799, PI)
             val fullAngles = List(12) { i -> i * (TAU_DOUBLE / 12) }
             val srcAngles = if (fullCircle) fullAngles else baseAngles
-            directions = srcAngles.map { a ->
+            dirX = FloatArray(srcAngles.size)
+            dirY = FloatArray(srcAngles.size)
+            for (idx in srcAngles.indices) {
+                val a = srcAngles[idx]
                 val adj = if (!fullCircle && !highGoal) a + PI else a
-                Pair(cos(adj.toFloat()), sin(adj.toFloat()))
+                dirX[idx] = cos(adj.toFloat())
+                dirY[idx] = sin(adj.toFloat())
             }
         }
 
@@ -92,8 +99,8 @@ class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
             if (starR < 1f) return
             val drawColor = Color(Palette.withAlpha(color, alpha))
             val rot = frame * 0.03f
-            for ((dx, dy) in directions) {
-                buildStar(cx + dx * currentDistance, cy + dy * currentDistance, starR, rot)
+            for (idx in dirX.indices) {
+                buildStar(cx + dirX[idx] * currentDistance, cy + dirY[idx] * currentDistance, starR, rot)
                 scope.drawPath(path, drawColor)
             }
         }
@@ -125,7 +132,8 @@ class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
     }
 
     // FloatArray: [angularPos, distSeed, twinklePhase, angularDrift, twinkleSpeed, distFactor]
-    private val starSeeds: List<FloatArray> = List(24) {
+    // Array (not List) so the per-frame body loop iterates by index with no Iterator allocation.
+    private val starSeeds: Array<FloatArray> = Array(24) {
         val distSeed = Random.nextFloat()
         floatArrayOf(
             Random.nextFloat() * TAU,
@@ -161,8 +169,8 @@ class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
         starPath.reset()
         for (i in 0 until 8) {
             val r = if (i % 2 == 0) outerR else innerR
-            val px = cx + cos(STAR_ANGLES[i]) * r
-            val py = cy + sin(STAR_ANGLES[i]) * r
+            val px = cx + STAR_COS[i] * r
+            val py = cy + STAR_SIN[i] * r
             if (i == 0) starPath.moveTo(px, py) else starPath.lineTo(px, py)
         }
         starPath.close()
@@ -177,7 +185,10 @@ class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
         }
         ensureGalaxyBrush(renderer.radius)
 
-        withTransform({ translate(renderer.x, renderer.y) }) {
+        // translate {} is an inline DrawScope helper, so (unlike withTransform {}) its lambda is
+        // inlined and allocates nothing per frame. The brush's gradient center is Offset.Zero, so
+        // it must be drawn under a translate to the puck centre to stay positioned correctly.
+        translate(renderer.x, renderer.y) {
             drawCircle(brush = galaxyBrush!!, radius = renderer.radius * 0.85f, center = Offset.Zero)
         }
 
@@ -203,5 +214,8 @@ class GalaxySkin(override val renderer: PuckRenderer) : PuckSkin {
     companion object {
         private val TAU = (PI * 2).toFloat()
         val STAR_ANGLES = FloatArray(8) { i -> (i * 45f - 90f) * PI.toFloat() / 180f }
+        // Constant vertex angles -> precomputed cos/sin so drawStar does no per-vertex trig.
+        private val STAR_COS = FloatArray(8) { cos(STAR_ANGLES[it]) }
+        private val STAR_SIN = FloatArray(8) { sin(STAR_ANGLES[it]) }
     }
 }

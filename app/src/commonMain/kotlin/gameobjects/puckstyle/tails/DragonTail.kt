@@ -125,6 +125,19 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
     private var smoothedSpeed = 0f
 
     private val bodyPath = Path()
+    // Reusable translated copy of bodyPath for the body lit-erase pass; rebuilt
+    // in place each frame (reset + addPath with offset) so the lit-window
+    // translation needs no capturing withTransform lambda.
+    private val litBodyPath = Path()
+
+    // --- Hoisted heap objects (rebuilt only when their inputs change) ---------
+    // Paint/Rect/ColorFilter are ordinary heap classes (NOT value classes), so
+    // constructing them inside render() allocates every frame. Hoist and reuse.
+    private val layerPaint = Paint()
+    private val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+    private val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
+    private var cachedSpikesTint: ColorFilter? = null
+    private var cachedSpikesTintColor = 0
 
     override val zIndex: Int get() = -1
 
@@ -132,7 +145,14 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
         val r = renderer.radius
         val colors = responsiveGroup
         val bodyColor = Color(colors.primary)
-        val spikesTint = ColorFilter.tint(Color(colors.secondary))
+        // Cache the spike tint ColorFilter (heap object); rebuild only when the
+        // resolved secondary colour actually changes (e.g. strobe). Avoids a
+        // per-frame ColorFilter allocation when the colour is steady.
+        if (cachedSpikesTint == null || cachedSpikesTintColor != colors.secondary) {
+            cachedSpikesTint = ColorFilter.tint(Color(colors.secondary))
+            cachedSpikesTintColor = colors.secondary
+        }
+        val spikesTint = cachedSpikesTint!!
 
         val spacing = r * SEGMENT_SPACING_K
         val headX = renderer.x
@@ -318,7 +338,7 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             val spikeRefW = if (spikeISize.width.isFinite() && spikeISize.width > 0f) spikeISize.width else spikeSvgW
             val spikeRefH = if (spikeISize.height.isFinite() && spikeISize.height > 0f) spikeISize.height else spikeSvgH
 
-            canvas.saveLayer(shadowBounds, Paint())
+            canvas.saveLayer(shadowBounds, layerPaint)
             with(scope) {
                 withTransform({
                     translate(spikeTx, spikeTy)
@@ -340,21 +360,19 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
             val spikeLitDx = -spikeProj * cosRigid
             val spikeLitDy = -spikeProj * sinRigid
 
-            val spikeSrcAtop = Paint().apply { blendMode = BlendMode.SrcAtop }
-            canvas.saveLayer(shadowBounds, spikeSrcAtop)
+            canvas.saveLayer(shadowBounds, srcAtopPaint)
             with(scope) {
                 drawRect(
                     color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                     topLeft = shadowBounds.topLeft,
                     size = shadowBounds.size
                 )
-                val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
                 canvas.saveLayer(shadowBounds, dstOutPaint)
-                withTransform({ translate(spikeLitDx, spikeLitDy) }) {
-                    val litCx = spineX[tipIdx] + cosRigid * r * LIT_CIRCLE_OFFSET_K
-                    val litCy = spineY[tipIdx] + sinRigid * r * LIT_CIRCLE_OFFSET_K
-                    drawCircle(Color.Black, r * LIT_CIRCLE_RADIUS_K, Offset(litCx, litCy))
-                }
+                // Fold the lit-slide translation into the circle centre instead
+                // of a capturing withTransform lambda (avoids a per-frame alloc).
+                val litCx = spineX[tipIdx] + cosRigid * r * LIT_CIRCLE_OFFSET_K + spikeLitDx
+                val litCy = spineY[tipIdx] + sinRigid * r * LIT_CIRCLE_OFFSET_K + spikeLitDy
+                drawCircle(Color.Black, r * LIT_CIRCLE_RADIUS_K, Offset(litCx, litCy))
                 canvas.restore()  // close lit erase layer
             }
             canvas.restore()  // close shadow wash layer
@@ -366,7 +384,7 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
         // bright strip slides across the tail's width; the shadow then runs
         // uninterrupted from root to rounded tip without any holes for the
         // spike circle (which is handled by the separate pass above).
-        canvas.saveLayer(shadowBounds, Paint())
+        canvas.saveLayer(shadowBounds, layerPaint)
         scope.drawPath(bodyPath, bodyColor, style = Fill)
         scope.drawCircle(bodyColor, tipHalfWidth, tipCenter)
         // Round off the head end: a circle (diameter = the root width) centered
@@ -394,21 +412,21 @@ class DragonTail(override val renderer: PuckRenderer) : TailRenderer {
         val litDx = perpProj * perpCos
         val litDy = perpProj * perpSin
 
-        val bodySrcAtop = Paint().apply { blendMode = BlendMode.SrcAtop }
-        canvas.saveLayer(shadowBounds, bodySrcAtop)
+        canvas.saveLayer(shadowBounds, srcAtopPaint)
         with(scope) {
             drawRect(
                 color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                 topLeft = shadowBounds.topLeft,
                 size = shadowBounds.size
             )
-            val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
             canvas.saveLayer(shadowBounds, dstOutPaint)
-            withTransform({ translate(litDx, litDy) }) {
-                drawPath(bodyPath, Color.Black, style = Fill)
-                drawCircle(Color.Black, tipHalfWidth, tipCenter)
-                drawCircle(Color.Black, headHalfWidth, headCapCenter)
-            }
+            // Fold the lit-slide translation into a reused translated path copy
+            // and the circle centres, dropping the per-frame withTransform lambda.
+            litBodyPath.reset()
+            litBodyPath.addPath(bodyPath, Offset(litDx, litDy))
+            drawPath(litBodyPath, Color.Black, style = Fill)
+            drawCircle(Color.Black, tipHalfWidth, Offset(tipCenter.x + litDx, tipCenter.y + litDy))
+            drawCircle(Color.Black, headHalfWidth, Offset(headCapCenter.x + litDx, headCapCenter.y + litDy))
             canvas.restore()  // close lit erase layer
         }
         canvas.restore()  // close shadow wash layer

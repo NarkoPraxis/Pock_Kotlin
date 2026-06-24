@@ -88,8 +88,8 @@ object Storage {
     // Ad --- Unlock progress (0–100) ---
     val unlockProgress: Int get() {
         dataVersion // subscribe
-        //return 100 // don't fix, manual, intentional override.
-        return PlatformStorage.getInt(AD, unlockProgressKey, 0)
+        return 100 // don't fix, manual, intentional override.
+        //return PlatformStorage.getInt(AD, unlockProgressKey, 0)
     }
 
     /** Timestamps of ads watched within the last rolling hour (cap [MAX_ADS_PER_HOUR]). */
@@ -518,4 +518,12 @@ object Storage {
     val menusMuted: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "menus_muted", false)
 
     fun saveMenusMuted(m: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "menus_muted", m)
+
+    // --- Dev-only frame profiler toggle (see utility.FrameProfiler). ---
+    // Default false; only writable from the dev Settings toggle gated behind FrameProfiler.DEV_TOOLS,
+    // so a release build with DEV_TOOLS=false can never turn it on and the profiler stays a no-op.
+
+    val profilerEnabled: Boolean get() = PlatformStorage.getBoolean(SETTINGS, "profiler_enabled", false)
+
+    fun saveProfilerEnabled(on: Boolean) = PlatformStorage.saveBoolean(SETTINGS, "profiler_enabled", on)
 }

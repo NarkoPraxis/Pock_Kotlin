@@ -235,6 +235,12 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
     private var earDroopyBlend = 0f
     private var earFlaredBlend = 0f
 
+    // Hoisted draw allocations (Paint/Path are heap classes, not value classes).
+    // Reused every frame; their per-call mutable fields are fully overwritten before use.
+    private val layerPaint = Paint()
+    private val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
+    private val litPath = Path()
+
     override fun DrawScope.drawBody() {
         ensureCache()
         r = cachedRadius
@@ -372,17 +378,16 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         val lCx = r * EAR_L_CX_K
         val lCy = r * EAR_L_CY_K
         val lBounds = Rect(-r * 1.6f, -r * 1.5f, r * 0.2f, r * 0.1f)
-        drawContext.canvas.saveLayer(lBounds, Paint())
+        drawContext.canvas.saveLayer(lBounds, layerPaint)
         withTransform({ rotate(earOrbitAngle, pivot = Offset.Zero) }) {
             val rot = computeEarRotation(-15f + earFollowAngle)
             drawEarPart(CatSkinPainters.earL1, lCx, lCy, earW, earH, rot, secondary)
             drawEarPart(CatSkinPainters.earL2, r * EAR_INNER_L_CX_K, r * EAR_INNER_L_CY_K,
                 r * EAR_INNER_W_K, r * EAR_INNER_H_K, rot * EAR_INNER_ROT_K, primary)
             val litR = r * SHADOW_LIT_EAR_R
-            val litPath = Path().apply {
-                addOval(Rect(lCx + earShadowDx - litR, lCy - r * SHADOW_LIT_EAR_ABOVE_K - litR,
-                    lCx + earShadowDx + litR, lCy - r * SHADOW_LIT_EAR_ABOVE_K + litR))
-            }
+            litPath.reset()
+            litPath.addOval(Rect(lCx + earShadowDx - litR, lCy - r * SHADOW_LIT_EAR_ABOVE_K - litR,
+                lCx + earShadowDx + litR, lCy - r * SHADOW_LIT_EAR_ABOVE_K + litR))
             withTransform({ clipPath(litPath, ClipOp.Difference) }) {
                 drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                     topLeft = Offset(lBounds.left, lBounds.top),
@@ -396,17 +401,16 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         val rCx = r * EAR_R_CX_K
         val rCy = r * EAR_R_CY_K
         val rBounds = Rect(-r * 0.2f, -r * 1.5f, r * 1.6f, r * 0.1f)
-        drawContext.canvas.saveLayer(rBounds, Paint())
+        drawContext.canvas.saveLayer(rBounds, layerPaint)
         withTransform({ rotate(earOrbitAngle, pivot = Offset.Zero) }) {
             val rot = computeEarRotation(15f + earFollowAngle)
             drawEarPart(CatSkinPainters.earR1, rCx, rCy, earW, earH, rot, secondary)
             drawEarPart(CatSkinPainters.earR2, r * EAR_INNER_R_CX_K, r * EAR_INNER_R_CY_K,
                 r * EAR_INNER_W_K, r * EAR_INNER_H_K, rot * EAR_INNER_ROT_K, primary)
             val litR = r * SHADOW_LIT_EAR_R
-            val litPath = Path().apply {
-                addOval(Rect(rCx + earShadowDx - litR, rCy - r * SHADOW_LIT_EAR_ABOVE_K - litR,
-                    rCx + earShadowDx + litR, rCy - r * SHADOW_LIT_EAR_ABOVE_K + litR))
-            }
+            litPath.reset()
+            litPath.addOval(Rect(rCx + earShadowDx - litR, rCy - r * SHADOW_LIT_EAR_ABOVE_K - litR,
+                rCx + earShadowDx + litR, rCy - r * SHADOW_LIT_EAR_ABOVE_K + litR))
             withTransform({ clipPath(litPath, ClipOp.Difference) }) {
                 drawRect(color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                     topLeft = Offset(rBounds.left, rBounds.top),
@@ -455,7 +459,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         val body = CatSkinPainters.body
         val secondary = Color(frameColors.secondary)
         val bounds = Rect(-r * 1.2f, -r * 1.2f, r * 1.2f, r * 1.2f)
-        drawContext.canvas.saveLayer(bounds, Paint())
+        drawContext.canvas.saveLayer(bounds, layerPaint)
         if (body != null) {
             val w = r * BODY_DIAM_K
             drawSvgPart(body, 0f, 0f, w, w, tint = secondary)
@@ -463,14 +467,13 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
             drawCircle(secondary, r, Offset.Zero)
         }
         val litR = r * SHADOW_LIT_BODY_R
-        val litPath = Path().apply {
-            addOval(Rect(
-                shadowDx - litR,
-                -r * SHADOW_LIT_BODY_ABOVE_K - litR,
-                shadowDx + litR,
-                -r * SHADOW_LIT_BODY_ABOVE_K + litR
-            ))
-        }
+        litPath.reset()
+        litPath.addOval(Rect(
+            shadowDx - litR,
+            -r * SHADOW_LIT_BODY_ABOVE_K - litR,
+            shadowDx + litR,
+            -r * SHADOW_LIT_BODY_ABOVE_K + litR
+        ))
         withTransform({ clipPath(litPath, ClipOp.Difference) }) {
             drawRect(
                 color = Color(0f, 0f, 0f, SHADOW_ALPHA),
@@ -520,7 +523,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         val groupCy = (outerCy + innerCy) / 2f
         val bounds = Rect(groupCx - maxW, groupCy - maxH, groupCx + maxW, groupCy + maxH)
 
-        drawContext.canvas.saveLayer(bounds, Paint())
+        drawContext.canvas.saveLayer(bounds, layerPaint)
         withTransform({ rotate(angle, pivot = Offset(groupCx, groupCy + maxH * 0.3f)) }) {
             val filter = ColorFilter.tint(tint)
             if (outer != null) {
@@ -554,9 +557,8 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         val litR = r * SHADOW_LIT_FUR_R_MIN * lerp(1f, 2f, growFactor)
         val litCx = groupCx + shadowDx
         val litCy = groupCy - r * SHADOW_LIT_FUR_ABOVE_K
-        val litPath = Path().apply {
-            addOval(Rect(litCx - litR, litCy - litR, litCx + litR, litCy + litR))
-        }
+        litPath.reset()
+        litPath.addOval(Rect(litCx - litR, litCy - litR, litCx + litR, litCy + litR))
         withTransform({ clipPath(litPath, ClipOp.Difference) }) {
             drawRect(
                 color = Color(0f, 0f, 0f, SHADOW_ALPHA),
@@ -578,7 +580,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         val h = r * FUR_TOP_H_K * FUR_TOP_SCALE_K
 
         val fBounds = Rect(cx - w, cy - h, cx + w, cy + h)
-        drawContext.canvas.saveLayer(fBounds, Paint())
+        drawContext.canvas.saveLayer(fBounds, layerPaint)
         // Constant intrinsic draw-size, scaled to the box (see drawSvgPart) so the shared painter's
         // cached layer doesn't scale with the carousel.
         val iSize = painter.intrinsicSize
@@ -593,14 +595,13 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
             with(painter) { draw(Size(refW, refH), colorFilter = ColorFilter.tint(Color(frameColors.secondary))) }
         }
 
-        val litPath = Path().apply {
-            addOval(Rect(
-                -r * SHADOW_FUR_TOP_LIT_R,
-                cy - r * SHADOW_FUR_TOP_LIT_R,
-                r * SHADOW_FUR_TOP_LIT_R,
-                cy + r * SHADOW_FUR_TOP_LIT_R
-            ))
-        }
+        litPath.reset()
+        litPath.addOval(Rect(
+            -r * SHADOW_FUR_TOP_LIT_R,
+            cy - r * SHADOW_FUR_TOP_LIT_R,
+            r * SHADOW_FUR_TOP_LIT_R,
+            cy + r * SHADOW_FUR_TOP_LIT_R
+        ))
         withTransform({ clipPath(litPath, ClipOp.Difference) }) {
             drawRect(
                 color = Color(0f, 0f, 0f, SHADOW_ALPHA),
@@ -664,9 +665,6 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
             CatAnim.Default -> eyeOpen
             else -> true
         }
-        val layerPaint = Paint()
-        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
-
         if (eyeL1 != null) {
             val cx = r * EYE_L_CX_K
             val cy = r * EYE_L_CY_K
@@ -916,9 +914,11 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         // Gravity pulls toward the owning player's "down". The high player's world is mirrored 180°,
         // so their down is -y (up-screen, toward their goal); the low player's is +y (down-screen).
         private val gravity = (if (isHigh) -1f else 1f) * radius * 0.006f
-        private val hairs: List<Hair>
+        private val hairs: Array<Hair>
         private val maxLife = 64
         private val path = Path()
+        // Hoisted: Stroke is a heap class; width is constant for this effect's lifetime.
+        private val hairStroke = Stroke(width = Settings.strokeWidth * 0.6f, cap = StrokeCap.Round)
         private var frame = 0
         override var isDone = false
             private set
@@ -926,7 +926,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
         init {
             val count = 16
             val twoPi = 2f * PI.toFloat()
-            hairs = List(count) { i ->
+            hairs = Array(count) { i ->
                 val angle = (i.toFloat() / count) * twoPi + (Random.nextFloat() - 0.5f) * 0.5f
                 val speed = radius * (0.15f + Random.nextFloat() * 0.20f)  // ~25% larger reach
                 Hair(
@@ -943,7 +943,8 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         override fun step() {
             frame++
-            for (h in hairs) {
+            for (i in hairs.indices) {
+                val h = hairs[i]
                 h.x += h.vx; h.y += h.vy
                 h.vx *= 0.90f
                 h.vy = h.vy * 0.90f + gravity
@@ -957,8 +958,8 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
             val lifeRatio = (1f - frame.toFloat() / maxLife).coerceIn(0f, 1f)
             val alpha = (235f * lifeRatio * lifeRatio).toInt().coerceIn(0, 255)
             if (alpha == 0) return
-            val strokeW = Settings.strokeWidth * 0.6f
-            for (h in hairs) {
+            for (i in hairs.indices) {
+                val h = hairs[i]
                 val dx = cos(h.angle); val dy = sin(h.angle)
                 val px = -dy; val py = dx
                 val half = h.len * 0.5f
@@ -974,7 +975,7 @@ class CatSkin(override val renderer: PuckRenderer) : PuckSkin {
                 scope.drawPath(
                     path,
                     Color(Palette.withAlpha(base, alpha)),
-                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                    style = hairStroke
                 )
             }
         }

@@ -61,34 +61,36 @@ object Effects {
     }
 
     fun DrawScope.drawEffects() {
-        val persistIter = persistentEffects.iterator()
-        while (persistIter.hasNext()) {
-            val e = persistIter.next()
+        // Indexed while-loops (not iterators) so this per-frame path never allocates an ArrayList
+        // iterator — note .iterator() allocates even when the list is empty.
+        var pi = 0
+        while (pi < persistentEffects.size) {
+            val e = persistentEffects[pi]
             e.step()
             e.draw(this)
-            if (e.isDone) persistIter.remove()
+            if (e.isDone) persistentEffects.removeAt(pi) else pi++
         }
         if (pendingEffects.isNotEmpty()) {
             persistentEffects.addAll(pendingEffects)
             pendingEffects.clear()
         }
 
-        val collIter = collisions.iterator()
-        while (collIter.hasNext()) {
-            val c = collIter.next()
+        var ci = 0
+        while (ci < collisions.size) {
+            val c = collisions[ci]
             with(c) { drawTo() }
-            if (c.finished) collIter.remove()
+            if (c.finished) collisions.removeAt(ci) else ci++
         }
     }
 
     /** Draws effects that must overlay the balls. Called after the players are drawn. */
     fun DrawScope.drawPriorityEffects() {
-        val iter = priorityEffects.iterator()
-        while (iter.hasNext()) {
-            val e = iter.next()
+        var i = 0
+        while (i < priorityEffects.size) {
+            val e = priorityEffects[i]
             e.step()
             e.draw(this)
-            if (e.isDone) iter.remove()
+            if (e.isDone) priorityEffects.removeAt(i) else i++
         }
         if (pendingPriorityEffects.isNotEmpty()) {
             priorityEffects.addAll(pendingPriorityEffects)

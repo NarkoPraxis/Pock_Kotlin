@@ -23,6 +23,10 @@ class ClassicLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private var frame = 0
         override val isDone = false
 
+        // Stroke is a heap class, not a value class; width is constant for this
+        // effect's lifetime, so build it once instead of every draw() frame.
+        private val stroke = Stroke(width = Settings.strokeWidth * 2f)
+
         override fun step() { frame++ }
 
         override fun draw(scope: DrawScope) {
@@ -33,7 +37,7 @@ class ClassicLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 color = Color(Palette.withAlpha(color, alpha)),
                 radius = r,
                 center = Offset(cx, cy),
-                style = Stroke(width = Settings.strokeWidth * 2f)
+                style = stroke
             )
         }
     }

@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.drawscope.translate
 import gameobjects.puckstyle.CachedBrushSkin
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -26,6 +26,13 @@ class PlasmaSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer
     private var innerR = 0f
     private var outerR = 0f
     private var arcStrokeWidth = 0f
+
+    // Reusable arc-angle storage (a1, a2) per arc, refilled in place each frame.
+    private val arcA1 = FloatArray(3)
+    private val arcA2 = FloatArray(3)
+    // Static-UI cache: only recompute the crackle when the strobe clock advances,
+    // so repeated repaints of the same frozen frame reuse the same angles.
+    private var cachedStrobe = Int.MIN_VALUE
 
     private fun ensureCache() {
         if (cachedRadius != renderer.radius) {
@@ -56,20 +63,38 @@ class PlasmaSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer
         ensureCache()
         ensureBrush(renderer.radius)
 
-        withTransform({ translate(renderer.x, renderer.y) }) {
+        // Compute the three crackle arcs into the hoisted angle arrays.
+        if (renderer.staticUiMode) {
+            // Static UI: reseed off the strobe clock so the arcs keep crackling in place (the
+            // circle geometry is frozen); reading strobe also re-invalidates the static canvas
+            // so it keeps repainting. Advance every strobe frame (no /2) and spread the seed with
+            // a multiplicative hash so consecutive frames/arcs decorrelate — otherwise sequential
+            // seeds produce near-identical "sprinkle" arcs instead of fast crackling plasma lines.
+            // Only recompute (and only then allocate Random) when the strobe clock actually advances;
+            // repeated repaints of the same frozen frame reuse the cached angles.
+            if (renderer.strobe != cachedStrobe) {
+                cachedStrobe = renderer.strobe
+                for (i in 0 until 3) {
+                    val rnd = Random(renderer.strobe.toLong() * 0x9E3779B97F4A7C15uL.toLong() + (i + 1) * 0x2545F4914F6CDD1DuL.toLong())
+                    val a1 = rnd.nextFloat() * TWO_PI
+                    arcA1[i] = a1
+                    arcA2[i] = a1 + (rnd.nextFloat() - 0.5f) * 2
+                }
+            }
+        } else {
+            // Live play uses global randomness (the Random singleton allocates nothing).
+            for (i in 0 until 3) {
+                val a1 = Random.nextFloat() * TWO_PI
+                arcA1[i] = a1
+                arcA2[i] = a1 + (Random.nextFloat() - 0.5f) * 2
+            }
+        }
+
+        translate(renderer.x, renderer.y) {
             drawCircle(brush = cachedBrush!!, radius = renderer.radius, center = Offset.Zero)
-            repeat(3) { i ->
-                // Static UI: reseed off the strobe clock so the arcs keep crackling in place (the
-                // circle geometry is frozen); reading strobe also re-invalidates the static canvas
-                // so it keeps repainting. Advance every strobe frame (no /2) and spread the seed with
-                // a multiplicative hash so consecutive frames/arcs decorrelate — otherwise sequential
-                // seeds produce near-identical "sprinkle" arcs instead of fast crackling plasma lines.
-                // Live play uses global randomness, so gameplay is unchanged.
-                val rnd = if (renderer.staticUiMode)
-                    Random(renderer.strobe.toLong() * 0x9E3779B97F4A7C15uL.toLong() + (i + 1) * 0x2545F4914F6CDD1DuL.toLong())
-                else Random
-                val a1 = rnd.nextFloat() * TWO_PI
-                val a2 = a1 + (rnd.nextFloat() - 0.5f) * 2
+            for (i in 0 until 3) {
+                val a1 = arcA1[i]
+                val a2 = arcA2[i]
                 drawLine(
                     arcColor,
                     Offset(kotlin.math.cos(a1) * innerR, kotlin.math.sin(a1) * innerR),

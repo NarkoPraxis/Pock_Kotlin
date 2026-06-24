@@ -24,6 +24,7 @@ class PrismLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
 
     private val path = Path()
     private val defaultStrokeWidth = Settings.strokeWidth * .5f
+    private val edgeStroke = Stroke(width = defaultStrokeWidth, join = StrokeJoin.Round)
 
     override fun drawChargingPaddle(scope: DrawScope) =
         drawPrism(scope, paddleX, paddleY, aimX, aimY, phase, chargeFillRatio)
@@ -65,7 +66,7 @@ class PrismLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         scope.drawPath(
             path,
             Color(edgeColor),
-            style = Stroke(width = defaultStrokeWidth, join = StrokeJoin.Round)
+            style = edgeStroke
         )
     }
 
@@ -111,6 +112,7 @@ class PrismLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     ) : Effects.PersistentEffect {
 
         private val edgeStrokeWidth = Settings.strokeWidth * 0.4f
+        private val edgeStroke = Stroke(width = edgeStrokeWidth, join = StrokeJoin.Round)
         private val path = Path()
         private var frame = 0
         override var isDone = false
@@ -164,18 +166,18 @@ class PrismLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                 scope.drawPath(
                     path,
                     Color(Palette.withAlpha(Palette.hsvHighlight(hue), alpha)),
-                    style = Stroke(width = edgeStrokeWidth, join = StrokeJoin.Round)
+                    style = edgeStroke
                 )
             }
         }
 
-        private val pieces: List<TrianglePiece>
+        private val pieces: Array<TrianglePiece>
 
         init {
             val sides = 6
             val rotRad = spawnRotDeg * PI.toFloat() / 180f
             val twoPiOverSides = 2f * PI.toFloat() / sides
-            pieces = List(sides) { i ->
+            pieces = Array(sides) { i ->
                 val a1 = i * twoPiOverSides + rotRad
                 val a2 = (i + 1) * twoPiOverSides + rotRad
                 val v1x = cx + cos(a1) * radius
@@ -195,7 +197,8 @@ class PrismLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         override fun step() {
             frame++
             var allDone = true
-            for (p in pieces) {
+            for (i in pieces.indices) {
+                val p = pieces[i]
                 p.step()
                 if (!p.pieceDone) allDone = false
             }
@@ -203,7 +206,8 @@ class PrismLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         }
 
         override fun draw(scope: DrawScope) {
-            for (p in pieces) {
+            for (i in pieces.indices) {
+                val p = pieces[i]
                 if (!p.pieceDone) p.draw(scope)
             }
         }

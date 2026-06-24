@@ -66,47 +66,48 @@ class SpinnerLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         val shieldColor = renderer.invertedChargeColor(theme.shield.primary)
 
         val armCount = 4
-        val armStepRad = armAngleStep * PI.toFloat() / 180f
 
+        val secCol = Color(secColor)
+        val primCol = Color(primColor)
         for (i in 0 until armCount) {
             val θ = (spinAngle + armAngleStep * i) * PI.toFloat() / 180f
             val cosA = cos(θ); val sinA = sin(θ)
-            fun sx(lx: Float, ly: Float) = cx + lx * cosA - ly * sinA
-            fun sy(lx: Float, ly: Float) = cy + lx * sinA + ly * cosA
-
-            path.reset()
-            path.moveTo(sx(0f, 0f), sy(0f, 0f))
-            path.quadraticTo(sx(midSize, outerHalf), sy(midSize, outerHalf), sx(outerTipX, 0f), sy(outerTipX, 0f))
-            path.quadraticTo(sx(midSize, -outerHalf), sy(midSize, -outerHalf), sx(0f, 0f), sy(0f, 0f))
-            path.close()
-            scope.drawPath(path, Color(secColor))
-
-            path.reset()
-            path.moveTo(sx(0f, 0f), sy(0f, 0f))
-            path.quadraticTo(sx(innerCtrl, innerHalf), sy(innerCtrl, innerHalf), sx(innerTipX, 0f), sy(innerTipX, 0f))
-            path.quadraticTo(sx(innerCtrl, -innerHalf), sy(innerCtrl, -innerHalf), sx(0f, 0f), sy(0f, 0f))
-            path.close()
-            scope.drawPath(path, Color(primColor))
+            drawBlade(scope, secCol, cx, cy, cosA, sinA, midSize, outerHalf, outerTipX)
+            drawBlade(scope, primCol, cx, cy, cosA, sinA, innerCtrl, innerHalf, innerTipX)
         }
 
         if (chargeFillRatio > 0f) {
             val fr = cachedRadius * chargeFillRatio
             val frHalf = fr * .5f
             val frTipX = fr * 0.9f
+            val shieldCol = Color(shieldColor)
             for (i in 0 until armCount) {
                 val θ = (spinAngle + armAngleStep * i) * PI.toFloat() / 180f
                 val cosA = cos(θ); val sinA = sin(θ)
-                fun sx(lx: Float, ly: Float) = cx + lx * cosA - ly * sinA
-                fun sy(lx: Float, ly: Float) = cy + lx * sinA + ly * cosA
-
-                path.reset()
-                path.moveTo(sx(0f, 0f), sy(0f, 0f))
-                path.quadraticTo(sx(frHalf, frHalf), sy(frHalf, frHalf), sx(frTipX, 0f), sy(frTipX, 0f))
-                path.quadraticTo(sx(frHalf, -frHalf), sy(frHalf, -frHalf), sx(0f, 0f), sy(0f, 0f))
-                path.close()
-                scope.drawPath(path, Color(shieldColor))
+                drawBlade(scope, shieldCol, cx, cy, cosA, sinA, frHalf, frHalf, frTipX)
             }
         }
+    }
+
+    private fun drawBlade(
+        scope: DrawScope, color: Color,
+        cx: Float, cy: Float,
+        cosA: Float, sinA: Float,
+        ctrl: Float, half: Float, tipX: Float
+    ) {
+        // control 1 (ctrl, half), tip (tipX, 0), control 2 (ctrl, -half), origin (0,0)
+        val c1x = cx + ctrl * cosA - half * sinA
+        val c1y = cy + ctrl * sinA + half * cosA
+        val tpx = cx + tipX * cosA
+        val tpy = cy + tipX * sinA
+        val c2x = cx + ctrl * cosA + half * sinA
+        val c2y = cy + ctrl * sinA - half * cosA
+        path.reset()
+        path.moveTo(cx, cy)
+        path.quadraticTo(c1x, c1y, tpx, tpy)
+        path.quadraticTo(c2x, c2y, cx, cy)
+        path.close()
+        scope.drawPath(path, color)
     }
 
     override fun drawIdlePaddle(scope: DrawScope) {
@@ -137,6 +138,8 @@ class SpinnerLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     ) : Effects.PersistentEffect {
         private val scaledRadius  = radius * 1.4f
         private val cachedStrokeW = Settings.strokeWidth * 0.6f
+        // Stroke is a heap object, not a value class; build once instead of per-arc-per-frame.
+        private val arcStroke = Stroke(width = cachedStrokeW, cap = StrokeCap.Round)
         private var frame = 0
         override val isDone = false
 
@@ -146,16 +149,18 @@ class SpinnerLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             val t = (frame / 200f).coerceIn(0f, 1f)
             val alpha = (180 * (1f - t * 0.9f)).toInt().coerceIn(100, 255)
             val baseAngle = frame * 2f * spinDir
-            val center = Offset(cx, cy)
+            val arcColor = Color(Palette.withAlpha(color, alpha))
+            val topLeft = Offset(cx - scaledRadius, cy - scaledRadius)
+            val arcSize = Size(scaledRadius * 2, scaledRadius * 2)
             for (i in 0 until 4) {
                 scope.drawArc(
-                    color = Color(Palette.withAlpha(color, alpha)),
+                    color = arcColor,
                     startAngle = i * 90f + 20f + baseAngle,
                     sweepAngle = 50f,
                     useCenter = false,
-                    topLeft = Offset(cx - scaledRadius, cy - scaledRadius),
-                    size = Size(scaledRadius * 2, scaledRadius * 2),
-                    style = Stroke(width = cachedStrokeW, cap = StrokeCap.Round)
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = arcStroke
                 )
             }
         }

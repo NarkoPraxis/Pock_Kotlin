@@ -62,6 +62,7 @@ import enums.TouchScheme
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
+import utility.FrameProfiler
 import utility.PaintBucket
 import utility.PlatformStorage
 import utility.Sounds
@@ -131,6 +132,7 @@ fun SettingsScreen(
     var highChargeMeter by remember { mutableStateOf(Storage.highPlayerChargeMeterStyle) }
     var lowChargeMeter by remember { mutableStateOf(Storage.lowPlayerChargeMeterStyle) }
     var darkModeSetting by remember { mutableStateOf(Storage.darkModeSetting) }
+    var profilerOn by remember { mutableStateOf(Storage.profilerEnabled) }
 
     fun resetToDefaults() {
         PlatformStorage.saveString("settings", "ball_sizes", "default")
@@ -290,6 +292,26 @@ fun SettingsScreen(
                     SlantedBanner(
                         strResetDefaults, PaintBucket.dangerRed, poppins, fontSize = 20.sp
                     ) { resetToDefaults() }
+
+                    // Dev-only: enable the in-game frame profiler HUD + REC control. Gated behind the
+                    // compile-time DEV_TOOLS flag so it vanishes from release builds.
+                    if (FrameProfiler.DEV_TOOLS) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Dev: Frame Profiler",
+                                color = labelColor(), fontFamily = poppins,
+                                fontWeight = FontWeight.Bold, fontSize = 20.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            ClassicCircle(profilerOn, circleD, Modifier.clickable {
+                                profilerOn = !profilerOn
+                                Storage.saveProfilerEnabled(profilerOn)
+                            })
+                        }
+                    }
                 }
 
                 SettingsTab.Graphics -> {

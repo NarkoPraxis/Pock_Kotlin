@@ -12,8 +12,8 @@ import utility.PaintBucket
 class IceTail(override val renderer: PuckRenderer) : TailRenderer {
 
     private class Shard(
-        val x: Float,
-        val y: Float,
+        var x: Float,
+        var y: Float,
         var iceSize: Float,
         var puddleSize: Float,
         var life: Float
@@ -27,16 +27,29 @@ class IceTail(override val renderer: PuckRenderer) : TailRenderer {
     private val lifeDecrement = 0.012f / Settings.tailLengthMultiplier
     private val staticlifeDecrement = lifeDecrement / 2f
 
+    // Free-list of retired Shard instances. Steady state spawns one shard per frame and retires
+    // one (cap eviction or death), so recycling here removes the per-frame Shard heap allocation
+    // in the tail — the dominant profiler section for this ball. Visual output is identical:
+    // recycled shards are fully re-initialised before use.
+    private val pool = ArrayDeque<Shard>()
+
+    private fun obtainShard(x: Float, y: Float, iceSize: Float, puddleSize: Float, life: Float): Shard {
+        val s = pool.removeLastOrNull()
+        if (s == null) return Shard(x, y, iceSize, puddleSize, life)
+        s.x = x; s.y = y; s.iceSize = iceSize; s.puddleSize = puddleSize; s.life = life
+        return s
+    }
+
     override fun render(scope: DrawScope) {
         if (renderer.staticUiMode) { renderStatic(scope); return }
-        shards.addLast(Shard(
+        shards.addLast(obtainShard(
             x = renderer.x,
             y = renderer.y,
             iceSize = renderer.radius * 1.2f,
             puddleSize = renderer.radius * 0.3f,
             life = 1f
         ))
-        while (shards.size > maxCount) shards.removeFirst()
+        while (shards.size > maxCount) pool.addLast(shards.removeFirst())
 
         // Resolve color and radius-derived thresholds once before the loop.
         val primaryColor = responsivePrimary
@@ -55,7 +68,7 @@ class IceTail(override val renderer: PuckRenderer) : TailRenderer {
             }
             s.puddleSize = s.puddleSize.coerceIn(0f, maxPuddleSize)
             if (s.life <= 0f) {
-                shards.removeAt(i)
+                pool.addLast(shards.removeAt(i))
                 // do not increment i — the element at i is now the next shard
                 continue
             }
@@ -135,7 +148,16 @@ class IceTail(override val renderer: PuckRenderer) : TailRenderer {
         }
     }
 
-    override fun clear() { shards.clear() }
+    private fun recycleAll() {
+        // Move live shards back to the pool (capped at maxCount so the pool can't grow unbounded
+        // across repeated clears). Behaviour is unchanged: shards is emptied either way.
+        while (shards.isNotEmpty()) {
+            val s = shards.removeLast()
+            if (pool.size < maxCount) pool.addLast(s)
+        }
+    }
 
-    override fun fillTo(x: Float, y: Float) { shards.clear() }
+    override fun clear() { recycleAll() }
+
+    override fun fillTo(x: Float, y: Float) { recycleAll() }
 }

@@ -12,13 +12,28 @@ class FireSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     override val zIndex = 0
 
-    val INNER_CORE_SIZE get() = renderer.radius * .6f
+    // renderer.radius is effectively immutable after setup; cache radius-derived sizes
+    // behind a cachedRadius guard so we don't recompute radius*const every frame.
+    private var cachedRadius = -1f
+    private var innerCoreSize = 0f
+
+    val INNER_CORE_SIZE: Float
+        get() {
+            if (cachedRadius != renderer.radius) ensureCache()
+            return innerCoreSize
+        }
+
+    private fun ensureCache() {
+        cachedRadius = renderer.radius
+        innerCoreSize = renderer.radius * .6f
+    }
 
     override fun DrawScope.drawBody() {
+        if (cachedRadius != renderer.radius) ensureCache()
         val colors = responsiveGroup
         val center = Offset(renderer.x, renderer.y)
         drawCircle(Color(colors.secondary), renderer.radius, center)
-        drawCircle(Color(colors.primary), INNER_CORE_SIZE, center)
+        drawCircle(Color(colors.primary), innerCoreSize, center)
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {

@@ -18,6 +18,20 @@ class GhostTail(override val renderer: PuckRenderer) : TailRenderer {
     private var cachedGhostLen = -1
     private val baseCount = 30
 
+    // Cached Stroke for the glow rings; Stroke is a heap-allocated class (not a value
+    // class), so constructing one per circle per frame churns the heap. Rebuild only
+    // when the stroke width actually changes.
+    private var cachedStroke: Stroke? = null
+    private var cachedStrokeWidth = Float.NaN
+
+    private fun glowStroke(width: Float): Stroke {
+        if (cachedStroke == null || cachedStrokeWidth != width) {
+            cachedStroke = Stroke(width)
+            cachedStrokeWidth = width
+        }
+        return cachedStroke!!
+    }
+
     override val zIndex: Int
         get() = 2
 
@@ -37,6 +51,7 @@ class GhostTail(override val renderer: PuckRenderer) : TailRenderer {
         val radiusOffset = radiusOffset(renderer)
         val r = renderer.radius
         val sw = renderer.strokeWidth * 1.2f
+        val glowStroke = glowStroke(sw)
         val lastIdx = ghostLen - 1
 
         for (i in lastIdx downTo 1) {
@@ -54,7 +69,7 @@ class GhostTail(override val renderer: PuckRenderer) : TailRenderer {
                 color = Color(Palette.withAlpha(glowColor, (alpha * 0.45f).toInt())),
                 radius = size * 1.15f * radiusOffset,
                 center = Offset(xs[i], ys[i]),
-                style = Stroke(sw)
+                style = glowStroke
             )
         }
 
@@ -82,6 +97,7 @@ class GhostTail(override val renderer: PuckRenderer) : TailRenderer {
         val radiusOffset = radiusOffset(renderer)
         val r = renderer.radius
         val sw = renderer.strokeWidth * 1.2f
+        val glowStroke = glowStroke(sw)
         val last = (staticPointCount - 1).coerceAtLeast(1)
 
         for (k in last downTo 0) {
@@ -94,7 +110,7 @@ class GhostTail(override val renderer: PuckRenderer) : TailRenderer {
                 color = Color(Palette.withAlpha(glowColor, (alpha * 0.45f).toInt())),
                 radius = coreSize * radiusOffset,
                 center = pos,
-                style = Stroke(sw)
+                style = glowStroke
             )
         }
 

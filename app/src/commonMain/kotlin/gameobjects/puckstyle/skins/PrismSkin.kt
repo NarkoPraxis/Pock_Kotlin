@@ -21,6 +21,18 @@ class PrismSkin(override val renderer: PuckRenderer) : PuckSkin {
 
     private val path = Path()
 
+    // Cached Stroke for the prism edge. renderer.strokeWidth is effectively immutable
+    // after setup, but rebuild defensively if it ever changes.
+    private var cachedEdgeSw = -1f
+    private var edgeStroke = Stroke(width = 0f)
+    private fun edgeStrokeFor(width: Float): Stroke {
+        if (cachedEdgeSw != width) {
+            cachedEdgeSw = width
+            edgeStroke = Stroke(width = width)
+        }
+        return edgeStroke
+    }
+
     private val baseHue = Palette.themeHue(theme)
     private val hues = floatArrayOf(
         baseHue,
@@ -74,7 +86,7 @@ class PrismSkin(override val renderer: PuckRenderer) : PuckSkin {
             if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
         }
         path.close()
-        drawPath(path, Color(edgeColor), style = Stroke(width = edgeSw))
+        drawPath(path, Color(edgeColor), style = edgeStrokeFor(edgeSw))
     }
 
     override fun onCollisionWin(position: Point, speed: Float) {
@@ -111,6 +123,8 @@ class PrismSkin(override val renderer: PuckRenderer) : PuckSkin {
         private val speed = maxDistance / 40f
         private val hueOffsets = floatArrayOf(0f, 40f, -30f, 20f, 60f, -15f, 10f, -20f, 50f, -10f, 35f, -40f)
         private val edgeStrokeWidth = Settings.strokeWidth * 0.4f
+        // edgeStrokeWidth is a fixed field, so the edge Stroke can be allocated once.
+        private val edgeStroke = Stroke(width = edgeStrokeWidth)
         private val path = Path()
         private var frame = 0
         private var _isDone = false
@@ -119,23 +133,28 @@ class PrismSkin(override val renderer: PuckRenderer) : PuckSkin {
         private class Tri(val dirX: Float, val dirY: Float, val hue: Float, val size: Float) {
             var x = 0f; var y = 0f; var traveled = 0f; var alpha = 255; var done = false
         }
-        private val tris: List<Tri>
+        // Stored as an Array so per-frame index loops in step()/draw() don't allocate an Iterator.
+        private val tris: Array<Tri>
 
         init {
             val baseAngles = listOf(0.0, .523599, 1.0472, 2.0944, 2.61799, PI)
             val fullAngles = List(6) { i -> i * (2.0 * PI / 6) }
             val srcAngles = if (fullCircle) fullAngles else baseAngles
-            tris = srcAngles.mapIndexed { idx, a ->
+            tris = Array(srcAngles.size) { idx ->
+                val a = srcAngles[idx]
                 val adj = if (!fullCircle && !highGoal) a + PI else a
                 val af = adj.toFloat()
-                Tri(cos(af), sin(af), baseHue + hueOffsets[idx % hueOffsets.size], radius * 0.577f)
-            }.also { list -> list.forEach { it.x = cx; it.y = cy } }
+                Tri(cos(af), sin(af), baseHue + hueOffsets[idx % hueOffsets.size], radius * 0.577f).also {
+                    it.x = cx; it.y = cy
+                }
+            }
         }
 
         override fun step() {
             frame++
             var allDone = true
-            for (t in tris) {
+            for (i in tris.indices) {
+                val t = tris[i]
                 if (t.done) continue
                 t.x += t.dirX * speed; t.y += t.dirY * speed; t.traveled += speed
                 val ratio = (t.traveled / maxDistance).coerceIn(0f, 1f)
@@ -147,7 +166,8 @@ class PrismSkin(override val renderer: PuckRenderer) : PuckSkin {
         }
 
         override fun draw(scope: DrawScope) {
-            for (t in tris) {
+            for (i in tris.indices) {
+                val t = tris[i]
                 if (t.done || t.alpha <= 0) continue
                 val hue = t.hue + sin(frame * 0.04f) * 30f
                 val fillColor = Color(Palette.withAlpha(Palette.hsvThemed(hue), t.alpha))
@@ -159,7 +179,7 @@ class PrismSkin(override val renderer: PuckRenderer) : PuckSkin {
                 path.lineTo(t.x - perpX * s * 0.866f + t.dirX * s * 0.5f, t.y - perpY * s * 0.866f + t.dirY * s * 0.5f)
                 path.close()
                 scope.drawPath(path, fillColor)
-                scope.drawPath(path, edgeColor, style = Stroke(width = edgeStrokeWidth))
+                scope.drawPath(path, edgeColor, style = edgeStroke)
             }
         }
     }

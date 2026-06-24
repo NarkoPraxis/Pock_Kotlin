@@ -24,6 +24,19 @@ class RainbowLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
     private var tailStrokeWidth = 0f
     private var barRadius = 0f
 
+    // Hoisted Stroke (heap class) for the charge-bar outline; rebuilt only when
+    // Settings.strokeWidth actually changes (effectively immutable after setup).
+    private var barStrokeWidthCache = -1f
+    private var barStroke = Stroke(width = 0f, cap = StrokeCap.Round)
+
+    private fun barStrokeFor(width: Float): Stroke {
+        if (barStrokeWidthCache != width) {
+            barStrokeWidthCache = width
+            barStroke = Stroke(width = width, cap = StrokeCap.Round)
+        }
+        return barStroke
+    }
+
     private fun ensureCache() {
         if (cachedRadius != renderer.radius) {
             cachedRadius = renderer.radius
@@ -161,17 +174,26 @@ class RainbowLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
             color = Color(strokeColor),
             radius = barRadius,
             center = center,
-            style = Stroke(width = Settings.strokeWidth, cap = StrokeCap.Round)
+            style = barStrokeFor(Settings.strokeWidth)
         )
     }
 
     override fun draw(scope: DrawScope) {
         ensureCache()
-        staleTails.removeAll { stale ->
+        // Index-based iteration over the ArrayDeque avoids allocating an Iterator
+        // every frame (for-in over a List/Iterable allocates one). Tick + prune in
+        // place, then draw the survivors by index.
+        var write = 0
+        for (read in staleTails.indices) {
+            val stale = staleTails[read]
             stale.tick()
-            stale.isDone
+            if (!stale.isDone) {
+                if (write != read) staleTails[write] = stale
+                write++
+            }
         }
-        for (stale in staleTails) drawStaleTailLines(scope, stale)
+        while (staleTails.size > write) staleTails.removeLast()
+        for (i in staleTails.indices) drawStaleTailLines(scope, staleTails[i])
         super.draw(scope)
     }
 
@@ -227,6 +249,9 @@ class RainbowLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private var frame = 0
         private val maxRadius = radius * 3f
         private val fixedStrokeWidth = Settings.strokeWidth * (2f / 3f)
+        // Hoisted Stroke (heap class): same width for every ring, every frame —
+        // build once instead of 6× per frame in draw().
+        private val ringStroke = Stroke(width = fixedStrokeWidth)
 
         private var _isDone = false
         override val isDone: Boolean get() = _isDone
@@ -275,7 +300,7 @@ class RainbowLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
                     color = Color(Palette.withAlpha(Palette.hsvThemed(hue), alpha)),
                     radius = ringRadius,
                     center = center,
-                    style = Stroke(width = fixedStrokeWidth)
+                    style = ringStroke
                 )
             }
         }

@@ -51,10 +51,11 @@ class RainbowTail(override val renderer: PuckRenderer) : TailRenderer {
         for (i in rainbowLen - 1 downTo 0) {
             if (renderer.staticUiMode) {
                 val p = staticSwooshPoint(i.toFloat() / sizeMinusOneF)
-                pts[i] = DrawablePoint(p.x, p.y, renderer.strokeColor)
+                pts[i].x = p.x; pts[i].y = p.y
+                pts[i].setColor(renderer.strokeColor)
             }
-            else if (i - 1 >= 0) pts[i] = pts[i - 1]
-            else pts[i] = DrawablePoint(renderer.x, renderer.y, renderer.strokeColor)
+            else if (i - 1 >= 0) { pts[i].x = pts[i - 1].x; pts[i].y = pts[i - 1].y }
+            else { pts[i].x = renderer.x; pts[i].y = renderer.y; pts[i].setColor(renderer.strokeColor) }
             val ratio = i.toFloat() / sizeMinusOneF
             val cycleHue = frameHue - i * 15f
             val color = when {
@@ -72,6 +73,7 @@ class RainbowTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun clear() { points = null }
 
     override fun fillTo(x: Float, y: Float) {
-        points?.forEach { it.x = x; it.y = y }
+        val pts = points ?: return
+        for (i in pts.indices) { pts[i].x = x; pts[i].y = y }
     }
 }

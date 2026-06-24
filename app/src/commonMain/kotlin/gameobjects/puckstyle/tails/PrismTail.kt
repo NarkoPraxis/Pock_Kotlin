@@ -134,6 +134,7 @@ class PrismTail(override val renderer: PuckRenderer) : TailRenderer {
     override fun clear() { history = null }
 
     override fun fillTo(x: Float, y: Float) {
-        history?.forEach { it.x = x; it.y = y }
+        val h = history ?: return
+        for (i in h.indices) { h[i].x = x; h[i].y = y }
     }
 }

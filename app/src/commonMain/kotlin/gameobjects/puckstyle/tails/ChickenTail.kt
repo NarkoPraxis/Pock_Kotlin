@@ -45,12 +45,20 @@ class ChickenTail(override val renderer: PuckRenderer) : TailRenderer {
     private var cachedRadius = -1f
     private var cachedFw = 0f
     private var cachedFh = 0f
+    private var cachedSw = 0f
+    private var cachedToeLen = 0f
+    // Stroke is a heap class (not a value class); building one per footprint per frame allocates.
+    // Cache it and rebuild only when the radius (hence width) actually changes.
+    private var footStroke = Stroke(width = 1f, cap = StrokeCap.Round)
 
     private fun ensureCache(r: Float) {
         if (cachedRadius != r) {
             cachedRadius = r
             cachedFw = r * 0.2f
             cachedFh = r * 0.55f
+            cachedSw = r * 0.13f
+            cachedToeLen = r * 0.55f
+            footStroke = Stroke(width = cachedSw, cap = StrokeCap.Round)
         }
     }
 
@@ -95,8 +103,7 @@ class ChickenTail(override val renderer: PuckRenderer) : TailRenderer {
             f.alpha -= fadeStep
             if (f.alpha <= 0) { footprints.removeAt(fi); fi--; continue }
             val strokeColor = Color(Palette.withAlpha(colors.secondary, f.alpha))
-            val sw = r * 0.13f
-            val toeLen = r * 0.55f
+            val toeLen = cachedToeLen
             val faceAngle = f.angle
             val rearAngle = faceAngle + PI_F
             footPath.reset()
@@ -108,7 +115,7 @@ class ChickenTail(override val renderer: PuckRenderer) : TailRenderer {
             footPath.lineTo(f.x + cos(faceAngle - DEG35_RAD) * toeLen, f.y + sin(faceAngle - DEG35_RAD) * toeLen)
             footPath.moveTo(f.x, f.y)
             footPath.lineTo(f.x + cos(rearAngle) * toeLen * 0.6f, f.y + sin(rearAngle) * toeLen * 0.6f)
-            scope.drawPath(footPath, strokeColor, style = Stroke(width = sw, cap = StrokeCap.Round))
+            scope.drawPath(footPath, strokeColor, style = footStroke)
             fi--
         }
 
@@ -168,8 +175,7 @@ class ChickenTail(override val renderer: PuckRenderer) : TailRenderer {
         // Footprints walking along the swoosh, alternating sides, fading toward the tip.
         val steps = 7
         var side = 1f
-        val sw = r * 0.13f
-        val toeLen = r * 0.55f
+        val toeLen = cachedToeLen
         for (s in 0 until steps) {
             val ratio = (s + 0.5f) / steps
             val base = staticSwooshPoint(ratio)
@@ -186,7 +192,7 @@ class ChickenTail(override val renderer: PuckRenderer) : TailRenderer {
             footPath.moveTo(fx, fy); footPath.lineTo(fx + cos(ang + DEG35_RAD) * toeLen, fy + sin(ang + DEG35_RAD) * toeLen)
             footPath.moveTo(fx, fy); footPath.lineTo(fx + cos(ang - DEG35_RAD) * toeLen, fy + sin(ang - DEG35_RAD) * toeLen)
             footPath.moveTo(fx, fy); footPath.lineTo(fx + cos(rearAngle) * toeLen * 0.6f, fy + sin(rearAngle) * toeLen * 0.6f)
-            scope.drawPath(footPath, strokeColor, style = Stroke(width = sw, cap = StrokeCap.Round))
+            scope.drawPath(footPath, strokeColor, style = footStroke)
         }
 
         // A few drifting feathers near the ball.

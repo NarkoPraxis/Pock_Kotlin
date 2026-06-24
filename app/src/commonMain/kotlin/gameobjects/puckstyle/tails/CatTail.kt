@@ -8,7 +8,6 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.withTransform
 import gameobjects.puckstyle.PaddleLaunchEffect
 import gameobjects.puckstyle.Palette
 import gameobjects.puckstyle.PuckRenderer
@@ -134,6 +133,13 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
     // Accumulates each strand's silhouette during the draw loop; reused as the
     // lit-erase shape for the shadow pass.
     private val unionPath = Path()
+
+    // --- Hoisted draw allocations (config is frame-invariant) ----------------
+    // saveLayer requires a Paint; default Paint and the two blend-mode paints
+    // never change, so build them once instead of per frame.
+    private val layerPaint = Paint()
+    private val srcAtopPaintField = Paint().apply { blendMode = BlendMode.SrcAtop }
+    private val dstOutPaintField = Paint().apply { blendMode = BlendMode.DstOut }
 
     // Per-strand spine buffers. Cloned segments are overwritten from main
     // every frame; deviating segments persist across frames so they can lag
@@ -267,7 +273,7 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
             headX + r * SHADOW_BOUNDS_K, headY + r * SHADOW_BOUNDS_K
         )
         val canvas = scope.drawContext.canvas
-        canvas.saveLayer(shadowBounds, Paint())
+        canvas.saveLayer(shadowBounds, layerPaint)
         unionPath.reset()
         for (k in 0 until strandCount) {
             computeStrandSpine(k, maxLateralDeviation, spacing)
@@ -309,19 +315,19 @@ class CatTail(override val renderer: PuckRenderer) : TailRenderer {
         val litDx = perpProj * perpCos
         val litDy = perpProj * perpSin
 
-        val srcAtopPaint = Paint().apply { blendMode = BlendMode.SrcAtop }
-        canvas.saveLayer(shadowBounds, srcAtopPaint)
+        canvas.saveLayer(shadowBounds, srcAtopPaintField)
         with(scope) {
             drawRect(
                 color = Color(0f, 0f, 0f, SHADOW_ALPHA),
                 topLeft = shadowBounds.topLeft,
                 size = shadowBounds.size
             )
-            val dstOutPaint = Paint().apply { blendMode = BlendMode.DstOut }
-            canvas.saveLayer(shadowBounds, dstOutPaint)
-            withTransform({ translate(litDx, litDy) }) {
-                drawPath(unionPath, Color.Black, style = Fill)
-            }
+            canvas.saveLayer(shadowBounds, dstOutPaintField)
+            // Translate on the canvas directly instead of withTransform { translate }
+            // so we don't allocate a capturing lambda each frame.
+            canvas.translate(litDx, litDy)
+            drawPath(unionPath, Color.Black, style = Fill)
+            canvas.translate(-litDx, -litDy)
             canvas.restore()  // close lit erase layer
         }
         canvas.restore()  // close shadow wash layer
