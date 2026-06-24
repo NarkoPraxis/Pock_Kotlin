@@ -13,7 +13,7 @@ package utility
  */
 object FrameProfiler {
     /** Master compile-time gate for all dev profiling UI (Settings toggle + in-game HUD). */
-    const val DEV_TOOLS = true
+    const val DEV_TOOLS = false
 
     var enabled: Boolean = false            // gate behind a debug flag (see Storage.profilerEnabled)
 
