@@ -52,6 +52,7 @@ fun MenuDemoCanvas(zenMode: Boolean = false) {
                     demoBotHigh.value?.tick()
                     demoBotLow.value?.tick()
                     Logic.updateSpikes()
+                    Logic.updateShieldFlatten()
                     when (Settings.gameState) {
                         GameState.Play -> {
                             Logic.adjustPlayerPositions()

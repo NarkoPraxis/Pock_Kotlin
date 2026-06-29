@@ -47,6 +47,9 @@ object Logic {
     var pierceX = 0f
     var pierceY = 0f
     var scoreOverlayColor = 0
+    // Plan 5: ring colour around the punch-through window. Resolved once at cinematic start (the
+    // winner's baked stroke colour) so drawScoreCinematic never allocates a ColorTheme per frame.
+    var scoreOutlineColor = 0
     var scoreWindowMaxRadius = 0f
     var scoringPlayer: Player? = null
     var piercedPlayer: Player? = null
@@ -57,6 +60,17 @@ object Logic {
     // loser enters its disappear; used by updateSpikes to keep the spikes sharp until it has vanished.
     var bothScored = false
     private var piercedPopTriggered = false
+
+    // Plan 7: the per-skin score burst (onUsedToScore) now fires when the ball POPS (Hold→Expand),
+    // not at score time, so it reads as the ball exploding as it vanishes. checkScored swaps both
+    // pucks' colours (#9/#10), so we capture each side's burst colour + which goal PRE-swap and
+    // replay it at pop time. Keyed by side so Result.Both can burst both balls with their own colour.
+    private var highBurstColor = 0
+    private var lowBurstColor = 0
+    private var highBurstHighGoal = false
+    private var lowBurstHighGoal = false
+    private var bothBurstsFired = false
+    private val _burstPoint = Point()
 
     /** Called instead of doOnSizeChange when running under Compose (no GameView). */
     var composeReinitCallback: (() -> Unit)? = null
@@ -264,22 +278,87 @@ object Logic {
         }
     }
 
-    // Ramps Settings.spikeProgress toward 1 while the goals are armed (canScore) and back toward 0
-    // when disarmed, ~1/16 per frame so the spikes grow/retract over roughly 16 frames.
+    // Plan 6 — Retract the spikes *before* the goal closes.
+    // Drive Settings.spikeProgress toward a *predicted* target instead of a binary flag: while armed,
+    // the target is 1 until the soonest-expiring launch is within SPIKE_ANIM_FRAMES of running out,
+    // then it eases 1→0 so extension reaches 0 the exact frame the goal disarms (cantScore fires).
+    // Arming still ramps in over ~SPIKE_ANIM_FRAMES frames via the ±maxStep cap; a side-wall bounce
+    // that disarms abruptly just gives a graceful capped retract after the close (see Plan 6 §B).
     fun updateSpikes() {
         if (!this::highPlayer.isInitialized) return
-        // During a score interlude, hold the spikes fully extended until the pierced ball has actually
-        // popped/vanished — the danger reads as "consuming" the ball. Only after it's gone do they
-        // begin to retract (over the next ~16 frames, in step with the pop's invisible separation gap).
+        // Plan 3: during a score interlude, hold the spikes fully extended until the pierced ball has
+        // actually popped/vanished — the danger reads as "consuming" the ball. Only after it's gone do
+        // they begin to retract (over the next ~16 frames, in step with the pop's separation gap).
         if (scoreCinematicActive && !piercedHasVanished()) {
             Settings.spikeProgress = 1f
             return
         }
-        val delta = 1f / 16f
-        Settings.spikeProgress = if (Settings.canScore)
-            (Settings.spikeProgress + delta).coerceAtMost(1f)
-        else
-            (Settings.spikeProgress - delta).coerceAtLeast(0f)
+
+        val target = if (!Settings.canScore) 0f else {
+            val frames = framesUntilGoalCloses()                       // soonest launch expiry, in frames
+            (frames / Settings.SPIKE_ANIM_FRAMES).coerceIn(0f, 1f)     // 1 when far off; eases 1→0 in the last window
+        }
+        val maxStep = 1f / Settings.SPIKE_ANIM_FRAMES
+        Settings.spikeProgress = Settings.spikeProgress +
+            (target - Settings.spikeProgress).coerceIn(-maxStep, maxStep)
+    }
+
+    // Soonest frame count until SOME launched ball's launch power expires (= when cantScore will fire).
+    // POSITIVE_INFINITY when nothing is winding down (keeps the target pinned at 1 while armed).
+    // Inlined over the two players — no array allocation in this per-tick method.
+    private fun framesUntilGoalCloses(): Float {
+        val f = Settings.friction.coerceAtLeast(0.0001f)   // floor the divisor so friction=0 can't divide by zero
+        var soonest = Float.POSITIVE_INFINITY
+        val hp = highPlayer.puck.launch.power
+        if (hp > 0f) soonest = hp / f
+        val lp = lowPlayer.puck.launch.power
+        if (lp > 0f && lp / f < soonest) soonest = lp / f
+        return soonest
+    }
+
+    // Plan 4 — Shielded balls flatten the spikes near them.
+    // For each goal independently, find the nearest shielded puck within a vertical activation band of
+    // the goal baseline and publish its X (the dent centre) + a 0→1 strength that deepens with vertical
+    // closeness. Drawing.buildSpikePath reads these to dent the tooth row local to the ball. Purely
+    // visual: a shielded ball already bounces at the baseline (Player.shouldBounce). No allocation —
+    // plain Float fields mutated in place, both players inlined.
+    fun updateShieldFlatten() {
+        if (!this::highPlayer.isInitialized) return
+        val activateDist = (Settings.screenRatio * Settings.SHIELD_FLATTEN_ACTIVATE_RATIO)
+            .coerceAtLeast(0.0001f)
+
+        var topX = Float.NaN; var topStrength = 0f; var topBest = Float.MAX_VALUE
+        var botX = Float.NaN; var botStrength = 0f; var botBest = Float.MAX_VALUE
+
+        if (highPlayer.shielded) {
+            val dTop = highPlayer.py - Settings.topGoalBottom
+            if (dTop < activateDist && dTop < topBest) {
+                topBest = dTop; topX = highPlayer.px
+                topStrength = (1f - dTop / activateDist).coerceIn(0f, 1f)
+            }
+            val dBot = Settings.bottomGoalTop - highPlayer.py
+            if (dBot < activateDist && dBot < botBest) {
+                botBest = dBot; botX = highPlayer.px
+                botStrength = (1f - dBot / activateDist).coerceIn(0f, 1f)
+            }
+        }
+        if (lowPlayer.shielded) {
+            val dTop = lowPlayer.py - Settings.topGoalBottom
+            if (dTop < activateDist && dTop < topBest) {
+                topBest = dTop; topX = lowPlayer.px
+                topStrength = (1f - dTop / activateDist).coerceIn(0f, 1f)
+            }
+            val dBot = Settings.bottomGoalTop - lowPlayer.py
+            if (dBot < activateDist && dBot < botBest) {
+                botBest = dBot; botX = lowPlayer.px
+                botStrength = (1f - dBot / activateDist).coerceIn(0f, 1f)
+            }
+        }
+
+        Settings.highGoalFlattenX = topX
+        Settings.highGoalFlattenStrength = topStrength
+        Settings.lowGoalFlattenX = botX
+        Settings.lowGoalFlattenStrength = botStrength
     }
 
     // True once the pierced ball has finished shrinking out of existence. Until the pop is triggered
@@ -347,6 +426,15 @@ object Logic {
                     Settings.lowScorePopTicker.reset()
                 }
             }
+            // Plan 7: capture the pierced ball's burst colour + goal BEFORE the colour swap below, so
+            // the deferred pop burst (triggerPiercedPop / triggerBothBursts) fires in its real colour.
+            if (loser.isHigh) {
+                highBurstColor = loser.puckFillColor
+                highBurstHighGoal = highGoal
+            } else {
+                lowBurstColor = loser.puckFillColor
+                lowBurstHighGoal = highGoal
+            }
             setPuckColor(loser, PaintBucket.highBallFill.toArgb(), PaintBucket.highBallStroke.toArgb())
             setPuckColor(winner, PaintBucket.lowBallFill.toArgb(), PaintBucket.lowBallStroke.toArgb())
             Settings.gameState = GameState.Scored
@@ -357,8 +445,8 @@ object Logic {
             Sounds.playScoreSound(loser.py)
             Effects.clearCollisionEffects()
             Effects.signalScored()
-            val goalPoint = Point(loser.px, if (highGoal) Settings.topGoalBottom else Settings.bottomGoalTop)
-            loser.puck.renderer.skin.onUsedToScore(loser.puckFillColor, goalPoint, highGoal)
+            // Plan 7: the pierced ball's onUsedToScore burst is deferred to the pop (triggerPiercedPop
+            // / triggerBothBursts). The winner-side onScored() still fires now.
             winner.puck.renderer.skin.onScored()
             return true
         }
@@ -372,10 +460,14 @@ object Logic {
         scoreCinematicActive = true
         scorePhase = ScorePhase.Shrink
         piercedPopTriggered = false
+        bothBurstsFired = false
         scoreCinematicTicker.reset(Settings.SCORE_SHRINK_FRAMES)
         pierceX = loser.px
         pierceY = loser.py
         scoreOverlayColor = overlayColor
+        // Plan 5: the spotlight ring is the winner's stroke colour, baked so a rainbow ball doesn't
+        // strobe the ring during the freeze. Resolved once here — no per-frame theme alloc.
+        scoreOutlineColor = winner.puck.renderer.bakedSecondary(ColorTheme.getTheme(winner.isHigh).main.secondary)
         scoringPlayer = winner
         piercedPlayer = loser
         // Max window radius = distance from the pierce point to the farthest screen corner, so the
@@ -399,9 +491,12 @@ object Logic {
                 ScorePhase.Hold -> if (scoreCinematicTicker.tick) {
                     scorePhase = ScorePhase.Expand
                     scoreCinematicTicker.reset(Settings.SCORE_EXPAND_FRAMES)
-                    // Window is tight on the ball — pop the pierced ball now so it shrinks out inside
-                    // the explosion that already fired in checkScored.
+                    // Window is tight on the ball — pop the pierced ball now and fire its score burst
+                    // on the same frame (Plan 7), so it reads as the ball exploding as it vanishes.
+                    // Exactly one of these fires: triggerPiercedPop no-ops for Result.Both, and
+                    // triggerBothBursts no-ops otherwise.
                     triggerPiercedPop()
+                    triggerBothBursts()
                 }
                 // Expand: the winner lerps home and the pierced ball pops + re-materializes at its
                 // start while the window expands away. Play resumes only once the window has cleared,
@@ -452,7 +547,25 @@ object Logic {
         if (bothScored || piercedPopTriggered) return
         piercedPopTriggered = true
         val loser = piercedPlayer ?: return
+        // Plan 7: spawn the pierced ball's score burst (its pre-swap colour/goal) on the same frame it
+        // begins to shrink out — reused _burstPoint avoids a per-pop Point allocation.
+        val burstColor = if (loser.isHigh) highBurstColor else lowBurstColor
+        val burstHighGoal = if (loser.isHigh) highBurstHighGoal else lowBurstHighGoal
+        _burstPoint.setLocation(pierceX, pierceY)
+        loser.puck.renderer.skin.onUsedToScore(burstColor, _burstPoint, burstHighGoal)
         loser.popAndTeleportTo(loser.resetLocation)
+    }
+
+    // Plan 7, Result.Both: both balls scored simultaneously, so neither teleports (Plan 3 rule) — but
+    // both still burst. Fires each player's onUsedToScore with its own pre-swap colour/goal at the
+    // Hold→Expand boundary. Idempotent within an interlude.
+    private fun triggerBothBursts() {
+        if (!bothScored || bothBurstsFired) return
+        bothBurstsFired = true
+        _burstPoint.setLocation(highPlayer.px, highPlayer.py)
+        highPlayer.puck.renderer.skin.onUsedToScore(highBurstColor, _burstPoint, highBurstHighGoal)
+        _burstPoint.setLocation(lowPlayer.px, lowPlayer.py)
+        lowPlayer.puck.renderer.skin.onUsedToScore(lowBurstColor, _burstPoint, lowBurstHighGoal)
     }
 
     // Shared tail of both return paths: pick Play vs GameOver, re-enable effects, end the cinematic.
