@@ -37,6 +37,11 @@ object Settings {
     const val SCORE_OVERLAY_ALPHA = 0.30f          // dim-wash opacity at full strength
     const val SCORE_WINDOW_MIN_RADIUS_BALLS = 3f   // min window radius = this × ballRadius
 
+    // Frames the popped ball stays fully gone (invisible) between vanishing and re-materializing at
+    // its start — a beat of separation so the regrown ball reads as freshly created. Also the window
+    // over which the spikes retract once the ball has vanished.
+    const val SCORE_POP_GAP_FRAMES = 16
+
     // 0 = goals are flat-edged ("safe"); 1 = goals have fully extended their sawtooth spikes
     // ("spiky"). Driven by Logic.updateSpikes, consumed by Drawing's spiky-goal builder. Shared by
     // both goals so they arm together off the single canScore flag.

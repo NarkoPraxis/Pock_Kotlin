@@ -51,6 +51,13 @@ object Logic {
     var scoringPlayer: Player? = null
     var piercedPlayer: Player? = null
 
+    // Plan 3 (pop & teleport): the pierced ball pops/vanishes then re-materializes at its start.
+    // [bothScored] (Result.Both) falls back to both balls lerping home — no pop — to avoid an
+    // ambiguous double-pop. [piercedPopTriggered] flips true at the Hold→Expand boundary when the
+    // loser enters its disappear; used by updateSpikes to keep the spikes sharp until it has vanished.
+    var bothScored = false
+    private var piercedPopTriggered = false
+
     /** Called instead of doOnSizeChange when running under Compose (no GameView). */
     var composeReinitCallback: (() -> Unit)? = null
 
@@ -261,11 +268,27 @@ object Logic {
     // when disarmed, ~1/16 per frame so the spikes grow/retract over roughly 16 frames.
     fun updateSpikes() {
         if (!this::highPlayer.isInitialized) return
+        // During a score interlude, hold the spikes fully extended until the pierced ball has actually
+        // popped/vanished — the danger reads as "consuming" the ball. Only after it's gone do they
+        // begin to retract (over the next ~16 frames, in step with the pop's invisible separation gap).
+        if (scoreCinematicActive && !piercedHasVanished()) {
+            Settings.spikeProgress = 1f
+            return
+        }
         val delta = 1f / 16f
         Settings.spikeProgress = if (Settings.canScore)
             (Settings.spikeProgress + delta).coerceAtMost(1f)
         else
             (Settings.spikeProgress - delta).coerceAtLeast(0f)
+    }
+
+    // True once the pierced ball has finished shrinking out of existence. Until the pop is triggered
+    // (Hold→Expand) — or while the ball is still mid-shrink — this is false so the spikes stay sharp.
+    // Result.Both never triggers a pop, so its spikes stay sharp until the interlude ends.
+    private fun piercedHasVanished(): Boolean {
+        if (!piercedPopTriggered) return false
+        val loser = piercedPlayer ?: return true
+        return !loser.disappearing
     }
 
     fun checkCharge() {
@@ -290,7 +313,7 @@ object Logic {
         if (Settings.isDemoMode) return Result.Neither
         val highScored = checkScored(highPlayer, lowPlayer)
         val lowScored = checkScored(lowPlayer, highPlayer)
-        return if (highScored && !lowScored) {
+        val result = if (highScored && !lowScored) {
             Result.High
         } else if (lowScored && !highScored) {
             Result.Low
@@ -299,6 +322,10 @@ object Logic {
         } else {
             Result.Neither
         }
+        // Captured on the scoring frame and read throughout the Scored interlude (checkScored only
+        // runs during Play): Both → both balls lerp home, no pop. Single score → the loser pops.
+        bothScored = result == Result.Both
+        return result
     }
 
     private fun checkScored(winner: Player, loser: Player) : Boolean {
@@ -324,7 +351,8 @@ object Logic {
             setPuckColor(winner, PaintBucket.lowBallFill.toArgb(), PaintBucket.lowBallStroke.toArgb())
             Settings.gameState = GameState.Scored
             Settings.canScore = false
-            Settings.spikeProgress = 0f
+            // NB: spikeProgress is intentionally NOT zeroed here — updateSpikes holds the spikes fully
+            // sharp through the interlude until the pierced ball has popped, then retracts them.
             botBrain?.reset()
             Sounds.playScoreSound(loser.py)
             Effects.clearCollisionEffects()
@@ -343,6 +371,7 @@ object Logic {
     private fun startScoreCinematic(winner: Player, loser: Player, overlayColor: Int) {
         scoreCinematicActive = true
         scorePhase = ScorePhase.Shrink
+        piercedPopTriggered = false
         scoreCinematicTicker.reset(Settings.SCORE_SHRINK_FRAMES)
         pierceX = loser.px
         pierceY = loser.py
@@ -370,11 +399,16 @@ object Logic {
                 ScorePhase.Hold -> if (scoreCinematicTicker.tick) {
                     scorePhase = ScorePhase.Expand
                     scoreCinematicTicker.reset(Settings.SCORE_EXPAND_FRAMES)
+                    // Window is tight on the ball — pop the pierced ball now so it shrinks out inside
+                    // the explosion that already fired in checkScored.
+                    triggerPiercedPop()
                 }
-                // Expand: the balls lerp home (existing reset) while the window expands away; play
-                // resumes only once the window has fully cleared AND both pucks have arrived.
+                // Expand: the winner lerps home and the pierced ball pops + re-materializes at its
+                // start while the window expands away. Play resumes only once the window has cleared,
+                // the winner has arrived, AND the new ball has finished re-materializing.
                 ScorePhase.Expand -> {
-                    returnPucksHome(gate = scoreCinematicTicker.finished)
+                    val gate = scoreCinematicTicker.finished
+                    if (bothScored) returnPucksHome(gate) else returnPucksHomeWithPop(gate)
                     if (!scoreCinematicTicker.finished) scoreCinematicTicker.tick
                 }
             }
@@ -392,22 +426,50 @@ object Logic {
         val lowIsReady = lowPlayer.moveTowardPoint(lowPlayer.resetLocation)
         val highIsReady = highPlayer.moveTowardPoint(highPlayer.resetLocation)
         if (lowIsReady && highIsReady && gate) {
-            val scoreWin = Settings.pointsToWin > 0 && (lowPlayer.score >= Settings.pointsToWin || highPlayer.score >= Settings.pointsToWin)
-            val timerGameOver = timerExpired && highPlayer.score != lowPlayer.score
-            Settings.gameState = if (!Settings.gameOver && (scoreWin || timerGameOver)) {
-                Settings.gameOver = true
-                victoryTicker.reset(Settings.victoryThreshold)
-                GameState.GameOver
-            } else {
-                canCollide = true
-                GameState.Play
-            }
-            highPlayer.disableEffects = false
-            lowPlayer.disableEffects = false
-            scoreCinematicActive = false
+            endScoreInterlude()
             return true
         }
         return false
+    }
+
+    // Plan 3 return path: the winner lerps home as usual; the pierced ball is driven by its teleport
+    // pop/regrow (in drawTeleport) and counts as "home" only once fully re-materialized (!isTeleporting).
+    private fun returnPucksHomeWithPop(gate: Boolean): Boolean {
+        val winner = scoringPlayer
+        val loser = piercedPlayer
+        val winnerReady = winner?.moveTowardPoint(winner.resetLocation) ?: true
+        val loserReady = loser?.let { !it.isTeleporting } ?: true
+        if (winnerReady && loserReady && gate) {
+            endScoreInterlude()
+            return true
+        }
+        return false
+    }
+
+    // Pop the pierced ball: jump straight into the teleport disappear (no prepare ring) and re-target
+    // its reappearance to its own start. Skipped for Result.Both and idempotent within an interlude.
+    private fun triggerPiercedPop(): Unit {
+        if (bothScored || piercedPopTriggered) return
+        piercedPopTriggered = true
+        val loser = piercedPlayer ?: return
+        loser.popAndTeleportTo(loser.resetLocation)
+    }
+
+    // Shared tail of both return paths: pick Play vs GameOver, re-enable effects, end the cinematic.
+    private fun endScoreInterlude() {
+        val scoreWin = Settings.pointsToWin > 0 && (lowPlayer.score >= Settings.pointsToWin || highPlayer.score >= Settings.pointsToWin)
+        val timerGameOver = timerExpired && highPlayer.score != lowPlayer.score
+        Settings.gameState = if (!Settings.gameOver && (scoreWin || timerGameOver)) {
+            Settings.gameOver = true
+            victoryTicker.reset(Settings.victoryThreshold)
+            GameState.GameOver
+        } else {
+            canCollide = true
+            GameState.Play
+        }
+        highPlayer.disableEffects = false
+        lowPlayer.disableEffects = false
+        scoreCinematicActive = false
     }
 
     fun gameOver() {
