@@ -36,11 +36,35 @@ object Settings {
     const val SCORE_EXPAND_FRAMES = 14
     const val SCORE_OVERLAY_ALPHA = 0.30f          // dim-wash opacity at full strength
     const val SCORE_WINDOW_MIN_RADIUS_BALLS = 3f   // min window radius = this × ballRadius
+    const val SCORE_OUTLINE_WIDTH_RATIO = 0.35f    // Plan 5: ring width = this × screenRatio
+
+    // Frames the popped ball stays fully gone (invisible) between vanishing and re-materializing at
+    // its start — a beat of separation so the regrown ball reads as freshly created. Also the window
+    // over which the spikes retract once the ball has vanished.
+    const val SCORE_POP_GAP_FRAMES = 16
 
     // 0 = goals are flat-edged ("safe"); 1 = goals have fully extended their sawtooth spikes
     // ("spiky"). Driven by Logic.updateSpikes, consumed by Drawing's spiky-goal builder. Shared by
     // both goals so they arm together off the single canScore flag.
     var spikeProgress: Float = 0f
+
+    // ---- Shield-flattens-spikes (Plan 4) ----
+    // When a shielded ball nears a goal, the spikes local to it lay flat so it visibly bounces off a
+    // flat edge. Published per-goal by Logic.updateShieldFlatten, read by Drawing.buildSpikePath.
+    // flattenX = the shielded puck's X (the dent centre), Float.NaN when no shielded ball qualifies.
+    // flattenStrength = 0→1 eased by vertical closeness (1 on the baseline, 0 at the band edge).
+    var highGoalFlattenX: Float = Float.NaN
+    var lowGoalFlattenX: Float = Float.NaN
+    var highGoalFlattenStrength: Float = 0f
+    var lowGoalFlattenStrength: Float = 0f
+
+    // screenRatio-relative (never pixels).
+    const val SHIELD_FLATTEN_ACTIVATE_RATIO = 6f   // start denting when a shielded ball is this close (×screenRatio) to the goal baseline
+    const val SHIELD_FLATTEN_RADIUS_RATIO = 2.5f   // horizontal half-width of the dent (×screenRatio)
+
+    // Frames the safe↔spiky transition (arm-in / predictive retract / pop-gap retract) ramps over.
+    const val SPIKE_ANIM_FRAMES = 16
+
     var canScore: Boolean = false
     var refreshRate: Int = 16
     var unlockProgress = 0

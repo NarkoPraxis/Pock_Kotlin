@@ -285,6 +285,7 @@ private fun IosGameHost(onBack: () -> Unit) {
                     FrameProfiler.begin(FrameProfiler.S_LOGIC)
                     Logic.botBrain?.tick()
                     Logic.updateSpikes()
+                    Logic.updateShieldFlatten()
                     when (Settings.gameState) {
                         GameState.BallSelection -> {
                             Logic.checkCharge()

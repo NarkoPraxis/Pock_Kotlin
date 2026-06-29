@@ -6,6 +6,7 @@ import gameobjects.Player
 import gameobjects.Settings
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.RainbowOverride
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.TextLayoutResult
@@ -244,8 +246,15 @@ object Drawing {
     // frames (fully safe or fully spiky, held steady) reuse the cached path and allocate nothing.
     private val highGoalSpikePath = Path()
     private val lowGoalSpikePath = Path()
+    // Per-goal built-state record (Plan 4): the path now depends on ease AND the shield-flatten dent
+    // (centre X + strength), so the cache key is all three. Rebuild only when any changed; idle frames
+    // (no shielded ball near, dent strength 0 with a canonical X) reuse the cached path → no work.
     private var highSpikeBuiltEase = Float.NaN
     private var lowSpikeBuiltEase = Float.NaN
+    private var highSpikeBuiltFlattenX = Float.NaN
+    private var lowSpikeBuiltFlattenX = Float.NaN
+    private var highSpikeBuiltStrength = Float.NaN
+    private var lowSpikeBuiltStrength = Float.NaN
 
     // Resolved layout, rebuilt only when screen dimensions change (constant during normal play).
     private var spikeLayoutWidth = -1f
@@ -253,6 +262,7 @@ object Drawing {
     private var spikeCount = 0
     private var spikeToothWidth = 0f
     private var spikeFullHeight = 0f
+    private var spikeFlattenRadius = 0f
 
     private fun ensureSpikeLayout() {
         val width = Settings.screenWidth
@@ -265,9 +275,14 @@ object Drawing {
         // Even division so the teeth tile exactly across the full width (last valley lands on width).
         spikeToothWidth = width / spikeCount
         spikeFullHeight = Settings.screenRatio * SPIKE_HEIGHT_RATIO
+        spikeFlattenRadius = Settings.screenRatio * Settings.SHIELD_FLATTEN_RADIUS_RATIO
         // Force both cached paths to rebuild against the new layout.
         highSpikeBuiltEase = Float.NaN
         lowSpikeBuiltEase = Float.NaN
+        highSpikeBuiltFlattenX = Float.NaN
+        lowSpikeBuiltFlattenX = Float.NaN
+        highSpikeBuiltStrength = Float.NaN
+        lowSpikeBuiltStrength = Float.NaN
     }
 
     // Quadratic ease-out: linear progress in, a little ease-in at the end of the extension.
@@ -282,45 +297,71 @@ object Drawing {
     private fun DrawScope.drawSpikyGoal(isHigh: Boolean) {
         ensureSpikeLayout()
         val ease = easedSpike(Settings.spikeProgress)
+        // Shield-flatten dent (Plan 4). When no shielded ball qualifies, strength is 0 and the centre
+        // X is irrelevant — canonicalise it to 0f so the cache key stays stable (NaN never compares
+        // equal, which would force a rebuild every idle frame).
+        val strength = if (isHigh) Settings.highGoalFlattenStrength else Settings.lowGoalFlattenStrength
+        val flattenX = if (strength > 0f) {
+            if (isHigh) Settings.highGoalFlattenX else Settings.lowGoalFlattenX
+        } else 0f
         val path = if (isHigh) highGoalSpikePath else lowGoalSpikePath
-        val built = if (isHigh) highSpikeBuiltEase else lowSpikeBuiltEase
-        if (ease != built) {
-            buildSpikePath(path, isHigh, ease)
-            if (isHigh) highSpikeBuiltEase = ease else lowSpikeBuiltEase = ease
+        val builtEase = if (isHigh) highSpikeBuiltEase else lowSpikeBuiltEase
+        val builtX = if (isHigh) highSpikeBuiltFlattenX else lowSpikeBuiltFlattenX
+        val builtStrength = if (isHigh) highSpikeBuiltStrength else lowSpikeBuiltStrength
+        if (ease != builtEase || flattenX != builtX || strength != builtStrength) {
+            buildSpikePath(path, isHigh, ease, flattenX, strength)
+            if (isHigh) {
+                highSpikeBuiltEase = ease; highSpikeBuiltFlattenX = flattenX; highSpikeBuiltStrength = strength
+            } else {
+                lowSpikeBuiltEase = ease; lowSpikeBuiltFlattenX = flattenX; lowSpikeBuiltStrength = strength
+            }
         }
         drawPath(path, color = goalColor(isHigh, Settings.canScore))
+    }
+
+    // Local tooth-height multiplier for the shield-flatten dent (Plan 4): 1 everywhere except within
+    // FLATTEN_RADIUS of the dent centre, where a smooth (1 - t²) shoulder presses the teeth down by
+    // up to [strength]. Returns 1 when no dent is active.
+    private fun spikeLocalFactor(toothCenterX: Float, flattenX: Float, strength: Float): Float {
+        if (strength <= 0f || spikeFlattenRadius <= 0f) return 1f
+        val t = abs(toothCenterX - flattenX) / spikeFlattenRadius
+        if (t >= 1f) return 1f
+        val falloff = 1f - t * t
+        return (1f - strength * falloff).coerceIn(0f, 1f)
     }
 
     // Traces the goal outline with a sawtooth arena-facing edge. Valleys sit on the goal baseline;
     // peaks (tips) reach [ease] of the full spike height into the play area. The low goal mirrors the
     // high goal's Y math — no canvas mirror needed (spikes are axis-aligned, computed in screen space).
-    private fun buildSpikePath(path: Path, isHigh: Boolean, ease: Float) {
+    private fun buildSpikePath(path: Path, isHigh: Boolean, ease: Float, flattenX: Float, strength: Float) {
         val width = Settings.screenWidth
         val tooth = spikeToothWidth
         val height = spikeFullHeight * ease
         path.rewind()
         if (isHigh) {
             val baseline = Settings.topGoalBottom
-            val tipY = baseline + height
             path.moveTo(0f, 0f)
             path.lineTo(width, 0f)
             path.lineTo(width, baseline)              // down the right edge to the baseline
             var k = spikeCount                        // walk the sawtooth right→left
             while (k > 0) {
-                path.lineTo((k - 0.5f) * tooth, tipY) // peak (tip) at tooth centre
+                val cx = (k - 0.5f) * tooth           // tooth centre
+                val tipY = baseline + height * spikeLocalFactor(cx, flattenX, strength)
+                path.lineTo(cx, tipY)                 // peak (tip) at tooth centre (dented by shield)
                 path.lineTo((k - 1) * tooth, baseline) // valley at tooth boundary
                 k--
             }
         } else {
             val baseline = Settings.bottomGoalTop
-            val tipY = baseline - height
             val bottom = Settings.screenHeight
             path.moveTo(0f, bottom)
             path.lineTo(width, bottom)
             path.lineTo(width, baseline)              // up the right edge to the baseline
             var k = spikeCount
             while (k > 0) {
-                path.lineTo((k - 0.5f) * tooth, tipY)
+                val cx = (k - 0.5f) * tooth
+                val tipY = baseline - height * spikeLocalFactor(cx, flattenX, strength)
+                path.lineTo(cx, tipY)
                 path.lineTo((k - 1) * tooth, baseline)
                 k--
             }
@@ -814,6 +855,18 @@ object Drawing {
     // window). Rewound/refilled each frame — no offscreen layer, no per-frame Path allocation.
     private val scoreCinematicPath = Path()
 
+    // Plan 5: cached Stroke for the punch-through ring. Rebuilt only when the width changes (screen
+    // resize), mirroring ClassicSkin.strokeFor — so drawScoreCinematic stays allocation-free per frame.
+    private var scoreWindowStroke: Stroke? = null
+    private var scoreWindowStrokeWidth = -1f
+    private fun scoreWindowStrokeFor(width: Float): Stroke {
+        if (scoreWindowStroke == null || scoreWindowStrokeWidth != width) {
+            scoreWindowStroke = Stroke(width = width)
+            scoreWindowStrokeWidth = width
+        }
+        return scoreWindowStroke!!
+    }
+
     // The freeze-frame dim wash with a circular window onto the pierced ball. Driven by Logic's
     // score-cinematic phase/ticker; a cheap early-return when no score cinematic is active. Drawn as
     // a single even-odd Path so the rect-minus-circle leaves a clean transparent window onto the
@@ -842,6 +895,17 @@ object Drawing {
         path.addOval(Rect(cx - radius, cy - radius, cx + radius, cy + radius))
         path.fillType = PathFillType.EvenOdd
         drawPath(path, color = Color(Logic.scoreOverlayColor).copy(alpha = alpha))
+
+        // Plan 5: crisp ring framing the window (the winner's baked stroke colour, resolved once in
+        // Logic.startScoreCinematic). Fades in with the wash during Shrink, then holds full opacity
+        // through Hold/Expand and rides the expanding window off-screen. Cached Stroke; no per-frame alloc.
+        val ringAlpha = if (Logic.scorePhase == ScorePhase.Shrink) ratio else 1f
+        drawCircle(
+            color = Color(Logic.scoreOutlineColor).copy(alpha = ringAlpha),
+            radius = radius,
+            center = Offset(cx, cy),
+            style = scoreWindowStrokeFor(Settings.screenRatio * Settings.SCORE_OUTLINE_WIDTH_RATIO)
+        )
     }
 
     // -------------------------------------------------------------------------

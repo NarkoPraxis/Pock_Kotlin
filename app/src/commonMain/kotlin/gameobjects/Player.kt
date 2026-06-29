@@ -49,9 +49,15 @@ class Player(
     val chargePowerLocked: Boolean get() = puck.renderer.effect?.chargePowerLocked ?: false
     var touchLocked = false
     var disappearing = false
+    var vanished = false
     var reappearing = false
     val teleportTicker = Ticker(Settings.teleportTickerTime)
     val prepareTicker = Ticker(Settings.prepareTeleportTickerTime, true)
+    // Holds the popped ball fully invisible for a beat between vanishing and re-materializing.
+    val popGapTicker = Ticker(Settings.SCORE_POP_GAP_FRAMES, true)
+    // Where the teleport reappears. Defaults to the finger (future in-play use); the score-pop sets
+    // it to resetLocation. Reused Point refs only — no per-frame allocation.
+    var teleportTarget: Point = finger
     val shrinkTicker = Ticker(((Settings.sweetSpotMax - Settings.sweetSpotMin) / Settings.chargeIncreaseRate).toInt())
     var puckStrokeColor = puck.strokeColor
     var puckFillColor = puck.fillColor
@@ -113,7 +119,7 @@ class Player(
         get() = puck.launch.hasPower
 
     val isTeleporting: Boolean
-        get() = disappearing || reappearing
+        get() = disappearing || vanished || reappearing
 
     val isTouching: Boolean
         get() = touch == TouchState.Down || touch == TouchState.Ready
@@ -214,9 +220,18 @@ class Player(
             )
             if (teleportTicker.tick) {
                 disappearing = false
+                teleportTicker.reset()
+                puck.setLocation(teleportTarget)
+                // Hold the ball fully gone for the separation gap before it regrows at its target.
+                vanished = true
+                popGapTicker.reset()
+            }
+        } else if (vanished) {
+            // Fully popped — draw nothing; just count down the invisible separation gap.
+            if (popGapTicker.tick) {
+                vanished = false
                 reappearing = true
                 teleportTicker.reset()
-                puck.setLocation(finger)
             }
         } else if (reappearing) {
             with(puck) { drawBodyAtRadius(pRadius - (pRadius * teleportTicker.ratio)) }
@@ -237,12 +252,36 @@ class Player(
         disappearing = false
     }
 
+    /**
+     * Score-pop entry: skip the prepare ring and pop immediately — the ball shrinks out, holds
+     * invisible for the separation gap, then re-materializes at [target]. Freezes input/motion so
+     * stale input can't drive the ball mid-pop. Used by the score interlude (Logic.scored).
+     */
+    fun popAndTeleportTo(target: Point) {
+        teleportTarget = target
+        preparingToTeleport = false
+        reappearing = false
+        vanished = false
+        disappearing = true
+        teleportTicker.reset()
+        popGapTicker.reset()
+        disableEffects = true
+        isFlingHeld = false
+        shouldReleaseCharge = false
+        clearPower()
+        clearCharge()
+        puck.renderer.tail?.clear()
+    }
+
     fun stopTeleportation() {
         preparingToTeleport = false
         disappearing = false
+        vanished = false
         reappearing = false
         teleportTicker.reset()
+        popGapTicker.reset()
         disableEffects = false
+        teleportTarget = finger
     }
 
     fun setPuckStroke(color: Int) {
