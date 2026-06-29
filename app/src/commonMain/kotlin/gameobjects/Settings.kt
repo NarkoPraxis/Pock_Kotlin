@@ -3,6 +3,7 @@ package gameobjects
 import enums.BallType
 import enums.ChargeMeterStyle
 import enums.GameState
+import enums.ScoreMenuSide
 import gameobjects.puckstyle.RandomRoll
 import physics.Ticker
 
@@ -120,8 +121,9 @@ object Settings {
     var lowPlayerArrow: Boolean = true
     var highPlayerChargeMeterStyle: ChargeMeterStyle = ChargeMeterStyle.SideBar
     var lowPlayerChargeMeterStyle: ChargeMeterStyle = ChargeMeterStyle.SideBar
-    var scoreOffsetHigh: Float = 0f
-    var scoreOffsetLow: Float = 0f
+    // Which side edge the score dial / pause menu lives against. Read each frame by Drawing, so a
+    // change in Settings applies live (even mid-match). Loaded from Storage in initializeForScreen.
+    var scoreMenuSide: ScoreMenuSide = ScoreMenuSide.Left
 
     val hitStunMinImpactPower: Float get() = minLaunchPower
     val hitStunMaxImpactPower: Float get() = maxPuckLaunchSpeed
@@ -175,8 +177,7 @@ object Settings {
         lowPlayerArrow = utility.Storage.lowPlayerArrow
         highPlayerChargeMeterStyle = utility.Storage.highPlayerChargeMeterStyle
         lowPlayerChargeMeterStyle = utility.Storage.lowPlayerChargeMeterStyle
-        scoreOffsetHigh = utility.Storage.scoreOffsetHigh.toFloat()
-        scoreOffsetLow = utility.Storage.scoreOffsetLow.toFloat()
+        scoreMenuSide = utility.Storage.scoreMenuSide
         highPlayerRainbow = utility.Storage.highPlayerRainbow
         highPlayerRainbowShield = utility.Storage.highPlayerRainbowShield
         lowPlayerRainbow = utility.Storage.lowPlayerRainbow

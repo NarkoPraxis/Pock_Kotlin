@@ -7,6 +7,7 @@ import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ChargePhase
 import gameobjects.puckstyle.ColorTheme
+import gameobjects.puckstyle.ScoredPaddle
 import physics.Force
 import physics.Point
 import physics.Ticker
@@ -34,6 +35,12 @@ object Logic {
 
     var isInitialized: Boolean = false
 
+    // Plan 2 (pause menu): while true the game-loop tick skips the whole simulation (physics, charge,
+    // bot, score checks, timer) but the frame still draws, so the dial's expand/collapse animation
+    // keeps moving. Set true the instant the menu open animation starts; cleared only once the close
+    // animation completes (see ScoreDial). Not a GameState — pause can occur from Play.
+    var paused: Boolean = false
+
     var tempGameState = GameState.BallSelection
     var leaving = false
     var canCollide = true
@@ -53,6 +60,12 @@ object Logic {
     var scoreWindowMaxRadius = 0f
     var scoringPlayer: Player? = null
     var piercedPlayer: Player? = null
+
+    // Plan 3 (paddle toss): the tossed stand-in paddles, keyed by the FLYING paddle's side. A single
+    // score flings the loser's; Result.Both flings both (each player collects their own). Reused, not
+    // reallocated per score. Drawn above the score overlay by Drawing.
+    val tossHigh = ScoredPaddle()
+    val tossLow = ScoredPaddle()
 
     // Plan 3 (pop & teleport): the pierced ball pops/vanishes then re-materializes at its start.
     // [bothScored] (Result.Both) falls back to both balls lerping home — no pop — to avoid an
@@ -124,6 +137,9 @@ object Logic {
 
     fun initialize() {
         leaving = false
+        paused = false
+        tossHigh.reset()
+        tossLow.reset()
         Settings.gameState = GameState.BallSelection
         Settings.gameOver = false
         highPopupDragging = false
@@ -150,6 +166,7 @@ object Logic {
         collisionBonus = 10 + 10f * Settings.balanceRatio
 
         isInitialized = true
+        ScoreDial.syncFromPlayers()
     }
 
     fun reset() {
@@ -157,6 +174,7 @@ object Logic {
     }
 
     fun updateTimer() {
+        if (paused) return   // Plan 2: the match timer must not advance while the pause menu is open.
         val mark = timerMark ?: return
         if (timerExpired) return
         val limitMs = Settings.timeLimitMinutes.toLong() * 60_000L
@@ -417,6 +435,12 @@ object Logic {
         if (Settings.canScore && (loser.py < Settings.topGoalBottom + loser.pRadius || loser.py > Settings.bottomGoalTop - loser.pRadius)) {
             val highGoal = loser.py < Settings.topGoalBottom + loser.pRadius
             winner.score()
+            // Plan 3: the dial number updates only when the tossed paddle ARRIVES (fired at toss
+            // landing in updateScoredPaddles). With the cinematic disabled there is no toss window,
+            // so update the number immediately instead.
+            if (!Settings.scoreCinematicEnabled) {
+                ScoreDial.triggerScoreSpin(winner.isHigh, winner.score)
+            }
             loser.clearPower()
             winner.clearPower()
             if (Settings.scoreCinematicEnabled) {
@@ -466,6 +490,8 @@ object Logic {
         scorePhase = ScorePhase.Shrink
         piercedPopTriggered = false
         bothBurstsFired = false
+        tossHigh.reset()
+        tossLow.reset()
         scoreCinematicTicker.reset(Settings.SCORE_SHRINK_FRAMES)
         pierceX = loser.px
         pierceY = loser.py
@@ -507,7 +533,12 @@ object Logic {
                 // start while the window expands away. Play resumes only once the window has cleared,
                 // the winner has arrived, AND the new ball has finished re-materializing.
                 ScorePhase.Expand -> {
-                    val gate = scoreCinematicTicker.finished
+                    // Plan 3: advance the toss(es). Each fires the dial spin on arrival.
+                    updateScoredPaddles()
+                    // The resume gate is now purely cosmetic: window cleared AND toss landed AND the
+                    // spin finished, so play never resumes on a half-spun numeral. Win detection
+                    // already ran at score time (checkScored), so this only delays the visual release.
+                    val gate = scoreCinematicTicker.finished && scoredPaddlesIdle() && !ScoreDial.isSpinning
                     if (bothScored) returnPucksHome(gate) else returnPucksHomeWithPop(gate)
                     if (!scoreCinematicTicker.finished) scoreCinematicTicker.tick
                 }
@@ -559,6 +590,13 @@ object Logic {
         _burstPoint.setLocation(pierceX, pierceY)
         loser.puck.renderer.skin.onUsedToScore(burstColor, _burstPoint, burstHighGoal)
         loser.popAndTeleportTo(loser.resetLocation)
+        // Plan 3: fling the loser's (static) paddle from the pop point into the winner's dial number.
+        val winner = scoringPlayer
+        if (winner != null) {
+            val target = ScoreDial.numberCenter(winner.isHigh)
+            val toss = if (loser.isHigh) tossHigh else tossLow
+            toss.spawn(paddleTossColor(loser.isHigh), pierceX, pierceY, target.x, target.y, winner.isHigh)
+        }
     }
 
     // Plan 7, Result.Both: both balls scored simultaneously, so neither teleports (Plan 3 rule) — but
@@ -571,7 +609,32 @@ object Logic {
         highPlayer.puck.renderer.skin.onUsedToScore(highBurstColor, _burstPoint, highBurstHighGoal)
         _burstPoint.setLocation(lowPlayer.px, lowPlayer.py)
         lowPlayer.puck.renderer.skin.onUsedToScore(lowBurstColor, _burstPoint, lowBurstHighGoal)
+        // Plan 3: a simultaneous score — each player collects their own paddle into their own number.
+        val targetHigh = ScoreDial.numberCenter(true)
+        tossHigh.spawn(paddleTossColor(true), highPlayer.px, highPlayer.py, targetHigh.x, targetHigh.y, true)
+        val targetLow = ScoreDial.numberCenter(false)
+        tossLow.spawn(paddleTossColor(false), lowPlayer.px, lowPlayer.py, targetLow.x, targetLow.y, false)
     }
+
+    // ---- Plan 3 toss helpers ----
+
+    private fun paddleTossColor(isHigh: Boolean): Int =
+        (if (isHigh) PaintBucket.highBallStroke else PaintBucket.lowBallStroke).toArgb()
+
+    // Advance the active toss(es); when one lands, spin its target number to the (already incremented)
+    // logical score. Called each Expand frame.
+    private fun updateScoredPaddles() {
+        if (tossHigh.active && tossHigh.update()) {
+            ScoreDial.triggerScoreSpin(tossHigh.targetIsHigh, scoreFor(tossHigh.targetIsHigh))
+        }
+        if (tossLow.active && tossLow.update()) {
+            ScoreDial.triggerScoreSpin(tossLow.targetIsHigh, scoreFor(tossLow.targetIsHigh))
+        }
+    }
+
+    private fun scoredPaddlesIdle(): Boolean = !tossHigh.active && !tossLow.active
+
+    private fun scoreFor(isHigh: Boolean): Int = if (isHigh) highPlayer.score else lowPlayer.score
 
     // Shared tail of both return paths: pick Play vs GameOver, re-enable effects, end the cinematic.
     private fun endScoreInterlude() {
@@ -605,6 +668,7 @@ object Logic {
             victoryTicker.reset()
             lowPlayer.score = 0
             highPlayer.score = 0
+            ScoreDial.syncFromPlayers()
             lowPlayer.disableEffects = false
             highPlayer.disableEffects = false
             Settings.canScore = false
@@ -636,6 +700,44 @@ object Logic {
             highBallPopup.open()
             lowBallPopup.open()
         }
+    }
+
+    // Plan 2 (Restart button): reset both scores and start a fresh match at ball selection. Mirrors
+    // the reset tail of gameOver() but without the victory bookkeeping — the match simply restarts.
+    fun restartMatch() {
+        if (!isInitialized) return
+        highPlayer.score = 0
+        lowPlayer.score = 0
+        ScoreDial.syncFromPlayers()
+        highPlayer.clearCharge(); lowPlayer.clearCharge()
+        highPlayer.clearPower(); lowPlayer.clearPower()
+        highPlayer.shielded = false; lowPlayer.shielded = false
+        highPlayer.inertLocked = false; lowPlayer.inertLocked = false
+        highPlayer.fatigueInertLocked = false; lowPlayer.fatigueInertLocked = false
+        Settings.canScore = false
+        Settings.spikeProgress = 0f
+        Settings.gameOver = false
+        winnerSoundHasBeenPlayed = false
+        scoreCinematicActive = false
+        tossHigh.reset()
+        tossLow.reset()
+        highPopupDragging = false
+        lowPopupDragging = false
+        timerMark = null
+        timerStarted = false
+        timerExpired = false
+        timerHidden = false
+        timerSecondsRemaining = Settings.timeLimitMinutes * 60
+        highPlayer.puck.x = highPlayer.resetLocation.x
+        highPlayer.puck.y = highPlayer.resetLocation.y
+        lowPlayer.puck.x = lowPlayer.resetLocation.x
+        lowPlayer.puck.y = lowPlayer.resetLocation.y
+        Settings.gameState = GameState.BallSelection
+        highBallPopup.open()
+        lowBallPopup.open()
+        GameEvents.gameReset.emit(Unit)
+        Drawing.cycleHighTip()
+        Drawing.cycleLowTip()
     }
 
     fun startVictoryCelebration() {
@@ -878,6 +980,7 @@ object Logic {
 
     fun onPointerDown(x: Float, y: Float, playerId: Int) {
         if (Settings.screenWidth == 0f) return
+        if (interceptScoreMenuDown(x, y, playerId)) return
         if (interceptBallMenuDown(x, y, playerId)) return
         // In single-player, the high side belongs to the bot. Touches only exist there
         // to interact with the ball-selection popup (handled above); never engage fling.
@@ -897,6 +1000,7 @@ object Logic {
 
     fun onPointerMove(x: Float, y: Float, playerId: Int) {
         if (Settings.screenWidth == 0f) return
+        if (interceptScoreMenuMove(x, y, playerId)) return
         if (interceptBallMenuMove(x, y, playerId)) return
         if (Settings.isSinglePlayer && playerId == 0) return
         updateFlingCurrent(if (playerId == 0) highPlayer else lowPlayer, x, y)
@@ -904,6 +1008,7 @@ object Logic {
 
     fun onPointerUp(x: Float, y: Float, playerId: Int) {
         if (Settings.screenWidth == 0f) return
+        if (interceptScoreMenuUp(x, y, playerId)) return
         if (interceptBallMenuUp(x, y, playerId)) return
         if (Settings.isSinglePlayer && playerId == 0) return
         val player = if (playerId == 0) highPlayer else lowPlayer
@@ -972,6 +1077,70 @@ object Logic {
             consumed = true
         }
         return consumed
+    }
+
+    // -------------------------------------------------------------------------
+    // Score-dial / pause-menu touch routing (Plan 2)
+    //
+    // Mirrors interceptBallMenu so both the Android and iOS pointer paths feed one implementation.
+    // A *tap* on the closed dial (down and up on it without leaving) opens the menu; a drag that
+    // leaves the dial is released back to the edge-swipe / normal handling. While the menu is open
+    // every touch is routed here: a tap on a button fires it, any off-menu tap closes (and resumes).
+    // -------------------------------------------------------------------------
+
+    private var dialTapActive = false
+    private var dialTapPointer = -1
+
+    // The dial only opens on a tap during live Play (not while a score cinematic / spin is mid-flight
+    // and not during ball selection, where the dial is hidden).
+    private fun canOpenScoreMenu(): Boolean =
+        isInitialized && Settings.gameState == GameState.Play &&
+            !scoreCinematicActive && !ScoreDial.isSpinning
+
+    private fun interceptScoreMenuDown(x: Float, y: Float, playerId: Int): Boolean {
+        if (ScoreDial.menuActive) return true   // menu open/animating: swallow downs (resolve on up)
+        if (canOpenScoreMenu() && ScoreDial.hitDial(x, y)) {
+            dialTapActive = true
+            dialTapPointer = playerId
+            return true   // consume so a dial press never starts a fling
+        }
+        return false
+    }
+
+    private fun interceptScoreMenuMove(x: Float, y: Float, playerId: Int): Boolean {
+        if (ScoreDial.menuActive) return true   // ignore drags while the menu is open
+        if (dialTapActive && playerId == dialTapPointer) {
+            if (!ScoreDial.hitDial(x, y)) {
+                // Left the dial → no longer a tap. Stop consuming so it can become an edge-swipe.
+                dialTapActive = false
+                dialTapPointer = -1
+                return false
+            }
+            return true
+        }
+        return false
+    }
+
+    private fun interceptScoreMenuUp(x: Float, y: Float, playerId: Int): Boolean {
+        if (ScoreDial.menuActive) {
+            when {
+                ScoreDial.hitReturn(x, y) -> ScoreDial.menuReturn()
+                ScoreDial.hitRestart(x, y) -> ScoreDial.menuRestart()
+                ScoreDial.hitMenu(x, y) -> { /* tap on the menu body but not a button: do nothing */ }
+                else -> ScoreDial.requestCloseMenu()   // off-menu tap closes → resume once closed
+            }
+            return true
+        }
+        if (dialTapActive && playerId == dialTapPointer) {
+            val wasOnDial = ScoreDial.hitDial(x, y)
+            dialTapActive = false
+            dialTapPointer = -1
+            if (wasOnDial) {
+                ScoreDial.requestOpenMenu()
+                return true
+            }
+        }
+        return false
     }
 
     /** Reset all touch state — call when the app foregrounds or pointer state is unknown. */

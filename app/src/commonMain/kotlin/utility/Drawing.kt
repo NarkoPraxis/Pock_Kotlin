@@ -56,9 +56,6 @@ object Drawing {
 
         // Drop cached HUD text layouts so a re-init (screen resize / new game) re-measures with the
         // current dimensions instead of reusing layouts sized for the previous screen.
-        scoreStyle = null; scoreStyleKey = Float.NaN
-        highScoreLayout = null; highScoreLayoutKey = null
-        lowScoreLayout = null; lowScoreLayoutKey = null
         timerStyle = null; timerStyleKey = Float.NaN
         timerLayout = null; timerLayoutKey = Int.MIN_VALUE
         timerText = ""; timerTextKey = Int.MIN_VALUE
@@ -151,6 +148,12 @@ object Drawing {
             FrameProfiler.end(FrameProfiler.S_PARTICLES)
         }
 
+        // Score dial — normal pass: after effects, before the pucks, so a puck crossing it occludes
+        // it. Skipped here while it is "lifted" above the score cinematic (drawn after it instead).
+        FrameProfiler.begin(FrameProfiler.S_HUD)
+        with(ScoreDial) { drawScoreDial(lifted = false) }
+        FrameProfiler.end(FrameProfiler.S_HUD)
+
         // Skin/tail/paddle sections are timed inside PuckRenderer.draw() (both pucks fold together).
         drawPlayersCompose()
 
@@ -176,7 +179,14 @@ object Drawing {
         FrameProfiler.begin(FrameProfiler.S_HUD)
         drawBallPopups()
         drawScoreCinematic()
-        if (!Settings.isDemoMode) drawScores(Logic.highPlayer, Logic.lowPlayer)
+        // Score dial — lifted pass: above the cinematic's dim wash so the spin stays visible during
+        // a score event. Only one of the two passes renders each frame (see ScoreDial.shouldLift).
+        with(ScoreDial) { drawScoreDial(lifted = true) }
+        // Plan 3: the tossed paddles fly above the dim overlay, into the dial number that collects them.
+        with(Logic.tossHigh) { draw() }
+        with(Logic.tossLow) { draw() }
+        // Pause menu draws top-most when active (the dial passes above hand off to it).
+        with(ScoreDial) { drawPauseMenu() }
         FrameProfiler.end(FrameProfiler.S_HUD)
 
         Logic.updateTimer()
@@ -744,69 +754,18 @@ object Drawing {
     // -------------------------------------------------------------------------
 
     // ---- HUD text caches ----------------------------------------------------
-    // The score/timer text changes a handful of times per match but the draw loop runs every frame.
+    // The timer text changes a handful of times per match but the draw loop runs every frame.
     // Rebuilding the TextStyle and re-measuring on every frame allocated a TextStyle, an
     // AnnotatedString, a TextLayoutInput and a TextLayoutResult per draw — a steady per-frame heap
     // churn that fed the GC. These caches rebuild only when the keying state actually changes
-    // (font size for the style, the text string / seconds value for the measured layout).
-    private var scoreStyle: TextStyle? = null
-    private var scoreStyleKey = Float.NaN
-    private var highScoreLayout: TextLayoutResult? = null
-    private var highScoreLayoutKey: String? = null
-    private var lowScoreLayout: TextLayoutResult? = null
-    private var lowScoreLayoutKey: String? = null
-
+    // (font size for the style, the seconds value for the measured layout). The score numerals have
+    // their own equivalent caches in ScoreDial.
     private var timerStyle: TextStyle? = null
     private var timerStyleKey = Float.NaN
     private var timerLayout: TextLayoutResult? = null
     private var timerLayoutKey = Int.MIN_VALUE
     private var timerText = ""
     private var timerTextKey = Int.MIN_VALUE
-
-    fun DrawScope.drawScores(highPlayer: Player, lowPlayer: Player) {
-        val tm = textMeasurer ?: return
-        val density = drawContext.density.density
-        val fontSizeSp = (PaintBucket.scoreFontSize / density)
-        if (scoreStyle == null || scoreStyleKey != fontSizeSp) {
-            scoreStyle = TextStyle(
-                fontSize = androidx.compose.ui.unit.TextUnit(fontSizeSp, androidx.compose.ui.unit.TextUnitType.Sp),
-                color = PaintBucket.black
-            )
-            scoreStyleKey = fontSizeSp
-            highScoreLayout = null   // style changed → measured layouts are stale
-            lowScoreLayout = null
-        }
-        val style = scoreStyle!!
-
-        val highText = highPlayer.cachedScoreText
-        if (highScoreLayout == null || highScoreLayoutKey != highText) {
-            highScoreLayout = tm.measure(highText, style)
-            highScoreLayoutKey = highText
-        }
-        val highResult = highScoreLayout!!
-
-        val lowText = lowPlayer.cachedScoreText
-        if (lowScoreLayout == null || lowScoreLayoutKey != lowText) {
-            lowScoreLayout = tm.measure(lowText, style)
-            lowScoreLayoutKey = lowText
-        }
-        val lowResult = lowScoreLayout!!
-
-        val xMargin = Settings.screenRatio * 3f
-        val scoreY = Settings.screenHeight
-
-        val highX = xMargin + Settings.scoreOffsetHigh
-        val midX = Settings.screenWidth / 2f
-        val midY = Settings.screenHeight / 2f
-
-        withTransform({ scale(-1f, -1f, pivot = Offset(midX, midY)) }) {
-            drawText(highResult, color=PaintBucket.white, topLeft = Offset(highX, scoreY - highResult.size.height))
-        }
-
-        val lowX = xMargin + Settings.scoreOffsetLow
-        drawText(lowResult, color=PaintBucket.white, topLeft = Offset(lowX, scoreY - lowResult.size.height))
-
-    }
 
     fun DrawScope.drawTimer() {
         if (Settings.timeLimitMinutes == 0) return
