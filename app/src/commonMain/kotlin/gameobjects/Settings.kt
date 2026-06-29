@@ -52,14 +52,16 @@ object Settings {
     // When a shielded ball nears a goal, the spikes local to it lay flat so it visibly bounces off a
     // flat edge. Published per-goal by Logic.updateShieldFlatten, read by Drawing.buildSpikePath.
     // flattenX = the shielded puck's X (the dent centre), Float.NaN when no shielded ball qualifies.
-    // flattenStrength = 0→1 eased by vertical closeness (1 on the baseline, 0 at the band edge).
+    // flattenStrength = 0→1 by vertical closeness (1 once within SHIELD_FLATTEN_FULL_RATIO of the
+    // baseline, 0 at the band edge).
     var highGoalFlattenX: Float = Float.NaN
     var lowGoalFlattenX: Float = Float.NaN
     var highGoalFlattenStrength: Float = 0f
     var lowGoalFlattenStrength: Float = 0f
 
     // screenRatio-relative (never pixels).
-    const val SHIELD_FLATTEN_ACTIVATE_RATIO = 6f   // start denting when a shielded ball is this close (×screenRatio) to the goal baseline
+    const val SHIELD_FLATTEN_ACTIVATE_RATIO = 9f   // start denting when a shielded ball is this close (×screenRatio) to the goal baseline
+    const val SHIELD_FLATTEN_FULL_RATIO = 2.5f     // fully flattened once a shielded ball is this close (×screenRatio) — saturates before reaching the goal
     const val SHIELD_FLATTEN_RADIUS_RATIO = 2.5f   // horizontal half-width of the dent (×screenRatio)
 
     // Frames the safe↔spiky transition (arm-in / predictive retract / pop-gap retract) ramps over.

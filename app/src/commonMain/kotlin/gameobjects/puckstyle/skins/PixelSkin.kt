@@ -61,7 +61,7 @@ class PixelSkin(override val renderer: PuckRenderer) : PuckSkin {
     override val scatterDensity get() = 0.8f
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(PixelCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, responsivePrimary, renderer.bakedSecondary(theme.main.secondary)))
+        Effects.addPersistentEffect(PixelCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = true, responsivePrimary, renderer.bakedSecondary(theme.main.secondary)))
     }
 
     override fun onVictory(x: Float, y: Float) {

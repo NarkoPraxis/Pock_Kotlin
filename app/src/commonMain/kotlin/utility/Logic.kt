@@ -326,6 +326,11 @@ object Logic {
         if (!this::highPlayer.isInitialized) return
         val activateDist = (Settings.screenRatio * Settings.SHIELD_FLATTEN_ACTIVATE_RATIO)
             .coerceAtLeast(0.0001f)
+        // Distance at which the dent saturates to full flatten (strength 1). The ramp runs over
+        // [fullDist, activateDist]; closer than fullDist clamps to 1, so the teeth are fully down a
+        // bit before the ball reaches the goal baseline.
+        val fullDist = Settings.screenRatio * Settings.SHIELD_FLATTEN_FULL_RATIO
+        val rampSpan = (activateDist - fullDist).coerceAtLeast(0.0001f)
 
         var topX = Float.NaN; var topStrength = 0f; var topBest = Float.MAX_VALUE
         var botX = Float.NaN; var botStrength = 0f; var botBest = Float.MAX_VALUE
@@ -334,24 +339,24 @@ object Logic {
             val dTop = highPlayer.py - Settings.topGoalBottom
             if (dTop < activateDist && dTop < topBest) {
                 topBest = dTop; topX = highPlayer.px
-                topStrength = (1f - dTop / activateDist).coerceIn(0f, 1f)
+                topStrength = ((activateDist - dTop) / rampSpan).coerceIn(0f, 1f)
             }
             val dBot = Settings.bottomGoalTop - highPlayer.py
             if (dBot < activateDist && dBot < botBest) {
                 botBest = dBot; botX = highPlayer.px
-                botStrength = (1f - dBot / activateDist).coerceIn(0f, 1f)
+                botStrength = ((activateDist - dBot) / rampSpan).coerceIn(0f, 1f)
             }
         }
         if (lowPlayer.shielded) {
             val dTop = lowPlayer.py - Settings.topGoalBottom
             if (dTop < activateDist && dTop < topBest) {
                 topBest = dTop; topX = lowPlayer.px
-                topStrength = (1f - dTop / activateDist).coerceIn(0f, 1f)
+                topStrength = ((activateDist - dTop) / rampSpan).coerceIn(0f, 1f)
             }
             val dBot = Settings.bottomGoalTop - lowPlayer.py
             if (dBot < activateDist && dBot < botBest) {
                 botBest = dBot; botX = lowPlayer.px
-                botStrength = (1f - dBot / activateDist).coerceIn(0f, 1f)
+                botStrength = ((activateDist - dBot) / rampSpan).coerceIn(0f, 1f)
             }
         }
 

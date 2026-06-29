@@ -147,7 +147,10 @@ class PlasmaLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         private val totalFrames = 80
         private val totalFramesInv = 1f / totalFrames
 
-        override val isDone: Boolean get() = !fullCircle && frame >= totalFrames
+        // The bolts fade to alpha 0 at totalFrames for every variant (score/victory/collision), so the
+        // burst is finished once the fade completes regardless of shape — no need to keep an invisible
+        // full-circle burst alive.
+        override val isDone: Boolean get() = frame >= totalFrames
 
         private val anchors: Array<FloatArray>
         init {

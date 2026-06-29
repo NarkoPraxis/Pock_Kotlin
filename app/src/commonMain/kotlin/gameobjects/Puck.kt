@@ -15,6 +15,10 @@ import physics.Ticker
 import shapes.Circle
 import utility.PaintBucket
 
+/** Below this radius the puck body is invisible; the teleport animation skips drawing it to avoid
+ *  radius-zero crashes in skin geometry (radialGradient brushes, coerceIn ranges). */
+private const val MIN_TELEPORT_DRAW_RADIUS = 1f
+
 class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circle(radius, x, y, renderer.theme.main.primary, renderer.theme.main.secondary) {
 
     /** Preview mode — renders body as a dark silhouette and desaturates tail. Wraps renderer.preview. */
@@ -58,6 +62,12 @@ class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circ
      * Does not go through z-ordering; just draws the skin at the given radius.
      */
     fun DrawScope.drawBodyAtRadius(radius: Float) {
+        // The teleport shrink/grow animation drives this radius down to 0. Skins build their body
+        // from the radius — radialGradient brushes (Plasma/Galaxy/Ice…) throw "ending radius must be
+        // > 0" and radius-keyed coerceIn ranges (Spinner) collapse to an empty range — so any skin
+        // crashes as the radius reaches ~0. Below 1px the body is invisible anyway; skip the final
+        // sliver rather than special-casing every skin's geometry.
+        if (radius < MIN_TELEPORT_DRAW_RADIUS) return
         syncRenderer()
         val savedRadius = renderer.radius
         renderer.radius = radius
