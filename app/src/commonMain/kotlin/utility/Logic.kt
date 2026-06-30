@@ -159,6 +159,7 @@ object Logic {
         timerExpired = false
         timerHidden = false
         timerSecondsRemaining = Settings.timeLimitMinutes * 60
+        TimeDial.syncFromTimer()
 
         highBallPopup.open()
         lowBallPopup.open()
@@ -180,6 +181,7 @@ object Logic {
         val limitMs = Settings.timeLimitMinutes.toLong() * 60_000L
         val remainingMs = (limitMs - mark.elapsedNow().inWholeMilliseconds).coerceAtLeast(0L)
         timerSecondsRemaining = (remainingMs / 1000L).toInt()
+        TimeDial.update(timerSecondsRemaining)   // spins the dial when it crosses a display step
         if (remainingMs == 0L) {
             timerExpired = true
             timerHidden = true
@@ -435,6 +437,9 @@ object Logic {
         if (Settings.canScore && (loser.py < Settings.topGoalBottom + loser.pRadius || loser.py > Settings.bottomGoalTop - loser.pRadius)) {
             val highGoal = loser.py < Settings.topGoalBottom + loser.pRadius
             winner.score()
+            // Flip the winner's dial section to its secondary "updating" colour the instant the score
+            // commits — the number itself still waits for the toss, but the colour change is immediate.
+            ScoreDial.markScorePending(winner.isHigh)
             // Plan 3: the dial number updates only when the tossed paddle ARRIVES (fired at toss
             // landing in updateScoredPaddles). With the cinematic disabled there is no toss window,
             // so update the number immediately instead.
@@ -595,7 +600,7 @@ object Logic {
         if (winner != null) {
             val target = ScoreDial.numberCenter(winner.isHigh)
             val toss = if (loser.isHigh) tossHigh else tossLow
-            toss.spawn(paddleTossColor(loser.isHigh), pierceX, pierceY, target.x, target.y, winner.isHigh)
+            toss.spawn(loser.puck.renderer.effect, pierceX, pierceY, target.x, target.y, winner.isHigh)
         }
     }
 
@@ -611,15 +616,12 @@ object Logic {
         lowPlayer.puck.renderer.skin.onUsedToScore(lowBurstColor, _burstPoint, lowBurstHighGoal)
         // Plan 3: a simultaneous score — each player collects their own paddle into their own number.
         val targetHigh = ScoreDial.numberCenter(true)
-        tossHigh.spawn(paddleTossColor(true), highPlayer.px, highPlayer.py, targetHigh.x, targetHigh.y, true)
+        tossHigh.spawn(highPlayer.puck.renderer.effect, highPlayer.px, highPlayer.py, targetHigh.x, targetHigh.y, true)
         val targetLow = ScoreDial.numberCenter(false)
-        tossLow.spawn(paddleTossColor(false), lowPlayer.px, lowPlayer.py, targetLow.x, targetLow.y, false)
+        tossLow.spawn(lowPlayer.puck.renderer.effect, lowPlayer.px, lowPlayer.py, targetLow.x, targetLow.y, false)
     }
 
     // ---- Plan 3 toss helpers ----
-
-    private fun paddleTossColor(isHigh: Boolean): Int =
-        (if (isHigh) PaintBucket.highBallStroke else PaintBucket.lowBallStroke).toArgb()
 
     // Advance the active toss(es); when one lands, spin its target number to the (already incremented)
     // logical score. Called each Expand frame.
@@ -690,6 +692,7 @@ object Logic {
             timerExpired = false
             timerHidden = false
             timerSecondsRemaining = Settings.timeLimitMinutes * 60
+            TimeDial.syncFromTimer()
             Settings.gameState = GameState.BallSelection
             Drawing.cycleHighTip()
             Drawing.cycleLowTip()
@@ -728,6 +731,7 @@ object Logic {
         timerExpired = false
         timerHidden = false
         timerSecondsRemaining = Settings.timeLimitMinutes * 60
+        TimeDial.syncFromTimer()
         highPlayer.puck.x = highPlayer.resetLocation.x
         highPlayer.puck.y = highPlayer.resetLocation.y
         lowPlayer.puck.x = lowPlayer.resetLocation.x

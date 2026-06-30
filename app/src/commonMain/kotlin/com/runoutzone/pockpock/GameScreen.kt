@@ -18,6 +18,7 @@ import utility.Drawing
 import utility.Logic
 import utility.ScoreDial
 import utility.Storage
+import utility.TimeDial
 import utility.drawGameFrame
 import utility.onGamePointerDown
 import utility.onGamePointerMove
@@ -31,6 +32,7 @@ fun GameScreen(
     val textMeasurer = rememberTextMeasurer()
     Drawing.initializeTextMeasurer(textMeasurer)
     ScoreDial.initialize(textMeasurer, poppinsFamily())
+    TimeDial.initialize(textMeasurer, poppinsFamily())
 
     Box(modifier = Modifier.fillMaxSize()) {
         Canvas(

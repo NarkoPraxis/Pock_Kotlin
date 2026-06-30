@@ -4,6 +4,7 @@ import enums.BallType
 import gameobjects.puckstyle.paddles.*
 import gameobjects.puckstyle.skins.*
 import gameobjects.puckstyle.tails.*
+import utility.Effects
 
 data class BallStyle(val skin: PuckSkin, val tail: TailRenderer, val effect: PaddleLaunchEffect)
 
@@ -112,6 +113,55 @@ object BallStyleFactory {
             BallType.Cat      -> RainbowLaunch(renderer)
             BallType.Random   -> buildPaddle(BallType.entries.random(), renderer)
         }
+    }
+
+    /**
+     * Spawn the score celebration that matches a PADDLE's design (not the live skin) at [position] —
+     * used by the score toss ([ScoredPaddle]) when the flung paddle lands on the dial number. The
+     * burst a design "releases on teleporting" lives in the skin that naturally pairs with the
+     * paddle, so we replay that skin's [PuckSkin.onUsedToScore] built against the paddle's own
+     * [PaddleLaunchEffect.renderer]. Paddle classes shared across balls collapse to the design they
+     * belong to (FireLaunch → Fire even on Dragon, RainbowLaunch → Rainbow even on Cat, ChickenLaunch
+     * → PokPok). [BubbleLaunch] has no 1:1 skin, so it fires its own self-contained companion burst.
+     * Only runs on a score (rare), so the one-off skin build is not a per-frame cost.
+     */
+    fun spawnPaddleScoreCelebration(effect: PaddleLaunchEffect, position: physics.Point, otherColor: Int, highGoal: Boolean) {
+        // Divert every burst this spawns into Effects.scoreEffects so the dial draws them in its own
+        // layer (in front of the dial face, behind the number). Reset in finally so the next ordinary
+        // effect spawn (e.g. the pierced-ball pop burst) routes normally.
+        Effects.routeToScoreEffects = true
+        try {
+            spawnPaddleScoreCelebrationInner(effect, position, otherColor, highGoal)
+        } finally {
+            Effects.routeToScoreEffects = false
+        }
+    }
+
+    private fun spawnPaddleScoreCelebrationInner(effect: PaddleLaunchEffect, position: physics.Point, otherColor: Int, highGoal: Boolean) {
+        val r = effect.renderer
+        if (effect is BubbleLaunch) {
+            BubbleLaunch.spawnBubbleBurst(
+                position.x, position.y, r.radius,
+                r.bakedPrimary(r.theme.main.primary), r.bakedSecondary(r.theme.main.secondary), r.theme.isWarm
+            )
+            return
+        }
+        val skinType = when (effect) {
+            is NeonLaunch    -> BallType.Neon
+            is GhostLaunch   -> BallType.Ghost
+            is FireLaunch    -> BallType.Fire
+            is IceLaunch     -> BallType.Ice
+            is GalaxyLaunch  -> BallType.Galaxy
+            is SpinnerLaunch -> BallType.Spinner
+            is MetalLaunch   -> BallType.Metal
+            is PixelLaunch   -> BallType.Pixel
+            is RainbowLaunch -> BallType.Rainbow
+            is PrismLaunch   -> BallType.Prism
+            is PlasmaLaunch  -> BallType.Plasma
+            is ChickenLaunch -> BallType.PokPok
+            else             -> BallType.Classic
+        }
+        buildSkin(skinType, r).onUsedToScore(otherColor, position, highGoal)
     }
 
     fun buildCustomBall(config: CustomBallConfig, renderer: PuckRenderer): BallStyle {

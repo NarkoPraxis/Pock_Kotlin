@@ -311,6 +311,28 @@ abstract class PaddleLaunchEffect(override val renderer: PuckRenderer) : LaunchE
 
     protected open fun drawIdlePaddle(scope: DrawScope) {}
 
+    /**
+     * Draw this paddle as a static "tossed" stand-in at an arbitrary screen point and aim — used by
+     * the score toss ([gameobjects.puckstyle.ScoredPaddle]) so the flung paddle matches the loser's
+     * selected ball rather than a generic bar. Reuses the subclass's striking visual, posed at
+     * strike-start (`progress = 0`, un-charged, non-fatigued) so it reads as the paddle at full
+     * presence; the [aimX]/[aimY] vector carries the tumble. Reads colours/size from the live
+     * renderer but does NOT advance [frame] or mutate charge state.
+     */
+    open fun drawStandIn(scope: DrawScope, cx: Float, cy: Float, aimX: Float, aimY: Float) {
+        drawStrikingPaddle(scope, cx, cy, aimX, aimY, sweet = false, fatigued = false, progress = 0f)
+    }
+
+    /**
+     * Re-align this paddle's own rotation with the ball after it has been flung as a score toss
+     * ([gameobjects.puckstyle.ScoredPaddle]): the stand-in keeps spinning during its flight, so a
+     * paddle that carries an independent spin (e.g. SpinnerLaunch) can land out of phase with the
+     * ball's. Default is a no-op — most paddles derive their angle from aim each frame and have no
+     * persistent rotation to correct; spinning paddles override to snap back into phase (or to 0 when
+     * the ball doesn't itself rotate).
+     */
+    open fun syncRotationToBall() {}
+
     fun renderWithPreview(scope: DrawScope) {
         if (!renderer.preview) {
             draw(scope)

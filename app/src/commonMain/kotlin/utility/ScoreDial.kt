@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -23,6 +24,7 @@ import enums.ScoreMenuSide
 import gameobjects.Settings
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sin
 import physics.Ticker
 
@@ -50,8 +52,14 @@ object ScoreDial {
     private const val DIAL_RADIUS_RATIO = 3.2f
     // Numeral centre distance from the disc centre, as a fraction of the radius.
     private const val NUMERAL_RADIUS_FACTOR = 0.55f
-    // Frames a score spin (old out + new in) runs over. The score interlude is comfortably longer.
-    private const val SPIN_FRAMES = 22
+    // Frames a score spin (old out + new in) runs over. Slow enough (~1s at 60fps) that the old
+    // numeral's exit and the new numeral's mechanical ratchet-in both read clearly.
+    private const val SPIN_FRAMES = 60
+    // Fraction of the spin spent flinging the old numeral out; the rest is the new numeral ratcheting
+    // into place. The settle gets the larger share since it's the focal motion.
+    private const val SPIN_OUT_FRACTION = 0.4f
+    // Per-frame step for the section's primary↔secondary colour cross-fade — a 16-frame fade each way.
+    private const val COLOR_FADE_STEP = 1f / 16f
 
     private var measurer: TextMeasurer? = null
     private var fontFamily: FontFamily? = null
@@ -85,6 +93,7 @@ object ScoreDial {
 
     private var highNumPos = Offset.Zero
     private var lowNumPos = Offset.Zero
+    private var numRadius = 0f
 
     // Per-section sweep angles (degrees, y-down): rest = numeral's resting bisector; outer = the
     // screen-edge extreme the old numeral exits toward; inner = the midline the new numeral enters
@@ -128,9 +137,9 @@ object ScoreDial {
             lowRestAngle = 135f;  lowOuterAngle = 90f;   lowInnerAngle = 180f
         }
 
-        val numR = radius * NUMERAL_RADIUS_FACTOR
-        highNumPos = polar(cx, cy, numR, highRestAngle)
-        lowNumPos = polar(cx, cy, numR, lowRestAngle)
+        numRadius = radius * NUMERAL_RADIUS_FACTOR
+        highNumPos = polar(cx, cy, numRadius, highRestAngle)
+        lowNumPos = polar(cx, cy, numRadius, lowRestAngle)
     }
 
     private fun polar(cx: Float, cy: Float, r: Float, deg: Float): Offset {
@@ -148,6 +157,15 @@ object ScoreDial {
     private var lowOldValue = 0
     private var highSpinning = false
     private var lowSpinning = false
+    // "Pending" means a score has committed for this section but the number hasn't spun yet (the toss
+    // is still in flight). The section already shows its secondary "updating" colour during this gap,
+    // so the colour flip lands the instant the score happens — not when the toss/spin begins.
+    private var highScorePending = false
+    private var lowScorePending = false
+    // Current primary→secondary blend per section (0 = primary at rest, 1 = secondary while updating).
+    // Eased toward its target each frame so the colour change reads as a fade, not a snap.
+    private var highColorFade = 0f
+    private var lowColorFade = 0f
     private val highSpinTicker = Ticker(SPIN_FRAMES, accending = true)
     private val lowSpinTicker = Ticker(SPIN_FRAMES, accending = true)
 
@@ -159,6 +177,19 @@ object ScoreDial {
         lowOldValue = lowDisplayed
         highSpinning = false
         lowSpinning = false
+        highScorePending = false
+        lowScorePending = false
+        highColorFade = 0f
+        lowColorFade = 0f
+    }
+
+    /**
+     * Flag that a score just committed for one section so it flips to its secondary "updating" colour
+     * immediately — before the paddle toss arrives and the number actually spins. Cleared when the
+     * subsequent spin finishes (or by [syncFromPlayers]).
+     */
+    fun markScorePending(isHigh: Boolean) {
+        if (isHigh) highScorePending = true else lowScorePending = true
     }
 
     /**
@@ -206,7 +237,7 @@ object ScoreDial {
      * once per layer — and each call only renders when [lifted] matches this, so the dial draws
      * exactly once per frame.
      */
-    fun shouldLift(): Boolean = Logic.scoreCinematicActive || isSpinning
+    fun shouldLift(): Boolean = Logic.scoreCinematicActive
 
     fun DrawScope.drawScoreDial(lifted: Boolean) {
         if (Settings.isDemoMode) return
@@ -220,12 +251,24 @@ object ScoreDial {
         ensureGeometry()
         ensureStyle()
 
-        drawSection(isHigh = true)
-        drawSection(isHigh = false)
+        // Layer order within the dial: section backgrounds → tossed paddle + its landing burst →
+        // numerals. So a paddle flying into a number passes in front of the disc face but behind the
+        // digit it feeds (same for the celebration burst it spawns on arrival). Both follow whichever
+        // pass (lifted/normal) the dial is in, since they draw from inside this single render pass.
+        drawSectionBackground(isHigh = true)
+        drawSectionBackground(isHigh = false)
 
-        // Advance the spin tickers once per frame (only the rendering pass runs this).
-        if (highSpinning && highSpinTicker.tick) highSpinning = false
-        if (lowSpinning && lowSpinTicker.tick) lowSpinning = false
+        with(Logic.tossHigh) { draw() }
+        with(Logic.tossLow) { draw() }
+        with(Effects) { drawScoreEffects() }
+
+        drawSectionNumeral(isHigh = true)
+        drawSectionNumeral(isHigh = false)
+
+        // Advance the spin tickers once per frame (only the rendering pass runs this). The number has
+        // landed when the spin ends, so the section drops back to its primary colour here.
+        if (highSpinning && highSpinTicker.tick) { highSpinning = false; highScorePending = false }
+        if (lowSpinning && lowSpinTicker.tick) { lowSpinning = false; lowScorePending = false }
     }
 
     private fun DrawScope.ensureStyle() {
@@ -242,53 +285,81 @@ object ScoreDial {
         highLayout = null; lowLayout = null
     }
 
-    private fun DrawScope.drawSection(isHigh: Boolean) {
+    // The dial face for one section: the quarter-disc fill. Split out from the numeral so the tossed
+    // paddle + landing burst can draw between the two (in front of the face, behind the digit). Also
+    // advances the section's colour fade — call once per frame per section (the background pass does).
+    private fun DrawScope.drawSectionBackground(isHigh: Boolean) {
+        val spinning = if (isHigh) highSpinning else lowSpinning
+        val pending = if (isHigh) highScorePending else lowScorePending
+
+        // Section fill: primary at rest, secondary while this number is "updating" — which begins the
+        // moment the score commits (pending) and runs through the end of the spin, not just the spin.
+        // The blend is eased toward its target each frame so the change fades in/out over ~16 frames.
+        val fade = advanceColorFade(isHigh, target = if (spinning || pending) 1f else 0f)
+        val fill = lerpColor(sectionPrimary(isHigh), sectionSecondary(isHigh), fade)
+        drawPath(if (isHigh) highSectionPath else lowSectionPath, color = fill)
+    }
+
+    // The numeral for one section, posed at its current arc position (rest, or mid-spin). Drawn after
+    // the toss/burst layer so the digit is always the top-most part of the dial.
+    private fun DrawScope.drawSectionNumeral(isHigh: Boolean) {
         val spinning = if (isHigh) highSpinning else lowSpinning
         val ratio = if (spinning) {
             (if (isHigh) highSpinTicker else lowSpinTicker).ratio.coerceIn(0f, 1f)
         } else 0f
 
-        // Section fill: primary at rest, secondary while this number updates.
-        val fill = if (spinning) sectionSecondary(isHigh) else sectionPrimary(isHigh)
-        drawPath(if (isHigh) highSectionPath else lowSectionPath, color = fill)
-
         val restAngle = if (isHigh) highRestAngle else lowRestAngle
-        val restPos = if (isHigh) highNumPos else lowNumPos
 
-        // Which digit shows, and where along the arc it sits this frame.
+        // Which digit shows, and where along the arc it sits this frame. The spin is two beats: the old
+        // numeral eases out to the screen edge (SPIN_OUT_FRACTION of the spin), then the new numeral
+        // ratchets in from the midline — overshooting its rest spot and settling like a gear clicking
+        // into place.
         val shownValue: Int
         val posAngle: Float
         when {
             !spinning -> { shownValue = if (isHigh) highDisplayed else lowDisplayed; posAngle = restAngle }
-            ratio < 0.5f -> {
+            ratio < SPIN_OUT_FRACTION -> {
                 shownValue = if (isHigh) highOldValue else lowOldValue
-                posAngle = lerp(restAngle, if (isHigh) highOuterAngle else lowOuterAngle, ratio * 2f)
+                val t = ratio / SPIN_OUT_FRACTION
+                posAngle = lerp(restAngle, if (isHigh) highOuterAngle else lowOuterAngle, easeIn(t))
             }
             else -> {
                 shownValue = if (isHigh) highDisplayed else lowDisplayed
-                posAngle = lerp(if (isHigh) highInnerAngle else lowInnerAngle, restAngle, (ratio - 0.5f) * 2f)
+                val t = (ratio - SPIN_OUT_FRACTION) / (1f - SPIN_OUT_FRACTION)
+                posAngle = lerp(if (isHigh) highInnerAngle else lowInnerAngle, restAngle, ratchet(t))
             }
         }
 
+        // The numeral slides along the arc (its centre tracks posAngle) but keeps a square, readable
+        // orientation: upright for the low (bottom) player, flipped 180° for the high (top) player so
+        // each reads it right-side-up from their end. No ±45° tilt.
         val layout = layoutFor(isHigh, shownValue) ?: return
-        val topLeft = Offset(restPos.x - layout.size.width / 2f, restPos.y - layout.size.height / 2f)
-        val offsetDeg = posAngle - restAngle
-        // The numeral both sweeps along the arc and rotates with it: an outer rotate about the disc
-        // centre carries it along the arc, the inner rotate gives it its resting ±45° baseline tilt.
-        if (offsetDeg != 0f) {
-            rotate(offsetDeg, discCenter) {
-                rotate(restAngle, restPos) { drawText(layout, color = PaintBucket.white, topLeft = topLeft) }
-            }
+        val pos = polar(discCenter.x, discCenter.y, numRadius, posAngle)
+        val topLeft = Offset(pos.x - layout.size.width / 2f, pos.y - layout.size.height / 2f)
+        if (isHigh) {
+            rotate(180f, pos) { drawText(layout, color = PaintBucket.white, topLeft = topLeft) }
         } else {
-            rotate(restAngle, restPos) { drawText(layout, color = PaintBucket.white, topLeft = topLeft) }
+            drawText(layout, color = PaintBucket.white, topLeft = topLeft)
         }
     }
 
-    private fun sectionPrimary(isHigh: Boolean): Color =
-        if (isHigh) PaintBucket.highBallFill else PaintBucket.lowBallFill
+    /** Step the section's colour blend one frame toward [target] (0 or 1) and return the new value. */
+    private fun advanceColorFade(isHigh: Boolean, target: Float): Float {
+        val cur = if (isHigh) highColorFade else lowColorFade
+        val next = when {
+            cur < target -> (cur + COLOR_FADE_STEP).coerceAtMost(target)
+            cur > target -> (cur - COLOR_FADE_STEP).coerceAtLeast(target)
+            else -> cur
+        }
+        if (isHigh) highColorFade = next else lowColorFade = next
+        return next
+    }
 
-    private fun sectionSecondary(isHigh: Boolean): Color =
-        if (isHigh) PaintBucket.highBallStroke else PaintBucket.lowBallStroke
+    // Dark-mode-aware section colours, shared with TimeDial (light mode keeps theme.main
+    // primary/secondary; dark mode lifts the touch-highlight tint slightly toward white).
+    private fun sectionPrimary(isHigh: Boolean): Color = PaintBucket.dialRestColor(isHigh)
+
+    private fun sectionSecondary(isHigh: Boolean): Color = PaintBucket.dialActiveColor(isHigh)
 
     private fun layoutFor(isHigh: Boolean, value: Int): TextLayoutResult? {
         val tm = measurer ?: return null
@@ -308,6 +379,24 @@ object ScoreDial {
     }
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+
+    /** Quadratic ease-in — the old numeral hangs a beat, then accelerates off the dial. */
+    private fun easeIn(t: Float): Float = t * t
+
+    /**
+     * Damped-oscillation "ratchet" for the new numeral settling in. Eases toward the target, overshoots
+     * past it, swings back, overshoots again (smaller), and lands exactly on the target at t=1 — the
+     * mechanical, clock-gear feel. Returns values that briefly exceed 1f (the overshoot), which the
+     * caller's lerp carries slightly past the rest angle toward the screen edge.
+     */
+    private fun ratchet(t: Float): Float {
+        if (t <= 0f) return 0f
+        if (t >= 1f) return 1f
+        // omega = 3.5π → reach, over, under, over, settle within [0,1]; decay shrinks each swing.
+        val omega = 3.5f * PI.toFloat()
+        val decay = 4.2f
+        return 1f - exp(-decay * t) * cos(omega * t)
+    }
 
     // -------------------------------------------------------------------------
     // Queries (for Plan 3 — the paddle toss target)
@@ -479,14 +568,18 @@ object ScoreDial {
         }
     }
 
-    /** Draws a section's numeral at its resting position/rotation (used by the paused menu). */
+    /** Draws a section's numeral at its resting position (used by the paused menu). Upright for the
+     *  low player, flipped 180° for the high player — matching the live dial. */
     private fun DrawScope.drawRestNumeral(isHigh: Boolean) {
         val value = if (isHigh) highDisplayed else lowDisplayed
         val layout = layoutFor(isHigh, value) ?: return
         val restPos = if (isHigh) highNumPos else lowNumPos
-        val restAngle = if (isHigh) highRestAngle else lowRestAngle
         val topLeft = Offset(restPos.x - layout.size.width / 2f, restPos.y - layout.size.height / 2f)
-        rotate(restAngle, restPos) { drawText(layout, color = PaintBucket.white, topLeft = topLeft) }
+        if (isHigh) {
+            rotate(180f, restPos) { drawText(layout, color = PaintBucket.white, topLeft = topLeft) }
+        } else {
+            drawText(layout, color = PaintBucket.white, topLeft = topLeft)
+        }
     }
 
     // Placeholder icons (drawn paths — swap these two functions for final vector assets later).

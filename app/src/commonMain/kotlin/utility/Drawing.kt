@@ -53,12 +53,6 @@ object Drawing {
         GameEvents.cantScore.connect(cantScoreListener!!)
         Effects.clearPersistentEffects()
         Effects.clearCollisionEffects()
-
-        // Drop cached HUD text layouts so a re-init (screen resize / new game) re-measures with the
-        // current dimensions instead of reusing layouts sized for the previous screen.
-        timerStyle = null; timerStyleKey = Float.NaN
-        timerLayout = null; timerLayoutKey = Int.MIN_VALUE
-        timerText = ""; timerTextKey = Int.MIN_VALUE
     }
 
     // -------------------------------------------------------------------------
@@ -142,17 +136,19 @@ object Drawing {
         drawChargeFill()
         FrameProfiler.end(FrameProfiler.S_ARENA)
 
+        // Score dial — normal pass: below the persistent effects (drawn next) and the pucks, so both
+        // occlude it. Skipped here while it is "lifted" above the score cinematic (drawn after it
+        // instead). The time dial draws in the same layer right after it (the two never intersect).
+        FrameProfiler.begin(FrameProfiler.S_HUD)
+        with(ScoreDial) { drawScoreDial(lifted = false) }
+        if (!Settings.isDemoMode) with(TimeDial) { drawTimeDial() }
+        FrameProfiler.end(FrameProfiler.S_HUD)
+
         if (!Settings.isDemoMode) {
             FrameProfiler.begin(FrameProfiler.S_PARTICLES)
             with(Effects) { drawEffects() }
             FrameProfiler.end(FrameProfiler.S_PARTICLES)
         }
-
-        // Score dial — normal pass: after effects, before the pucks, so a puck crossing it occludes
-        // it. Skipped here while it is "lifted" above the score cinematic (drawn after it instead).
-        FrameProfiler.begin(FrameProfiler.S_HUD)
-        with(ScoreDial) { drawScoreDial(lifted = false) }
-        FrameProfiler.end(FrameProfiler.S_HUD)
 
         // Skin/tail/paddle sections are timed inside PuckRenderer.draw() (both pucks fold together).
         drawPlayersCompose()
@@ -168,7 +164,6 @@ object Drawing {
         FrameProfiler.end(FrameProfiler.S_ARENA)
 
         FrameProfiler.begin(FrameProfiler.S_HUD)
-        if (!Settings.isDemoMode) drawTimer()
         drawAimArrows()
         FrameProfiler.end(FrameProfiler.S_HUD)
 
@@ -179,12 +174,11 @@ object Drawing {
         FrameProfiler.begin(FrameProfiler.S_HUD)
         drawBallPopups()
         drawScoreCinematic()
-        // Score dial — lifted pass: above the cinematic's dim wash so the spin stays visible during
-        // a score event. Only one of the two passes renders each frame (see ScoreDial.shouldLift).
+        // Score dial — lifted pass: above the cinematic's dim wash so the spin stays visible during a
+        // score event. The tossed paddle and its landing burst draw inside this dial pass now (between
+        // the dial face and the numerals — see ScoreDial.drawScoreDial), so each flies visibly into its
+        // number without sitting on top of the digit. Only one of the two passes renders each frame.
         with(ScoreDial) { drawScoreDial(lifted = true) }
-        // Plan 3: the tossed paddles fly above the dim overlay, into the dial number that collects them.
-        with(Logic.tossHigh) { draw() }
-        with(Logic.tossLow) { draw() }
         // Pause menu draws top-most when active (the dial passes above hand off to it).
         with(ScoreDial) { drawPauseMenu() }
         FrameProfiler.end(FrameProfiler.S_HUD)
@@ -753,62 +747,8 @@ object Drawing {
     // Scores
     // -------------------------------------------------------------------------
 
-    // ---- HUD text caches ----------------------------------------------------
-    // The timer text changes a handful of times per match but the draw loop runs every frame.
-    // Rebuilding the TextStyle and re-measuring on every frame allocated a TextStyle, an
-    // AnnotatedString, a TextLayoutInput and a TextLayoutResult per draw — a steady per-frame heap
-    // churn that fed the GC. These caches rebuild only when the keying state actually changes
-    // (font size for the style, the seconds value for the measured layout). The score numerals have
-    // their own equivalent caches in ScoreDial.
-    private var timerStyle: TextStyle? = null
-    private var timerStyleKey = Float.NaN
-    private var timerLayout: TextLayoutResult? = null
-    private var timerLayoutKey = Int.MIN_VALUE
-    private var timerText = ""
-    private var timerTextKey = Int.MIN_VALUE
-
-    fun DrawScope.drawTimer() {
-        if (Settings.timeLimitMinutes == 0) return
-        if (!Logic.timerStarted || Logic.timerHidden) return
-        val tm = textMeasurer ?: return
-
-        val density = drawContext.density.density
-        val fontSizePx = Settings.screenRatio * 1.2f
-        val fontSizeSp = fontSizePx / density
-        if (timerStyle == null || timerStyleKey != fontSizeSp) {
-            timerStyle = TextStyle(
-                fontSize = androidx.compose.ui.unit.TextUnit(fontSizeSp, androidx.compose.ui.unit.TextUnitType.Sp),
-                color = PaintBucket.timerColor
-            )
-            timerStyleKey = fontSizeSp
-            timerLayout = null   // style changed → measured layout is stale
-        }
-        val style = timerStyle!!
-
-        val seconds = Logic.timerSecondsRemaining
-        if (timerTextKey != seconds) {
-            timerText = seconds.toString()
-            timerTextKey = seconds
-        }
-        if (timerLayout == null || timerLayoutKey != seconds) {
-            timerLayout = tm.measure(timerText, style)
-            timerLayoutKey = seconds
-        }
-        val result = timerLayout!!
-
-        val midX = Settings.screenWidth / 2f
-        val midY = Settings.screenHeight / 2f
-        val timerX = midX - result.size.width / 2f
-        val timerPad = Settings.screenRatio * 0.4f
-        val timerY = Settings.bottomGoalTop - timerPad - result.size.height
-
-        // High player — mirrored to appear above the top goal from their perspective
-        withTransform({ scale(-1f, -1f, pivot = Offset(midX, midY)) }) {
-            drawText(result, topLeft = Offset(timerX, timerY))
-        }
-        // Low player — just above the bottom goal zone
-        drawText(result, topLeft = Offset(timerX, timerY))
-    }
+    // The match countdown is now drawn by utility/TimeDial (a mirror of the score dial on the
+    // opposite edge); the old in-goal numeric readout (drawTimer) was retired with the Score Redesign.
 
     // Reused even-odd Path for the score-cinematic overlay (full-screen rect minus a circular
     // window). Rewound/refilled each frame — no offscreen layer, no per-frame Path allocation.

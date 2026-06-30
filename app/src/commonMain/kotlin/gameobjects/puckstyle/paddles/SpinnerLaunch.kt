@@ -126,6 +126,12 @@ class SpinnerLaunch(renderer: PuckRenderer) : PaddleLaunchEffect(renderer) {
         drawSpinner(scope, cx, cy)
     }
 
+    override fun syncRotationToBall() {
+        // After a score toss the stand-in spun on its own; snap back into phase with the ball's arms
+        // so play resumes aligned. If the paired skin doesn't spin (custom ball), default to 0.
+        spinAngle = (renderer.skin as? SpinnerSkin)?.currentSpinAngle ?: 0f
+    }
+
     override fun onSpawnResidual(rx: Float, ry: Float, aX: Float, aY: Float) {
         Effects.addPersistentEffect(SpinnerMark(rx, ry, renderer.radius, renderer.bakedPrimary(theme.main.primary), spinDir))
         Effects.addPersistentEffect(SpinnerSkin.SpinnerResidual(rx, ry, renderer.radius, renderer.bakedPrimary(theme.shield.primary), spinDir))

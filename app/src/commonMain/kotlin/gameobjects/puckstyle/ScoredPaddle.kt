@@ -1,14 +1,12 @@
 package gameobjects.puckstyle
 
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import gameobjects.Settings
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
+import physics.Point
 import physics.Ticker
 
 /**
@@ -16,15 +14,17 @@ import physics.Ticker
  *
  * When a player is scored on, this wrapper flies a static stand-in of the loser's paddle along a
  * curved arc from the pop point into the winner's number on the score dial — the number "collects"
- * the paddle. It draws itself as a simple rounded paddle bar in the loser's captured colour (the real
- * paddle is renderer-bound and already gone with the popped ball, so this independent stand-in needs
- * no hoisting of the live paddle). It is reused across scores, never reallocated, and computes its
- * arc point into reused fields each frame.
+ * the paddle. Rendering is delegated to the loser's live [PaddleLaunchEffect] via
+ * [PaddleLaunchEffect.drawStandIn], so the flung paddle matches that player's selected ball (shape
+ * and colours), not a generic bar. The loser's renderer survives the pop (only the ball visually
+ * teleports), so its paddle can still be posed at an arbitrary point. It is reused across scores,
+ * never reallocated, and computes its arc point into reused fields each frame.
  */
 class ScoredPaddle {
 
-    // Frames the toss takes from pop point to the number.
-    private val tossFrames = 18
+    // Frames the toss takes from pop point to the number. Tuned slow enough that the eye can track
+    // the paddle's whole flight (~0.9s at 60fps) before the number reacts.
+    private val tossFrames = 54
     // Bézier control offset (perpendicular bow), × screenRatio.
     private val bowRatio = 4f
     // Degrees the bar tumbles over the flight (polish).
@@ -38,7 +38,9 @@ class ScoredPaddle {
         private set
 
     private val ticker = Ticker(tossFrames, accending = true)
-    private var colorArgb = 0
+    // The loser's live paddle, posed each frame as the tossed stand-in. Null only before the first
+    // spawn / after reset (draw no-ops then).
+    private var paddle: PaddleLaunchEffect? = null
 
     // Quadratic Bézier: start → control → end. Held in fields (no per-frame allocation).
     private var sx = 0f; private var sy = 0f
@@ -49,8 +51,11 @@ class ScoredPaddle {
     private var curY = 0f
     private var spin = 0f
 
-    fun spawn(colorArgb: Int, startX: Float, startY: Float, endX: Float, endY: Float, targetIsHigh: Boolean) {
-        this.colorArgb = colorArgb
+    // Reused landing point for the arrival celebration (one spawn per score — no per-frame alloc).
+    private val landPoint = Point()
+
+    fun spawn(paddle: PaddleLaunchEffect, startX: Float, startY: Float, endX: Float, endY: Float, targetIsHigh: Boolean) {
+        this.paddle = paddle
         this.targetIsHigh = targetIsHigh
         sx = startX; sy = startY
         ex = endX; ey = endY
@@ -88,7 +93,20 @@ class ScoredPaddle {
         curY = mt * mt * sy + 2f * mt * t * cy + t * t * ey
         spin = t * spinDegrees
         val landed = ticker.tick
-        if (landed) active = false
+        if (landed) {
+            active = false
+            // On the frame it vanishes into the number, burst the paddle-matched score celebration at
+            // the number so it reads as the paddle exploding as it awards the point. Reuses each
+            // design's existing onUsedToScore burst (see BallStyleFactory.spawnPaddleScoreCelebration).
+            paddle?.let {
+                landPoint.setLocation(ex, ey)
+                BallStyleFactory.spawnPaddleScoreCelebration(it, landPoint, it.responsiveSecondary, targetIsHigh)
+                // The stand-in kept spinning through its flight; re-align the paddle's own rotation
+                // with the ball so a spinning paddle doesn't resume play out of phase (no-op for
+                // paddles without a persistent spin; 0 when the ball doesn't rotate).
+                it.syncRotationToBall()
+            }
+        }
         return landed
     }
 
@@ -98,17 +116,9 @@ class ScoredPaddle {
 
     fun DrawScope.draw() {
         if (!active) return
-        val half = Settings.screenRatio
-        val thickness = Settings.strokeWidth * 1.4f
+        val p = paddle ?: return
+        // Tumble is carried by the aim vector; drawStandIn poses the loser's real paddle here.
         val rad = spin * (PI.toFloat() / 180f)
-        val ax = cos(rad) * half
-        val ay = sin(rad) * half
-        drawLine(
-            color = Color(colorArgb),
-            start = Offset(curX - ax, curY - ay),
-            end = Offset(curX + ax, curY + ay),
-            strokeWidth = thickness,
-            cap = StrokeCap.Round
-        )
+        p.drawStandIn(this, curX, curY, cos(rad), sin(rad))
     }
 }
