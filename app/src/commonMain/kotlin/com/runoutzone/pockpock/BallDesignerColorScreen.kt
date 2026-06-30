@@ -58,6 +58,7 @@ import com.runoutzone.pockpock.menu.EdgePill
 import com.runoutzone.pockpock.menu.PillSide
 import com.runoutzone.pockpock.menu.poppinsFamily
 import enums.BallType
+import enums.DesignerPane
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ColorTheme
@@ -361,6 +362,10 @@ fun BallDesignerColorScreen(onBack: () -> Unit, onNavigateToStyle: () -> Unit) {
     // Also advances UiStrobeClock so the static Normal/Shield swatch boxes (staticUiMode) keep
     // cycling when their rainbow override is on.
     LaunchedEffect(Unit) { while (true) { delay(16L); frame++; UiStrobeClock.advance() } }
+
+    // Remember that the Color pane was the last one open, so entering the designer from the main menu
+    // reopens here (the Style screen records DesignerPane.Style the same way).
+    LaunchedEffect(Unit) { Storage.ballDesignerPane = DesignerPane.Color }
 
     LaunchedEffect(rootW, rootH) {
         if (!initDone && rootW > 0 && rootH > 0) {

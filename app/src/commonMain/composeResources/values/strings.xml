@@ -45,6 +45,11 @@
     <string name="speed_fast">Fast</string>
     <string name="speed_fastest">Fastest</string>
     <string name="game_speed_label">Game Speed</string>
+    <string name="score_window_label">Score Window</string>
+    <string name="score_window_fast">Fast</string>
+    <string name="score_window_normal">Normal</string>
+    <string name="score_window_never">Never</string>
+    <string name="persistent_effects_label">Persistent Effects</string>
     <string name="points_to_win_label">Points to Win</string>
     <string name="time_limit_label">Time Limit</string>
     <string name="control_scheme_label">Controls</string>
