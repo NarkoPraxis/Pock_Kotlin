@@ -45,7 +45,9 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
     override val scatterDensity get() = 1.3f
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(NeonRingCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = false, renderer.bakedPrimary(theme.main.primary)))
+        // The burst now spawns at the ball's pop position (mid-zone), not flush on the goal edge, so a
+        // half ring would float with its flat side disconnected — ripple a full circle around the pop.
+        Effects.addPersistentEffect(NeonRingCelebration(position.x, position.y, renderer.radius, highGoal, fullCircle = true, renderer.bakedPrimary(theme.main.primary)))
     }
 
     override fun onVictory(x: Float, y: Float) {
@@ -61,15 +63,15 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
     ) : Effects.PersistentEffect {
         private val maxDistance = radius * 5f
         private val growthRate = maxDistance / 78f
-        private val emitEvery = 20
+        private val emitEvery = 10
 
-        private val totalEmitFrames = 55
+        private val totalEmitFrames = 80
         private val strokeWidth = radius * 0.3f
         private val startAngle = if (!fullCircle && !highGoal) 180f else 0f
         private val sweepAngle = if (fullCircle) 360f else 180f
         private var frame = 0
-        // Fixed-capacity birth buffer: at most one birth per emitEvery within the emit
-        // window. Iterated by index (no Iterator alloc per frame).
+        // Fixed-capacity birth buffer: one birth on frame 1 plus one per emitEvery within
+        // the emit window. Iterated by index (no Iterator alloc per frame).
         private val ringBirths = IntArray(totalEmitFrames / emitEvery + 2)
         private var ringCount = 0
         private var _isDone = false
@@ -91,7 +93,9 @@ class NeonSkin(override val renderer: PuckRenderer) : PuckSkin {
 
         override fun step() {
             frame++
-            if (frame % emitEvery == 0 && frame <= totalEmitFrames && ringCount < ringBirths.size) {
+            // Emit the first ring on frame 1 so the echo bursts the instant the ball begins
+            // to vanish, then keep emitting on the cadence.
+            if ((frame - 1) % emitEvery == 0 && frame <= totalEmitFrames && ringCount < ringBirths.size) {
                 ringBirths[ringCount++] = frame
             }
             if (frame > totalEmitFrames) {

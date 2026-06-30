@@ -37,6 +37,7 @@ import utility.FrameProfiler
 import utility.GameLoop
 import utility.Logic
 import utility.PaintBucket
+import utility.ScoreDial
 import utility.Sounds
 import utility.Storage
 import utility.UiStrobeClock
@@ -45,7 +46,7 @@ import utility.edgeSwipeBack
 /** Provides the current dark-mode flag to any composable in the tree. */
 val LocalDarkMode = compositionLocalOf { false }
 
-private enum class Screen { Splash, MainMenu, Game, Settings, ScoreCalibration, BallDesigner, BallDesignerColor, CustomBallCreator, CustomColorPicker }
+private enum class Screen { Splash, MainMenu, Game, Settings, BallDesigner, BallDesignerColor, CustomBallCreator, CustomColorPicker }
 
 /**
  * Navigation guarded against rapid double-taps.
@@ -173,14 +174,8 @@ fun AppRoot() {
                     Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStackIfIdle() }) {
                         SettingsScreen(
                             onBack = { navController.popBackStackIfIdle() },
-                            onDarkModeChanged = { darkMode = it },
-                            onScoreCalibrationTapped = { navController.navigateIfIdle(Screen.ScoreCalibration.name) }
+                            onDarkModeChanged = { darkMode = it }
                         )
-                    }
-                }
-                composable(Screen.ScoreCalibration.name) {
-                    Box(modifier = Modifier.fillMaxSize().edgeSwipeBack { navController.popBackStackIfIdle() }) {
-                        ScoreCalibrationScreen(onBack = { navController.popBackStackIfIdle() })
                     }
                 }
                 composable(Screen.BallDesigner.name) {
@@ -281,7 +276,9 @@ private fun IosGameHost(onBack: () -> Unit) {
         GameLoop(
             intervalMs = { Settings.refreshRate.toLong() },
             onTick = {
-                if (Logic.isInitialized) {
+                // Plan 2: while the pause menu is open the whole simulation freezes; the frame still
+                // draws (tickState below) so the menu's expand/collapse animation keeps moving.
+                if (Logic.isInitialized && !Logic.paused) {
                     FrameProfiler.begin(FrameProfiler.S_LOGIC)
                     Logic.botBrain?.tick()
                     Logic.updateSpikes()
@@ -314,6 +311,12 @@ private fun IosGameHost(onBack: () -> Unit) {
     }
 
     ImmersiveModeEffect()
+
+    // The pause menu's Return button uses the exact same back path as the edge-swipe gesture.
+    DisposableEffect(onBack) {
+        ScoreDial.returnCallback = onBack
+        onDispose { ScoreDial.returnCallback = null }
+    }
 
     // Release any pointer locks left over from iOS touch cancellations (e.g. app backgrounded
     // mid-touch). Runs every time IosGameHost enters composition, which is every time the game

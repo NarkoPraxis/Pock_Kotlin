@@ -118,7 +118,9 @@ class PlasmaSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer
     override val scatterDensity get() = 1.2f
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        PlasmaLaunch.spawnCelebration(position.x, position.y, renderer.radius, renderer.bakedPrimary(theme.main.primary), renderer.bakedSecondary(theme.main.secondary), highGoal, fullCircle = false)
+        // Burst spawns at the ball's pop position (mid-zone), not on the goal edge, so crackle a full
+        // circle instead of an inward half-arc.
+        PlasmaLaunch.spawnCelebration(position.x, position.y, renderer.radius * 2f, renderer.bakedPrimary(theme.main.primary), renderer.bakedSecondary(theme.main.secondary), highGoal, fullCircle = true)
     }
 
     override fun onVictory(x: Float, y: Float) {

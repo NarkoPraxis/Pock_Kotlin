@@ -5,7 +5,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -69,27 +68,12 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer)
     override val scatterDensity get() = 0.7f
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        val clip = if (highGoal)
-            Path().also { p ->
-                p.moveTo(position.x - renderer.radius * 20f, position.y)
-                p.lineTo(position.x + renderer.radius * 20f, position.y)
-                p.lineTo(position.x + renderer.radius * 20f, position.y + renderer.radius * 20f)
-                p.lineTo(position.x - renderer.radius * 20f, position.y + renderer.radius * 20f)
-                p.close()
-            }
-        else
-            Path().also { p ->
-                p.moveTo(position.x - renderer.radius * 20f, position.y - renderer.radius * 20f)
-                p.lineTo(position.x + renderer.radius * 20f, position.y - renderer.radius * 20f)
-                p.lineTo(position.x + renderer.radius * 20f, position.y)
-                p.lineTo(position.x - renderer.radius * 20f, position.y)
-                p.close()
-            }
-
+        // The burst spawns at the ball's pop position (mid-zone), not on the goal edge, so let the
+        // explosion radiate fully instead of clipping it to the inward half-plane.
         Effects.addPersistentEffect(DynamiteExplosion(
             renderer.x, renderer.y, renderer.radius,
             theme.main.secondary, theme.main.primary, theme.main.secondary,
-            leaveScorch = false, clipPath = clip
+            leaveScorch = false
         ))
     }
 
@@ -124,8 +108,7 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer)
         private val bodyColor: Int,
         private val sparkColor: Int,
         private val fillColor: Int,
-        private val leaveScorch: Boolean,
-        private val clipPath: Path? = null
+        private val leaveScorch: Boolean
     ) : Effects.PersistentEffect {
 
         private val FUSE_FRAMES = 30
@@ -150,16 +133,6 @@ class MetalSkin(override val renderer: PuckRenderer) : CachedBrushSkin(renderer)
         }
 
         override fun draw(scope: DrawScope) {
-            if (clipPath != null) {
-                scope.withTransform({ clipPath(clipPath) }) {
-                    drawContent(scope)
-                }
-            } else {
-                drawContent(scope)
-            }
-        }
-
-        private fun drawContent(scope: DrawScope) {
             if (frame < FUSE_FRAMES) {
                 scope.drawStick()
             } else {

@@ -3,6 +3,7 @@ package gameobjects
 import enums.BallType
 import enums.ChargeMeterStyle
 import enums.GameState
+import enums.ScoreMenuSide
 import gameobjects.puckstyle.RandomRoll
 import physics.Ticker
 
@@ -52,14 +53,16 @@ object Settings {
     // When a shielded ball nears a goal, the spikes local to it lay flat so it visibly bounces off a
     // flat edge. Published per-goal by Logic.updateShieldFlatten, read by Drawing.buildSpikePath.
     // flattenX = the shielded puck's X (the dent centre), Float.NaN when no shielded ball qualifies.
-    // flattenStrength = 0→1 eased by vertical closeness (1 on the baseline, 0 at the band edge).
+    // flattenStrength = 0→1 by vertical closeness (1 once within SHIELD_FLATTEN_FULL_RATIO of the
+    // baseline, 0 at the band edge).
     var highGoalFlattenX: Float = Float.NaN
     var lowGoalFlattenX: Float = Float.NaN
     var highGoalFlattenStrength: Float = 0f
     var lowGoalFlattenStrength: Float = 0f
 
     // screenRatio-relative (never pixels).
-    const val SHIELD_FLATTEN_ACTIVATE_RATIO = 6f   // start denting when a shielded ball is this close (×screenRatio) to the goal baseline
+    const val SHIELD_FLATTEN_ACTIVATE_RATIO = 9f   // start denting when a shielded ball is this close (×screenRatio) to the goal baseline
+    const val SHIELD_FLATTEN_FULL_RATIO = 2.5f     // fully flattened once a shielded ball is this close (×screenRatio) — saturates before reaching the goal
     const val SHIELD_FLATTEN_RADIUS_RATIO = 2.5f   // horizontal half-width of the dent (×screenRatio)
 
     // Frames the safe↔spiky transition (arm-in / predictive retract / pop-gap retract) ramps over.
@@ -118,8 +121,9 @@ object Settings {
     var lowPlayerArrow: Boolean = true
     var highPlayerChargeMeterStyle: ChargeMeterStyle = ChargeMeterStyle.SideBar
     var lowPlayerChargeMeterStyle: ChargeMeterStyle = ChargeMeterStyle.SideBar
-    var scoreOffsetHigh: Float = 0f
-    var scoreOffsetLow: Float = 0f
+    // Which side edge the score dial / pause menu lives against. Read each frame by Drawing, so a
+    // change in Settings applies live (even mid-match). Loaded from Storage in initializeForScreen.
+    var scoreMenuSide: ScoreMenuSide = ScoreMenuSide.Left
 
     val hitStunMinImpactPower: Float get() = minLaunchPower
     val hitStunMaxImpactPower: Float get() = maxPuckLaunchSpeed
@@ -173,8 +177,7 @@ object Settings {
         lowPlayerArrow = utility.Storage.lowPlayerArrow
         highPlayerChargeMeterStyle = utility.Storage.highPlayerChargeMeterStyle
         lowPlayerChargeMeterStyle = utility.Storage.lowPlayerChargeMeterStyle
-        scoreOffsetHigh = utility.Storage.scoreOffsetHigh.toFloat()
-        scoreOffsetLow = utility.Storage.scoreOffsetLow.toFloat()
+        scoreMenuSide = utility.Storage.scoreMenuSide
         highPlayerRainbow = utility.Storage.highPlayerRainbow
         highPlayerRainbowShield = utility.Storage.highPlayerRainbowShield
         lowPlayerRainbow = utility.Storage.lowPlayerRainbow

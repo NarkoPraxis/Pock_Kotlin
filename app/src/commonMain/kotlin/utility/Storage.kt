@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import enums.BallType
 import enums.ChargeMeterStyle
 import enums.DarkModeSetting
+import enums.ScoreMenuSide
 import enums.TouchScheme
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.CustomBallConfig
@@ -46,8 +47,7 @@ object Storage {
     private const val shareRewardClaimedKey = "share_reward_claimed"
     private const val highBallTypeKey = "high_ball_type"
     private const val lowBallTypeKey = "low_ball_type"
-    private const val scoreOffsetHighKey = "score_offset_high"
-    private const val scoreOffsetLowKey = "score_offset_low"
+    private const val scoreMenuSideKey = "score_menu_side"
 
     private const val N = "none"
     private const val S = "small"
@@ -305,18 +305,19 @@ object Storage {
         }
     }
 
-    // --- Score position offsets ---
+    // --- Score dial side (replaces the old Score Placement offsets) ---
+    // Which side edge the score dial / pause menu lives against. Default Left. Applies live
+    // (Drawing reads Settings.scoreMenuSide each frame), so no restart is needed on change.
 
-    val scoreOffsetHigh: Int get() = PlatformStorage.getInt(AD, scoreOffsetHighKey, 0)
-    val scoreOffsetLow: Int get() = PlatformStorage.getInt(AD, scoreOffsetLowKey, 0)
-
-    fun saveScoreOffsetHigh(offset: Int) = PlatformStorage.saveInt(AD, scoreOffsetHighKey, offset)
-    fun saveScoreOffsetLow(offset: Int) = PlatformStorage.saveInt(AD, scoreOffsetLowKey, offset)
-
-    fun resetScoreOffsets() {
-        PlatformStorage.saveInt(AD, scoreOffsetHighKey, 0)
-        PlatformStorage.saveInt(AD, scoreOffsetLowKey, 0)
-    }
+    var scoreMenuSide: ScoreMenuSide
+        get() {
+            val stored = PlatformStorage.getString(SETTINGS, scoreMenuSideKey, ScoreMenuSide.Left.name)
+            return try { ScoreMenuSide.valueOf(stored) } catch (e: IllegalArgumentException) { ScoreMenuSide.Left }
+        }
+        set(value) {
+            PlatformStorage.saveString(SETTINGS, scoreMenuSideKey, value.name)
+            notifyDataChanged()
+        }
 
     private fun readBallType(key: String, default: BallType): BallType {
         val stored = PlatformStorage.getString(AD, key, "")

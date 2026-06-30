@@ -45,7 +45,7 @@ class ClassicSkin(override val renderer: PuckRenderer) : PuckSkin {
     }
 
     override fun onUsedToScore(otherColor: Int, position: Point, highGoal: Boolean) {
-        Effects.addPersistentEffect(ClassicScoreEffect(renderer.bakedPrimary(theme.main.primary), otherColor, position, Settings.screenRatio / 3f, highGoal))
+        Effects.addPersistentEffect(ClassicScoreEffect(renderer.bakedPrimary(theme.main.primary), otherColor, position, Settings.screenRatio / 3f, highGoal, fullCircle = true))
     }
 
     override fun onVictory(x: Float, y: Float) {

@@ -3,6 +3,7 @@ package utility
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -166,6 +167,25 @@ object PaintBucket {
     var menuHintColor: Color = Color(0x3CFFFFFF)
 
     val timerColor: Color get() = if (utility.Storage.darkMode) Color(0xFF999999) else Color(0xFFD9D9D9)
+
+    // ── Score / Time dial section colours ───────────────────────────────────────
+    // Light mode keeps the player's theme.main: primary at rest, secondary while a number updates.
+    // In dark mode that scheme is too contrasty against the arena, so both states instead derive from
+    // the faint touch-highlight tint behind the dial (the player's primary composited at 0.2 alpha
+    // over the background) lifted slightly toward white — ~10% for the resting fill, ~20% while a
+    // number is updating. Shared by ScoreDial and TimeDial so the two panels always match.
+    private fun dialTint(isHigh: Boolean): Color =
+        lerp(backgroundColor, if (isHigh) highBallFill else lowBallFill, 0.2f)
+
+    /** Resting fill of a score/time dial section. */
+    fun dialRestColor(isHigh: Boolean): Color =
+        if (utility.Storage.darkMode) lerp(dialTint(isHigh), white, 0.10f)
+        else if (isHigh) highBallFill else lowBallFill
+
+    /** Fill of a score/time dial section while its number is updating. */
+    fun dialActiveColor(isHigh: Boolean): Color =
+        if (utility.Storage.darkMode) lerp(dialTint(isHigh), white, 0.20f)
+        else if (isHigh) highBallStroke else lowBallStroke
 
     // ── Stroke descriptors ─────────────────────────────────────────────────────
 

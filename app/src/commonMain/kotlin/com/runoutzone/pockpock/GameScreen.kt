@@ -13,9 +13,12 @@ import enums.TouchScheme
 import gameobjects.Settings
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.rememberTextMeasurer
+import com.runoutzone.pockpock.menu.poppinsFamily
 import utility.Drawing
 import utility.Logic
+import utility.ScoreDial
 import utility.Storage
+import utility.TimeDial
 import utility.drawGameFrame
 import utility.onGamePointerDown
 import utility.onGamePointerMove
@@ -28,6 +31,8 @@ fun GameScreen(
 ) {
     val textMeasurer = rememberTextMeasurer()
     Drawing.initializeTextMeasurer(textMeasurer)
+    ScoreDial.initialize(textMeasurer, poppinsFamily())
+    TimeDial.initialize(textMeasurer, poppinsFamily())
 
     Box(modifier = Modifier.fillMaxSize()) {
         Canvas(

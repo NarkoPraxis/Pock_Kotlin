@@ -80,6 +80,9 @@
     <string name="toggle_on">On</string>
     <string name="toggle_off">Off</string>
     <string name="set_score_position">Set Score Position</string>
+    <string name="score_dial_side">Score Side</string>
+    <string name="side_left">Left</string>
+    <string name="side_right">Right</string>
     <string name="reset_defaults">Reset All To Default</string>
     <string name="reset_colors">Reset Colors to Default</string>
     <string name="player_colors">Player Colors</string>

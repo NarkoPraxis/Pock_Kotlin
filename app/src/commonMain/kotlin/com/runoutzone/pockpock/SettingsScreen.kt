@@ -58,7 +58,9 @@ import com.runoutzone.pockpock.menu.PillSide
 import com.runoutzone.pockpock.menu.poppinsFamily
 import enums.ChargeMeterStyle
 import enums.DarkModeSetting
+import enums.ScoreMenuSide
 import enums.TouchScheme
+import gameobjects.Settings
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pock_kotlin.app.generated.resources.*
@@ -89,8 +91,7 @@ private enum class SettingsTab { Gameplay, Graphics, Sound }
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
-    onDarkModeChanged: (Boolean) -> Unit = {},
-    onScoreCalibrationTapped: () -> Unit = {}
+    onDarkModeChanged: (Boolean) -> Unit = {}
 ) {
     val poppins = poppinsFamily()
     val isDark = LocalDarkMode.current
@@ -132,6 +133,7 @@ fun SettingsScreen(
     var highChargeMeter by remember { mutableStateOf(Storage.highPlayerChargeMeterStyle) }
     var lowChargeMeter by remember { mutableStateOf(Storage.lowPlayerChargeMeterStyle) }
     var darkModeSetting by remember { mutableStateOf(Storage.darkModeSetting) }
+    var scoreSide by remember { mutableStateOf(Storage.scoreMenuSide) }
     var profilerOn by remember { mutableStateOf(Storage.profilerEnabled) }
 
     fun resetToDefaults() {
@@ -211,7 +213,9 @@ fun SettingsScreen(
     val strTailLong = stringResource(Res.string.tail_long)
     val strDarkMode = stringResource(Res.string.dark_mode)
     val strMatchDevice = stringResource(Res.string.dark_mode_match_device)
-    val strSetScorePosition = stringResource(Res.string.set_score_position)
+    val strScoreSide = stringResource(Res.string.score_dial_side)
+    val strSideLeft = stringResource(Res.string.side_left)
+    val strSideRight = stringResource(Res.string.side_right)
     val strResetDefaults = stringResource(Res.string.reset_defaults)
 
     BoxWithConstraints(
@@ -360,7 +364,17 @@ fun SettingsScreen(
                         }
                     }
 
-                    ScorePositionBanner(strSetScorePosition, poppins, onScoreCalibrationTapped)
+                    // Score dial side (replaces the old Score Placement screen). Applies live —
+                    // Drawing reads Settings.scoreMenuSide each frame, so no restart is needed.
+                    CircleRadioRow(
+                        strScoreSide,
+                        listOf(ScoreMenuSide.Left to strSideLeft, ScoreMenuSide.Right to strSideRight),
+                        scoreSide, circleD, poppins
+                    ) {
+                        scoreSide = it
+                        Storage.scoreMenuSide = it
+                        Settings.scoreMenuSide = it
+                    }
                 }
 
                 SettingsTab.Sound -> {
@@ -792,11 +806,6 @@ private fun SlantedBanner(
         }
     }
 }
-
-/** Centered blue parallelogram button (matching the SVG) → score-position calibration screen. */
-@Composable
-private fun ScorePositionBanner(text: String, poppins: FontFamily, onClick: () -> Unit) =
-    SlantedBanner(text, PaintBucket.menuAccentBlue, poppins, onClick = onClick)
 
 /** One tab in the bottom tray: selected = blue icon on a white pill; unselected = white icon. */
 @Composable
