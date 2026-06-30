@@ -14,6 +14,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.StrokeCap
@@ -96,16 +97,18 @@ object Drawing {
     }
 
     // ---- Goal zones (shield-gated, full-speed strobe) ----
-    private fun goalColor(isHigh: Boolean, canScore: Boolean): Color {
+    // [openness] 0 = closed/safe edge (secondary colour), 1 = fully armed/open (primary). The colour
+    // is lerped across this so it fades in lockstep with the spike extension, instead of snapping the
+    // instant the binary canScore flag flips (which read as a hard "snap to saturated" on goal close).
+    private fun goalColor(isHigh: Boolean, openness: Float): Color {
+        val o = openness.coerceIn(0f, 1f)
         if (RainbowOverride.shieldActive(isHigh)) {
             val hue = RainbowOverride.hue(isHigh, playerFrame(isHigh))
-            return if (canScore) RainbowOverride.primaryColor(hue) else RainbowOverride.secondaryColor(hue)
+            return lerp(RainbowOverride.secondaryColor(hue), RainbowOverride.primaryColor(hue), o)
         }
-        return if (canScore) {
-            if (isHigh) PaintBucket.highShieldPrimary else PaintBucket.lowShieldPrimary
-        } else {
-            if (isHigh) PaintBucket.highShieldSecondary else PaintBucket.lowShieldSecondary
-        }
+        val closed = if (isHigh) PaintBucket.highShieldSecondary else PaintBucket.lowShieldSecondary
+        val open = if (isHigh) PaintBucket.highShieldPrimary else PaintBucket.lowShieldPrimary
+        return lerp(closed, open, o)
     }
 
     // ---- Wall highlight (main-gated). Mirrors the puck's stroke colour as it nears a wall. ----
@@ -320,7 +323,9 @@ object Drawing {
                 lowSpikeBuiltEase = ease; lowSpikeBuiltFlattenX = flattenX; lowSpikeBuiltStrength = strength
             }
         }
-        drawPath(path, color = goalColor(isHigh, Settings.canScore))
+        // Colour fades with the spike extension (same eased progress as the shape), so it eases open
+        // and closed in step with the teeth rather than snapping when canScore toggles.
+        drawPath(path, color = goalColor(isHigh, ease))
     }
 
     // Local tooth-height multiplier for the shield-flatten dent (Plan 4): 1 everywhere except within
