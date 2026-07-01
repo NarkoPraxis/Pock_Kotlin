@@ -104,6 +104,10 @@ object Logic {
     var timerStarted = false
     var timerExpired = false
     var timerHidden = false
+    // Close-game overtime: set when the clock hits 0 while the score is within one (or tied) and the
+    // point is still in play. The TimeDial then shows a large centred "0" instead of vanishing, until
+    // the point resolves. See TimeDial.drawTimeDial.
+    var timerShowFinalZero = false
     var timerSecondsRemaining = 0
 
     private var highInDanger = false
@@ -164,6 +168,7 @@ object Logic {
         timerStarted = false
         timerExpired = false
         timerHidden = false
+        timerShowFinalZero = false
         timerSecondsRemaining = Settings.timeLimitMinutes * 60
         TimeDial.syncFromTimer()
 
@@ -187,13 +192,35 @@ object Logic {
         val limitMs = Settings.timeLimitMinutes.toLong() * 60_000L
         val remainingMs = (limitMs - mark.elapsedNow().inWholeMilliseconds).coerceAtLeast(0L)
         timerSecondsRemaining = (remainingMs / 1000L).toInt()
-        TimeDial.update(timerSecondsRemaining)   // spins the dial when it crosses a display step
+        // The displayed countdown reaches 0 up to a second before the real expiry (integer seconds). In
+        // a close game, start the big-0 slide-in the instant it hits 0 — sucking the last numeral out
+        // with nothing ratcheting in behind it — rather than spinning a small 0 in only to replace it.
+        val closeGame = (highPlayer.score - lowPlayer.score).absoluteValue <= 1
+        if (timerSecondsRemaining <= 0 && Settings.gameState == GameState.Play && closeGame) {
+            if (!timerShowFinalZero) {
+                timerShowFinalZero = true
+                TimeDial.beginFinalZero()
+            }
+        } else if (!timerShowFinalZero) {
+            TimeDial.update(timerSecondsRemaining)   // spins the dial when it crosses a display step
+        }
         if (remainingMs == 0L) {
             timerExpired = true
-            timerHidden = true
-            if (Settings.gameState == GameState.Play &&
-                (highPlayer.score - lowPlayer.score).absoluteValue > 1) {
-                Settings.gameState = GameState.Scored
+            val diff = (highPlayer.score - lowPlayer.score).absoluteValue
+            when {
+                // A winner is already decided — end the match immediately and hide the dial.
+                Settings.gameState == GameState.Play && diff > 1 -> {
+                    timerHidden = true
+                    Settings.gameState = GameState.Scored
+                }
+                // Close game (within one / tied): let the current point play out, and keep the dial
+                // visible showing a large centred "0" rather than vanishing.
+                Settings.gameState == GameState.Play -> {
+                    timerHidden = false
+                    timerShowFinalZero = true
+                }
+                // Expired mid-cinematic: just hide; endScoreInterlude resolves the match.
+                else -> timerHidden = true
             }
         }
     }
@@ -726,6 +753,7 @@ object Logic {
             timerStarted = false
             timerExpired = false
             timerHidden = false
+            timerShowFinalZero = false
             timerSecondsRemaining = Settings.timeLimitMinutes * 60
             TimeDial.syncFromTimer()
             Settings.gameState = GameState.BallSelection
@@ -765,6 +793,7 @@ object Logic {
         timerStarted = false
         timerExpired = false
         timerHidden = false
+        timerShowFinalZero = false
         timerSecondsRemaining = Settings.timeLimitMinutes * 60
         TimeDial.syncFromTimer()
         highPlayer.puck.x = highPlayer.resetLocation.x

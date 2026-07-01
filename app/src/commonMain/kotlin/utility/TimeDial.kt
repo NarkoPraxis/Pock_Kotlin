@@ -20,6 +20,7 @@ import enums.GameState
 import enums.ScoreMenuSide
 import gameobjects.Settings
 import kotlin.math.PI
+import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
@@ -57,13 +58,33 @@ object TimeDial {
     // font, which is sized to a one/two-digit score.
     private const val FONT_SCALE = 0.55f
     private const val SPIN_FRAMES = 60
-    // Fraction of the spin spent sucking the old numeral into the centre line; the rest ratchets the
-    // new numeral in from the screen edge. The suck-in gets the larger share — it's the focal motion.
+    // Snappier spin used once the clock enters the per-second suspense stretch, so each of the final
+    // seconds gets a crisp tick instead of a full slow ~1s spin that would never come to rest.
+    private const val FINE_SPIN_FRAMES = 24
+    // Fraction of the spin spent sucking the old numeral into (and now past) the centre line; the rest
+    // ratchets the new numeral in from the screen edge. The suck-in gets the larger share — it's the
+    // focal motion.
     private const val SPIN_SUCK_FRACTION = 0.45f
     private const val COLOR_FADE_STEP = 1f / 16f
-    // How many real seconds each displayed step covers. The dial only updates (and spins) when the
-    // remaining time crosses one of these boundaries.
+    // How many real seconds each *coarse* displayed step covers. Above the fine threshold the dial only
+    // updates (and spins) when the remaining time crosses one of these boundaries.
     private const val BUCKET_SECONDS = 10
+    // The final stretch: at or below this many seconds the dial abandons the coarse bucket cadence and
+    // counts down one second at a time to build suspense (…10, 9, 8 … 1, 0).
+    private const val FINE_THRESHOLD_SECONDS = 10
+    // A hair of extra travel past the exact vanishing point so the sucked-in numeral is unambiguously
+    // fully clipped by the midline before the new numeral arrives.
+    private const val CROSS_MARGIN = 1.12f
+    // Big centred "0" shown at expiry in a close game: font size as a multiple of the score font (so
+    // it's clearly larger than the section numerals), and its centre as a fraction of the disc radius
+    // in from the screen edge (roughly the half-disc's centroid).
+    private const val BIG_ZERO_FONT_SCALE = 1.1f
+    private const val BIG_ZERO_CENTER_FACTOR = 0.5f
+    // The close-game final-zero animation: the last small numeral is sucked out through the centre,
+    // then the big 0 slides in from off the screen edge and settles. One ticker drives both beats;
+    // FINAL_ZERO_SUCK_FRACTION is the share spent sucking the old numeral out before the slide begins.
+    private const val FINAL_ZERO_FRAMES = 34
+    private const val FINAL_ZERO_SUCK_FRACTION = 0.4f
 
     private var measurer: TextMeasurer? = null
     private var fontFamily: FontFamily? = null
@@ -75,6 +96,8 @@ object TimeDial {
         timeStyle = null; timeStyleKey = Float.NaN
         highLayout = null; highLayoutKey = null
         lowLayout = null; lowLayoutKey = null
+        bigZeroStyle = null; bigZeroStyleKey = Float.NaN; bigZeroLayout = null
+        finalZeroPhase = FinalZeroPhase.None
         builtSide = null
     }
 
@@ -158,44 +181,67 @@ object TimeDial {
     // away from. Both sections share these — the whole dial updates as one unit.
     private var displayedValue = 0
     private var oldValue = 0
-    private var bucket = Int.MIN_VALUE
+    private var initialized = false
     private var spinning = false
     private val spinTicker = Ticker(SPIN_FRAMES, accending = true)
     private var highColorFade = 0f
     private var lowColorFade = 0f
 
-    /** Round remaining seconds up to the next [BUCKET_SECONDS] step so each shown value holds for a
-     *  full bucket before the dial spins. */
-    private fun bucketOf(seconds: Int): Int = (seconds + BUCKET_SECONDS - 1) / BUCKET_SECONDS
+    /**
+     * The value the dial shows for a given remaining-seconds reading. Above [FINE_THRESHOLD_SECONDS] it
+     * snaps up to the next coarse [BUCKET_SECONDS] step (…40, 30, 20) so the dial isn't in a perpetual
+     * spin; at or below the threshold it shows the exact second (…10, 9, 8 … 0) for the per-second
+     * suspense countdown.
+     */
+    private fun displayValueFor(seconds: Int): Int =
+        if (seconds > FINE_THRESHOLD_SECONDS)
+            ((seconds + BUCKET_SECONDS - 1) / BUCKET_SECONDS) * BUCKET_SECONDS
+        else
+            seconds.coerceAtLeast(0)
 
     /** Snap the dial to the live remaining time with no animation (new match / reset). */
     fun syncFromTimer() {
-        bucket = bucketOf(Logic.timerSecondsRemaining)
-        displayedValue = bucket * BUCKET_SECONDS
+        displayedValue = displayValueFor(Logic.timerSecondsRemaining)
         oldValue = displayedValue
+        initialized = true
         spinning = false
+        finalZeroPhase = FinalZeroPhase.None
         highColorFade = 0f
         lowColorFade = 0f
     }
 
     /**
-     * Feed the dial the latest internal countdown ([Logic.timerSecondsRemaining]). When the value
-     * crosses into a new [BUCKET_SECONDS] step, both sections start a single synchronized spin toward
-     * the new step. Called once per frame from [Logic.updateTimer].
+     * Close-game expiry: the countdown has just reached 0 while the score is within one. Suck the last
+     * small numeral out through the centre and slide the big 0 in — driven now, the instant the clock
+     * hits 0, so nothing small ratchets in first. Called once from [Logic.updateTimer]. Idempotent.
+     */
+    fun beginFinalZero() {
+        if (finalZeroPhase != FinalZeroPhase.None) return
+        finalZeroSuckValue = if (displayedValue != 0) displayedValue else oldValue
+        displayedValue = 0
+        spinning = false
+        finalZeroTicker.reset(FINAL_ZERO_FRAMES)
+        finalZeroPhase = FinalZeroPhase.Running
+    }
+
+    /**
+     * Feed the dial the latest internal countdown ([Logic.timerSecondsRemaining]). When the displayed
+     * value changes, both sections start a single synchronized spin toward the new value. Called once
+     * per frame from [Logic.updateTimer].
      */
     fun update(secondsRemaining: Int) {
-        val newBucket = bucketOf(secondsRemaining)
-        if (newBucket == bucket) return
-        if (bucket == Int.MIN_VALUE) {                 // first read — snap, don't spin
-            bucket = newBucket
-            displayedValue = newBucket * BUCKET_SECONDS
-            oldValue = displayedValue
+        val target = displayValueFor(secondsRemaining)
+        if (!initialized) {                 // first read — snap, don't spin
+            initialized = true
+            displayedValue = target
+            oldValue = target
             return
         }
-        bucket = newBucket
+        if (target == displayedValue) return
         oldValue = displayedValue
-        displayedValue = newBucket * BUCKET_SECONDS
-        spinTicker.reset(SPIN_FRAMES)
+        displayedValue = target
+        // Crisp per-second ticks in the final stretch; the slower spin for the coarse buckets before it.
+        spinTicker.reset(if (target <= FINE_THRESHOLD_SECONDS) FINE_SPIN_FRAMES else SPIN_FRAMES)
         spinning = true
     }
 
@@ -210,6 +256,19 @@ object TimeDial {
     private var lowLayout: TextLayoutResult? = null
     private var lowLayoutKey: String? = null
 
+    // The large centred "0" shown at close-game expiry (its own bigger style + cached layout).
+    private var bigZeroStyle: TextStyle? = null
+    private var bigZeroStyleKey = Float.NaN
+    private var bigZeroLayout: TextLayoutResult? = null
+
+    // Close-game final-zero sequence. Running spans two beats off one ticker: the last small numeral
+    // sucks out through the centre (first FINAL_ZERO_SUCK_FRACTION), then the big 0 slides in from off
+    // the screen edge. Rest = the big 0 parked at the centre until the point resolves.
+    private enum class FinalZeroPhase { None, Running, Rest }
+    private var finalZeroPhase = FinalZeroPhase.None
+    private var finalZeroSuckValue = 0
+    private val finalZeroTicker = Ticker(FINAL_ZERO_FRAMES, accending = true)
+
     // -------------------------------------------------------------------------
     // Draw
     // -------------------------------------------------------------------------
@@ -217,11 +276,26 @@ object TimeDial {
     fun DrawScope.drawTimeDial() {
         if (Settings.isDemoMode) return
         if (Settings.timeLimitMinutes == 0) return                 // Infinite — no dial
-        if (!Logic.timerStarted || Logic.timerHidden) return
+        if (!Logic.timerStarted) return
         if (Settings.gameState == GameState.BallSelection) return
         if (measurer == null) return
 
         ensureGeometry()
+
+        if (Logic.timerShowFinalZero) {
+            // Close game: the clock reached 0 but the point plays on. The last numeral sucks out and a
+            // large 0 slides in from off screen, then parks centred. Drawn only during live Play — it's
+            // hidden through the score/game-over cinematic.
+            if (Settings.gameState == GameState.Play) {
+                ensureStyle(digitsOf(finalZeroSuckValue))
+                ensureBigZeroStyle()
+                drawFinalZeroSequence()
+            }
+            return
+        }
+        // A decided game (winner already clear) hid the dial at expiry.
+        if (Logic.timerExpired) return
+
         // Shrink the numerals once the value runs past 3 digits (e.g. ≥ 1000s) so they keep fitting.
         ensureStyle(maxOf(digitsOf(displayedValue), digitsOf(oldValue)))
 
@@ -265,27 +339,34 @@ object TimeDial {
 
         val restAngle = if (isHigh) highRestAngle else lowRestAngle
 
-        // Two beats: the old numeral is sucked toward the centre line, then the new numeral ratchets
-        // in from the screen edge and settles like a gear clicking into place.
-        val shownValue: Int
-        val posAngle: Float
-        when {
-            !spinning -> { shownValue = displayedValue; posAngle = restAngle }
-            ratio < SPIN_SUCK_FRACTION -> {
-                shownValue = oldValue
-                val t = ratio / SPIN_SUCK_FRACTION
-                posAngle = lerp(restAngle, if (isHigh) highInnerAngle else lowInnerAngle, easeIn(t))
-            }
-            else -> {
-                shownValue = displayedValue
-                val t = (ratio - SPIN_SUCK_FRACTION) / (1f - SPIN_SUCK_FRACTION)
-                posAngle = lerp(if (isHigh) highOuterAngle else lowOuterAngle, restAngle, ratchet(t))
-            }
+        // Which numeral shows this frame: the old one while it's being sucked in, the new one once it
+        // ratchets back in from the edge.
+        val shownValue = when {
+            !spinning -> displayedValue
+            ratio < SPIN_SUCK_FRACTION -> oldValue
+            else -> displayedValue
         }
 
         // The numeral slides along the arc but stays square: upright for the low (bottom) player,
         // flipped 180° for the high (top) player so each reads it right-side-up. No tilt.
         val layout = layoutFor(isHigh, shownValue) ?: return
+
+        // Two beats: the old numeral is sucked *past* the centre line — far enough that the section
+        // clip (below) has fully swallowed it, so both old numerals appear to merge into the midline and
+        // shrink to nothing — then the new numeral ratchets in from the screen edge and settles like a
+        // gear clicking into place.
+        val posAngle: Float = when {
+            !spinning -> restAngle
+            ratio < SPIN_SUCK_FRACTION -> {
+                val t = ratio / SPIN_SUCK_FRACTION
+                lerp(restAngle, crossAngleFor(isHigh, layout.size.height / 2f), easeIn(t))
+            }
+            else -> {
+                val t = (ratio - SPIN_SUCK_FRACTION) / (1f - SPIN_SUCK_FRACTION)
+                lerp(if (isHigh) highOuterAngle else lowOuterAngle, restAngle, ratchet(t))
+            }
+        }
+
         val pos = polar(discCenter.x, discCenter.y, numRadius, posAngle)
         val topLeft = Offset(pos.x - layout.size.width / 2f, pos.y - layout.size.height / 2f)
 
@@ -305,6 +386,99 @@ object TimeDial {
         } else {
             drawText(layout, color = PaintBucket.white, topLeft = topLeft)
         }
+    }
+
+    /**
+     * The suck-in target angle for a section: the midline bisector, plus just enough extra travel — in
+     * the direction that carries the numeral into the *opposite* section — for a numeral of the given
+     * half-height to be entirely clipped past the centre line. Derived from the arc geometry:
+     * `sin(delta) = halfHeight / numRadius` (times a small margin), clamped so a tall numeral simply
+     * sweeps to the far edge of its quadrant.
+     */
+    private fun crossAngleFor(isHigh: Boolean, halfHeight: Float): Float {
+        val innerAngle = if (isHigh) highInnerAngle else lowInnerAngle
+        val isLeft = side == ScoreMenuSide.Left
+        val crossDir = if (isLeft == isHigh) 1f else -1f
+        val sinArg = ((halfHeight * CROSS_MARGIN) / numRadius).coerceIn(0f, 1f)
+        val deltaDeg = asin(sinArg) * (180f / PI.toFloat())
+        return innerAngle + crossDir * deltaDeg
+    }
+
+    private fun DrawScope.ensureBigZeroStyle() {
+        val fontSizeSp = (PaintBucket.scoreFontSize * BIG_ZERO_FONT_SCALE) / drawContext.density.density
+        if (bigZeroStyle != null && bigZeroStyleKey == fontSizeSp) return
+        bigZeroStyle = TextStyle(
+            fontSize = TextUnit(fontSizeSp, TextUnitType.Sp),
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Bold,
+            color = PaintBucket.white
+        )
+        bigZeroStyleKey = fontSizeSp
+        bigZeroLayout = null
+    }
+
+    /**
+     * The close-game expiry sequence: both quarter-sections stay filled while the last small numeral
+     * sucks out through the centre, then the big "0" slides in from off the screen edge and parks.
+     */
+    private fun DrawScope.drawFinalZeroSequence() {
+        // Section fills stay put behind the whole sequence.
+        drawPath(highSectionPath, color = sectionPrimary(true))
+        drawPath(lowSectionPath, color = sectionPrimary(false))
+
+        if (finalZeroPhase == FinalZeroPhase.Rest) {
+            drawBigZero(slideProgress = 1f)
+            return
+        }
+
+        val t = finalZeroTicker.ratio.coerceIn(0f, 1f)
+        if (t < FINAL_ZERO_SUCK_FRACTION) {
+            // Beat one: suck the last small numeral out through the midline (nothing ratchets in).
+            val st = t / FINAL_ZERO_SUCK_FRACTION
+            drawSuckingNumeral(isHigh = true, value = finalZeroSuckValue, progress = st)
+            drawSuckingNumeral(isHigh = false, value = finalZeroSuckValue, progress = st)
+        } else {
+            // Beat two: the big 0 slides in from off the screen edge and settles with a mechanical click.
+            val slideT = (t - FINAL_ZERO_SUCK_FRACTION) / (1f - FINAL_ZERO_SUCK_FRACTION)
+            drawBigZero(slideProgress = slideT)
+        }
+
+        if (finalZeroTicker.tick) finalZeroPhase = FinalZeroPhase.Rest
+    }
+
+    /** One section's small numeral sliding from rest out *past* the midline (clipped away there), the
+     *  same suck used by a normal tick — but here it exits with nothing following it. */
+    private fun DrawScope.drawSuckingNumeral(isHigh: Boolean, value: Int, progress: Float) {
+        val layout = layoutFor(isHigh, value) ?: return
+        val restAngle = if (isHigh) highRestAngle else lowRestAngle
+        val posAngle = lerp(restAngle, crossAngleFor(isHigh, layout.size.height / 2f), easeIn(progress))
+        val pos = polar(discCenter.x, discCenter.y, numRadius, posAngle)
+        val topLeft = Offset(pos.x - layout.size.width / 2f, pos.y - layout.size.height / 2f)
+        val sectionPath = if (isHigh) highSectionPath else lowSectionPath
+        clipPath(sectionPath) { drawNumeral(isHigh, layout, pos, topLeft) }
+    }
+
+    /**
+     * The big centred "0", drawn once (not mirrored) — "0" is vertically symmetric, so it reads
+     * right-side-up for both players. [slideProgress] 0→1 carries it from off the screen edge to its
+     * resting centre with a ratcheting settle; 1f draws it parked.
+     */
+    private fun DrawScope.drawBigZero(slideProgress: Float) {
+        val tm = measurer ?: return
+        val style = bigZeroStyle ?: return
+        if (bigZeroLayout == null) bigZeroLayout = tm.measure("0", style)
+        val layout = bigZeroLayout ?: return
+
+        val isLeft = side == ScoreMenuSide.Left
+        val restCx = if (isLeft) radius * BIG_ZERO_CENTER_FACTOR
+                     else Settings.screenWidth - radius * BIG_ZERO_CENTER_FACTOR
+        // Start fully off the screen edge so it slides in from nothing (canvas clips the off-screen part).
+        val startCx = if (isLeft) -layout.size.width.toFloat()
+                      else Settings.screenWidth + layout.size.width
+        val cx = lerp(startCx, restCx, ratchet(slideProgress.coerceIn(0f, 1f)))
+        val cy = Settings.middleY
+        val topLeft = Offset(cx - layout.size.width / 2f, cy - layout.size.height / 2f)
+        drawText(layout, color = PaintBucket.white, topLeft = topLeft)
     }
 
     /** Step the section's colour blend one frame toward [target] (0 or 1) and return the new value. */
