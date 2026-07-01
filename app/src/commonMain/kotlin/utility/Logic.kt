@@ -480,6 +480,15 @@ object Logic {
                 lowBurstColor = loser.puckFillColor
                 lowBurstHighGoal = highGoal
             }
+            // Impact Effects: a non-shielded ball entering an open goal never bounces, so this is its
+            // only impact. Fire a goal-mouth Wall-on-Ball burst in the loser's real (pre-swap) colour.
+            val goalDir = if (highGoal) Direction.TOP else Direction.BOTTOM
+            val goalTheme = ColorTheme.getTheme(loser.isHigh)
+            // Loser is never shielded here (checkScored bails on a shielded loser), but it can be inert.
+            val goalBase = if (loser.inertLocked || loser.fatigueInertLocked) goalTheme.inert.secondary
+                else goalTheme.main.secondary
+            val goalCol = loser.puck.renderer.bakedSecondary(goalBase)
+            Effects.addWallCollisionEffect(goalDir, goalCol, loser.puck)
             setPuckColor(loser, PaintBucket.highBallFill.toArgb(), PaintBucket.highBallStroke.toArgb())
             setPuckColor(winner, PaintBucket.lowBallFill.toArgb(), PaintBucket.lowBallStroke.toArgb())
             Settings.gameState = GameState.Scored
@@ -935,7 +944,14 @@ object Logic {
         val hadLaunchPower = player.puck.launch.hasPower
         val hadMovementPower = player.puck.movement.hasPower
         if (player.applyForces()) {
-            Effects.addWallCollisionEffect(player.bounceDirection, player.puckFillColor, player.puck)
+            val theme = ColorTheme.getTheme(player.isHigh)
+            val baseCol = when {
+                player.shielded -> theme.shield.secondary
+                player.inertLocked || player.fatigueInertLocked -> theme.inert.secondary
+                else -> theme.main.secondary
+            }
+            val flashCol = player.puck.renderer.bakedSecondary(baseCol)
+            Effects.addWallCollisionEffect(player.bounceDirection, flashCol, player.puck)
             if (!player.shielded) player.puck.renderer.skin.onHit()
         }
         if (!Settings.goalsAlwaysOpen && wasAboveCloseLevel && player.puck.launch.power <= closeLevel) {

@@ -54,6 +54,7 @@ object Drawing {
         GameEvents.cantScore.connect(cantScoreListener!!)
         Effects.clearPersistentEffects()
         Effects.clearCollisionEffects()
+        Effects.clearFlashEffects()
     }
 
     // -------------------------------------------------------------------------
@@ -173,6 +174,14 @@ object Drawing {
         FrameProfiler.begin(FrameProfiler.S_ARENA)
         drawArenaForeground()
         FrameProfiler.end(FrameProfiler.S_ARENA)
+
+        // Impact flash bursts draw in front of the pucks AND the walls/goal spikes — a wall/goal blocks
+        // the ball, so its impact spark should pop over it, not hide behind the spiky goal teeth.
+        if (!Settings.isDemoMode) {
+            FrameProfiler.begin(FrameProfiler.S_PARTICLES)
+            with(Effects) { drawFlashEffects() }
+            FrameProfiler.end(FrameProfiler.S_PARTICLES)
+        }
 
         FrameProfiler.begin(FrameProfiler.S_HUD)
         drawBallPopups()
