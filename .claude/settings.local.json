@@ -20,7 +20,9 @@
       "Bash(./gradlew :app:compileKotlinIosSimulatorArm64 :app:compileDebugKotlin)",
       "Bash(./gradlew :app:assembleDebug)",
       "Bash(git show *)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Read(//private/tmp/pokpok_build11/PokPok Build 11 Logs for iosApp archive/ad-hoc-export-archive-logs/**)",
+      "Read(//private/tmp/pokpok_build11/PokPok Build 11 Logs for iosApp archive/app-store-export-archive-logs/**)"
     ]
   }
 }
