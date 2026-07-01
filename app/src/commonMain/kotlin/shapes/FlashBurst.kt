@@ -31,52 +31,82 @@ class FlashBurst(
     private val originY: Float,
     private val colorArgb: Int,
     coneCenterRad: Float,
-    intensity: Float
+    intensity: Float,
+    coneSpreadDeg: Float = FlashTuning.coneSpreadDeg,   // cone half-angle (ball bursts pass a tighter/wider value)
+    sizeScale: Float = 1f,                              // extra reach/size multiplier (wall asymmetry); 1 = unchanged
+    sideDotCount: Int = 0                               // extra small, short-lived dots sprayed ±90° off the cone (ball-on-ball)
 ) {
     private val pAngleRad: FloatArray   // outward direction of each particle (cone center + jitter)
     private val pIsSpike: BooleanArray  // spike vs dot
     private val pMaxLen: FloatArray     // spike peak length, or dot radius (screenRatio units)
     private val pTravel: FloatArray     // dot flight distance, or spike inner-end break travel
     private val pPhase: FloatArray      // 0..1 life offset so particles don't move in lockstep
+    private val pLifeScale: FloatArray  // <1 = particle finishes its arc sooner (short-lived side dots)
     private val life: Ticker
     private val spikePath = Path()      // reused each frame; accumulates all spike triangles for one fill
 
     init {
         val countFactor = 1f + (intensity - 1f) * FlashTuning.intensityCountScale
-        val sizeFactor = 1f + (intensity - 1f) * FlashTuning.intensitySizeScale
+        // sizeScale folds the caller's per-burst reach multiplier into the intensity size factor so a
+        // glancing wall hit's forward burst physically reaches farther without changing its cone width.
+        val sizeFactor = (1f + (intensity - 1f) * FlashTuning.intensitySizeScale) * sizeScale
         val lifeFactor = 1f + (intensity - 1f) * FlashTuning.intensityLifeScale
 
         var nSpikes = (FlashTuning.spikeCount * countFactor).roundToInt().coerceAtLeast(0)
         var nDots = (FlashTuning.dotCount * countFactor).roundToInt().coerceAtLeast(0)
-        val total = nSpikes + nDots
-        if (total > FlashTuning.maxParticlesPerBurst && total > 0) {
-            val scale = FlashTuning.maxParticlesPerBurst.toFloat() / total
+        val mainTotal = nSpikes + nDots
+        if (mainTotal > FlashTuning.maxParticlesPerBurst && mainTotal > 0) {
+            val scale = FlashTuning.maxParticlesPerBurst.toFloat() / mainTotal
             nSpikes = (nSpikes * scale).roundToInt()
             nDots = (nDots * scale).roundToInt()
         }
-        val n = nSpikes + nDots
+        val nMain = nSpikes + nDots
+        val nSide = sideDotCount.coerceAtLeast(0)
+        val n = nMain + nSide
 
         pAngleRad = FloatArray(n)
         pIsSpike = BooleanArray(n)
         pMaxLen = FloatArray(n)
         pTravel = FloatArray(n)
         pPhase = FloatArray(n)
+        pLifeScale = FloatArray(n)
 
-        val halfCone = FlashTuning.coneSpreadDeg * (PI.toFloat() / 180f)
-        for (i in 0 until n) {
+        val halfCone = coneSpreadDeg * (PI.toFloat() / 180f)
+        for (i in 0 until nMain) {
             val spike = i < nSpikes
             pIsSpike[i] = spike
             pAngleRad[i] = coneCenterRad + (Random.nextFloat() * 2f - 1f) * halfCone
             pPhase[i] = Random.nextFloat()
+            pLifeScale[i] = 1f
             if (spike) {
                 pMaxLen[i] = ((FlashTuning.spikeMaxLen +
                         (Random.nextFloat() * 2f - 1f) * FlashTuning.spikeMaxLenJitter) * sizeFactor)
                     .coerceAtLeast(0f)
-                pTravel[i] = FlashTuning.spikeBreakTravel
+                pTravel[i] = FlashTuning.spikeBreakTravel * sizeScale
             } else {
                 pMaxLen[i] = (FlashTuning.dotRadiusMin +
                         Random.nextFloat() * (FlashTuning.dotRadiusMax - FlashTuning.dotRadiusMin)) * sizeFactor
-                pTravel[i] = FlashTuning.dotTravel + Random.nextFloat() * FlashTuning.dotTravelJitter
+                pTravel[i] = (FlashTuning.dotTravel + Random.nextFloat() * FlashTuning.dotTravelJitter) * sizeScale
+            }
+        }
+
+        // Side dots: a small sideways spray (±90° off the heading) that is smaller and dies sooner than
+        // the main burst — the "little side-to-side" flick around a ball-on-ball shotgun.
+        if (nSide > 0) {
+            val sideHalf = FlashTuning.ballSideSpreadDeg * (PI.toFloat() / 180f)
+            val perp = PI.toFloat() / 2f
+            for (k in 0 until nSide) {
+                val i = nMain + k
+                val side = if (k % 2 == 0) 1f else -1f
+                pIsSpike[i] = false
+                pAngleRad[i] = coneCenterRad + side * perp + (Random.nextFloat() * 2f - 1f) * sideHalf
+                pPhase[i] = Random.nextFloat()
+                pLifeScale[i] = FlashTuning.ballSideLifeScale
+                pMaxLen[i] = (FlashTuning.dotRadiusMin +
+                        Random.nextFloat() * (FlashTuning.dotRadiusMax - FlashTuning.dotRadiusMin)) *
+                        sizeFactor * FlashTuning.ballSideSizeScale
+                pTravel[i] = (FlashTuning.dotTravel + Random.nextFloat() * FlashTuning.dotTravelJitter) *
+                        sizeScale * FlashTuning.ballSideSizeScale
             }
         }
 
@@ -109,7 +139,10 @@ class FlashBurst(
         spikePath.reset()
         var anySpike = false
         for (i in pAngleRad.indices) {
-            val lt = (t - pPhase[i] * 0.3f).coerceIn(0f, 1f)
+            // Dividing by pLifeScale (<1 for side dots) advances local time faster, so those particles
+            // reach the end of their grow/shrink/fade arc sooner — a genuinely shorter life, not just
+            // a smaller size. Main particles use 1f (unchanged).
+            val lt = ((t - pPhase[i] * 0.3f) / pLifeScale[i]).coerceIn(0f, 1f)
             val dir = pAngleRad[i]
             val cosD = cos(dir)
             val sinD = sin(dir)

@@ -4,7 +4,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import enums.Direction
 import gameobjects.Settings
 import physics.Point
-import shapes.Explosion
 import shapes.FlashBurst
 import shapes.FlashTuning
 import kotlin.math.PI
@@ -21,7 +20,6 @@ object Effects {
         fun onScoreSignal(): Boolean = false
     }
 
-    val collisions = MutableList(0) { Explosion() }
     private val persistentEffects = mutableListOf<PersistentEffect>()
     private val pendingEffects = mutableListOf<PersistentEffect>()
 
@@ -78,14 +76,6 @@ object Effects {
         }
     }
 
-    fun clearCollisionEffects() {
-        for (collision in collisions) {
-            if (collision.angle == Direction.FULL) {
-                collision.implode()
-            }
-        }
-    }
-
     fun DrawScope.drawEffects() {
         // Persistent-effect layer is gated by the Graphics "Persistent Effects" setting. When off,
         // drawing them is a no-op; we also drop any active/queued ones so they can't accumulate
@@ -108,13 +98,6 @@ object Effects {
         } else {
             if (persistentEffects.isNotEmpty()) persistentEffects.clear()
             if (pendingEffects.isNotEmpty()) pendingEffects.clear()
-        }
-
-        var ci = 0
-        while (ci < collisions.size) {
-            val c = collisions[ci]
-            with(c) { drawTo() }
-            if (c.finished) collisions.removeAt(ci) else ci++
         }
     }
 
@@ -168,7 +151,9 @@ object Effects {
         bounceDirection: Direction,
         colorArgb: Int,
         puckPosition: Point,
-        intensity: Float = 1f
+        intensity: Float = 1f,
+        angleFactor: Float = 1f,   // 1 = head-on/perpendicular (symmetric), 0 = fully glancing
+        tangentSign: Float = 1f    // sign of along-wall travel: +1 = along the +axis sub-burst (A), -1 = toward B
     ) {
         if (!Settings.impactEffectsEnabled) return
         val sr = Settings.screenRatio
@@ -189,10 +174,49 @@ object Effects {
         val coneHalf = FlashTuning.coneSpreadDeg * (PI.toFloat() / 180f)
         val centerA = axisRad + rotationToward(axisRad, normalRad, coneHalf)
         val centerB = (axisRad + PI.toFloat()).let { it + rotationToward(it, normalRad, coneHalf) }
+        // Angle-driven asymmetry: a head-on hit (angleFactor→1) leaves the two sub-bursts equal; a
+        // glancing hit (angleFactor→0) throws the FORWARD (along-travel) burst farther/bigger and at
+        // full intensity, while the OPPOSITE (against-travel) burst is both shorter-reaching AND much
+        // less intense (fewer/shorter/smaller particles). tangentSign says which sub-burst is forward:
+        // A points +axis, so A is forward when tangentSign >= 0.
+        val glancing = (1f - angleFactor).coerceIn(0f, 1f)
+        val fwdScale = 1f + glancing * FlashTuning.wallForwardSizeBias
+        val bwdScale = (1f - glancing * FlashTuning.wallBackwardSizeBias).coerceAtLeast(FlashTuning.wallBackwardSizeMin)
+        val bwdIntensity = intensity *
+            (1f - glancing * FlashTuning.wallBackwardIntensityBias).coerceAtLeast(FlashTuning.wallBackwardIntensityMin)
+        val aScale = if (tangentSign >= 0f) fwdScale else bwdScale
+        val bScale = if (tangentSign >= 0f) bwdScale else fwdScale
+        val aIntensity = if (tangentSign >= 0f) intensity else bwdIntensity
+        val bIntensity = if (tangentSign >= 0f) bwdIntensity else intensity
         // Sub-burst A points +axis, B points -axis; offset each along the axis so they read as a pair.
         val dx = cos(axisRad); val dy = sin(axisRad)
-        pendingFlashEffects.add(FlashBurst(cx + dx * off, cy + dy * off, colorArgb, centerA, intensity))
-        pendingFlashEffects.add(FlashBurst(cx - dx * off, cy - dy * off, colorArgb, centerB, intensity))
+        pendingFlashEffects.add(FlashBurst(cx + dx * off, cy + dy * off, colorArgb, centerA, aIntensity, sizeScale = aScale))
+        pendingFlashEffects.add(FlashBurst(cx - dx * off, cy - dy * off, colorArgb, centerB, bIntensity, sizeScale = bScale))
+    }
+
+    /**
+     * Fires a Ball-on-Ball impact: ONE forward "shotgun" burst along the ball's own pre-collision
+     * [headingRad], with a little side-to-side spray. Called once per ball (twice per collision), each
+     * with that ball's baked colour + intensity. [scatter] (0 head-on … 1 glancing) widens the main
+     * cone so a glancing clip reads as more scattered. No-op when Impact Effects are disabled.
+     */
+    fun addBallCollisionEffect(
+        x: Float,
+        y: Float,
+        colorArgb: Int,
+        headingRad: Float,
+        intensity: Float,
+        scatter: Float
+    ) {
+        if (!Settings.impactEffectsEnabled) return
+        val spread = FlashTuning.ballConeSpreadDeg * (1f + scatter.coerceIn(0f, 1f) * FlashTuning.ballScatterScale)
+        pendingFlashEffects.add(
+            FlashBurst(
+                x, y, colorArgb, headingRad, intensity,
+                coneSpreadDeg = spread,
+                sideDotCount = FlashTuning.ballSideDotCount
+            )
+        )
     }
 
     /**

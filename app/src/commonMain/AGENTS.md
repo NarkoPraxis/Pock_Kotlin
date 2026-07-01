@@ -16,7 +16,7 @@ commonMain/kotlin/
     puckstyle/              ← ball rendering composition + unlock model → see its AGENTS.md
   physics/                  ← Force, Point, Ticker, TutorialTicker
   shapes/                   ← Circle, DrawablePoint, Explosion, ScoreExplosion,
-                              Collision, BallSelectionPopup, TutorialBox
+                              FlashBurst, FlashTuning, BallSelectionPopup, TutorialBox
   utility/                  ← Logic, Drawing, ScoreDial, Effects, PaintBucket, Sounds,
                               SoundSpatializer, Storage, PlatformStorage, GameLoop,
                               GameEvents, Signal, PurchaseManager, ShareHelper

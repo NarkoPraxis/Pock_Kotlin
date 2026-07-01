@@ -117,6 +117,12 @@ class Puck(radius: Float, x: Float, y: Float, val renderer: PuckRenderer) : Circ
 
 
 
+    // Net travel direction (movement + launch), power-weighted, WITHOUT advancing or friction-decaying
+    // the forces the way getNextDirection() does. For read-only consumers (impact-effect heading/angle)
+    // that must not mutate physics state. Length is meaningless; only the direction (atan2 / |x|,|y|) is.
+    fun netDirX(): Float = movement.direction.x * movement.power + launch.direction.x * launch.power
+    fun netDirY(): Float = movement.direction.y * movement.power + launch.direction.y * launch.power
+
     fun clearForces() {
         movement = Force()
         launch = Force()

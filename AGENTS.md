@@ -80,7 +80,7 @@ Android entry: `MainActivity` (`main/java`) is a thin `AppCompatActivity` whose 
 | `gameobjects/puckstyle/tails` | One file per ball type tail |
 | `gameobjects/puckstyle/paddles` | One file per ball type paddle (named `*Launch.kt`) |
 | `physics` | `Force`, `Point`, `Ticker`, `TutorialTicker` |
-| `shapes` | `Circle`, `DrawablePoint`, `Explosion`, `ScoreExplosion`, `Collision`, `BallSelectionPopup`, `TutorialBox` |
+| `shapes` | `Circle`, `DrawablePoint`, `Explosion`, `ScoreExplosion`, `FlashBurst`, `FlashTuning`, `BallSelectionPopup`, `TutorialBox` |
 | `utility` | `Logic`, `Drawing`, `ScoreDial`, `Effects`, `PaintBucket`, `Sounds`, `SoundSpatializer`, `Storage`, `PlatformStorage`, `GameLoop`, `GameEvents`, `Signal`, `PurchaseManager`, `ShareHelper` |
 
 ## Key Singletons
