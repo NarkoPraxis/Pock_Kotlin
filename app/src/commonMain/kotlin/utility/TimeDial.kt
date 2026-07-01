@@ -47,7 +47,8 @@ import physics.Ticker
  *     in a perpetual spin.
  *
  * Hidden when the time limit is Infinite ([Settings.timeLimitMinutes] == 0), before the timer starts,
- * once it has expired, during ball selection, and in demo mode.
+ * during ball selection, and in demo mode. Once it is showing during a match it stays put — expiry and
+ * scoring no longer hide it; only the time-limit setting governs its visibility.
  */
 object TimeDial {
 
@@ -284,17 +285,13 @@ object TimeDial {
 
         if (Logic.timerShowFinalZero) {
             // Close game: the clock reached 0 but the point plays on. The last numeral sucks out and a
-            // large 0 slides in from off screen, then parks centred. Drawn only during live Play — it's
-            // hidden through the score/game-over cinematic.
-            if (Settings.gameState == GameState.Play) {
-                ensureStyle(digitsOf(finalZeroSuckValue))
-                ensureBigZeroStyle()
-                drawFinalZeroSequence()
-            }
+            // large 0 slides in from off screen, then parks centred. Kept visible through the
+            // score/game-over cinematic — once shown, only the time-limit setting hides the dial.
+            ensureStyle(digitsOf(finalZeroSuckValue))
+            ensureBigZeroStyle()
+            drawFinalZeroSequence()
             return
         }
-        // A decided game (winner already clear) hid the dial at expiry.
-        if (Logic.timerExpired) return
 
         // Shrink the numerals once the value runs past 3 digits (e.g. ≥ 1000s) so they keep fitting.
         ensureStyle(maxOf(digitsOf(displayedValue), digitsOf(oldValue)))
