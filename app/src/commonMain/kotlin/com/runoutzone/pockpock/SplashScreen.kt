@@ -43,7 +43,7 @@ private const val SPLASH_HOLD_MS = 2200L
 private val ICON_BG = Color(0xFFF25252)
 
 // Shown bottom-right on the splash so the running build — and its headline feature — is obvious.
-private const val VERSION_LABEL = "v0.9 Score Optimisation"
+private const val VERSION_LABEL = "v0.10 Particle System"
 
 /**
  * Custom splash shown as the app's first destination. It deliberately replicates the system launch
