@@ -45,6 +45,11 @@
     <string name="speed_fast">快</string>
     <string name="speed_fastest">最快</string>
     <string name="game_speed_label">游戏速度</string>
+    <string name="score_window_label">得分窗口</string>
+    <string name="score_window_fast">快</string>
+    <string name="score_window_normal">正常</string>
+    <string name="score_window_never">从不</string>
+    <string name="persistent_effects_label">持续特效</string>
     <string name="points_to_win_label">获胜所需分数</string>
     <string name="time_limit_label">时间限制</string>
     <string name="control_scheme_label">操控方式</string>

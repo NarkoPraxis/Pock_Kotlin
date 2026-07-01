@@ -59,6 +59,7 @@ import com.runoutzone.pockpock.menu.poppinsFamily
 import enums.ChargeMeterStyle
 import enums.DarkModeSetting
 import enums.ScoreMenuSide
+import enums.ScoreWindow
 import enums.TouchScheme
 import gameobjects.Settings
 import org.jetbrains.compose.resources.painterResource
@@ -116,8 +117,9 @@ fun SettingsScreen(
 
     var ballSize by remember { mutableStateOf(Storage.ballSize) }
     var chargeSpeed by remember { mutableStateOf(Storage.chargeSpeed) }
-    var gameSpeed by remember { mutableIntStateOf(Storage.gameSpeed) }
     var tailLength by remember { mutableIntStateOf(Storage.tailLength) }
+    var scoreWindow by remember { mutableStateOf(Storage.scoreWindowMode) }
+    var persistentEffectsOn by remember { mutableStateOf(Storage.persistentEffectsEnabled) }
     var pointsToWin by remember { mutableIntStateOf(Storage.loadPointsToWin()) }
     var timeLimit by remember { mutableIntStateOf(Storage.loadTimeLimit()) }
     var touchScheme by remember { mutableStateOf(Storage.touchScheme) }
@@ -155,12 +157,17 @@ fun SettingsScreen(
         PlatformStorage.saveBoolean("settings", "low_player_arrow", true)
         Storage.saveHighPlayerChargeMeterStyle(ChargeMeterStyle.SideBar)
         Storage.saveLowPlayerChargeMeterStyle(ChargeMeterStyle.SideBar)
+        Storage.scoreWindowMode = ScoreWindow.Normal
+        Settings.scoreWindowMode = ScoreWindow.Normal
+        Storage.persistentEffectsEnabled = true
+        Settings.persistentEffectsEnabled = true
         Sounds.applyBackgroundVolume()
         Sounds.playMenuAmbiance()
         ballSize = "default"
         chargeSpeed = 0.7f
-        gameSpeed = 16
         tailLength = 20
+        scoreWindow = ScoreWindow.Normal
+        persistentEffectsOn = true
         pointsToWin = 5
         timeLimit = 0
         touchScheme = TouchScheme.BySide
@@ -187,7 +194,11 @@ fun SettingsScreen(
     val strChargeSpeed = stringResource(Res.string.charge_speed_label)
     val strSlow = stringResource(Res.string.speed_slow)
     val strFast = stringResource(Res.string.speed_fast)
-    val strGameSpeed = stringResource(Res.string.game_speed_label)
+    val strScoreWindow = stringResource(Res.string.score_window_label)
+    val strScoreWindowFast = stringResource(Res.string.score_window_fast)
+    val strScoreWindowNormal = stringResource(Res.string.score_window_normal)
+    val strScoreWindowNever = stringResource(Res.string.score_window_never)
+    val strPersistentEffects = stringResource(Res.string.persistent_effects_label)
     val strPointsToWin = stringResource(Res.string.points_to_win_label)
     val strTimeLimit = stringResource(Res.string.time_limit_label)
     val strControlScheme = stringResource(Res.string.control_scheme_label)
@@ -265,14 +276,21 @@ fun SettingsScreen(
                         PlatformStorage.saveString("settings", "charge_speed", key)
                     }
 
+                    // Score window — how tight the goal stays open after a collision. Fast cuts the
+                    // window at half the launch's decay; Normal is the original full-decay behaviour;
+                    // Never leaves the goal always open. Applied live (Settings) and persisted (Storage).
                     CircleRadioRow(
-                        strGameSpeed,
-                        listOf(20 to strSlow, 16 to strDefault, 12 to strFast),
-                        gameSpeed, circleD, poppins
+                        strScoreWindow,
+                        listOf(
+                            ScoreWindow.Fast to strScoreWindowFast,
+                            ScoreWindow.Normal to strScoreWindowNormal,
+                            ScoreWindow.Never to strScoreWindowNever
+                        ),
+                        scoreWindow, circleD, poppins
                     ) {
-                        gameSpeed = it
-                        val key = when (it) { 20 -> "small"; 12 -> "large"; else -> "default" }
-                        PlatformStorage.saveString("settings", "game_speed", key)
+                        scoreWindow = it
+                        Storage.scoreWindowMode = it
+                        Settings.scoreWindowMode = it
                     }
 
                     NumberDropdownRow(strPointsToWin, pointsToWin, poppins) {
@@ -344,6 +362,18 @@ fun SettingsScreen(
                         tailLength = it
                         val key = when (it) { 10 -> "small"; 40 -> "large"; else -> "default" }
                         PlatformStorage.saveString("settings", "tail_length", key)
+                    }
+
+                    // Persistent Effects on/off. When off, Effects.drawEffects skips the persistent
+                    // layer (score/priority effects unaffected). Applied live and persisted.
+                    CircleRadioRow(
+                        strPersistentEffects,
+                        listOf(true to strOn, false to strOff),
+                        persistentEffectsOn, circleD, poppins
+                    ) {
+                        persistentEffectsOn = it
+                        Storage.persistentEffectsEnabled = it
+                        Settings.persistentEffectsEnabled = it
                     }
 
                     CircleRadioRow(

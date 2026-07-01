@@ -319,7 +319,11 @@ class Player(
         val nextY = nextLocation.y
         val leftConstraint = Settings.screenLeft + puck.radius
         val rightConstraint = Settings.screenRight - puck.radius
-        val canEnterGoal = puck.launch.hasPower && Settings.canScore && !shielded
+        // Normal/Fast: the goal only accepts a ball still carrying launch power (an armed window).
+        // Never (goalsAlwaysOpen): the goal is locked open, so ANY non-shielded ball reaching it is
+        // accepted — no launch power required.
+        val canEnterGoal = !shielded && Settings.canScore &&
+            (Settings.goalsAlwaysOpen || puck.launch.hasPower)
         val topConstraint = (if (canEnterGoal) Settings.screenTop else Settings.topGoalBottom) + puck.radius
         val bottomConstraint = (if (canEnterGoal) Settings.screenBottom else Settings.bottomGoalTop) - puck.radius
         val savedX = nextDirection.x

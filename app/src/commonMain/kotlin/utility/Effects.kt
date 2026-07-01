@@ -76,18 +76,27 @@ object Effects {
     }
 
     fun DrawScope.drawEffects() {
-        // Indexed while-loops (not iterators) so this per-frame path never allocates an ArrayList
-        // iterator — note .iterator() allocates even when the list is empty.
-        var pi = 0
-        while (pi < persistentEffects.size) {
-            val e = persistentEffects[pi]
-            e.step()
-            e.draw(this)
-            if (e.isDone) persistentEffects.removeAt(pi) else pi++
-        }
-        if (pendingEffects.isNotEmpty()) {
-            persistentEffects.addAll(pendingEffects)
-            pendingEffects.clear()
+        // Persistent-effect layer is gated by the Graphics "Persistent Effects" setting. When off,
+        // drawing them is a no-op; we also drop any active/queued ones so they can't accumulate
+        // unbounded (step never runs to retire them) or burst back on when re-enabled. Priority/score
+        // effects and the wall-collision bursts below are unaffected.
+        if (Settings.persistentEffectsEnabled) {
+            // Indexed while-loops (not iterators) so this per-frame path never allocates an ArrayList
+            // iterator — note .iterator() allocates even when the list is empty.
+            var pi = 0
+            while (pi < persistentEffects.size) {
+                val e = persistentEffects[pi]
+                e.step()
+                e.draw(this)
+                if (e.isDone) persistentEffects.removeAt(pi) else pi++
+            }
+            if (pendingEffects.isNotEmpty()) {
+                persistentEffects.addAll(pendingEffects)
+                pendingEffects.clear()
+            }
+        } else {
+            if (persistentEffects.isNotEmpty()) persistentEffects.clear()
+            if (pendingEffects.isNotEmpty()) pendingEffects.clear()
         }
 
         var ci = 0

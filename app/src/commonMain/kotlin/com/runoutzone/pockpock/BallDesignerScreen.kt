@@ -62,6 +62,7 @@ import com.runoutzone.pockpock.menu.EdgePill
 import com.runoutzone.pockpock.menu.PillSide
 import com.runoutzone.pockpock.menu.poppinsFamily
 import enums.BallType
+import enums.DesignerPane
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ChargePhase
@@ -500,8 +501,9 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
     var ranks by remember { mutableStateOf(Triple(0, 1, 2)) }
     var activeComp by remember { mutableIntStateOf(BD_SKIN) }
 
-    // Unified ("U") view toggle. Default OFF (separation view) every visit — never persisted.
-    var unified by remember { mutableStateOf(false) }
+    // Unified ("U") view toggle. Persisted (Storage.ballDesignerUnified) so the designer reopens to
+    // whichever view the player left; defaults ON (unified) on a fresh install.
+    var unified by remember { mutableStateOf(Storage.ballDesignerUnified) }
 
     var draggingComp by remember { mutableIntStateOf(-1) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
@@ -620,6 +622,10 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
         val tmp = arr[a]; arr[a] = arr[b]; arr[b] = tmp
         ranks = Triple(arr[0], arr[1], arr[2])
     }
+
+    // Remember that the Style pane was the last one open, so entering the designer from the main menu
+    // reopens here (the Color screen records DesignerPane.Color the same way).
+    LaunchedEffect(Unit) { Storage.ballDesignerPane = DesignerPane.Style }
 
     // Drives the preview ball's demo motion (~60fps). Purely cosmetic — no physics involved.
     // Also advances the shared strobe clock so the static rainbow/prism option thumbnails keep
@@ -1030,6 +1036,7 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
                   Box(modifier = Modifier.align(Alignment.TopStart).offset(x = 4.dp, y = (-38).dp)) {
                       SeparationUnificationToggle(unified = unified, accent = accentBlue) {
                           unified = !unified
+                          Storage.ballDesignerUnified = unified
                           // Entering the unified view re-selects the currently-equipped unified type
                           // (tracked by skinType, same as uSelIdx) so its three pieces snap back to
                           // their natural composition — including z-order, undoing any per-piece
@@ -1082,8 +1089,9 @@ fun BallDesignerScreen(onBack: () -> Unit, onNavigateToColor: () -> Unit) {
 }
 
 /**
- * Boolean-style mode toggle for the Ball Designer. OFF = the per-piece **S**eparation view (the
- * default every visit); ON = the **U**nified composed-ball view. Solid default-light-blue track with
+ * Boolean-style mode toggle for the Ball Designer. OFF = the per-piece **S**eparation view; ON = the
+ * **U**nified composed-ball view (the default on a fresh install; the choice is then persisted via
+ * Storage.ballDesignerUnified). Solid default-light-blue track with
  * a sliding darker-blue knob carrying a white icon: the "separate" (three split circles) glyph when
  * OFF, the "joined" (interlocked blob) glyph when ON.
  */

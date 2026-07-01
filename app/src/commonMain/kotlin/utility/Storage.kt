@@ -6,7 +6,9 @@ import androidx.compose.runtime.setValue
 import enums.BallType
 import enums.ChargeMeterStyle
 import enums.DarkModeSetting
+import enums.DesignerPane
 import enums.ScoreMenuSide
+import enums.ScoreWindow
 import enums.TouchScheme
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.CustomBallConfig
@@ -48,6 +50,10 @@ object Storage {
     private const val highBallTypeKey = "high_ball_type"
     private const val lowBallTypeKey = "low_ball_type"
     private const val scoreMenuSideKey = "score_menu_side"
+    private const val scoreWindowKey = "score_window_mode"
+    private const val persistentEffectsKey = "persistent_effects"
+    private const val ballDesignerUnifiedKey = "ball_designer_unified"
+    private const val ballDesignerPaneKey = "ball_designer_pane"
 
     private const val N = "none"
     private const val S = "small"
@@ -318,6 +324,40 @@ object Storage {
             PlatformStorage.saveString(SETTINGS, scoreMenuSideKey, value.name)
             notifyDataChanged()
         }
+
+    // --- Score window: how tightly the goal closes after a collision (see enums.ScoreWindow). ---
+    // Read into Settings.scoreWindowMode in initializeForScreen and applied live from the settings
+    // screen, so a change takes effect on the next match without a restart. Default Normal (the
+    // original full-decay behaviour).
+
+    var scoreWindowMode: ScoreWindow
+        get() {
+            val stored = PlatformStorage.getString(SETTINGS, scoreWindowKey, ScoreWindow.Normal.name)
+            return try { ScoreWindow.valueOf(stored) } catch (e: IllegalArgumentException) { ScoreWindow.Normal }
+        }
+        set(value) = PlatformStorage.saveString(SETTINGS, scoreWindowKey, value.name)
+
+    // --- Persistent effects toggle (Settings → Graphics). When off, Effects.drawEffects skips the
+    // persistent-effect layer entirely (priority/score effects are unaffected). Default on. ---
+
+    var persistentEffectsEnabled: Boolean
+        get() = PlatformStorage.getBoolean(SETTINGS, persistentEffectsKey, true)
+        set(value) = PlatformStorage.saveBoolean(SETTINGS, persistentEffectsKey, value)
+
+    // --- Ball Designer remembered location: the Unified/Separate toggle and which pane (Style/Color)
+    // was last open, so entering the designer from the main menu lands exactly where the player left.
+    // Unified defaults on for a fresh install. ---
+
+    var ballDesignerUnified: Boolean
+        get() = PlatformStorage.getBoolean(SETTINGS, ballDesignerUnifiedKey, true)
+        set(value) = PlatformStorage.saveBoolean(SETTINGS, ballDesignerUnifiedKey, value)
+
+    var ballDesignerPane: DesignerPane
+        get() {
+            val stored = PlatformStorage.getString(SETTINGS, ballDesignerPaneKey, DesignerPane.Style.name)
+            return try { DesignerPane.valueOf(stored) } catch (e: IllegalArgumentException) { DesignerPane.Style }
+        }
+        set(value) = PlatformStorage.saveString(SETTINGS, ballDesignerPaneKey, value.name)
 
     private fun readBallType(key: String, default: BallType): BallType {
         val stored = PlatformStorage.getString(AD, key, "")

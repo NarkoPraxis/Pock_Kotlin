@@ -4,6 +4,7 @@ import enums.BallType
 import enums.ChargeMeterStyle
 import enums.GameState
 import enums.ScoreMenuSide
+import enums.ScoreWindow
 import gameobjects.puckstyle.RandomRoll
 import physics.Ticker
 
@@ -69,6 +70,24 @@ object Settings {
     const val SPIKE_ANIM_FRAMES = 16
 
     var canScore: Boolean = false
+
+    // How tightly the goal closes after a collision arms it (see enums.ScoreWindow). Loaded from
+    // Storage in initializeForScreen; the settings screen also writes it live.
+    var scoreWindowMode: ScoreWindow = ScoreWindow.Normal
+
+    // Launch-power level at/below which the goal disarms. Normal closes at a full decay (0); Fast
+    // closes at the half-way mark of a full-strength launch (half maxPuckLaunchSpeed). Never never
+    // closes — that's handled by [goalsAlwaysOpen], so its close level is irrelevant.
+    val scoreWindowCloseLevel: Float
+        get() = if (scoreWindowMode == ScoreWindow.Fast) maxPuckLaunchSpeed * 0.5f else 0f
+
+    // Never mode: the goal is always open/scorable (and visibly extended) for the whole point.
+    val goalsAlwaysOpen: Boolean get() = scoreWindowMode == ScoreWindow.Never
+
+    // Whether persistent effects draw (Settings → Graphics). When false, Effects.drawEffects skips the
+    // persistent-effect layer; priority/score effects and wall-collision bursts are unaffected.
+    var persistentEffectsEnabled: Boolean = true
+
     var refreshRate: Int = 16
     var unlockProgress = 0
     var startWithTutorial = false
@@ -178,6 +197,8 @@ object Settings {
         highPlayerChargeMeterStyle = utility.Storage.highPlayerChargeMeterStyle
         lowPlayerChargeMeterStyle = utility.Storage.lowPlayerChargeMeterStyle
         scoreMenuSide = utility.Storage.scoreMenuSide
+        scoreWindowMode = utility.Storage.scoreWindowMode
+        persistentEffectsEnabled = utility.Storage.persistentEffectsEnabled
         highPlayerRainbow = utility.Storage.highPlayerRainbow
         highPlayerRainbowShield = utility.Storage.highPlayerRainbowShield
         lowPlayerRainbow = utility.Storage.lowPlayerRainbow

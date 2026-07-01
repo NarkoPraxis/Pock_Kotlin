@@ -45,6 +45,11 @@
     <string name="speed_fast">速い</string>
     <string name="speed_fastest">最速</string>
     <string name="game_speed_label">ゲーム速度</string>
+    <string name="score_window_label">得点ウィンドウ</string>
+    <string name="score_window_fast">速い</string>
+    <string name="score_window_normal">標準</string>
+    <string name="score_window_never">なし</string>
+    <string name="persistent_effects_label">常駐エフェクト</string>
     <string name="points_to_win_label">勝利ポイント</string>
     <string name="time_limit_label">制限時間</string>
     <string name="control_scheme_label">操作方法</string>

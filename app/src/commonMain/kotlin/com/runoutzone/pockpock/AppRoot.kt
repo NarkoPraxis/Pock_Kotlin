@@ -22,6 +22,7 @@ import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import enums.DesignerPane
 import enums.GameState
 import gameobjects.BotConfig
 import gameobjects.Settings
@@ -160,7 +161,10 @@ fun AppRoot() {
                         },
                         onCustomBallTapped = {
                             Settings.isDemoMode = false
-                            navController.navigateIfIdle(Screen.BallDesigner.name)
+                            // Reopen whichever designer pane the player last left (Style or Color).
+                            val route = if (Storage.ballDesignerPane == DesignerPane.Color)
+                                Screen.BallDesignerColor.name else Screen.BallDesigner.name
+                            navController.navigateIfIdle(route)
                         },
                         onZenTapped = { zenMode = true },
                         zenMode = zenMode,

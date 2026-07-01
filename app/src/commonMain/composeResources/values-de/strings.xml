@@ -45,6 +45,11 @@
     <string name="speed_fast">Schnell</string>
     <string name="speed_fastest">Am schnellsten</string>
     <string name="game_speed_label">Spielgeschwindigkeit</string>
+    <string name="score_window_label">Punktefenster</string>
+    <string name="score_window_fast">Schnell</string>
+    <string name="score_window_normal">Normal</string>
+    <string name="score_window_never">Nie</string>
+    <string name="persistent_effects_label">Dauerhafte Effekte</string>
     <string name="points_to_win_label">Punkte zum Gewinnen</string>
     <string name="time_limit_label">Zeitlimit</string>
     <string name="control_scheme_label">Steuerung</string>

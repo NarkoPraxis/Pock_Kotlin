@@ -306,6 +306,14 @@ object Logic {
     // that disarms abruptly just gives a graceful capped retract after the close (see Plan 6 §B).
     fun updateSpikes() {
         if (!this::highPlayer.isInitialized) return
+        // Score window "Never": the goal is always open and visibly extended for the whole point —
+        // it never closes. Force it here (runs every tick, ahead of the state machine) so no reset
+        // path can leave it shut. Excludes the menu demo, which manages its own (never-scoring) goals.
+        if (Settings.goalsAlwaysOpen && !Settings.isDemoMode) {
+            Settings.canScore = true
+            Settings.spikeProgress = 1f
+            return
+        }
         // Plan 3: during a score interlude, hold the spikes fully extended until the pierced ball has
         // actually popped/vanished — the danger reads as "consuming" the ball. Only after it's gone do
         // they begin to retract (over the next ~16 frames, in step with the pop's separation gap).
@@ -328,11 +336,14 @@ object Logic {
     // Inlined over the two players — no array allocation in this per-tick method.
     private fun framesUntilGoalCloses(): Float {
         val f = Settings.friction.coerceAtLeast(0.0001f)   // floor the divisor so friction=0 can't divide by zero
+        // The window closes when a launch decays to scoreWindowCloseLevel (0 for Normal, half the max
+        // launch for Fast), so count frames until the soonest launch reaches that level — not zero.
+        val level = Settings.scoreWindowCloseLevel
         var soonest = Float.POSITIVE_INFINITY
         val hp = highPlayer.puck.launch.power
-        if (hp > 0f) soonest = hp / f
+        if (hp > level) soonest = (hp - level) / f
         val lp = lowPlayer.puck.launch.power
-        if (lp > 0f && lp / f < soonest) soonest = lp / f
+        if (lp > level && (lp - level) / f < soonest) soonest = (lp - level) / f
         return soonest
     }
 
@@ -916,14 +927,21 @@ object Logic {
         if (player.shouldReleaseCharge) {
             gotBonus = player.releaseCharge()
         }
+        // The score window closes when the launch decays past scoreWindowCloseLevel (0 = Normal's
+        // full decay, half max launch = Fast's early cutoff). Shield/inert-lock still release only on
+        // a full decay (power → 0), independent of the window, so Fast doesn't drop shields early.
+        val closeLevel = Settings.scoreWindowCloseLevel
+        val wasAboveCloseLevel = player.puck.launch.power > closeLevel
         val hadLaunchPower = player.puck.launch.hasPower
         val hadMovementPower = player.puck.movement.hasPower
         if (player.applyForces()) {
             Effects.addWallCollisionEffect(player.bounceDirection, player.puckFillColor, player.puck)
             if (!player.shielded) player.puck.renderer.skin.onHit()
         }
-        if (hadLaunchPower && !player.puck.launch.hasPower) {
+        if (!Settings.goalsAlwaysOpen && wasAboveCloseLevel && player.puck.launch.power <= closeLevel) {
             GameEvents.cantScore.emit(Unit)
+        }
+        if (hadLaunchPower && !player.puck.launch.hasPower) {
             player.inertLocked = false
             player.shielded = false
         }
