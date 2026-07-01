@@ -6,6 +6,7 @@ import gameobjects.Puck
 import gameobjects.Settings
 import gameobjects.puckstyle.BallStyleFactory
 import gameobjects.puckstyle.ChargePhase
+import gameobjects.puckstyle.ColorGroup
 import gameobjects.puckstyle.ColorTheme
 import gameobjects.puckstyle.ScoredPaddle
 import physics.Force
@@ -13,11 +14,16 @@ import physics.Point
 import physics.Ticker
 import shapes.Circle
 import shapes.BallSelectionPopup
+import shapes.FlashTuning
 import gameobjects.BotBrain
 import androidx.compose.ui.graphics.toArgb
+import kotlin.math.abs
 import kotlin.math.absoluteValue
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.random.Random
 import kotlin.time.TimeSource
 import kotlin.time.TimeMark
@@ -480,6 +486,25 @@ object Logic {
                 lowBurstColor = loser.puckFillColor
                 lowBurstHighGoal = highGoal
             }
+            // Impact Effects: a non-shielded ball entering an open goal never bounces, so this is its
+            // only impact. Fire a goal-mouth Wall-on-Ball burst in the loser's real (pre-swap) colour.
+            val goalDir = if (highGoal) Direction.TOP else Direction.BOTTOM
+            // Loser is never shielded here (checkScored bails on a shielded loser), but it can be inert.
+            val goalGroup = burstGroup(loser, false, loser.inertLocked || loser.fatigueInertLocked)
+            val goalCol = burstColor(loser, goalGroup, loser.movementSpeed)
+            // The scorer is never shielded and crosses an open (spiked) goal, so treat it as the hottest
+            // tier: base + spikes + its real head-on angle. Read the heading non-mutatingly (netDir).
+            val ndx = loser.puck.netDirX(); val ndy = loser.puck.netDirY()
+            val nspeed = hypot(ndx, ndy).coerceAtLeast(0.0001f)
+            val goalSpeedNorm = (loser.movementSpeed / FlashTuning.wallSpeedRef).coerceIn(0f, 1f)
+            val goalAngleFactor = abs(ndy) / nspeed
+            val goalTangentSign = if (ndx >= 0f) 1f else -1f
+            val goalIntensity = (FlashTuning.wallBaseIntensity
+                + goalSpeedNorm * FlashTuning.wallSpeedWeight
+                + FlashTuning.wallSpikesBonus
+                + goalAngleFactor * FlashTuning.wallAngleWeight
+                ).coerceAtMost(FlashTuning.wallIntensityMax)
+            Effects.addWallCollisionEffect(goalDir, goalCol, loser.puck, goalIntensity, goalAngleFactor, goalTangentSign)
             setPuckColor(loser, PaintBucket.highBallFill.toArgb(), PaintBucket.highBallStroke.toArgb())
             setPuckColor(winner, PaintBucket.lowBallFill.toArgb(), PaintBucket.lowBallStroke.toArgb())
             Settings.gameState = GameState.Scored
@@ -488,7 +513,6 @@ object Logic {
             // sharp through the interlude until the pierced ball has popped, then retracts them.
             botBrain?.reset()
             Sounds.playScoreSound(loser.py)
-            Effects.clearCollisionEffects()
             Effects.signalScored()
             // Plan 7: the pierced ball's onUsedToScore burst is deferred to the pop (triggerPiercedPop
             // / triggerBothBursts). The winner-side onScored() still fires now.
@@ -806,6 +830,20 @@ object Logic {
             val lowPower = lowPlayer.power
             val highPower = highPlayer.power
 
+            // Plan 03: capture each ball's PRE-collision heading + state now, before any launch() below
+            // overwrites its forces. netDir reads the movement+launch direction without mutating it.
+            val highHeading = atan2(highPlayer.puck.netDirY(), highPlayer.puck.netDirX())
+            val lowHeading  = atan2(lowPlayer.puck.netDirY(),  lowPlayer.puck.netDirX())
+            val highWasShielded = highPlayer.shielded
+            val lowWasShielded  = lowPlayer.shielded
+            val highWasInert = highPlayer.inertLocked || highPlayer.fatigueInertLocked
+            val lowWasInert  = lowPlayer.inertLocked  || lowPlayer.fatigueInertLocked
+            val highPreSpeed = highPlayer.movementSpeed
+            val lowPreSpeed  = lowPlayer.movementSpeed
+            // "Inert" for burst-scaling = shield-locked in place OR barely moving (near-stationary).
+            val highInertBurst = highWasInert || highPreSpeed < FlashTuning.ballInertSpeed
+            val lowInertBurst  = lowWasInert  || lowPreSpeed  < FlashTuning.ballInertSpeed
+
             highPlayer.bonusCountdown = 0f
             lowPlayer.bonusCountdown = 0f
 
@@ -898,6 +936,22 @@ object Logic {
                 }
             }
             resetTails(highPlayer, lowPlayer)
+
+            // Plan 03: one forward "shotgun" flash burst per ball, along its own captured pre-collision
+            // heading, in its own baked colour. Head-on (opposite headings) reads hotter + tighter;
+            // a glancing (perpendicular) clip is milder + more scattered. Shielded > normal > inert.
+            val dotAB = cos(highHeading) * cos(lowHeading) + sin(highHeading) * sin(lowHeading)
+            val headOn = ((-dotAB).coerceIn(-1f, 1f) * 0.5f + 0.5f)   // 1 opposite, 0.5 perpendicular, 0 same
+            val scatter = (1f - headOn).coerceIn(0f, 1f)
+            val highBurstCol = burstColor(highPlayer,
+                burstGroup(highPlayer, highWasShielded, highWasInert), highPreSpeed)
+            val lowBurstCol = burstColor(lowPlayer,
+                burstGroup(lowPlayer, lowWasShielded, lowWasInert), lowPreSpeed)
+            Effects.addBallCollisionEffect(collisionPoint.x, collisionPoint.y, highBurstCol, highHeading,
+                ballBurstIntensity(highPreSpeed, highWasShielded, highInertBurst, headOn), scatter)
+            Effects.addBallCollisionEffect(collisionPoint.x, collisionPoint.y, lowBurstCol, lowHeading,
+                ballBurstIntensity(lowPreSpeed, lowWasShielded, lowInertBurst, headOn), scatter)
+
             if (!Settings.isDemoMode) {
                 GameEvents.canScore.emit(Unit)
             }
@@ -909,6 +963,38 @@ object Logic {
             return true
         }
         return false
+    }
+
+    /** The theme colour GROUP an impact burst draws from: shield if shielded, inert if inert-locked,
+     *  else main. (primary-vs-secondary within it is chosen by speed in [burstColor].) */
+    private fun burstGroup(player: Player, shielded: Boolean, inert: Boolean): ColorGroup {
+        val theme = ColorTheme.getTheme(player.isHigh)
+        return when {
+            shielded -> theme.shield
+            inert -> theme.inert
+            else -> theme.main
+        }
+    }
+
+    /** Baked impact-burst colour: a slow ball (< slowColorSpeedFraction of max speed) shows the softer
+     *  PRIMARY as an extra low-intensity cue; a fast ball shows the SECONDARY. Baked so a rainbow ball's
+     *  spark freezes its current hue instead of strobing. */
+    private fun burstColor(player: Player, group: ColorGroup, speed: Float): Int {
+        val slow = speed < Settings.maxPuckSpeed * FlashTuning.slowColorSpeedFraction
+        val renderer = player.puck.renderer
+        return if (slow) renderer.bakedPrimary(group.primary) else renderer.bakedSecondary(group.secondary)
+    }
+
+    /** Ball-on-Ball burst intensity: shielded > normal > inert (inert scaled way down), nudged by the
+     *  ball's own speed and the shared head-on factor. Clamped so no hit runs away. */
+    private fun ballBurstIntensity(speed: Float, shielded: Boolean, inert: Boolean, headOn: Float): Float {
+        val speedNorm = (speed / FlashTuning.wallSpeedRef).coerceIn(0f, 1f)
+        var i = FlashTuning.ballBaseIntensity +
+            speedNorm * FlashTuning.ballSpeedWeight +
+            (if (shielded) FlashTuning.ballShieldBonus else 0f) +
+            headOn * FlashTuning.ballAngleWeight
+        if (inert) i *= FlashTuning.ballInertScale
+        return i.coerceAtMost(FlashTuning.ballIntensityMax)
     }
 
     fun adjustPlayerPositions() : Boolean {
@@ -935,7 +1021,27 @@ object Logic {
         val hadLaunchPower = player.puck.launch.hasPower
         val hadMovementPower = player.puck.movement.hasPower
         if (player.applyForces()) {
-            Effects.addWallCollisionEffect(player.bounceDirection, player.puckFillColor, player.puck)
+            val group = burstGroup(player, player.shielded, player.inertLocked || player.fatigueInertLocked)
+            val flashCol = burstColor(player, group, player.movementSpeed)
+            // Plan 02: contextual intensity — speed + power + shield + spikes + head-on angle, clamped.
+            // Differences are deliberately slight (bigger/more/longer, never a different effect).
+            val speedNorm = (player.movementSpeed / FlashTuning.wallSpeedRef).coerceIn(0f, 1f)
+            val powerNorm = (player.power / Settings.sweetSpotMax).coerceIn(0f, 1f)
+            val dir = player.bounceDirection
+            // "Hit spikes" = bouncing at a goal mouth while the goal is armed and its spikes are out.
+            val hitSpikes = (dir == Direction.TOP || dir == Direction.BOTTOM) &&
+                Settings.canScore && Settings.spikeProgress >= FlashTuning.wallSpikesThreshold
+            val intensity = (FlashTuning.wallBaseIntensity
+                + speedNorm * FlashTuning.wallSpeedWeight
+                + powerNorm * FlashTuning.wallPowerWeight
+                + (if (player.shielded) FlashTuning.wallShieldBonus else 0f)
+                + (if (hitSpikes) FlashTuning.wallSpikesBonus else 0f)
+                + player.lastBounceAngleFactor * FlashTuning.wallAngleWeight
+                ).coerceAtMost(FlashTuning.wallIntensityMax)
+            Effects.addWallCollisionEffect(
+                dir, flashCol, player.puck, intensity,
+                player.lastBounceAngleFactor, player.lastBounceTangentSign
+            )
             if (!player.shielded) player.puck.renderer.skin.onHit()
         }
         if (!Settings.goalsAlwaysOpen && wasAboveCloseLevel && player.puck.launch.power <= closeLevel) {

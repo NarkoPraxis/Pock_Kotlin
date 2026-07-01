@@ -88,6 +88,10 @@ object Settings {
     // persistent-effect layer; priority/score effects and wall-collision bursts are unaffected.
     var persistentEffectsEnabled: Boolean = true
 
+    // Whether impact flash bursts draw (Settings → Graphics). Independent of persistentEffectsEnabled.
+    // When false, Effects.addWallCollisionEffect / drawFlashEffects are no-ops. Default on.
+    var impactEffectsEnabled: Boolean = true
+
     var refreshRate: Int = 16
     var unlockProgress = 0
     var startWithTutorial = false
@@ -199,6 +203,7 @@ object Settings {
         scoreMenuSide = utility.Storage.scoreMenuSide
         scoreWindowMode = utility.Storage.scoreWindowMode
         persistentEffectsEnabled = utility.Storage.persistentEffectsEnabled
+        impactEffectsEnabled = utility.Storage.impactEffectsEnabled
         highPlayerRainbow = utility.Storage.highPlayerRainbow
         highPlayerRainbowShield = utility.Storage.highPlayerRainbowShield
         lowPlayerRainbow = utility.Storage.lowPlayerRainbow

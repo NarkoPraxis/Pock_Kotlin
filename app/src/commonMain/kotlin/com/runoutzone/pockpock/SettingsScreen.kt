@@ -120,6 +120,7 @@ fun SettingsScreen(
     var tailLength by remember { mutableIntStateOf(Storage.tailLength) }
     var scoreWindow by remember { mutableStateOf(Storage.scoreWindowMode) }
     var persistentEffectsOn by remember { mutableStateOf(Storage.persistentEffectsEnabled) }
+    var impactEffectsOn by remember { mutableStateOf(Storage.impactEffectsEnabled) }
     var pointsToWin by remember { mutableIntStateOf(Storage.loadPointsToWin()) }
     var timeLimit by remember { mutableIntStateOf(Storage.loadTimeLimit()) }
     var touchScheme by remember { mutableStateOf(Storage.touchScheme) }
@@ -161,6 +162,8 @@ fun SettingsScreen(
         Settings.scoreWindowMode = ScoreWindow.Normal
         Storage.persistentEffectsEnabled = true
         Settings.persistentEffectsEnabled = true
+        Storage.impactEffectsEnabled = true
+        Settings.impactEffectsEnabled = true
         Sounds.applyBackgroundVolume()
         Sounds.playMenuAmbiance()
         ballSize = "default"
@@ -168,6 +171,7 @@ fun SettingsScreen(
         tailLength = 20
         scoreWindow = ScoreWindow.Normal
         persistentEffectsOn = true
+        impactEffectsOn = true
         pointsToWin = 5
         timeLimit = 0
         touchScheme = TouchScheme.BySide
@@ -199,6 +203,7 @@ fun SettingsScreen(
     val strScoreWindowNormal = stringResource(Res.string.score_window_normal)
     val strScoreWindowNever = stringResource(Res.string.score_window_never)
     val strPersistentEffects = stringResource(Res.string.persistent_effects_label)
+    val strImpactEffects = stringResource(Res.string.impact_effects_label)
     val strPointsToWin = stringResource(Res.string.points_to_win_label)
     val strTimeLimit = stringResource(Res.string.time_limit_label)
     val strControlScheme = stringResource(Res.string.control_scheme_label)
@@ -374,6 +379,18 @@ fun SettingsScreen(
                         persistentEffectsOn = it
                         Storage.persistentEffectsEnabled = it
                         Settings.persistentEffectsEnabled = it
+                    }
+
+                    // Impact Effects on/off. When off, the flash-burst spawner/draw pass are no-ops
+                    // (persistent/priority/score effects unaffected). Applied live and persisted.
+                    CircleRadioRow(
+                        strImpactEffects,
+                        listOf(true to strOn, false to strOff),
+                        impactEffectsOn, circleD, poppins
+                    ) {
+                        impactEffectsOn = it
+                        Storage.impactEffectsEnabled = it
+                        Settings.impactEffectsEnabled = it
                     }
 
                     CircleRadioRow(

@@ -52,6 +52,7 @@ object Storage {
     private const val scoreMenuSideKey = "score_menu_side"
     private const val scoreWindowKey = "score_window_mode"
     private const val persistentEffectsKey = "persistent_effects"
+    private const val impactEffectsKey = "impact_effects"
     private const val ballDesignerUnifiedKey = "ball_designer_unified"
     private const val ballDesignerPaneKey = "ball_designer_pane"
 
@@ -343,6 +344,13 @@ object Storage {
     var persistentEffectsEnabled: Boolean
         get() = PlatformStorage.getBoolean(SETTINGS, persistentEffectsKey, true)
         set(value) = PlatformStorage.saveBoolean(SETTINGS, persistentEffectsKey, value)
+
+    // --- Impact effects toggle (Settings → Graphics). When off, the flash-burst spawner/draw pass are
+    // no-ops. Independent of persistentEffectsEnabled. Default on. ---
+
+    var impactEffectsEnabled: Boolean
+        get() = PlatformStorage.getBoolean(SETTINGS, impactEffectsKey, true)
+        set(value) = PlatformStorage.saveBoolean(SETTINGS, impactEffectsKey, value)
 
     // --- Ball Designer remembered location: the Unified/Separate toggle and which pane (Style/Color)
     // was last open, so entering the designer from the main menu lands exactly where the player left.

@@ -62,6 +62,11 @@ class Player(
     var puckStrokeColor = puck.strokeColor
     var puckFillColor = puck.fillColor
     var bounceDirection = Direction.FULL
+    // Impact-effect context, set on each wall bounce (read by Logic when building the wall burst):
+    //  angleFactor 1 = head-on (perpendicular to the wall), 0 = fully glancing graze.
+    //  tangentSign = sign of the ball's along-wall travel (which side the momentum carries into).
+    var lastBounceAngleFactor = 1f
+    var lastBounceTangentSign = 1f
     var disableEffects = false
     var preparingToTeleport = false
     var overchargeFrames: Int = 0
@@ -348,7 +353,25 @@ class Player(
             bounceDirection = Direction.BOTTOM
             Sounds.playGoalSound(puck.x)
         }
-        return savedX != nextDirection.x || savedY != nextDirection.y
+        val bounced = savedX != nextDirection.x || savedY != nextDirection.y
+        if (bounced) {
+            // Head-on-ness = the incoming velocity's component along the wall NORMAL, over its speed
+            // (1 = perpendicular smash, 0 = grazing slide). tangentSign = which way the surviving
+            // along-wall component carries the ball, matched to the spawner's +axis sub-burst.
+            val speed = kotlin.math.hypot(savedX, savedY).coerceAtLeast(0.0001f)
+            when (bounceDirection) {
+                Direction.LEFT, Direction.RIGHT -> {
+                    lastBounceAngleFactor = kotlin.math.abs(savedX) / speed
+                    lastBounceTangentSign = if (savedY >= 0f) 1f else -1f
+                }
+                Direction.TOP, Direction.BOTTOM -> {
+                    lastBounceAngleFactor = kotlin.math.abs(savedY) / speed
+                    lastBounceTangentSign = if (savedX >= 0f) 1f else -1f
+                }
+                else -> { lastBounceAngleFactor = 1f; lastBounceTangentSign = 1f }
+            }
+        }
+        return bounced
     }
 
     // Reused per-frame scratch for the next-position calculation (avoids a Point alloc each frame).
